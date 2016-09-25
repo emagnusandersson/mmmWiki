@@ -1,0 +1,22 @@
+{
+  "name": "mawiki",
+  "description": "Wiki software",
+  "main": "script.js",
+  "authors": [
+    "Magnus Andersson"
+  ],
+  "license": "BSD-2-Clause",
+  "homepage": "https://github.com/emandersson/maWiki",
+  "moduleType": [],
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "pako": "~0.2.8"
+  }
+}
