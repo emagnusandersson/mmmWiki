@@ -276,9 +276,9 @@ objOthersActivity=null; boPageBUNeeded=null; boImageBUNeeded=null;
 objOthersActivityDefault={nEdit:0, pageName:'',  nImage:0, imageName:''};
 // tLastBackup=0; tLastEdit=0; tImageLastBackup=0; tImageLastChange=0;
 
-strDBPrefix='maWiki';
+strDBPrefix='mmmWiki';
 StrTableKey=["sub", "subImage", "version", "page", "thumb", "image", "video", "file", "setting", "redirect", "redirectDomain", "site"]; //,"cache" , "siteDefault"
-StrViewsKey=["pageWWW", "pageLastSlim", "pageLast", "redirectWWW"]; 
+StrViewsKey=["pageWWW", "pageLastSlim", "pageLast", "redirectWWW", "parentInfo", "parentImInfo", "childInfo", "childImInfo"]; 
 TableName={};for(var i=0;i<StrTableKey.length;i++) {var name=StrTableKey[i]; TableName[StrTableKey[i]+"Tab"]=strDBPrefix+'_'+name;}
 ViewName={};for(var i=0;i<StrViewsKey.length;i++) {var name=StrViewsKey[i]; ViewName[StrViewsKey[i]+"View"]=strDBPrefix+'_'+name;}
 

@@ -159,7 +159,7 @@ app.reqGetMeta=function*() {
   for(var k=0;k<matRedirect.length;k++){
     var r=matRedirect[k];
     var siteName=mysqlPool.escape(r.siteName),  pageName=mysqlPool.escape(r.pageName),  url=mysqlPool.escape(r.url),  created=mysqlPool.escape(r.created);
-    SqlB.push("REPLACE INTO maWiki_redirect (idSite, pageName, url, created) (SELECT idSite, "+pageName+", "+url+", "+created+" FROM maWiki_site WHERE siteName="+siteName+");");
+    SqlB.push("REPLACE INTO mmmWiki_redirect (idSite, pageName, url, created) (SELECT idSite, "+pageName+", "+url+", "+created+" FROM mmmWiki_site WHERE siteName="+siteName+");");
   }
   var sql=SqlB.join("\n");
 
@@ -170,7 +170,7 @@ app.reqGetMeta=function*() {
 
 }
 
-//REPLACE INTO maWiki_redirect (idSite, pageName, url, created) (SELECT idSite, 'abcd', 'defgh', '2015-11-05 16:36:12' FROM maWiki_site WHERE siteName='loc');
+//REPLACE INTO mmmWiki_redirect (idSite, pageName, url, created) (SELECT idSite, 'abcd', 'defgh', '2015-11-05 16:36:12' FROM mmmWiki_site WHERE siteName='loc');
 
 
 
@@ -330,7 +330,7 @@ app.reqIndex=function*() {
   var tmp='<!DOCTYPE html>\n\
 <html><head>\n\
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>\n\
-<meta name="generator" content="maWiki">';
+<meta name="generator" content="mmmWiki">';
   Str.push(tmp);
 
   var ua=req.headers['user-agent']||''; ua=ua.toLowerCase();
@@ -672,7 +672,7 @@ app.reqMediaImageThumb=function*(){
 
   if(boGotStored){    res.setHeader('Last-Modified', thumbTime.toUTCString());   res.setHeader('ETag',eTagThumb);  res.setHeader('Content-Length',data.length);  res.end(data);	return;   }
 
-  //SELECT * FROM maWiki_file f left JOIN maWiki_thumb t ON f.idFile=t.idFile WHERE f.idFile IN (39,360)
+  //SELECT * FROM mmmWiki_file f left JOIN mmmWiki_thumb t ON f.idFile=t.idFile WHERE f.idFile IN (39,360)
 
   //
   // No valid (cached) thumb, so go ahead and do the work (create/calculate) it
@@ -1156,7 +1156,7 @@ app.SetupSql.prototype.table=function(boDropOnly){
   ) ENGINE="+engine+" COLLATE "+collate+""); 
          // 
 
-  //SqlTab.push("CREATE INDEX "+pageTab+"IdSitePageNameIndex ON "+pageTab+"(idSite,pageName)"); //CREATE INDEX maWiki_pageIdSitePageNameIndex ON maWiki_page(idSite,pageName);
+  //SqlTab.push("CREATE INDEX "+pageTab+"IdSitePageNameIndex ON "+pageTab+"(idSite,pageName)"); //CREATE INDEX mmmWiki_pageIdSitePageNameIndex ON mmmWiki_page(idSite,pageName);
 
   SqlTab.push("CREATE TABLE "+versionTab+" ( \n\
   idPage int(4) NOT NULL, \n\
@@ -1190,8 +1190,8 @@ app.SetupSql.prototype.table=function(boDropOnly){
   FOREIGN KEY (idPage) REFERENCES "+pageTab+"(idPage) ON DELETE CASCADE \n\
   ) ENGINE="+engine+" COLLATE "+collate+""); 
 
-  SqlTab.push("CREATE INDEX "+subTab+"IdPageRevIndex ON "+subTab+"(idPage, rev)"); //CREATE INDEX maWiki_subIdPageRevIndex ON maWiki_sub(idPage, rev);
-  SqlTab.push("CREATE INDEX "+subTab+"IdSitePageNameIndex ON "+subTab+"(idSite,pageName)"); //CREATE INDEX maWiki_subIdSitePageNameIndex ON maWiki_sub(idSite, pageName);
+  SqlTab.push("CREATE INDEX "+subTab+"IdPageRevIndex ON "+subTab+"(idPage, rev)"); //CREATE INDEX mmmWiki_subIdPageRevIndex ON mmmWiki_sub(idPage, rev);
+  SqlTab.push("CREATE INDEX "+subTab+"IdSitePageNameIndex ON "+subTab+"(idSite,pageName)"); //CREATE INDEX mmmWiki_subIdSitePageNameIndex ON mmmWiki_sub(idSite, pageName);
 
   SqlTab.push("CREATE TABLE "+imageTab+" ( \n\
   idImage int(4) NOT NULL auto_increment, \n\
@@ -1300,6 +1300,36 @@ SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, b
   SqlFunction.push("CREATE VIEW "+redirectWWWView+" (idSite, siteName, www, pageName, url, created) AS \n\
 SELECT r.idSite, st.siteName, st.www, r.pageName, url, r.created FROM "+redirectTab+" r JOIN "+siteTab+" st ON r.idSite=st.idSite");
 
+
+
+
+  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+parentInfoView+"");
+  SqlFunction.push("CREATE VIEW "+parentInfoView+" (idParentFirst, revParentFirst, idSite, pageName, nParent) AS \n\
+SELECT s.idPage, s.rev, s.idSite, s.pageName, count(s.idPage) AS nParent \n\
+FROM "+subTab+" s  GROUP BY s.rev, s.idSite, s.pageName");
+/*
+  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+pageParentInfoView+"");
+  SqlFunction.push("CREATE VIEW "+pageParentInfoView+" (idParentFirst, revParentFirst, idSite, pageName, idPage, nParent) AS \n\
+SELECT s.idPage AS idParentFirst, s.rev AS revParentFirst, s.idSite, s.pageName, p.idPage, count(s.idPage) AS nParent
+FROM mmmWiki_sub s JOIN mmmWiki_page p ON s.pageName=p.pageName
+ GROUP BY s.rev, s.idSite, s.pageName;");
+*/
+
+  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+parentImInfoView+"");
+  SqlFunction.push("CREATE VIEW "+parentImInfoView+" (idParentFirst, revParentFirst, imageName, nParent) AS \n\
+SELECT s.idPage, s.rev, s.imageName, count(s.idPage) AS nParent \n\
+FROM "+subImageTab+" s  GROUP BY s.rev, s.imageName");
+
+
+  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+childInfoView+"");
+  SqlFunction.push("CREATE VIEW "+childInfoView+" (idPage, rev, idSiteFirst, pageNameFirst, nChild) AS \n\
+SELECT s.idPage, s.rev, s.idSite AS idSiteFirst, s.pageName AS pageNameFirst, count(s.idPage) AS nChild\n\
+FROM "+subTab+" s  GROUP BY s.idPage, s.rev");
+
+  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+childImInfoView+"");
+  SqlFunction.push("CREATE VIEW "+childImInfoView+" (idPage, rev, imageNameFirst, nChild) AS \n\
+SELECT s.idPage, s.rev, s.imageName AS imageNameFirst, count(s.idPage) AS nChild\n\
+FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
 
 
 
@@ -2104,7 +2134,7 @@ app.createDumpCommand=function(){
   for(var i=0;i<StrTabType.length;i++){
     strCommand+='          '+strDBPrefix+'_'+StrTabType[i];
   }
-  var strCommand="mysqldump mmm --user=root -p --no-create-info --hex-blob"+strCommand+'          >maWiki.sql';
+  var strCommand="mysqldump mmm --user=root -p --no-create-info --hex-blob"+strCommand+'          >mmmWiki.sql';
   return strCommand;
 }
 

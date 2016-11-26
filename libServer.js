@@ -409,7 +409,7 @@ configChanged=function(){
   for(var key in Site){
     var site=Site[key];   
   }
-  var site=Site.maWikiL
+  var site=Site.mmmWikiL
   var sql="SELECT COUNT(*) FROM "+siteTab+";";
   var Val=[];
   myQueryF(sql, Val, mysqlPool, function(err, results) {

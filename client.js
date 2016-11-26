@@ -2,7 +2,7 @@
 (function(){
 
 
-MaWikiFiltExtention={
+MmmWikiFiltExtention={
   setSingleParent:function(idParent){
     var tmpFilt=this[this.iParent]; array_mergeM(tmpFilt[0],tmpFilt[1]), ind=tmpFilt[0].indexOf(idParent); if(ind!=-1)  mySplice1(tmpFilt[0],ind);  tmpFilt[1]=[idParent]; tmpFilt[2]=1;
   },
@@ -3667,7 +3667,7 @@ setUp1=function(){
   colButtAllOn='#9f9', colButtOn='#0f0', colButtOff='#ddd', colFiltOn='#bfb', colFiltOff='#ddd', colFontOn='#000', colFontOff='#777', colActive='#65c1ff', colStapleOn='#f70', colStapleOff='#bbb';  
   maxStaple=20;
 
-  $.extend(Filt.tmpPrototype,MaWikiFiltExtention);
+  $.extend(Filt.tmpPrototype,MmmWikiFiltExtention);
   $pageFilterDiv=PageFilterDiv(PropPage, langHtml.label, StrOrderFiltPage, function(){ $pageList.histReplace(-1); $pageList.loadTab();}); 
   $imageFilterDiv=ImageFilterDiv(PropImage, langHtml.label, StrOrderFiltImage, function(){ $imageList.histReplace(-1); $imageList.loadTab();});  
 

@@ -37,7 +37,7 @@ require('./lib/foundOnTheInternet/diff.js');
 require('./myDiff.js');
 //require('./store.js');
 
-strAppName='maWiki';
+strAppName='mmmWiki';
 app=(typeof window==='undefined')?global:window;
 extend=util._extend;
 
