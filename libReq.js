@@ -1473,19 +1473,21 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
           # Get VidSite \n\
         SELECT idSite, pageName INTO VidSite, VpageName FROM "+pageTab+" WHERE idPage=IidPage; \n\
 \n\
-          # If 'non-talkpage' then it should have a talkpage as subpage\n\
+          # If 'non-talkpage' then insert (replace) a talkpage\n\
         CALL calcTalkName(VpageName, VtalkName, VboOK); \n\
         IF VboOK THEN \n\
           SELECT count(idPage) INTO VboTalkExist FROM "+pageTab+" WHERE idSite=VidSite AND pageName=VtalkName; \n\
           REPLACE INTO "+subTab+" (idPage, rev, idSite, pageName, boOnWhenCached) VALUES (IidPage, Irev, VidSite, VtalkName, VboTalkExist); \n\
         END IF; \n\
 \n\
-          # Other (normal) subpages \n\
+          # Replace other (normal) subpages \n\
+        DELETE FROM "+subTab+" WHERE idPage=IidPage AND rev=Irev; \n\
         #INSERT INTO "+subTab+" (idPage, rev, idSite, "+subTab+".pageName, boOnWhenCached) SELECT IidPage, Irev, t.idSite, t.pageName, boOn FROM "+tmpSubTab+" t; \n\
         #INSERT INTO "+subTab+" (idPage, rev, idSite, "+subTab+".pageName, boOnWhenCached) SELECT IidPage, Irev, st.idSite, t.pageName, boOn FROM "+tmpSubTab+" t JOIN "+siteTab+" st ON t.www=st.www; \n\
         INSERT INTO "+subTab+" (idPage, rev, idSite, "+subTab+".pageName, boOnWhenCached) SELECT IidPage, Irev, VidSite, t.pageName, boOn FROM "+tmpSubTab+" t; \n\
 \n\
-          # Images \n\
+          # Replace images \n\
+        DELETE FROM "+subImageTab+" WHERE idPage=IidPage AND rev=Irev; \n\
         INSERT INTO "+subImageTab+" (idPage, rev, "+subImageTab+".imageName) SELECT IidPage, Irev, t.imageName FROM "+tmpSubImageTab+" t; \n\
       END");
 
@@ -1599,8 +1601,6 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
         INSERT INTO "+versionTab+" (idPage,rev,summary,signature,boOther,idFile,tMod,idFileCache,tModCache,eTag,size)  \n\
   VALUES (VidPage,nversion,Isummary,Isignature,1,VidFile,now(),VidFileCache,now(),IeTag,LENGTH(Idata)); \n\
           \n\
-        DELETE FROM "+subTab+" WHERE idPage=VidPage AND rev=nversion; \n\
-        DELETE FROM "+subImageTab+" WHERE idPage=VidPage AND rev=nversion; \n\
         CALL "+strDBPrefix+"writeSubTables(VidPage, nversion); \n\
         SELECT 'done' AS mess; LEAVE proc_label;\n\
       END");
@@ -1641,8 +1641,6 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
         #  UPDATE "+pageTab+" SET tMod=now(), tModCache=now() WHERE idPage=VidPage; \n\
         #END IF; \n\
   \n\
-        DELETE FROM "+subTab+" WHERE idPage=VidPage AND rev=Irev; \n\
-        DELETE FROM "+subImageTab+" WHERE idPage=VidPage AND rev=Irev; \n\
         CALL "+strDBPrefix+"writeSubTables(VidPage, Irev); \n\
         SELECT 'done' AS mess; \n\
       END");
