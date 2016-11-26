@@ -1390,7 +1390,7 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
       END");
   //SqlFunction.push("CALL "+strDBPrefix+"deletePage('www.common.com','mmm')");
 
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"deleteAllButFirst");
+  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"deleteAllButFirst");  
   SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"deleteAllButFirst(IidPage int(4), Iname varchar(128)) \n\
       BEGIN \n\
         DECLARE VidSite, VboTalk, VboTemplate INT; \n\
@@ -1405,7 +1405,7 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
    \n\
         DELETE FROM "+subTab+" WHERE idPage=IidPage AND rev!=0; \n\
         DELETE FROM "+subImageTab+" WHERE idPage=IidPage AND rev!=0; \n\
-        CALL "+strDBPrefix+"addTalkNameToSub(IidPage, Iname); \n\
+        #CALL "+strDBPrefix+"addTalkNameToSub(IidPage, 0); \n\
       END");
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"deleteImage");
@@ -1462,52 +1462,30 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
       END");
 
 
-
-
-
-/*
-  SqlFunctionDrop.push("DROP FUNCTION IF EXISTS calcBoTalk");
-  SqlFunction.push("CREATE FUNCTION calcBoTalk(Iname varchar(128)) \n\
-      RETURNS INT NO SQL      BEGIN   RETURN Iname REGEXP '^(template_)?talk:';     END");
-  SqlFunctionDrop.push("DROP FUNCTION IF EXISTS calcBoTemplate");
-  SqlFunction.push("CREATE FUNCTION calcBoTemplate(Iname varchar(128)) \n\
-      RETURNS INT NO SQL      BEGIN   RETURN STRCMP(SUBSTR(Iname,1,9),'template:')=0;    END");
-
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS calcTalkName");
-  SqlFunction.push("CREATE PROCEDURE calcTalkName(Iname varchar(128), OUT OtalkName varchar(128), OUT OboOK INT) \n\
-    proc_label:BEGIN \n\
-        SET OboOK=1, OtalkName=''; \n\
-        IF calcBoTalk(Iname) THEN SET OboOK=0; LEAVE proc_label; END IF; \n\
-        IF calcBoTemplate(Iname) THEN SET OtalkName=CONCAT('template_talk:',SUBSTR(Iname,10));  ELSE SET OtalkName=CONCAT('talk:',Iname); END IF; \n\
-      END");
-*/
-
-
-
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"addTalkNameToSub");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"addTalkNameToSub(IidSite varchar(128), Iname varchar(128)) \n\
-    proc_label:BEGIN \n\
-        DECLARE VidPage, VlastRev, VboOK INT; \n\
-        DECLARE VtalkName VARCHAR(128); \n\
-        SELECT idPage, lastRev INTO VidPage, VlastRev FROM "+pageTab+" WHERE idSite=IidSite AND pageName=Iname; \n\
-        #SELECT idPage INTO VidPage FROM "+pageWWWView+" WHERE www=Iwww AND pageName=Iname; \n\
-        CALL calcTalkName(Iname, VtalkName, VboOK); \n\
-        IF VboOK THEN \n\
-          REPLACE INTO "+subTab+" (idPage, rev, idSite, pageName, boOnWhenCached) \n\
-            SELECT VidPage, VlastRev, p.idSite, p.pageName, 1 FROM "+pageTab+" p WHERE p.idSite=IidSite AND p.pageName=VtalkName; \n\
-        END IF; \n\
-      END");
   //SqlFunction.push("CALL calcBoTalkNBoTemplate('template:nnn',@a,@b)");     SqlFunction.push("SELECT @a,@b"); tmp=sth.fetch(PDO.FETCH_NUM); cosiole.log(tmp[0].tmp[1]); 
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"writeSubTables");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"writeSubTables(IidPage INT, Irev INT, Iwww varchar(128), Iname varchar(128)) \n\
+  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"writeSubTables(IidPage INT, Irev INT) \n\
     proc_label:BEGIN \n\
-        DECLARE VidSite INT; \n\
-        SELECT idSite INTO VidSite FROM "+siteTab+" WHERE www=Iwww; \n\
+        DECLARE VidSite, VboOK, VboTalkExist INT; \n\
+        DECLARE VpageName, VtalkName VARCHAR(128); \n\
+\n\
+          # Get VidSite \n\
+        SELECT idSite, pageName INTO VidSite, VpageName FROM "+pageTab+" WHERE idPage=IidPage; \n\
+\n\
+          # If 'non-talkpage' then it should have a talkpage as subpage\n\
+        CALL calcTalkName(VpageName, VtalkName, VboOK); \n\
+        IF VboOK THEN \n\
+          SELECT count(idPage) INTO VboTalkExist FROM "+pageTab+" WHERE idSite=VidSite AND pageName=VtalkName; \n\
+          REPLACE INTO "+subTab+" (idPage, rev, idSite, pageName, boOnWhenCached) VALUES (IidPage, Irev, VidSite, VtalkName, VboTalkExist); \n\
+        END IF; \n\
+\n\
+          # Other (normal) subpages \n\
         #INSERT INTO "+subTab+" (idPage, rev, idSite, "+subTab+".pageName, boOnWhenCached) SELECT IidPage, Irev, t.idSite, t.pageName, boOn FROM "+tmpSubTab+" t; \n\
         #INSERT INTO "+subTab+" (idPage, rev, idSite, "+subTab+".pageName, boOnWhenCached) SELECT IidPage, Irev, st.idSite, t.pageName, boOn FROM "+tmpSubTab+" t JOIN "+siteTab+" st ON t.www=st.www; \n\
         INSERT INTO "+subTab+" (idPage, rev, idSite, "+subTab+".pageName, boOnWhenCached) SELECT IidPage, Irev, VidSite, t.pageName, boOn FROM "+tmpSubTab+" t; \n\
-        CALL "+strDBPrefix+"addTalkNameToSub(VidSite, Iname); \n\
+\n\
+          # Images \n\
         INSERT INTO "+subImageTab+" (idPage, rev, "+subImageTab+".imageName) SELECT IidPage, Irev, t.imageName FROM "+tmpSubImageTab+" t; \n\
       END");
 
@@ -1563,7 +1541,7 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
   \n\
         DELETE FROM "+subTab+" WHERE idPage=VidPage; \n\
         DELETE FROM "+subImageTab+" WHERE idPage=VidPage; \n\
-        CALL "+strDBPrefix+"writeSubTables(VidPage, 0, Iwww, Iname); \n\
+        CALL "+strDBPrefix+"writeSubTables(VidPage, 0); \n\
         SELECT 'done' AS mess; \n\
       END");
 
@@ -1623,7 +1601,7 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
           \n\
         DELETE FROM "+subTab+" WHERE idPage=VidPage AND rev=nversion; \n\
         DELETE FROM "+subImageTab+" WHERE idPage=VidPage AND rev=nversion; \n\
-        CALL "+strDBPrefix+"writeSubTables(VidPage, nversion, Iwww, Iname); \n\
+        CALL "+strDBPrefix+"writeSubTables(VidPage, nversion); \n\
         SELECT 'done' AS mess; LEAVE proc_label;\n\
       END");
 
@@ -1665,7 +1643,7 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
   \n\
         DELETE FROM "+subTab+" WHERE idPage=VidPage AND rev=Irev; \n\
         DELETE FROM "+subImageTab+" WHERE idPage=VidPage AND rev=Irev; \n\
-        CALL "+strDBPrefix+"writeSubTables(VidPage, Irev, Iwww, Iname); \n\
+        CALL "+strDBPrefix+"writeSubTables(VidPage, Irev); \n\
         SELECT 'done' AS mess; \n\
       END");
 
@@ -1741,7 +1719,7 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
       CALL calcBoTalkNBoTemplate(Iname, VboTalk, VboTemplate); \n\
       IF VboTalk=0 THEN \n\
         IF VboTemplate THEN SET talkPage=CONCAT('template_talk:',Iname); ELSE SET talkPage=CONCAT('talk:',Iname); END IF;\n\
-        SELECT count(idPage) INTO boTalkExist FROM "+pageTab+" WHERE pageName=talkPage; \n\
+        SELECT count(idPage) INTO boTalkExist FROM "+pageTab+" WHERE idSite=VidSite AND pageName=talkPage; \n\
       END IF;\n\
 \n\
           # Get version table \n\

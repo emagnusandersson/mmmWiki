@@ -229,7 +229,7 @@ var flowStart=( function*(){
         if(semY) { req.flow.next(); } semCB=1;
       });
       if(!semCB) { semY=1; yield;}
-      if(intCount>intDDOSMax) {res.outCode(429,"Too Many Requests, wait "+tDDOSBan+"s\n"); return; }
+      if(intCount>intDDOSMax) {res.outCode(429,"Too Many Requests ("+intCount+"), wait "+tDDOSBan+"s\n"); return; }
 
 
       var domainName=req.headers.host; 

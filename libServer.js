@@ -60,7 +60,7 @@ sanitizeStyle=function(attrIn){
 //myDump=function(a,boStr){ if(typeof boStr=='undefined') boStr=1; var str='<pre>'+print_r(a,1)+'</pre>'; if(boStr) echo str; else return str;}
 //lcnotfirst=function(str){  if(count(str)>1) return str[0]+substr(str,1).toLowerCase(); else return str; }  // Make all except first lowercase
 
-parse=function*(callback) {
+parse=function*(callback) { // Should be seen as a method  (assigns things to this)
   var self=this;
   var mPa=new Parser(self.strEditText, self.boOW==0);
   mPa.text=self.strEditText;
@@ -178,7 +178,7 @@ makeMatVersion=function(Version){
 calcETag=function(){ return md5(this.strHtmlText +this.tMod +this.tModCache +this.boOR +this.boOW +this.boSiteMap +this.boTalkExist +JSON.stringify(this.objTemplateE) +JSON.stringify(this.arrVersion) +JSON.stringify(this.matVersion)  );}
 
 
-createSubStr=function(arrSub){
+createSubStr=function(arrSub){ // arrSub = [[name,boExist], [name,boExist] ....]   (assigned by setArrSub (in parser.js)) 
   var arrSubQ=[],  arrSubV=[];
   for(var i=0;i<arrSub.length;i++){ var v=arrSub[i]; arrSubQ.push('(?,?)'); [].push.apply(arrSubV,v); }  //arrSubV.push(v[0], v[1], v[2])
   var strSubQ=''; if(arrSubQ.length) strSubQ="INSERT INTO "+tmpSubTab+" VALUES "+arrSubQ.join(', ')+';';
