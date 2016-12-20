@@ -1226,7 +1226,6 @@ ReqBE.prototype.uploadAdmin=function*(callback,inObj){
   var regBoTalk=RegExp('(template_)?talk:');
   var FileOrg=self.File;
   var n=FileOrg.length;
-  //var sql=sqlTempSubTabCreate;
   var tmp=n+" files."; console.log(tmp); self.mes(tmp); 
   var FileTalk=[]; for(var i=FileOrg.length-1;i>=0;i--){ if(regBoTalk.test(FileOrg[i].name)) { var item=mySplice1(FileOrg,i);  FileTalk.push(item);  }  } FileOrg=FileTalk.concat(FileOrg);
   for(var i=0;i<FileOrg.length;i++){
@@ -1349,7 +1348,6 @@ ReqBE.prototype.uploadUser=function*(callback,inObj){
   if(self.captchaIn!=tmp) { Ou.strMessage='Wrong captcha'; callback(null,[Ou]);  return;}
   var File=self.File;
   var n=File.length; self.mes("nFile: "+n);
-  //var sql=sqlTempSubTabCreate;
 
   
   var file=File[0], tmpname=file.path, fileName=file.name; if(self.strName.length) fileName=self.strName;

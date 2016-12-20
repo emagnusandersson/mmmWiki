@@ -1428,7 +1428,7 @@ pageListExtend=function($el){
         vec.push(['getParent',{idPage:idParent},getParentRet],['getSingleParentExtraStuff',{idPage:idParent},getSingleParentExtraStuffRet]);  // If filtering for single parent then also get the "grandparents"
 
         var boOrphan=idParent==null;
-        if(boOrphan) $spanSingleFilter.html('(showing orphans)').css({color:'grey'}); else $spanSingleFilter.empty().append($aSingleFilter).css({color:''});
+        if(boOrphan) $spanSingleFilter.html('(orphans)').css({color:'grey'}); else $spanSingleFilter.empty().append($aSingleFilter).css({color:''});
         $buttPI.prop('title',boOrphan?'Orphan images':'Images');
       }else {
         $spanGrandParent.setUpClear(); $spanGrandParentI.setUpClear();
@@ -3046,7 +3046,7 @@ siteSetPopExtend=function($el){
 "use strict"
   $el.toString=function(){return 'siteSetPop';}
   var save=function(){ 
-    r.boTLS=$selBoTLS.val();
+    r.boTLS=Number($selBoTLS.val());
     r.siteName=$inpName.val(); if(r.siteName.length==0){ setMess('empty siteName',2);  return;}
     r.www=$inpWWW.val();  if(r.www.length==0){ setMess('empty www',2);  return;}
     r.googleAnalyticsTrackingID=$inpGog.val();
@@ -3064,6 +3064,7 @@ siteSetPopExtend=function($el){
     doHistBack();
   }
   $el.setUp=function(){
+    if(typeof r.boTLS=='undefined') r.boTLS=0;
     $selBoTLS.val(r.boTLS); $inpName.val(r.siteName); $inpWWW.val(r.www); $inpGog.val(r.googleAnalyticsTrackingID); $inpURLIcon16.val(r.urlIcon16); $inpURLIcon200.val(r.urlIcon200);
     $inpName.focus();  return true;
   }
@@ -3084,7 +3085,7 @@ siteSetPopExtend=function($el){
  
   var rDefault={idSite:'', siteName:'', www:'', googleAnalyticsTrackingID:'', urlIcon16:'', urlIcon200:''};
   var boUpd, r; 
-  var $selBoTLS=$('<select><option value=0 selected>http</option><option value=1>https</option></select>').css({display:'block'});
+  var $selBoTLS=$('<select><option value=0 selected>http</option><option value=1>https</option></select>').css({display:'block'}); 
   var $labName=$('<b>').append('Name (used as prefix when backing up...)');
   var $inpName=$('<input type=text>');
   var $imgHWWW=$imgHelp.clone().css({margin:'0em 1em'}); popupHoverM($imgHWWW,$('<div>').html('<p>Ex:<p>www.example.com<p>127.0.0.1:5000<p>localhost:5000'));
@@ -3106,7 +3107,7 @@ siteSetPopExtend=function($el){
   var $divBottom=$('<div>').append($buttonSave);  //$buttonCancel,
 
   var $blanket=$('<div>').addClass("blanket");
-  var $centerDiv=$('<div>').addClass("Center").append($inpNLab,$divBottom).css({height:'24em', 'min-width':'17em','max-width':'30em', padding: '1.2em 0.5em 1.2em 1.2em'});
+  var $centerDiv=$('<div>').addClass("Center").append($inpNLab,$divBottom).css({height:'24em', 'min-width':'17em','max-width':'30em', padding: '1.2em 0.5em 1.2em 1.2em'}); 
   if(boIE) $centerDiv.css({'width':'20em'}); 
   $el.addClass("Center-Container").append($centerDiv,$blanket); 
    

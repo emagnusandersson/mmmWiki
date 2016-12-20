@@ -20,11 +20,11 @@ leafCommon='common.js';
 
 
 
-tmpSubTab='tmpSubTab';
-//sqlTempSubTabCreate="CREATE TEMPORARY TABLE IF NOT EXISTS "+tmpSubTab+" (www varchar(128) NOT NULL, pageName varchar(128) NOT NULL,  boOn TINYINT(1) NOT NULL,  UNIQUE KEY (www,pageName));";
-sqlTempSubTabCreate="CREATE TEMPORARY TABLE IF NOT EXISTS "+tmpSubTab+" (pageName varchar(128) NOT NULL,  boOn TINYINT(1) NOT NULL,  UNIQUE KEY (pageName))";
-tmpSubImageTab='tmpSubImageTab';
-sqlTempSubImageTabCreate="CREATE TEMPORARY TABLE IF NOT EXISTS "+tmpSubImageTab+" (imageName varchar(128) NOT NULL,  UNIQUE KEY (imageName))";
+tmpSubNew='tmpSubNew';
+//sqlTmpSubNewCreate="CREATE TEMPORARY TABLE IF NOT EXISTS "+tmpSubNew+" (www varchar(128) NOT NULL, pageName varchar(128) NOT NULL,  boOn TINYINT(1) NOT NULL,  UNIQUE KEY (www,pageName));";
+sqlTmpSubNewCreate="CREATE TEMPORARY TABLE IF NOT EXISTS "+tmpSubNew+" (pageName varchar(128) NOT NULL,  boOn TINYINT(1) NOT NULL,  UNIQUE KEY (pageName))";
+tmpSubNewImage='tmpSubNewImage';
+sqlTmpSubNewImageCreate="CREATE TEMPORARY TABLE IF NOT EXISTS "+tmpSubNewImage+" (imageName varchar(128) NOT NULL,  UNIQUE KEY (imageName))";
 
 
 
@@ -278,7 +278,8 @@ objOthersActivityDefault={nEdit:0, pageName:'',  nImage:0, imageName:''};
 
 strDBPrefix='mmmWiki';
 StrTableKey=["sub", "subImage", "version", "page", "thumb", "image", "video", "file", "setting", "redirect", "redirectDomain", "site"]; //,"cache" , "siteDefault"
-StrViewsKey=["pageWWW", "pageLastSlim", "pageLast", "redirectWWW", "parentInfo", "parentImInfo", "childInfo", "childImInfo"]; 
+//StrTableKey=["sub", "statNChild", "statParent", "subImage", "version", "page", "thumb", "image", "video", "file", "setting", "redirect", "redirectDomain", "site"];
+StrViewsKey=["pageWWW", "pageLastSlim", "pageLast", "redirectWWW", "parentInfo", "parentImInfo", "childInfo", "childImInfo", "subWChildID", "subWExtra"]; 
 TableName={};for(var i=0;i<StrTableKey.length;i++) {var name=StrTableKey[i]; TableName[StrTableKey[i]+"Tab"]=strDBPrefix+'_'+name;}
 ViewName={};for(var i=0;i<StrViewsKey.length;i++) {var name=StrViewsKey[i]; ViewName[StrViewsKey[i]+"View"]=strDBPrefix+'_'+name;}
 
@@ -306,12 +307,20 @@ LEFT JOIN (\n\
 // The 5:th join will again add info about parents. (The table is expanded if there are multiple parents)
 
 
-/*
-strTableRefImage=imageTab+" i \n\
-LEFT JOIN "+subImageTab+" s ON s.imageName=i.imageName \n\
-LEFT JOIN "+versionTab+" vp ON vp.idPage=s.idPage AND vp.rev=s.rev \n\
-LEFT JOIN "+pageTab+" pp ON pp.idPage=vp.idPage AND pp.lastRev=vp.rev";
-*/
+
+strTableRefPage="("+pageLastView+" p) \n\
+LEFT JOIN "+subTab+" s ON s.idSite=p.idSite AND s.pageName=p.pageName \n\
+LEFT JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage\n\
+LEFT JOIN "+subTab+" sc ON sc.idPage=p.idPage AND sc.rev=p.lastRev \n\
+LEFT JOIN "+subImageTab+" sI ON sI.idPage=p.idPage AND sI.rev=p.lastRev \n\
+LEFT JOIN (\n\
+  ("+pageWWWView+" pParCount)  \n\
+  JOIN \n\
+  "+subTab+" sParCount ON pParCount.idPage=sParCount.idPage AND pParCount.lastRev=sParCount.rev \n\
+)ON sParCount.idSite=p.idSite AND sParCount.pageName=p.pageName";
+
+
+
 
 // AND pp.lastRev=s.rev
 strTableRefImage=imageTab+" i \n\

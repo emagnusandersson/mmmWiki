@@ -1158,6 +1158,8 @@ app.SetupSql.prototype.table=function(boDropOnly){
 
   //SqlTab.push("CREATE INDEX "+pageTab+"IdSitePageNameIndex ON "+pageTab+"(idSite,pageName)"); //CREATE INDEX mmmWiki_pageIdSitePageNameIndex ON mmmWiki_page(idSite,pageName);
 
+  //nChild int(4) NOT NULL, \n\
+  
   SqlTab.push("CREATE TABLE "+versionTab+" ( \n\
   idPage int(4) NOT NULL, \n\
   rev int(4) NOT NULL, \n\
@@ -1261,7 +1263,22 @@ app.SetupSql.prototype.table=function(boDropOnly){
   created TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
   PRIMARY KEY (www) \n\
   ) ENGINE="+engine+" COLLATE "+collate+""); 
-
+  /*
+  SqlTab.push("CREATE TABLE "+statNChildTab+" ( \n\
+  idPage int(4) NOT NULL, \n\
+  nChild int(4) NOT NULL, \n\
+  UNIQUE KEY (idPage), \n\
+  FOREIGN KEY (idPage) REFERENCES "+pageTab+"(idPage) ON DELETE CASCADE \n\
+  ) ENGINE="+engine+" COLLATE "+collate+""); 
+  
+  SqlTab.push("CREATE TABLE "+statParentTab+" ( \n\
+  idPage int(4) NOT NULL, \n\
+  idParent int(4) NOT NULL, \n\
+  UNIQUE KEY (idPage,idParent), \n\
+  FOREIGN KEY (idPage) REFERENCES "+pageTab+"(idPage) ON DELETE CASCADE, \n\
+  FOREIGN KEY (idParent) REFERENCES "+pageTab+"(idPage) ON DELETE CASCADE \n\
+  ) ENGINE="+engine+" COLLATE "+collate+""); 
+*/
 
   addBinTableSql(SqlTabDrop,SqlTab,strDBPrefix,PropPage,engine,collate);
   var SqlTabTmp=[];  // Temporary workaround (to add size image bin table)
@@ -1283,15 +1300,16 @@ app.SetupSql.prototype.fun=function(boDropOnly){
   eval(extractLoc(ViewName,'ViewName'));
 
 
-  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+pageWWWView+"");
+
+  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+pageWWWView+"");  // pageTab with siteTab-fields: boDefault, boTLS, siteName and www
   SqlFunction.push("CREATE VIEW "+pageWWWView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev) AS \n\
 SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev FROM "+pageTab+" p JOIN "+siteTab+" st ON p.idSite=st.idSite");
 
-  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+pageLastSlimView+"");
+  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+pageLastSlimView+"");  // pageTab with versionTab-fields: boOther, tMod, tModCache, eTag, size, idFile and idFileCache for the last version
   SqlFunction.push("CREATE VIEW "+pageLastSlimView+" (idPage, idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache) AS \n\
 SELECT p.idPage, p.idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev");
 
-  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+pageLastView+"");
+  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+pageLastView+"");  // A combination of the above two views.
   SqlFunction.push("CREATE VIEW "+pageLastView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache) AS \n\
 SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev JOIN "+siteTab+" st ON p.idSite=st.idSite");
 
@@ -1332,6 +1350,15 @@ SELECT s.idPage, s.rev, s.imageName AS imageNameFirst, count(s.idPage) AS nChild
 FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
 
 
+  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+subWChildIDView+""); // Just for helping out when debugging
+  SqlFunction.push("CREATE VIEW "+subWChildIDView+" (idPage, rev, idSite, pageName, idChild) AS \n\
+SELECT s.idPage, s.rev, s.idSite, s.pageName, p.idPage AS idChild\n\
+FROM "+subTab+" s LEFT JOIN "+pageTab+" p ON s.pageName=p.pageName AND s.idSite=p.idSite");
+
+  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+subWExtraView+""); // Just for helping out when debugging
+  SqlFunction.push("CREATE VIEW "+subWExtraView+" (idParent, revParent, idSiteParent, pageNameParent, idSiteChild, pageNameChild, idChild) AS \n\
+SELECT s.idPage, s.rev, pp.idSite, pp.pageName, s.idSite, s.pageName, p.idPage\n\
+FROM "+subTab+" s LEFT JOIN "+pageTab+" p ON s.pageName=p.pageName AND s.idSite=p.idSite LEFT JOIN "+pageTab+" pp ON s.idPage=pp.idPage");
 
     //
     // Stored procedures  
@@ -1367,6 +1394,7 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
         DELETE FROM "+versionTab+" WHERE idPage=VidPage; \n\
         DELETE f FROM "+fileTab+" f JOIN tmp t ON t.idFile=f.idFile WHERE 1; \n\
         DELETE f FROM "+fileTab+" f JOIN tmp t ON t.idFileCache=f.idFile WHERE 1; \n\
+        \n\
         DELETE FROM "+pageTab+" WHERE idPage=VidPage; \n\
         COMMIT; \n\
       END");
@@ -1385,6 +1413,7 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
         DELETE FROM "+versionTab+" WHERE idPage=VidPage; \n\
         DELETE f FROM "+fileTab+" f JOIN tmp t ON t.idFile=f.idFile WHERE 1; \n\
         DELETE f FROM "+fileTab+" f JOIN tmp t ON t.idFileCache=f.idFile WHERE 1; \n\
+        \n\
         DELETE FROM "+pageTab+" WHERE idPage=VidPage; \n\
         COMMIT; \n\
       END");
@@ -1405,7 +1434,6 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
    \n\
         DELETE FROM "+subTab+" WHERE idPage=IidPage AND rev!=0; \n\
         DELETE FROM "+subImageTab+" WHERE idPage=IidPage AND rev!=0; \n\
-        #CALL "+strDBPrefix+"addTalkNameToSub(IidPage, 0); \n\
       END");
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"deleteImage");
@@ -1452,7 +1480,6 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
         UPDATE "+versionTab+" SET tModCache=FROM_UNIXTIME(1) WHERE idPage=IidPage; \n\
         COMMIT; \n\
       END");
-  //SqlFunction.push("CALL "+strDBPrefix+"markStale(1)"); 
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"markStaleParentsOfPage");
   SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"markStaleParentsOfPage(IidSite int(4), Iname varchar(128), IboOn TINYINT, IboTemplate TINYINT) \n\
@@ -1462,7 +1489,14 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
       END");
 
 
-  //SqlFunction.push("CALL calcBoTalkNBoTemplate('template:nnn',@a,@b)");     SqlFunction.push("SELECT @a,@b"); tmp=sth.fetch(PDO.FETCH_NUM); cosiole.log(tmp[0].tmp[1]); 
+
+  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"setNChild");
+  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"setNChild(IidPage INT, Irev INT) \n\
+    proc_label:BEGIN \n\
+      DECLARE VnChild INT; \n\
+      SELECT COUNT(*) INTO VnChild FROM "+subTab+" WHERE idPage=IidPage AND rev=Irev;\n\
+      UPDATE "+versionTab+" SET nChild=VnChild WHERE idPage=IidPage AND rev=Irev;\n\
+    END");
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"writeSubTables");
   SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"writeSubTables(IidPage INT, Irev INT) \n\
@@ -1482,15 +1516,34 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
 \n\
           # Replace other (normal) subpages \n\
         DELETE FROM "+subTab+" WHERE idPage=IidPage AND rev=Irev; \n\
-        #INSERT INTO "+subTab+" (idPage, rev, idSite, "+subTab+".pageName, boOnWhenCached) SELECT IidPage, Irev, t.idSite, t.pageName, boOn FROM "+tmpSubTab+" t; \n\
-        #INSERT INTO "+subTab+" (idPage, rev, idSite, "+subTab+".pageName, boOnWhenCached) SELECT IidPage, Irev, st.idSite, t.pageName, boOn FROM "+tmpSubTab+" t JOIN "+siteTab+" st ON t.www=st.www; \n\
-        INSERT INTO "+subTab+" (idPage, rev, idSite, "+subTab+".pageName, boOnWhenCached) SELECT IidPage, Irev, VidSite, t.pageName, boOn FROM "+tmpSubTab+" t; \n\
+        INSERT INTO "+subTab+" (idPage, rev, idSite, pageName, boOnWhenCached) SELECT IidPage, Irev, VidSite, t.pageName, boOn FROM "+tmpSubNew+" t; \n\
 \n\
           # Replace images \n\
         DELETE FROM "+subImageTab+" WHERE idPage=IidPage AND rev=Irev; \n\
-        INSERT INTO "+subImageTab+" (idPage, rev, "+subImageTab+".imageName) SELECT IidPage, Irev, t.imageName FROM "+tmpSubImageTab+" t; \n\
+        INSERT INTO "+subImageTab+" (idPage, rev, "+subImageTab+".imageName) SELECT IidPage, Irev, t.imageName FROM "+tmpSubNewImage+" t; \n\
+ \n\
+        #CALL "+strDBPrefix+"setNChild(IidPage, Irev); \n\
+        #CALL "+strDBPrefix+"setNParent(VpageName, VidSite); \n\
+        #CALL "+strDBPrefix+"setNParentOfChildren(); \n\
       END");
-
+/*
+  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"calcStatNChild");
+  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"calcStatNChild() \n\
+    proc_label:BEGIN \n\
+      TRUNCATE "+statNChildTab+"; \n\
+      INSERT INTO "+statNChildTab+" SELECT s.idPage, COUNT(*) AS nChild  FROM mmmWiki_sub s \n\
+JOIN mmmWiki_page pp ON s.idPage=pp.idPage AND s.rev=pp.lastRev # Givs subTab with lastRev only \n\
+GROUP BY s.idSite, s.pageName; \n\
+    END");
+  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"calcStatParent");
+  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"calcStatParent() \n\
+    proc_label:BEGIN \n\
+      TRUNCATE "+statParentTab+"; \n\
+      INSERT INTO "+statParentTab+" SELECT s.idPage AS idParent, p.idPage AS idPage  FROM mmmWiki_sub s \n\
+JOIN mmmWiki_page pp ON s.idPage=pp.idPage AND s.rev=pp.lastRev # Givs subTab with lastRev only \n\
+JOIN mmmWiki_page p ON s.pageName=p.pageName AND s.idSite=p.idSite; # adds p.idPage \n\
+    END");
+*/
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"saveByReplace");
   SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"saveByReplace(IsiteName varchar(128), Iwww varchar(128), Iname varchar(128), Idata MEDIUMBLOB, Ihtml MEDIUMBLOB, IeTag varchar(32)) \n\
       proc_label:BEGIN \n\
@@ -1540,7 +1593,6 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
           UPDATE "+versionTab+" SET idFile=VidFile, boOther=0, tMod=now(), idFileCache=VidFileCache, tModCache=now(), eTag=IeTag, size=Vlen WHERE idPage=VidPage AND rev=0; \n\
         END IF; \n\
   \n\
-  \n\
         DELETE FROM "+subTab+" WHERE idPage=VidPage; \n\
         DELETE FROM "+subImageTab+" WHERE idPage=VidPage; \n\
         CALL "+strDBPrefix+"writeSubTables(VidPage, 0); \n\
@@ -1549,27 +1601,27 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
 
 
   if(0){
-    SqlFunction.push(sqlTempSubTabCreate);
-    SqlFunction.push(sqlTempSubImageTabCreate);
+    SqlFunction.push(sqlTmpSubNewCreate);
+    SqlFunction.push(sqlTmpSubNewImageCreate);
 
     var tmpUrl="localhost:"+port;
     SqlFunction.push("START TRANSACTION");
-    SqlFunction.push("TRUNCATE "+tmpSubTab); SqlFunction.push("INSERT INTO "+tmpSubTab+" VALUES ('mm',0),('nn',0),('oo',0)");
+    SqlFunction.push("TRUNCATE "+tmpSubNew); SqlFunction.push("INSERT INTO "+tmpSubNew+" VALUES ('mm',0),('nn',0),('oo',0)");
     SqlFunction.push("CALL "+strDBPrefix+"saveByReplace('','"+tmpUrl+"','tmp','abc','ABC','0123456789abcdef0123456789abcdef')",'');
     SqlFunction.push("COMMIT");
 
     SqlFunction.push("START TRANSACTION");
-    SqlFunction.push("TRUNCATE "+tmpSubTab); SqlFunction.push("INSERT INTO "+tmpSubTab+" VALUES ('mm',0),('nn',0),('oo',0)");
+    SqlFunction.push("TRUNCATE "+tmpSubNew); SqlFunction.push("INSERT INTO "+tmpSubNew+" VALUES ('mm',0),('nn',0),('oo',0)");
     SqlFunction.push("CALL "+strDBPrefix+"saveByReplace('','"+tmpUrl+"','mmm','abc','ABC','0123456789abcdef0123456789abcdef')",'');
     SqlFunction.push("COMMIT");
 
     SqlFunction.push("START TRANSACTION");
-    SqlFunction.push("TRUNCATE "+tmpSubTab); SqlFunction.push("INSERT INTO "+tmpSubTab+" VALUES ('pp',0),('mmm',1),('oo',0)");
+    SqlFunction.push("TRUNCATE "+tmpSubNew); SqlFunction.push("INSERT INTO "+tmpSubNew+" VALUES ('pp',0),('mmm',1),('oo',0)");
     SqlFunction.push("CALL "+strDBPrefix+"saveByReplace('','"+tmpUrl+"','template:nnn','abd','ABD','0123456789abcdef0123456789abcdef')",'');
     SqlFunction.push("COMMIT");
 
     SqlFunction.push("START TRANSACTION");
-    SqlFunction.push("TRUNCATE "+tmpSubTab); SqlFunction.push("INSERT INTO "+tmpSubTab+" VALUES ('pp',0),('qq',0),('oo',0)");
+    SqlFunction.push("TRUNCATE "+tmpSubNew); SqlFunction.push("INSERT INTO "+tmpSubNew+" VALUES ('pp',0),('qq',0),('oo',0)");
     SqlFunction.push("CALL "+strDBPrefix+"saveByReplace('','"+tmpUrl+"','mmm','abcd','ABCD','0123456789abcdef0123456789abcdef')",'');
     SqlFunction.push("COMMIT");
   }
@@ -1608,7 +1660,7 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
   if(0){
     SqlFunction.push("START TRANSACTION");
     var tmpUrl="localhost:"+port;
-    SqlFunction.push("TRUNCATE "+tmpSubTab); SqlFunction.push("INSERT INTO "+tmpSubTab+" VALUES ('rr',0),('ss',1),('tt',0)");
+    SqlFunction.push("TRUNCATE "+tmpSubNew); SqlFunction.push("INSERT INTO "+tmpSubNew+" VALUES ('rr',0),('ss',1),('tt',0)");
     SqlFunction.push("CALL "+strDBPrefix+"saveByAdd('"+tmpUrl+"','mmm','myEdit','Nisse','abe12','ABE12','0123456789abcdef0123456789abcdef')",'');
     SqlFunction.push("COMMIT");
   }
@@ -1648,7 +1700,7 @@ FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
   if(0){
     SqlFunction.push("START TRANSACTION");
     var tmpUrl="localhost:"+port;
-    SqlFunction.push("TRUNCATE "+tmpSubTab); SqlFunction.push("INSERT INTO "+tmpSubTab+" VALUES ('rrr',0),('sss',1),('ttt',0)");
+    SqlFunction.push("TRUNCATE "+tmpSubNew); SqlFunction.push("INSERT INTO "+tmpSubNew+" VALUES ('rrr',0),('sss',1),('ttt',0)");
     SqlFunction.push("CALL "+strDBPrefix+"setNewCache('"+tmpUrl+"','mmm',1,'XX','0123456789abcdef0123456789abcdef')",'');
     SqlFunction.push("COMMIT");
   }
@@ -2045,7 +2097,7 @@ app.SetupSql.prototype.doQuery=function*(strCreateSql, flow){
       boErr=false;
     }
   }
-  if(boErr) {var tmp=strCreateSql+' is not valid input, try: '+StrValid+' (suffixed with "All")'; console.log(tmp); }
+  if(boErr) {var tmp=strCreateSql+' is not valid input, try: '+StrValid; console.log(tmp); }
 }
 
 var createMessTextOfMultQuery=function(Sql, err, results){
