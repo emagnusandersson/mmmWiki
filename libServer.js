@@ -225,8 +225,122 @@ createSetNewCacheSQL=function(wwwSite, strName, rev, strHtmlText, eTag, arrSub, 
   var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, rev, strHtmlText, eTag]);
   return {sql:sql,Val:Val,nEndingResults:2}; 
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+createSaveByReplaceNeo=function(siteName, wwwSite, strName, strEditText, strHtmlText, eTag, arrSub, StrSubImage){ 
+  var tmp=createSubStr(arrSub), strSubQ=tmp[0], arrSubV=tmp[1];
+  var strSubImageQ=createSubImageStr(StrSubImage);
+  var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
+  var Page = {
+    name: strName,
+    boTalk: boTalk,
+    boTemplate: boTemplate,
+    boOR: boOR,
+    boOW: boOW,
+    boSiteMap: boSiteMap,
+    lastRev: lastRev
+  }
+  var Version = {
+    rev: rev,
+    summary: summary,
+    signature: signature,
+    boOther: boOther,
+    tMod: tMod,
+    tModCache: tModCache,
+    eTag: eTag,
+    size: size,
+    strEditText: strEditText
+  }
+
+  var ChildPlanned = {    name: name   }
+  var ImagePlanned = {    name: name   }
+
+
+
+  Sql.push("CREATE (p:Page) SET p={Page}")
+  Sql.push("CREATE (v:Version SET v={Version}")
+  Sql.push("START TRANSACTION; TRUNCATE "+tmpSubNew+"; "+strSubQ);
+  Sql.push("TRUNCATE "+tmpSubNewImage+"; "+strSubImageQ);
+  Sql.push("CALL "+strDBPrefix+"saveByReplace(?,?,?,?,?,?); COMMIT;");
+  var sql=Sql.join('\n'); 
+  var Val=array_merge(arrSubV, StrSubImage, [siteName, wwwSite, strName, strEditText, strHtmlText, eTag]);
+  return {sql:sql,Val:Val,nEndingResults:2};
+}
+/*
+  CREATE CONSTRAINT ON (n:Page) ASSERT n.name IS UNIQUE
+  CREATE CONSTRAINT ON (n:Site) ASSERT n.prefix IS UNIQUE
+  CREATE CONSTRAINT ON (n:Site) ASSERT n.www IS UNIQUE
+  CREATE CONSTRAINT ON (n:Image) ASSERT n.name IS UNIQUE
+  CREATE CONSTRAINT ON (n:Video) ASSERT n.name IS UNIQUE
+  CREATE CONSTRAINT ON (n:Setting) ASSERT n.name IS UNIQUE
+  CREATE CONSTRAINT ON (n:Redirect) ASSERT n.name IS UNIQUE
+  CREATE CONSTRAINT ON (n:RedirectDomain) ASSERT n.www IS UNIQUE
+  CREATE CONSTRAINT ON (n:ChildPlanned) ASSERT n.name IS UNIQUE
+  CREATE CONSTRAINT ON (n:ImagePlanned) ASSERT n.name IS UNIQUE
+  CREATE CONSTRAINT ON (n:Page) ASSERT exists(n.name)
+  CREATE CONSTRAINT ON (n:Site) ASSERT exists(n.prefix)
+  CREATE CONSTRAINT ON (n:Site) ASSERT exists(n.www)
+  CREATE CONSTRAINT ON (n:Image) ASSERT exists(n.name)
+  CREATE CONSTRAINT ON (n:Video) ASSERT exists(n.name)
+  CREATE CONSTRAINT ON (n:Setting) ASSERT exists(n.name)
+  CREATE CONSTRAINT ON (n:Redirect) ASSERT exists(n.name)
+  CREATE CONSTRAINT ON (n:RedirectDomain) ASSERT exists(n.www)
+  CREATE CONSTRAINT ON (n:ChildPlanned) ASSERT exists(n.name)
+  CREATE CONSTRAINT ON (n:ImagePlanned) ASSERT exists(n.name)
+  
+  var Site={
+    boDefault:boDefault
+    boTLS:boTLS,
+    prefix:siteName,
+    www:www,
+    googleAnalyticsTrackingID:googleAnalyticsTrackingID,
+    urlIcon16:urlIcon16,
+    urlIcon200:urlIcon200,
+    aPassword:aPassword,
+    vPassword:vPassword,
+    created:created
+  }
+  var Image = {
+    idImage: idImage,
+    name: imageName,
+    idFile: idFile,
+    boOther: boOther,
+    created: created,
+    eTag: eTag,
+    size: size
+  } 
+  var Thumb = {
+    idImage: idImage,
+    width: width,
+    height: height,
+    created: created,
+    eTag: eTag
+  } 
+  
+  var Video = {
+    idVideo: idVideo,
+    name: videoName,
+    idFile: idFile,
+    created: created,
+    eTag: eTag,
+    size: size
+  } 
+  var Setting = {
+    name: name,
+    value: value
+  } 
+  var Redirect = {
+    name: name,
+    url: url,
+    created: created
+  } 
+  var RedirectDomain = {
+    www: www,
+    url: url,
+    created: created
+  } 
+*/
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

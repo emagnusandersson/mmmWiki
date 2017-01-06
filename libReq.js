@@ -1183,16 +1183,15 @@ app.SetupSql.prototype.table=function(boDropOnly){
 
   SqlTab.push("CREATE TABLE "+subTab+" ( \n\
   idPage int(4) NOT NULL, \n\
-  rev int(4) NOT NULL, \n\
   idSite int(4) NOT NULL, \n\
   pageName varchar(128) NOT NULL, \n\
   boOnWhenCached TINYINT(1) NOT NULL, \n\
-  PRIMARY KEY (idPage, rev, pageName, idSite), \n\
+  PRIMARY KEY (idPage, pageName, idSite), \n\
   #FOREIGN KEY (idPage, idSite) REFERENCES "+pageTab+"(idPage, idSite) ON DELETE CASCADE \n\
   FOREIGN KEY (idPage) REFERENCES "+pageTab+"(idPage) ON DELETE CASCADE \n\
   ) ENGINE="+engine+" COLLATE "+collate+""); 
 
-  SqlTab.push("CREATE INDEX "+subTab+"IdPageRevIndex ON "+subTab+"(idPage, rev)"); //CREATE INDEX mmmWiki_subIdPageRevIndex ON mmmWiki_sub(idPage, rev);
+  SqlTab.push("CREATE INDEX "+subTab+"IdPageRevIndex ON "+subTab+"(idPage)"); //CREATE INDEX mmmWiki_subIdPageRevIndex ON mmmWiki_sub(idPage, rev);
   SqlTab.push("CREATE INDEX "+subTab+"IdSitePageNameIndex ON "+subTab+"(idSite,pageName)"); //CREATE INDEX mmmWiki_subIdSitePageNameIndex ON mmmWiki_sub(idSite, pageName);
 
   SqlTab.push("CREATE TABLE "+imageTab+" ( \n\
@@ -1224,9 +1223,8 @@ app.SetupSql.prototype.table=function(boDropOnly){
 
   SqlTab.push("CREATE TABLE "+subImageTab+" ( \n\
   idPage int(4) NOT NULL, \n\
-  rev int(4) NOT NULL, \n\
   imageName varchar(128) NOT NULL, \n\
-  PRIMARY KEY (idPage,rev,imageName), \n\
+  PRIMARY KEY (idPage,imageName), \n\
   FOREIGN KEY (idPage) REFERENCES "+pageTab+"(idPage) ON DELETE CASCADE \n\
   ) ENGINE="+engine+" COLLATE "+collate+""); 
 
@@ -1321,45 +1319,6 @@ SELECT r.idSite, st.siteName, st.www, r.pageName, url, r.created FROM "+redirect
 
 
 
-  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+parentInfoView+"");
-  SqlFunction.push("CREATE VIEW "+parentInfoView+" (idParentFirst, revParentFirst, idSite, pageName, nParent) AS \n\
-SELECT s.idPage, s.rev, s.idSite, s.pageName, count(s.idPage) AS nParent \n\
-FROM "+subTab+" s  GROUP BY s.rev, s.idSite, s.pageName");
-/*
-  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+pageParentInfoView+"");
-  SqlFunction.push("CREATE VIEW "+pageParentInfoView+" (idParentFirst, revParentFirst, idSite, pageName, idPage, nParent) AS \n\
-SELECT s.idPage AS idParentFirst, s.rev AS revParentFirst, s.idSite, s.pageName, p.idPage, count(s.idPage) AS nParent
-FROM mmmWiki_sub s JOIN mmmWiki_page p ON s.pageName=p.pageName
- GROUP BY s.rev, s.idSite, s.pageName;");
-*/
-
-  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+parentImInfoView+"");
-  SqlFunction.push("CREATE VIEW "+parentImInfoView+" (idParentFirst, revParentFirst, imageName, nParent) AS \n\
-SELECT s.idPage, s.rev, s.imageName, count(s.idPage) AS nParent \n\
-FROM "+subImageTab+" s  GROUP BY s.rev, s.imageName");
-
-
-  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+childInfoView+"");
-  SqlFunction.push("CREATE VIEW "+childInfoView+" (idPage, rev, idSiteFirst, pageNameFirst, nChild) AS \n\
-SELECT s.idPage, s.rev, s.idSite AS idSiteFirst, s.pageName AS pageNameFirst, count(s.idPage) AS nChild\n\
-FROM "+subTab+" s  GROUP BY s.idPage, s.rev");
-
-  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+childImInfoView+"");
-  SqlFunction.push("CREATE VIEW "+childImInfoView+" (idPage, rev, imageNameFirst, nChild) AS \n\
-SELECT s.idPage, s.rev, s.imageName AS imageNameFirst, count(s.idPage) AS nChild\n\
-FROM "+subImageTab+" s GROUP BY s.idPage, s.rev");
-
-
-  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+subWChildIDView+""); // Just for helping out when debugging
-  SqlFunction.push("CREATE VIEW "+subWChildIDView+" (idPage, rev, idSite, pageName, idChild) AS \n\
-SELECT s.idPage, s.rev, s.idSite, s.pageName, p.idPage AS idChild\n\
-FROM "+subTab+" s LEFT JOIN "+pageTab+" p ON s.pageName=p.pageName AND s.idSite=p.idSite");
-
-  SqlFunctionDrop.push("DROP VIEW IF EXISTS "+subWExtraView+""); // Just for helping out when debugging
-  SqlFunction.push("CREATE VIEW "+subWExtraView+" (idParent, revParent, idSiteParent, pageNameParent, idSiteChild, pageNameChild, idChild) AS \n\
-SELECT s.idPage, s.rev, pp.idSite, pp.pageName, s.idSite, s.pageName, p.idPage\n\
-FROM "+subTab+" s LEFT JOIN "+pageTab+" p ON s.pageName=p.pageName AND s.idSite=p.idSite LEFT JOIN "+pageTab+" pp ON s.idPage=pp.idPage");
-
     //
     // Stored procedures  
     //
@@ -1432,8 +1391,8 @@ FROM "+subTab+" s LEFT JOIN "+pageTab+" p ON s.pageName=p.pageName AND s.idSite=
         DELETE f FROM "+fileTab+" f JOIN tmp t ON t.idFile=f.idFile; \n\
         DELETE f FROM "+fileTab+" f JOIN tmp t ON t.idFileCache=f.idFile; \n\
    \n\
-        DELETE FROM "+subTab+" WHERE idPage=IidPage AND rev!=0; \n\
-        DELETE FROM "+subImageTab+" WHERE idPage=IidPage AND rev!=0; \n\
+        #DELETE FROM "+subTab+" WHERE idPage=IidPage AND rev!=0; \n\
+        #DELETE FROM "+subImageTab+" WHERE idPage=IidPage AND rev!=0; \n\
       END");
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"deleteImage");
@@ -1484,22 +1443,14 @@ FROM "+subTab+" s LEFT JOIN "+pageTab+" p ON s.pageName=p.pageName AND s.idSite=
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"markStaleParentsOfPage");
   SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"markStaleParentsOfPage(IidSite int(4), Iname varchar(128), IboOn TINYINT, IboTemplate TINYINT) \n\
       BEGIN \n\
-        UPDATE "+versionTab+" v JOIN "+subTab+" s ON v.idPage=s.idPage AND v.rev=s.rev \n\
+        UPDATE "+versionTab+" v JOIN "+subTab+" s ON v.idPage=s.idPage \n\
  SET v.tModCache=FROM_UNIXTIME(1) WHERE s.idSite=IidSite AND s.pageName=Iname AND (s.boOnWhenCached!=IboOn OR IboTemplate); \n\
       END");
 
 
 
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"setNChild");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"setNChild(IidPage INT, Irev INT) \n\
-    proc_label:BEGIN \n\
-      DECLARE VnChild INT; \n\
-      SELECT COUNT(*) INTO VnChild FROM "+subTab+" WHERE idPage=IidPage AND rev=Irev;\n\
-      UPDATE "+versionTab+" SET nChild=VnChild WHERE idPage=IidPage AND rev=Irev;\n\
-    END");
-
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"writeSubTables");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"writeSubTables(IidPage INT, Irev INT) \n\
+  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"writeSubTables(IidPage INT) \n\
     proc_label:BEGIN \n\
         DECLARE VidSite, VboOK, VboTalkExist INT; \n\
         DECLARE VpageName, VtalkName VARCHAR(128); \n\
@@ -1511,16 +1462,16 @@ FROM "+subTab+" s LEFT JOIN "+pageTab+" p ON s.pageName=p.pageName AND s.idSite=
         CALL calcTalkName(VpageName, VtalkName, VboOK); \n\
         IF VboOK THEN \n\
           SELECT count(idPage) INTO VboTalkExist FROM "+pageTab+" WHERE idSite=VidSite AND pageName=VtalkName; \n\
-          REPLACE INTO "+subTab+" (idPage, rev, idSite, pageName, boOnWhenCached) VALUES (IidPage, Irev, VidSite, VtalkName, VboTalkExist); \n\
+          REPLACE INTO "+subTab+" (idPage, idSite, pageName, boOnWhenCached) VALUES (IidPage, VidSite, VtalkName, VboTalkExist); \n\
         END IF; \n\
 \n\
           # Replace other (normal) subpages \n\
-        DELETE FROM "+subTab+" WHERE idPage=IidPage AND rev=Irev; \n\
-        INSERT INTO "+subTab+" (idPage, rev, idSite, pageName, boOnWhenCached) SELECT IidPage, Irev, VidSite, t.pageName, boOn FROM "+tmpSubNew+" t; \n\
+        DELETE FROM "+subTab+" WHERE idPage=IidPage; \n\
+        INSERT INTO "+subTab+" (idPage, idSite, pageName, boOnWhenCached) SELECT IidPage, VidSite, t.pageName, boOn FROM "+tmpSubNew+" t; \n\
 \n\
           # Replace images \n\
-        DELETE FROM "+subImageTab+" WHERE idPage=IidPage AND rev=Irev; \n\
-        INSERT INTO "+subImageTab+" (idPage, rev, "+subImageTab+".imageName) SELECT IidPage, Irev, t.imageName FROM "+tmpSubNewImage+" t; \n\
+        DELETE FROM "+subImageTab+" WHERE idPage=IidPage; \n\
+        INSERT INTO "+subImageTab+" (idPage, "+subImageTab+".imageName) SELECT IidPage, t.imageName FROM "+tmpSubNewImage+" t; \n\
  \n\
         #CALL "+strDBPrefix+"setNChild(IidPage, Irev); \n\
         #CALL "+strDBPrefix+"setNParent(VpageName, VidSite); \n\
@@ -1595,7 +1546,7 @@ JOIN mmmWiki_page p ON s.pageName=p.pageName AND s.idSite=p.idSite; # adds p.idP
   \n\
         DELETE FROM "+subTab+" WHERE idPage=VidPage; \n\
         DELETE FROM "+subImageTab+" WHERE idPage=VidPage; \n\
-        CALL "+strDBPrefix+"writeSubTables(VidPage, 0); \n\
+        CALL "+strDBPrefix+"writeSubTables(VidPage); \n\
         SELECT 'done' AS mess; \n\
       END");
 
@@ -1653,7 +1604,7 @@ JOIN mmmWiki_page p ON s.pageName=p.pageName AND s.idSite=p.idSite; # adds p.idP
         INSERT INTO "+versionTab+" (idPage,rev,summary,signature,boOther,idFile,tMod,idFileCache,tModCache,eTag,size)  \n\
   VALUES (VidPage,nversion,Isummary,Isignature,1,VidFile,now(),VidFileCache,now(),IeTag,LENGTH(Idata)); \n\
           \n\
-        CALL "+strDBPrefix+"writeSubTables(VidPage, nversion); \n\
+        CALL "+strDBPrefix+"writeSubTables(VidPage); \n\
         SELECT 'done' AS mess; LEAVE proc_label;\n\
       END");
 
@@ -1693,7 +1644,7 @@ JOIN mmmWiki_page p ON s.pageName=p.pageName AND s.idSite=p.idSite; # adds p.idP
         #  UPDATE "+pageTab+" SET tMod=now(), tModCache=now() WHERE idPage=VidPage; \n\
         #END IF; \n\
   \n\
-        CALL "+strDBPrefix+"writeSubTables(VidPage, Irev); \n\
+        CALL "+strDBPrefix+"writeSubTables(VidPage); \n\
         SELECT 'done' AS mess; \n\
       END");
 
@@ -1801,7 +1752,7 @@ JOIN mmmWiki_page p ON s.pageName=p.pageName AND s.idSite=p.idSite; # adds p.idP
 \n\
           # serverCacheOK \n\
       SELECT data AS strHtmlText FROM "+fileTab+" WHERE idFile=VidFileCache;                                               # <-- result #4 resHtmlText \n\
-      SELECT pageName, boOnWhenCached FROM "+subTab+" WHERE idPage=VidPage AND rev=Irev AND pageName REGEXP '^template:';       #  <-- result #5  (resTemplateExistance) \n\
+      SELECT pageName, boOnWhenCached FROM "+subTab+" WHERE idPage=VidPage AND pageName REGEXP '^template:';       #  <-- result #5  (resTemplateExistance) \n\
       SELECT 'serverCacheOK' AS mess, Irev AS rev, OeTag AS eTag, VidPage AS idPage, VboOR AS boOR, VboOW AS boOW, VboSiteMap AS boSiteMap, boTalkExist, VtMod AS tMod, VtModCache AS tModCache; \n\
 \n\
 \n\

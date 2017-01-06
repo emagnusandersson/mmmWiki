@@ -29,6 +29,7 @@ NodeZip=require('node-zip');
 //redis = require("then-redis");
 redis = require("redis");
 captchapng = require('captchapng');
+//Neo4j = require('neo4j-transactions');
 require('./lib.js');
 require('./libServerGeneral.js');
 require('./libServer.js');
@@ -90,7 +91,16 @@ if(  (urlRedis=process.env.REDISTOGO_URL)  || (urlRedis=process.env.REDISCLOUD_U
 }
 
 
-
+// Create a Neo4j client instance 
+/*
+var client = Neo4j({
+  url: 'http://localhost:7474',
+  credentials: {
+    username: 'neo4j',
+    password: 'jh10k'
+  }
+})
+*/
 
 var flowStart=( function*(){
 

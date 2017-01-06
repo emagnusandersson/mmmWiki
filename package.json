@@ -24,7 +24,9 @@
     "tmp": "0.0.29",
     "imagemagick": "0.1.x",
     "redis": "2.6.x",
-    "bower": "1.7.x"
+    "bower": "1.7.x",
+    "neo4j-driver": "x",
+    "neo4j-transactions": "x"
   },
   "devDependencies": {},
   "private": true,

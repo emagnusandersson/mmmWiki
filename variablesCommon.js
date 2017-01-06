@@ -290,12 +290,12 @@ extract(ViewName);
 strTableRefPage="("+pageLastView+" p) \n\
 LEFT JOIN "+subTab+" s ON s.idSite=p.idSite AND s.pageName=p.pageName \n\
 LEFT JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage\n\
-LEFT JOIN "+subTab+" sc ON sc.idPage=p.idPage AND sc.rev=p.lastRev \n\
-LEFT JOIN "+subImageTab+" sI ON sI.idPage=p.idPage AND sI.rev=p.lastRev \n\
+LEFT JOIN "+subTab+" sc ON sc.idPage=p.idPage \n\
+LEFT JOIN "+subImageTab+" sI ON sI.idPage=p.idPage \n\
 LEFT JOIN (\n\
   ("+pageWWWView+" pParCount)  \n\
   JOIN \n\
-  "+subTab+" sParCount ON pParCount.idPage=sParCount.idPage AND pParCount.lastRev=sParCount.rev \n\
+  "+subTab+" sParCount ON pParCount.idPage=sParCount.idPage \n\
 )ON sParCount.idSite=p.idSite AND sParCount.pageName=p.pageName";
 // Starting with the list of pages
 // The 1:st join: adds idPage of parent (The table is expanded if there are multiple parents)
@@ -311,12 +311,12 @@ LEFT JOIN (\n\
 strTableRefPage="("+pageLastView+" p) \n\
 LEFT JOIN "+subTab+" s ON s.idSite=p.idSite AND s.pageName=p.pageName \n\
 LEFT JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage\n\
-LEFT JOIN "+subTab+" sc ON sc.idPage=p.idPage AND sc.rev=p.lastRev \n\
-LEFT JOIN "+subImageTab+" sI ON sI.idPage=p.idPage AND sI.rev=p.lastRev \n\
+LEFT JOIN "+subTab+" sc ON sc.idPage=p.idPage \n\
+LEFT JOIN "+subImageTab+" sI ON sI.idPage=p.idPage \n\
 LEFT JOIN (\n\
   ("+pageWWWView+" pParCount)  \n\
   JOIN \n\
-  "+subTab+" sParCount ON pParCount.idPage=sParCount.idPage AND pParCount.lastRev=sParCount.rev \n\
+  "+subTab+" sParCount ON pParCount.idPage=sParCount.idPage \n\
 )ON sParCount.idSite=p.idSite AND sParCount.pageName=p.pageName";
 
 
@@ -329,7 +329,7 @@ LEFT JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage \n\
 LEFT JOIN (\n\
   ("+pageWWWView+" pParCount)  \n\
   JOIN \n\
-  "+subImageTab+" sParCount ON pParCount.idPage=sParCount.idPage AND pParCount.lastRev=sParCount.rev \n\
+  "+subImageTab+" sParCount ON pParCount.idPage=sParCount.idPage \n\
 )ON sParCount.imageName=i.imageName";
 // Starting with the list of images
 // The 1:st join: adds idPage of parent (The table is expanded if there are multiple parents)
@@ -343,7 +343,7 @@ LEFT JOIN (\n\
 strTableRefPageHist="("+pageLastView+" p) \n\
 LEFT JOIN (\n\
   "+subTab+" s \n\
-  JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage AND pp.lastRev=s.rev\n\
+  JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage\n\
 ) ON s.idSite=p.idSite AND s.pageName=p.pageName";
 // The query inside the parantheses creates a table with all parent-child relations: pp.siteName, pp.pageName (parent) <-> s.siteName, s.pageName (child). 
 // Should be used with a COUNT(DISTINCT p.idSite, p.pageName, XXX)  
@@ -352,7 +352,7 @@ LEFT JOIN (\n\
 strTableRefImageHist=imageTab+" i \n\
 LEFT JOIN (\n\
   "+subImageTab+" s \n\
-  JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage AND pp.lastRev=s.rev\n\
+  JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage\n\
 ) ON s.imageName=i.imageName";
 // The query inside the parantheses creates a table with all parent-child relations: pp.siteName, pp.pageName (parent) <-> s.imageName (child). 
 // Should be used with COUNT(DISTINCT i.imageName, XXX) 

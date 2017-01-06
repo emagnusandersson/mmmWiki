@@ -1292,6 +1292,7 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data,callback){
 
           // saveByReplace
     var mess='', tmp=createSaveByReplaceSQL(siteName, '', pageName, self.strEditText, self.strHtmlText, '', self.arrSub, self.StrSubImage),     sql=tmp.sql, Val=tmp.Val, nEndingResults=tmp.nEndingResults;
+    console.log(siteName+', '+pageName+', '+self.strEditText.length+', '+self.strHtmlText.length+', nSub:'+self.arrSub.length+', nsubImage:'+self.StrSubImage.length);
     console.time('bla');
     var boDoExit=0;
     myQueryF(sql, Val, mysqlPool, function(err, results) {
@@ -1303,6 +1304,22 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data,callback){
       req.flow.next();
     });
     yield;
+    
+ /*
+    var mess='', tmp=createSaveByReplaceNeo(siteName, '', pageName, self.strEditText, self.strHtmlText, '', self.arrSub, self.StrSubImage),     sql=tmp.sql, Val=tmp.Val, nEndingResults=tmp.nEndingResults;
+    console.time('bla');
+    var boDoExit=0;
+    myQueryF(sql, Val, mysqlPool, function(err, results) {
+      if(err){boDoExit=1; self.mesEO(err); }
+      else{
+        var iRowLast=results.length-nEndingResults-1;
+        mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
+      }
+      req.flow.next();
+    });
+    yield;
+ */
+ 
     console.timeEnd('bla');
     if(boDoExit==1) { callback('exited'); return; }
     if(mess!='done'){console.log(mess); debugger;}
