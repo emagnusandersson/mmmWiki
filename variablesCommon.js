@@ -20,12 +20,6 @@ leafCommon='common.js';
 
 
 
-tmpSubNew='tmpSubNew';
-//sqlTmpSubNewCreate="CREATE TEMPORARY TABLE IF NOT EXISTS "+tmpSubNew+" (www varchar(128) NOT NULL, pageName varchar(128) NOT NULL,  boOn TINYINT(1) NOT NULL,  UNIQUE KEY (www,pageName));";
-sqlTmpSubNewCreate="CREATE TEMPORARY TABLE IF NOT EXISTS "+tmpSubNew+" (pageName varchar(128) NOT NULL,  boOn TINYINT(1) NOT NULL,  UNIQUE KEY (pageName))";
-tmpSubNewImage='tmpSubNewImage';
-sqlTmpSubNewImageCreate="CREATE TEMPORARY TABLE IF NOT EXISTS "+tmpSubNewImage+" (imageName varchar(128) NOT NULL,  UNIQUE KEY (imageName))";
-
 
 
 
@@ -111,8 +105,8 @@ PropPage.siteName.boIncludeNull=1;
 //PropPage.parentSite.pre='pp.';
 PropPage.parent.pre='pp.';
 PropPage.size.pre = PropPage.tMod.pre = PropPage.tModCache.pre = PropPage.boOther.pre = 'p.';
-PropPage.nChild.pre='';
-PropPage.nImage.pre='';
+PropPage.nChild.pre='p.';
+PropPage.nImage.pre='p.';
  
 //PropPage.parentSite.relaxCountExp=function(name){ return "count(DISTINCT p.idPage, p.idSite)"; }  
 //PropPage.parent.relaxCountExp=function(name){ return "count(DISTINCT p.idPage, p.idSite, p.pageName)"; }  
@@ -138,9 +132,9 @@ PropPage.parent.histF=function(name, strTableRef,strCond,strOrder){
 (SELECT p.*, pp.idPage AS tmpBinName FROM \n\
 "+strTableRef+" \n\
 "+strCond+"\n\
-GROUP BY pp.idPage, p.idPage ) aaa\n\
+GROUP BY p.idPage ) aaa\n\
 GROUP BY bin ORDER BY "+strOrder+";";
-}   // , p.siteName, p.pageName
+}   // , p.siteName, p.pageName pp.idPage, 
 
 var tmpF=function(name){ return "COUNT(DISTINCT p.idSite, p.pageName, p."+name+")";}
 var StrTmp=['siteName','size','boOR','boOW','boSiteMap','boTalk','boTemplate','boOther','tMod','tModCache'];
@@ -209,18 +203,19 @@ PropImage.parentSite.histF=function(name, strTableRef,strCond,strOrder){
 (SELECT i.*, pp.siteName AS tmpBinName FROM \n\
 "+strTableRef+" \n\
 "+strCond+"\n\
-GROUP BY i.idImage, pp.siteName ) aaa\n\
+GROUP BY i.idImage ) aaa\n\
 GROUP BY bin ORDER BY "+strOrder+";";
 }
+//, pp.siteName
 PropImage.parent.histF=function(name, strTableRef,strCond,strOrder){
   return "SELECT aaa.tmpBinName AS bin, count(*) AS groupCount FROM \n\
 (SELECT i.*, pp.idPage AS tmpBinName FROM \n\
 "+strTableRef+" \n\
 "+strCond+"\n\
-GROUP BY  i.idImage, pp.idPage ) aaa\n\
+GROUP BY  i.idImage) aaa\n\
 GROUP BY bin ORDER BY "+strOrder+";";
 } // CONCAT(pp.siteName,':',   , i.imageName
-
+//, pp.idPage 
 var tmpF=function(name){ return "COUNT(DISTINCT i.imageName, i."+name+")";}
 var StrTmp=['size','created','boOther'];
 for(var i=0;i<StrTmp.length;i++){  var name=StrTmp[i]; PropImage[name].binValueF=tmpF; }
@@ -276,8 +271,16 @@ objOthersActivity=null; boPageBUNeeded=null; boImageBUNeeded=null;
 objOthersActivityDefault={nEdit:0, pageName:'',  nImage:0, imageName:''};
 // tLastBackup=0; tLastEdit=0; tImageLastBackup=0; tImageLastChange=0;
 
+
+tmpSubNew='tmpSubNew';
+//sqlTmpSubNewCreate="CREATE TEMPORARY TABLE IF NOT EXISTS "+tmpSubNew+" (www varchar(128) NOT NULL, pageName varchar(128) NOT NULL,  boOn TINYINT(1) NOT NULL,  UNIQUE KEY (www,pageName));";
+sqlTmpSubNewCreate="CREATE TEMPORARY TABLE IF NOT EXISTS "+tmpSubNew+" (pageName varchar(128) NOT NULL,  boOn TINYINT(1) NOT NULL)";  //,  UNIQUE KEY (pageName)
+tmpSubNewImage='tmpSubNewImage';
+sqlTmpSubNewImageCreate="CREATE TEMPORARY TABLE IF NOT EXISTS "+tmpSubNewImage+" (imageName varchar(128) NOT NULL)";  //,  UNIQUE KEY (imageName)
+
+
 strDBPrefix='mmmWiki';
-StrTableKey=["sub", "subImage", "version", "page", "thumb", "image", "video", "file", "setting", "redirect", "redirectDomain", "site"]; //,"cache" , "siteDefault"
+StrTableKey=["sub", "subImage", "version", "page", "thumb", "image", "video", "file", "setting", "redirect", "redirectDomain", "site", "nParent", "nParentI"]; //,"cache" , "siteDefault"
 //StrTableKey=["sub", "statNChild", "statParent", "subImage", "version", "page", "thumb", "image", "video", "file", "setting", "redirect", "redirectDomain", "site"];
 StrViewsKey=["pageWWW", "pageLastSlim", "pageLast", "redirectWWW", "parentInfo", "parentImInfo", "childInfo", "childImInfo", "subWChildID", "subWExtra"]; 
 TableName={};for(var i=0;i<StrTableKey.length;i++) {var name=StrTableKey[i]; TableName[StrTableKey[i]+"Tab"]=strDBPrefix+'_'+name;}
@@ -306,18 +309,26 @@ LEFT JOIN (\n\
 //   alt explanation:The query inside the parantheses extends subTab (sParCount) with info about the parents
 // The 5:th join will again add info about parents. (The table is expanded if there are multiple parents)
 
-
+//LEFT JOIN "+subTab+" sc ON sc.idPage=p.idPage \n\
+//LEFT JOIN "+subImageTab+" sI ON sI.idPage=p.idPage \n\
 
 strTableRefPage="("+pageLastView+" p) \n\
 LEFT JOIN "+subTab+" s ON s.idSite=p.idSite AND s.pageName=p.pageName \n\
 LEFT JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage\n\
-LEFT JOIN "+subTab+" sc ON sc.idPage=p.idPage \n\
-LEFT JOIN "+subImageTab+" sI ON sI.idPage=p.idPage \n\
 LEFT JOIN (\n\
   ("+pageWWWView+" pParCount)  \n\
   JOIN \n\
   "+subTab+" sParCount ON pParCount.idPage=sParCount.idPage \n\
 )ON sParCount.idSite=p.idSite AND sParCount.pageName=p.pageName";
+
+strTableRefPage="("+pageLastView+" p) \n\
+LEFT JOIN "+subTab+" s ON s.idSite=p.idSite AND s.pageName=p.pageName \n\
+LEFT JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage\n\
+LEFT JOIN ("+nParentTab+" np) ON p.pageName=np.pageName AND p.idSite=np.idSite";
+// Starting with the list of pages
+// The 1:st join: adds idPage of parent (The table is expanded if there are multiple parents)
+// The 2:nd join: adds pageName of parent(s)
+// The 3:rd join: adds nParent
 
 
 
@@ -337,7 +348,11 @@ LEFT JOIN (\n\
 // The query inside the parantheses creates a table with all parent-child relations: pParCount.siteName, pParCount.pageName (parent) <-> sParCount.imageName (child). 
 // The 3:rd join will again add info about parents. (The table is expanded if there are multiple parents)
 
-  
+strTableRefImage=imageTab+" i \n\
+LEFT JOIN "+subImageTab+" s ON s.imageName=i.imageName \n\
+LEFT JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage \n\
+LEFT JOIN ("+nParentITab+" np) ON i.imageName=np.imageName";
+
 
 
 strTableRefPageHist="("+pageLastView+" p) \n\

@@ -282,7 +282,7 @@ pageViewExtend=function($el){
   var boShowAdminButton=getItem('boShowAdminButton');  if(boShowAdminButton===null)  boShowAdminButton=false;
   $el.adminButtonToggleEventF=function(){
     var now=Date.now(); if(now>timeSpecialR+1000*10) {timeSpecialR=now; nSpecialReq=0;}    nSpecialReq++;
-    if(nSpecialReq==3) { nSpecialReq=0;boShowAdminButton=!boShowAdminButton; $adminButton.toggle(boShowAdminButton);  setItem('boShowAdminButton',boShowAdminButton);  }
+    if(nSpecialReq==3) { nSpecialReq=0;boShowAdminButton=!boShowAdminButton; $spanAdmin.toggle(boShowAdminButton);  setItem('boShowAdminButton',boShowAdminButton);  }
   }
   var timeSpecialR=0, nSpecialReq=0;
     // menuA
@@ -295,15 +295,17 @@ pageViewExtend=function($el){
     $el.adminButtonToggleEventF();
   }); if(ppStoredButt=='' && strBTC=='') $paymentButton.hide();
   var $tmpImg=$('<img>').prop({src:uAdmin}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'});
-  var $adminButton=$('<button>').append($tmpImg).addClass('fixWidth').css({'margin-left':'1em','float':'right'}).click(function(){
+  var $adminButton=$('<button>').append($tmpImg).addClass('fixWidth').click(function(){
     doHistPush({$view:$adminDiv});
     $adminDiv.setVis();
   });
+  var $spanAdmin=$('<span>').append($spanMod, $adminButton).css({'float':'right'})
   if(!boTouch) popupHoverM($adminButton,$('<div>').html('Administrator entry.'));
-  $adminButton.toggle(boShowAdminButton);
+  $spanAdmin.toggle(boShowAdminButton);
+  
 
-  $commentButton.css({'margin-left':'1em','float':'right'})
-  var $menuA=$('<div>').append($editButton,$paymentButton,$commentButton,$adminButton).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //.css({margin:'1em 0','text-align':'center',position:'fixed',bottom:0,width:'100%'});
+  $commentButton.css({'margin-left':'1em','float':'right'});
+  var $menuA=$('<div>').append($editButton,$paymentButton,$commentButton,$spanAdmin).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //.css({margin:'1em 0','text-align':'center',position:'fixed',bottom:0,width:'100%'});
 
   $el.$fixedDiv=$('<div>').append($el.$versionMenu,$menuA).css(cssFixed);//.css({position:'static'});
 
@@ -742,7 +744,7 @@ diffBackUpDivExtend=function($el){
     }
   
     var $progress=$('<progress>'), iNew=0, $imgDoneLast=$imgDone.clone();
-    var $li=$('<li>').append('Going through the zip-file and making a list of names, modification times and sizes: ', $progress, $imgDoneLast); $ul.append($li);
+    var $li=$('<li>').append('Extracting meta data from old zip-file (names, modification times and file-sizes): ', $progress, $imgDoneLast); $ul.append($li);
     
     for(var key in FileNew){  // Create StrReuse, StrFetch and objFetch
       if(key in EntryLocal){
@@ -1330,6 +1332,8 @@ pageListExtend=function($el){
       var $cb=$('<input type=checkbox>').click(cbClick); //.css({visibility:'hidden'});//.hide();
       //$cb.css({'margin-top':'0em','margin-bottom':'0em'});  //,'vertical-align':'bottom'
       //if(boAndroid) $cb.css({'-webkit-transform':'scale(2,2)'}); else $cb.css({width:'1.4em',height:'1.4em'});
+      var $buttonNParent=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'page','page');});
+      var $tdNParent=$('<span>').append($buttonNParent).attr('name','nParent').prop('title','Parents');
       var $tdCB=$('<span>').data('valSort',0).append($cb).attr('name','cb'); //.css({'margin-left':'0.15em'});
       var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
       var $buttonExecute=$('<button>').append($tmpImg).on(strMenuExecuteEvent,buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"}) 
@@ -1343,11 +1347,9 @@ pageListExtend=function($el){
       var $tdSize=$('<span>').attr('name','size');
       var $buttonNChild=$('<button>').append('<span></span>').click(clickSetParentFilter);
       var $buttonNImage=$('<button>').click(clickSetParentFilterI);
-      var $buttonNParent=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'page','page');});
       var $tdNChild=$('<span>').append($buttonNChild).attr('name','nChild').prop('title','Children'); 
-      var $tdNImage=$('<span>').append($buttonNImage).attr('name','nImage').prop('title','Images'); 
-      var $tdNParent=$('<span>').append($buttonNParent).attr('name','nParent').prop('title','Parents'); 
-      $r.append($tdCB, $tdExecute, $tdDate, $tdR, $tdW, $tdP, $tdNParent, $tdSize, $tdNImage, $tdNChild, $tdVer, ' ', $tdSite,$tdLink);  //    , $tdName     ,$('<span>').append($bView)
+      var $tdNImage=$('<span>').append($buttonNImage).attr('name','nImage').prop('title','Images');  
+      $r.append($tdNParent, $tdCB, $tdExecute, $tdDate, $tdR, $tdW, $tdP, $tdSize, $tdNImage, $tdNChild, $tdVer, ' ', $tdSite,$tdLink);  //    , $tdName     ,$('<span>').append($bView)
       //$r.data({$tdCB:$tdCB, $tdDate:$tdDate, $tdR:$tdR, $tdW:$tdW, $tdP:$tdP, $tdLink:$tdLink, $tdVer:$tdVer, $tdSize:$tdSize, $tdNChild:$tdNChild, $tdNImage:$tdNImage});
       $tbody.append($r);
     }
@@ -1371,18 +1373,7 @@ pageListExtend=function($el){
     $myRows.each(function(i,r){ 
       var $r=$(r).data({idPage:File[i].idPage, iFlip:i, pageName:File[i].pageName, nParent:File[i].nParent, idParent:File[i].idParent, nameParent:File[i].nameParent}); 
       $r.attr({idPage:File[i].idPage});
-      var f=File[i];
-      $r.children('span[name=cb]').data('valSort',0).children('input').prop({'checked':false}); 
-      var tmp=File[i].boOR; $r.children('span[name=boOR]').data('valSort',tmp).css({visibility:tmp==1?'':'hidden'}); 
-      var tmp=File[i].boOW; $r.children('span[name=boOW]').data('valSort',tmp).css({visibility:tmp==1?'':'hidden'}); 
-      var tmp=File[i].boSiteMap; $r.children('span[name=boSiteMap]').data('valSort',tmp).css({visibility:tmp==1?'':'hidden'}); 
-      var strVersion=''; if(Boolean(File[i].boOther)) strVersion='v'+(Number(File[i].lastRev)+1);   
-      //$r.children('span[name=version]').toggle(Boolean(File[i].boOther)).html(strVersion);
-      $r.children('span[name=version]').data('valSort',strVersion).visibilityToggle(Boolean(File[i].boOther)).html(strVersion);
-      var tmp=File[i].tMod; $r.children('span[name=date]').data('valSort',-tmp.valueOf()).html(mySwedDate(tmp)).prop('title','Last Mod:\n'+UTC2JS(tmp));    
-      var size=File[i].size, sizeDisp=size, pre=''; if(size>=1024) {sizeDisp=Math.round(size/1024); pre='k';} if(size>=1048576) { sizeDisp=Math.round(size/1048576); pre='M';}
-      var $tmp=$r.children('span[name=size]').data('valSort',size).html(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; $tmp.prop('title',strTitle);   //$tmp.css({weight:pre=='M'?'bold':'',color:pre==''?'grey':''}); 
-      
+      var f=File[i];      
       var nParent=File[i].nParent, $buttonTmp=$r.children('span[name=nParent]').data('valSort',nParent).children('button');
         var boUseAlt=$pageFilterDiv.Filt.checkIfSingleParent();
         var nParentTmp, strTitleA, strTitleB;
@@ -1397,8 +1388,17 @@ pageListExtend=function($el){
         var boHide=boUseAlt && nParentTmp<1; 
         $buttonTmp.visibilityToggle(!boHide);
         //$buttonTmp.prop("disabled",boHide).css({opacity:boHide?0.5:''});
-        $buttonTmp.children('span:eq(0)').html(nParentTmp);  
-
+        $buttonTmp.children('span:eq(0)').html(nParentTmp); 
+      $r.children('span[name=cb]').data('valSort',0).children('input').prop({'checked':false}); 
+      var tmp=File[i].boOR; $r.children('span[name=boOR]').data('valSort',tmp).css({visibility:tmp==1?'':'hidden'}); 
+      var tmp=File[i].boOW; $r.children('span[name=boOW]').data('valSort',tmp).css({visibility:tmp==1?'':'hidden'}); 
+      var tmp=File[i].boSiteMap; $r.children('span[name=boSiteMap]').data('valSort',tmp).css({visibility:tmp==1?'':'hidden'}); 
+      var strVersion=''; if(Boolean(File[i].boOther)) strVersion='v'+(Number(File[i].lastRev)+1);   
+      //$r.children('span[name=version]').toggle(Boolean(File[i].boOther)).html(strVersion);
+      $r.children('span[name=version]').data('valSort',strVersion).visibilityToggle(Boolean(File[i].boOther)).html(strVersion);
+      var tmp=File[i].tMod; $r.children('span[name=date]').data('valSort',-tmp.valueOf()).html(mySwedDate(tmp)).prop('title','Last Mod:\n'+UTC2JS(tmp));    
+      var size=File[i].size, sizeDisp=size, pre=''; if(size>=1024) {sizeDisp=Math.round(size/1024); pre='k';} if(size>=1048576) { sizeDisp=Math.round(size/1048576); pre='M';}
+      var $tmp=$r.children('span[name=size]').data('valSort',size).html(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; $tmp.prop('title',strTitle);   //$tmp.css({weight:pre=='M'?'bold':'',color:pre==''?'grey':''}); 
       var tmp=File[i].nChild, $buttonTmp=$r.children('span[name=nChild]').data('valSort',tmp).children('button'); $buttonTmp.children('span:eq(0)').html(tmp); $buttonTmp.css({visibility:tmp?'':'hidden'});   
       var tmp=File[i].nImage; $r.children('span[name=nImage]').data('valSort',tmp).children('button').html(tmp).css({visibility:tmp?'':'hidden'});  
       var tmp=File[i].siteName; $r.children('span[name=siteName]').data('valSort',tmp).text(tmp).prop('title',File[i].www);
@@ -1543,8 +1543,8 @@ pageListExtend=function($el){
   $el.$divCont=$("<div>").append($el.$table).css({margin:'3em auto 1em','text-align':'left',display:'inline-block'});//
   //$el.$divCont.on('mouseover','button[name=nChild]',function(){console.log('gg');});
 
-  var StrCol=['cb','execute','date','boOR','boOW','boSiteMap','nParent','size','nImage','nChild','version','siteName', 'link'], BoAscDefault={cb:0,boOR:0,boOW:0,boSiteMap:0,nImage:0,nChild:0,nParent:0,version:0,size:0};
-  var Label={cb:'Checkbox',date:'Last Modified',boOR:'Public read access', boOW:'Public write access', boSiteMap:'Promote (include in Sitemap.xml etc)', nImage:'Images', nChild:'Children', nParent:'Parents / Alternatve parents', version:'Supplied by user / mult versions'};
+  var StrCol=['nParent','cb','execute','date','boOR','boOW','boSiteMap','size','nImage','nChild','version','siteName', 'link'], BoAscDefault={cb:0,boOR:0,boOW:0,boSiteMap:0,nImage:0,nChild:0,nParent:0,version:0,size:0};
+  var Label={nParent:'Parents / Alternatve parents', cb:'Select',date:'Last Modified',boOR:'Public read access', boOW:'Public write access', boSiteMap:'Promote (include in Sitemap.xml etc)', nImage:'Images', nChild:'Child pages', version:'Supplied by user / mult versions'};
   //var $spanFill=$('<span>').css({height:'calc(1.5*8px + 0.6em)'});
   //var $headFill=$('<p>').append().css({background:'white',margin:'0px',height:'calc(12px + 1.2em)'});
   var $head=headExtend($('<p>'),$el,StrCol,BoAscDefault,Label,'p','span');
@@ -1635,14 +1635,14 @@ pageListExtend=function($el){
   var $spanTmp=$('<span>').append('(orphans)').css({'font-size':'0.8em'});
   var $buttOrphan=$('<button>').append($spanTmp).click(function(){$pageFilterDiv.Filt.setSingleParent(null);  $pageList.histPush(); $pageList.loadTab()}).css({'float':'right','margin-right':'1em'});
   //var $spanGrandParent=new SpanGrandParent(); $spanGrandParent.css({'margin-right':'0em'});
-  var $spanGrandParent=new SpanGrandParent('page','page').css({'float':'right'});
-  var $spanGrandParentI=new SpanGrandParent('page','image').css({'float':'right','margin-right':'0.6em'});
+  var $spanGrandParent=new SpanGrandParent('page','page').css({'margin-right':'0.6em'});
+  var $spanGrandParentI=new SpanGrandParent('page','image');
   var $aSingleFilter=$('<a>').prop({target:"_blank"}).css({'font-weight':'bold'}), $spanSingleFilter=$('<span>').css({'margin-right':'0.5em', 'margin-top':'0.7em'});  //.hide()
   //var $spanSingleFilterW=$('<span>').append();
 
   var $menuA=$('<div>').append($buttonFastBack, $allButton, $executeButton, $buttFilter, $buttClear, $buttOrphan);  // $buttonBack, 
   $menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
-  var $menuTop=$('<div>').append($spanSingleFilter, $spanGrandParentI, $spanGrandParent, $buttPIW);  // 'Parent Filter: ',
+  var $menuTop=$('<div>').append($spanGrandParent, $spanSingleFilter, $buttPIW);  // , $spanGrandParentI     
   $menuTop.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em', 'line-height':'2.7em'});
 
   $el.addClass('pageList');
@@ -1909,6 +1909,10 @@ imageListExtend=function($el){
       var $cb=$('<input type=checkbox>').click(cbClick); //.css({visibility:'hidden'});//.hide();
       //$cb.css({'margin-top':'0em','margin-bottom':'0em'}); //'vertical-align':'bottom'
       //if(boAndroid) $cb.css({'-webkit-transform':'scale(2,2)'}); else $cb.css({width:'1.4em',height:'1.4em'});
+      var $buttonNParent=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'image','page');});
+      var $tdNParent=$('<span>').append($buttonNParent).attr('name','nParent').prop('title','Parents'); 
+      var $buttonNParentI=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'image','image');});
+      var $tdNParentI=$('<span>').append($buttonNParentI).attr('name','nParentI').prop('title','Parents'); 
       var $tdCB=$('<span>').data('valSort',0).append($cb).attr('name','cb');
       var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
       var $buttonExecute=$('<button>').append($tmpImg).on(strMenuExecuteEvent,buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"}) 
@@ -1921,11 +1925,7 @@ imageListExtend=function($el){
       var $aLink=$('<a>').prop({target:"_blank"});
       var $tdLink=$('<span>').append($aLink).attr('name','link');
       var $tdSize=$('<span>').attr('name','size');  //.css({'margin-left':'1em'})
-      var $buttonNParent=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'image','page');});
-      var $tdNParent=$('<span>').append($buttonNParent).attr('name','nParent').prop('title','Parents'); 
-      var $buttonNParentI=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'image','image');});
-      var $tdNParentI=$('<span>').append($buttonNParentI).attr('name','nParentI').prop('title','Parents'); 
-      $r.append($tdCB, $tdExecute, $tdDate, $tdImg, $tdNParentI, $tdNParent, $tdSize, $tdBoOther, $tdLink);  //  $tdName  ,$('<span>').append($bView)
+      $r.append($tdNParent, $tdNParentI, $tdCB, $tdExecute, $tdDate, $tdImg, $tdSize, $tdBoOther, $tdLink);  //  $tdName  ,$('<span>').append($bView)
       //$r.data({$tdCB:$tdCB, $tdDate:$tdDate, $tdImg:$tdImg, $tdLink:$tdLink, $tdBoOther:$tdBoOther, $tdSize:$tdSize});
       $tbody.append($r);
     }
@@ -1948,12 +1948,6 @@ imageListExtend=function($el){
     $myRows.show();
     $myRows.each(function(i,r){ 
       var $r=$(r).data({idImage:File[i].idImage, iFlip:i, imageName:File[i].imageName, nParent:File[i].nParent, idParent:File[i].idParent, nameParent:File[i].nameParent}); 
-      $r.children('span[name=cb]').data('valSort',0).children('input').prop({'checked':false});
-      var tmp=File[i].imageName; $r.children('span[name=image]').data('valSort',tmp).children('img').prop({src:'50apx-'+tmp});
-      var tmp=File[i].boOther; $r.children('span[name=boOther]').data('valSort',tmp).visibilityToggle(tmp==1);      
-      var tmp=File[i].created; $r.children('span[name=date]').data('valSort',-tmp.valueOf()).html(mySwedDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));    
-      var size=File[i].size, sizeDisp=size, pre=''; if(size>=1024) {sizeDisp=Math.round(size/1024); pre='k';} if(size>=1048576) { sizeDisp=Math.round(size/1048576); pre='M';}
-      var $tmp=$r.children('span[name=size]').data('valSort',size).html(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; $tmp.prop('title',strTitle);   //$tmp.css({weight:pre=='M'?'bold':'',color:pre==''?'grey':''}); 
       var nParent=File[i].nParent;
       var $buttonTmp=$r.children('span[name=nParent]').data('valSort',nParent).children('button');
       var $buttonITmp=$r.children('span[name=nParentI]').data('valSort',nParent).children('button');
@@ -1970,8 +1964,13 @@ imageListExtend=function($el){
         var boHide=boUseAlt && nParentTmp<1; 
         $buttonTmp.prop('title',strTitle);   $buttonTmp.children('span:eq(0)').html(nParentTmp);   $buttonTmp.visibilityToggle(!boHide);
         $buttonITmp.prop('title',strTitle);  $buttonITmp.children('span:eq(0)').html(nParentTmp);  $buttonITmp.visibilityToggle(!boHide);
-      
-
+        
+      $r.children('span[name=cb]').data('valSort',0).children('input').prop({'checked':false});
+      var tmp=File[i].imageName; $r.children('span[name=image]').data('valSort',tmp).children('img').prop({src:'50apx-'+tmp});
+      var tmp=File[i].boOther; $r.children('span[name=boOther]').data('valSort',tmp).visibilityToggle(tmp==1);      
+      var tmp=File[i].created; $r.children('span[name=date]').data('valSort',-tmp.valueOf()).html(mySwedDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));    
+      var size=File[i].size, sizeDisp=size, pre=''; if(size>=1024) {sizeDisp=Math.round(size/1024); pre='k';} if(size>=1048576) { sizeDisp=Math.round(size/1048576); pre='M';}
+      var $tmp=$r.children('span[name=size]').data('valSort',size).html(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; $tmp.prop('title',strTitle);   //$tmp.css({weight:pre=='M'?'bold':'',color:pre==''?'grey':''}); 
       var tmp=File[i].imageName; $r.children('span[name=link]').data('valSort',tmp).children('a').prop({href:uCommon+'/'+tmp}).text(tmp);
     });
     $tbody.find('input').prop({'checked':false}); 
@@ -2108,7 +2107,7 @@ imageListExtend=function($el){
   $el.$divCont=$("<div>").append($el.$table).css({'margin':'3em auto 1em','text-align':'left',display:'inline-block'});//
   
   var strTmp='Parents / Alternatve parents';
-  var StrCol=['cb','execute','date','image','nParentI','nParent','size','boOther','link'], BoAscDefault={cb:0,boOther:0,size:0}, Label={cb:'Checkbox',date:'Created',boOther:'Supplied by user', nParent:strTmp, nParentI:strTmp};
+  var StrCol=['nParent','nParentI','cb','execute','date','image','size','boOther','link'], BoAscDefault={cb:0,boOther:0,size:0}, Label={nParent:strTmp, nParentI:strTmp, cb:'Select',date:'Created',boOther:'Supplied by user'};
   //var $headFill=$('<p>').append().css({background:'white',margin:'0px',height:'calc(12px + 1.2em)'});
   var $head=headExtend($('<p>'),$el,StrCol,BoAscDefault,Label,'p','span');
   $head.css({background:'white', width:'inherit',height:'calc(12px + 1.2em)'});
@@ -2188,13 +2187,13 @@ imageListExtend=function($el){
   var $buttClear=$('<button>').append('C').click(function(){$imageFilterDiv.Filt.filtClear(); $imageList.histPush(); $imageList.loadTab()}).css({'float':'right','margin-right':'1em'});
   var $spanTmp=$('<span>').append('(orphans)').css({'font-size':'0.8em'});
   var $buttOrphan=$('<button>').append($spanTmp).click(function(){$imageFilterDiv.Filt.setSingleParent(null);  $imageList.histPush(); $imageList.loadTab()}).css({'float':'right','margin-right':'1em'});
-  var $spanGrandParent=new SpanGrandParent('image','page').css({'float':'right'});
-  var $spanGrandParentI=new SpanGrandParent('image','image').css({'float':'right','margin-right':'0.6em'});
+  var $spanGrandParent=new SpanGrandParent('image','page').css({'margin-left':'0.6em'});
+  var $spanGrandParentI=new SpanGrandParent('image','image').css({'margin-right':'0.6em'});
   var $aSingleFilter=$('<a>').prop({target:"_blank"}).css({'font-weight':'bold'}), $spanSingleFilter=$('<span>').css({'margin-right':'0.5em', 'margin-top':'0.7em'});  //.hide()
   //var $spanSingleFilterW=$('<span>').append();
   var $menuA=$('<div>').append($buttonFastBack, $allButton, $executeButton, $buttFilter, $buttClear, $buttOrphan);  // $buttonBack, 
   $menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
-  var $menuTop=$('<div>').append($spanSingleFilter, $spanGrandParentI, $spanGrandParent, $buttPIW); // 'Parent Filter: ',
+  var $menuTop=$('<div>').append($spanGrandParent, $spanGrandParentI, $spanSingleFilter, $buttPIW); // 'Parent Filter: ',
   $menuTop.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em', 'line-height':'2.7em'});
 
   $el.addClass('imageList');
@@ -2260,7 +2259,12 @@ editButtonExtend=function($el){
   $el.append($imgOW);
   return $el;
 }
-
+spanModExtend=function($el){
+  $el.setup=function(data){
+    $el.html((data.boOR?'r':' ') + (data.boOW?'w':' ') + (data.boSiteMap?'p':' '));
+  }
+  return $el;
+}
 
 dragHRExtend=function($el){
 "use strict"
@@ -3325,6 +3329,7 @@ GRet=function(data){
   tmp=data.boOW;   if(typeof tmp!="undefined") { boOW=tmp; $editButton.setImg(boOW); $accessOWrite.setStat(tmp);  $editDiv.$spanSave.toggle(Boolean(tmp));}
   tmp=data.boOR;   if(typeof tmp!="undefined") { boOR=tmp; $accessORead.setStat(tmp); }
   tmp=data.boSiteMap;   if(typeof tmp!="undefined") { boSiteMap=tmp; $accessSiteMap.setStat(tmp); }
+  $spanMod.setup({boOW:boOW, boOR:boOR, boSiteMap:boSiteMap});
 
   tmp=data.arrVersion;   if(typeof tmp!="undefined") arrVersion=tmp;
 
@@ -3632,6 +3637,7 @@ setUp1=function(){
     doHistPush({$view:$editDiv});
     $editDiv.setVis();
   });
+  $spanMod=spanModExtend($('<span>')).css({'margin-right':'0.5em','font-family':'monospace'});
 
   //$paymentButton=$('<button>').append('Pay/Donate');
   //$versionButton=$('<button>').append('Versions');
@@ -3855,6 +3861,7 @@ setUp1=function(){
   $editText.val(strEditText);  $templateList.setUp(objTemplateE);  
   
   $editButton.setImg(boOW);
+  $spanMod.setup({boOW:boOW, boOR:boOR, boSiteMap:boSiteMap});
 
   boMakeFirstScroll=1;
   //if(!boChrome) 

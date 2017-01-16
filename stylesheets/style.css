@@ -268,9 +268,13 @@ button.fixWidth{} /*width:2em*/
 
 .pageList span[name=size], .imageList span[name=size] { min-width:2em; float: right;text-align:right}
    /* Right aligned buttons */
-.pageList span[name=nParent], .pageList span[name=nChild], .pageList span[name=nImage], .imageList span[name=nParent], .imageList span[name=nParentI] { min-width:1.5em; float: right;}
-.pageList span[name=nParent] > button, .pageList span[name=nChild] > button, .pageList span[name=nImage] > button, .imageList span[name=nParent] > button, .imageList span[name=nParentI] > button { padding:0; min-width:1.4em}
+.pageList span[name=nChild], .pageList span[name=nImage] { min-width:1.5em; float: right;}
+.pageList span[name=nChild] > button, .pageList span[name=nImage] > button { padding:0; min-width:1.4em}
 .pageList span[name=nImage] > button { background:lightblue}
+
+   /* Parent buttons */
+.pageList span[name=nParent], .imageList span[name=nParent], .imageList span[name=nParentI] { min-width:1.5em;}
+.pageList span[name=nParent] > button, .imageList span[name=nParent] > button, .imageList span[name=nParentI] > button { padding:0; min-width:1.4em}
 
 .spanGrandParent button { padding:0; min-width:1.4em}
 
