@@ -1192,6 +1192,10 @@ app.SetupSql.prototype.table=function(boDropOnly){
   FOREIGN KEY (idPage) REFERENCES "+pageTab+"(idPage) ON DELETE CASCADE \n\
   ) ENGINE="+engine+" COLLATE "+collate+""); 
 
+  // subTab used for: get info about parent, getting nSub of page, storing old data for nParentTab, get templateExistanceArray, get histograms for parents
+  // Why is subTab (parent-child-links) needed: 
+  //   so that when page (template) is changed, then those who depend on it can be marked stale. 
+  //   so that one can make statistics (calculate nParents, nChildren etc) without reParsing the page
   //SqlTab.push("CREATE INDEX "+subTab+"IdPageRevIndex ON "+subTab+"(idPage)"); //CREATE INDEX mmmWiki_subIdPageRevIndex ON mmmWiki_sub(idPage, rev);
   //SqlTab.push("CREATE INDEX "+subTab+"IdSitePageNameIndex ON "+subTab+"(idSite,pageName)"); //CREATE INDEX mmmWiki_subIdSitePageNameIndex ON mmmWiki_sub(idSite, pageName);
 
@@ -1321,8 +1325,8 @@ app.SetupSql.prototype.fun=function(boDropOnly){
     //
 
 
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS calcBoTalkNBoTemplate");
-  SqlFunction.push("CREATE PROCEDURE calcBoTalkNBoTemplate(Iname varchar(128), OUT OboTalk TINYINT, OUT OboTemplate TINYINT) \n\
+  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS testIfTalkOrTemplate");
+  SqlFunction.push("CREATE PROCEDURE testIfTalkOrTemplate(Iname varchar(128), OUT OboTalk TINYINT, OUT OboTemplate TINYINT) \n\
       BEGIN \n\
         SELECT Iname REGEXP '^(template_)?talk:', Iname REGEXP '^template(_talk)?:' INTO OboTalk, OboTemplate; \n\
       END");
@@ -1333,7 +1337,7 @@ app.SetupSql.prototype.fun=function(boDropOnly){
         DECLARE VboTalk, VboTemplate INT; \n\
         DECLARE Vname varchar(128); \n\
         SET VboErrAlreadyTalk=0, OtalkName=''; \n\
-        CALL calcBoTalkNBoTemplate(Iname, VboTalk, VboTemplate); \n\
+        CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); \n\
         IF VboTalk THEN SET VboErrAlreadyTalk=1; LEAVE proc_label; END IF; \n\
         IF VboTemplate THEN SET OtalkName=CONCAT('template_talk:',SUBSTR(Iname,10));  ELSE SET OtalkName=CONCAT('talk:',Iname); END IF; \n\
       END");
@@ -1344,7 +1348,7 @@ app.SetupSql.prototype.fun=function(boDropOnly){
         DECLARE Vname varchar(128); \n\
         START TRANSACTION; \n\
         SELECT idSite, pageName INTO VidSite, Vname FROM "+pageTab+" WHERE idPage=IidPage; \n\
-        CALL calcBoTalkNBoTemplate(Vname, VboTalk, VboTemplate); \n\
+        CALL testIfTalkOrTemplate(Vname, VboTalk, VboTemplate); \n\
         CALL "+strDBPrefix+"markStaleParentsOfPage(VidSite, Vname, 0, VboTemplate); \n\
         SET VidPage=IidPage; \n\
         #DROP TEMPORARY TABLE IF EXISTS tmp; \n\
@@ -1366,7 +1370,7 @@ app.SetupSql.prototype.fun=function(boDropOnly){
         DECLARE VidSite, VidPage, VboTalk, VboTemplate INT; \n\
         START TRANSACTION; \n\
         SELECT idSite, idPage INTO VidSite, VidPage FROM "+pageTab+" WHERE pageName=Iname; \n\
-        CALL calcBoTalkNBoTemplate(Iname, VboTalk, VboTemplate); \n\
+        CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); \n\
         CALL "+strDBPrefix+"markStaleParentsOfPage(VidSite, Iname, 0, VboTemplate); \n\
         #DROP TEMPORARY TABLE IF EXISTS tmp; \n\
         #CREATE TEMPORARY TABLE tmp AS  \n\
@@ -1666,7 +1670,7 @@ app.SetupSql.prototype.fun=function(boDropOnly){
           IF FOUND_ROWS()=0 THEN SELECT 'noDefault' AS mess; LEAVE proc_label; END IF; \n\
         END IF; \n\
 \n\
-        CALL calcBoTalkNBoTemplate(Iname, VboTalk, VboTemplate); \n\
+        CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); \n\
         SET VidFile=NULL; SET VidFileCache=NULL; \n\
 \n\
         INSERT INTO "+pageTab+" (idSite, pageName, boTalk, boTemplate) VALUES (VidSite, Iname, VboTalk, VboTemplate)  \n\
@@ -1739,7 +1743,7 @@ app.SetupSql.prototype.fun=function(boDropOnly){
         SELECT SQL_CALC_FOUND_ROWS idSite INTO VidSite FROM "+siteTab+" WHERE www=Iwww; \n\
         IF FOUND_ROWS()=0 THEN SELECT 'IwwwNotFound' AS mess; LEAVE proc_label; END IF; \n\
 \n\
-        CALL calcBoTalkNBoTemplate(Iname, VboTalk, VboTemplate); \n\
+        CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); \n\
         INSERT INTO "+pageTab+" (idSite, pageName, boTalk, boTemplate, lastRev, boOR, boOW, boSiteMap) VALUES (VidSite, Iname, VboTalk, VboTemplate, 0, 1,1,1) \n\
           ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=Iname, boTalk=VboTalk, boTemplate=VboTemplate, lastRev=lastRev+1; \n\
         SELECT LAST_INSERT_ID() INTO VidPage; \n\
@@ -1781,7 +1785,7 @@ app.SetupSql.prototype.fun=function(boDropOnly){
         SELECT SQL_CALC_FOUND_ROWS idSite INTO VidSite FROM "+siteTab+" WHERE www=Iwww; \n\
         IF FOUND_ROWS()=0 THEN SELECT 'IwwwNotFound' AS mess; LEAVE proc_label; END IF; \n\
 \n\
-        CALL calcBoTalkNBoTemplate(Iname, VboTalk, VboTemplate); \n\
+        CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); \n\
         CALL "+strDBPrefix+"markStaleParentsOfPage(VidSite, Iname, 1, VboTemplate); \n\
   \n\
         #SELECT idPage INTO VidPage FROM "+pageTab+" WHERE pageName=Iname;      \n\
@@ -1863,13 +1867,13 @@ app.SetupSql.prototype.fun=function(boDropOnly){
       SELECT SQL_CALC_FOUND_ROWS boTLS, www, pageName, idPage, boOR, boOW, boSiteMap INTO VboTLS, Vwww, Vname, VidPage, VboOR, VboOW, VboSiteMap FROM "+pageWWWView+" WHERE www=Iwww AND pageName=Iname; \n\
       IF FOUND_ROWS()=0 THEN SELECT 'noSuchPage' AS mess;  LEAVE proc_label; END IF; \n\
 \n\
-           # Redirect to correct case OR correct boTLS\n\
+          # Redirect to correct case OR correct boTLS\n\
       IF IboFront AND (BINARY Vname!=Iname OR VboTLS!=IboTLS) THEN SELECT 'redirectCase' AS mess, VboTLS AS boTLS, Vwww AS www, Vname AS pageName;  LEAVE proc_label; END IF;   \n\
 \n\
       IF IboFront AND !VboOR THEN SELECT 'private' AS mess; LEAVE proc_label; END IF;                                  # Private\n\
 \n\
           # Calc boTalkExist \n\
-      CALL calcBoTalkNBoTemplate(Iname, VboTalk, VboTemplate); \n\
+      CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); \n\
       IF VboTalk=0 THEN \n\
         IF VboTemplate THEN SET talkPage=CONCAT('template_talk:',Iname); ELSE SET talkPage=CONCAT('talk:',Iname); END IF;\n\
         SELECT count(idPage) INTO boTalkExist FROM "+pageTab+" WHERE idSite=VidSite AND pageName=talkPage; \n\

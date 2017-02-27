@@ -35,7 +35,7 @@
     "url": "http://github.com/"
   },
   "engines": {
-    "node": "6.x",
+    "node": "7.x",
     "npm": ""
   },
   "scripts": {
