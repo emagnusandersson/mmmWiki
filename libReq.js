@@ -117,7 +117,7 @@ app.reqGetMeta=function*() {
   Sql.push("SELECT boTLS, siteName, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, DATE_FORMAT(tMod,GET_FORMAT(TIMESTAMP,'ISO')) AS tMod FROM "+pageLastView+";");
   Sql.push("SELECT imageName, boOther, DATE_FORMAT(created,GET_FORMAT(TIMESTAMP,'ISO')) AS created FROM "+imageTab+";");
   Sql.push("SELECT name, DATE_FORMAT(created,GET_FORMAT(TIMESTAMP,'ISO')) AS created FROM "+videoTab+";");
-  Sql.push("SELECT siteName, pageName, url, DATE_FORMAT(created,GET_FORMAT(TIMESTAMP,'ISO')) AS created FROM "+redirectWWWView+";");
+  Sql.push("SELECT siteName, pageName, url, DATE_FORMAT(created,GET_FORMAT(TIMESTAMP,'ISO')) AS created, nAccess FROM "+redirectWWWView+";");
   Sql.push("SELECT www AS wwwCommon FROM "+siteTab+" WHERE boDefault=1;");
   var sql=Sql.join('\n');
   var Val=[];
@@ -159,7 +159,7 @@ app.reqGetMeta=function*() {
   for(var k=0;k<matRedirect.length;k++){
     var r=matRedirect[k];
     var siteName=mysqlPool.escape(r.siteName),  pageName=mysqlPool.escape(r.pageName),  url=mysqlPool.escape(r.url),  created=mysqlPool.escape(r.created);
-    SqlB.push("REPLACE INTO mmmWiki_redirect (idSite, pageName, url, created) (SELECT idSite, "+pageName+", "+url+", "+created+" FROM mmmWiki_site WHERE siteName="+siteName+");");
+    SqlB.push("REPLACE INTO mmmWiki_redirect (idSite, pageName, url, created, nAccess) (SELECT idSite, "+pageName+", "+url+", "+created+", "+r.nAccess+" FROM mmmWiki_site WHERE siteName="+siteName+");");
   }
   var sql=SqlB.join("\n");
 
@@ -1257,6 +1257,7 @@ app.SetupSql.prototype.table=function(boDropOnly){
   pageName varchar(128) NOT NULL, \n\
   url varchar(128) NOT NULL, \n\
   created TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
+  nAccess int(4) NOT NULL DEFAULT 0, \n\
   PRIMARY KEY (idSite,pageName) \n\
   ) ENGINE="+engine+" COLLATE "+collate+""); 
 
@@ -1299,8 +1300,8 @@ SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, b
 
 
   SqlTabDrop.push("DROP VIEW IF EXISTS "+redirectWWWView+"");
-  SqlTab.push("CREATE VIEW "+redirectWWWView+" (idSite, siteName, www, pageName, url, created) AS \n\
-SELECT r.idSite, st.siteName, st.www, r.pageName, url, r.created FROM "+redirectTab+" r JOIN "+siteTab+" st ON r.idSite=st.idSite");
+  SqlTab.push("CREATE VIEW "+redirectWWWView+" (idSite, siteName, www, pageName, url, created, nAccess) AS \n\
+SELECT r.idSite, st.siteName, st.www, r.pageName, url, r.created, nAccess FROM "+redirectTab+" r JOIN "+siteTab+" st ON r.idSite=st.idSite");
 
 
   
@@ -1824,6 +1825,7 @@ app.SetupSql.prototype.fun=function(boDropOnly){
 
 //    CREATE PROCEDURE "+strDBPrefix+"getInfoNData(IboFront INT, INOUT Iname varchar(128), INOUT Irev INT, IeTag varchar(128), IreqDate INT,       OUT urlRedir varchar(128), OUT idPage INT, OUT boOR INT, OUT boOW INT, OUT boSiteMap INT, OUT talkPage varchar(128), OUT boTalkExist INT, OUT OeTag varchar(32), OUT tModCache INT, OUT strEditText MEDIUMBLOB, OUT strHtmlText MEDIUMBLOB, OUT OboOk INT, OUT mess varchar(128)) \n\
 
+
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"getInfoNData");
   SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"getInfoNData(IboFront INT, IboTLS INT(1), Iwww varchar(128), Iname varchar(128), Irev INT, IeTag varchar(32), IreqDate INT) \n\
     proc_label:BEGIN \n\
@@ -1836,8 +1838,11 @@ app.SetupSql.prototype.fun=function(boDropOnly){
 \n\
           # Check if there is a redirect for this page \n\
       IF IboFront THEN \n\
-        SELECT SQL_CALC_FOUND_ROWS url INTO urlRedir FROM "+redirectTab+" r JOIN "+siteTab+" s ON r.idSite=s.idSite WHERE www=Iwww AND pageName=Iname;      \n\
-        IF FOUND_ROWS()>0 THEN  SELECT 'redirect' AS mess, urlRedir; LEAVE proc_label; END IF; \n\
+        SELECT SQL_CALC_FOUND_ROWS url INTO urlRedir FROM "+redirectWWWView+" WHERE www=Iwww AND pageName=Iname;      \n\
+        IF FOUND_ROWS()>0 THEN \n\
+          UPDATE "+redirectWWWView+" SET nAccess=nAccess+1 WHERE www=Iwww AND pageName=Iname; \n\
+          SELECT 'redirect' AS mess, urlRedir; LEAVE proc_label; \n\
+        END IF; \n\
         SELECT SQL_CALC_FOUND_ROWS url INTO urlRedir FROM "+redirectDomainTab+" WHERE www=Iwww;      \n\
         IF FOUND_ROWS()>0 THEN  SELECT 'redirectDomain' AS mess, urlRedir; LEAVE proc_label; END IF; \n\
       END IF; \n\

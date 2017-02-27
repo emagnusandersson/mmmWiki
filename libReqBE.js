@@ -1030,7 +1030,7 @@ ReqBE.prototype.redirectTabGet=function*(callback,inObj){
   var self=this, req=this.req, res=this.res;
   var GRet=this.GRet;
   if(!this.boALoggedIn) { self.mesO('Not logged in as admin'); callback('exited'); return; }
-  var sql="SELECT idSite, siteName, www, pageName, url, UNIX_TIMESTAMP(created) AS created FROM "+redirectWWWView+";";
+  var sql="SELECT idSite, siteName, www, pageName, url, UNIX_TIMESTAMP(created) AS created, nAccess FROM "+redirectWWWView+";";
   //var sql="SELECT idSite, pageName, url, UNIX_TIMESTAMP(created) AS created FROM "+redirectTab+";";
   var Val=[];
   /*myQueryF(sql, Val, mysqlPool, function(err, results) {

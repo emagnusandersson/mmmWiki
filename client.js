@@ -3022,7 +3022,7 @@ redirectTabExtend=function($el){
   $el.$table=$("<table>").append($tbody); //.css({width:'100%',position:'relative'});
   $el.$divCont=$("<div>").append($el.$table).css({'margin':'1em auto','text-align':'left',display:'inline-block'});
 
-  var StrCol=['siteName','pageName','url', 'created'], BoAscDefault={created:0};
+  var StrCol=['siteName','pageName','url', 'created', 'nAccess'], BoAscDefault={created:0};
   var Label={created:'Age'};
   var $thead=headExtend($('<thead>'),$el,StrCol,BoAscDefault,Label);
   $thead.css({background:'white', width:'inherit'});  //,height:'calc(12px + 1.2em)'
