@@ -117,7 +117,7 @@ app.reqGetMeta=function*() {
   Sql.push("SELECT boTLS, siteName, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, DATE_FORMAT(tMod,GET_FORMAT(TIMESTAMP,'ISO')) AS tMod FROM "+pageLastView+";");
   Sql.push("SELECT imageName, boOther, DATE_FORMAT(created,GET_FORMAT(TIMESTAMP,'ISO')) AS created FROM "+imageTab+";");
   Sql.push("SELECT name, DATE_FORMAT(created,GET_FORMAT(TIMESTAMP,'ISO')) AS created FROM "+videoTab+";");
-  Sql.push("SELECT siteName, pageName, url, DATE_FORMAT(created,GET_FORMAT(TIMESTAMP,'ISO')) AS created, nAccess FROM "+redirectWWWView+";");
+  Sql.push("SELECT siteName, pageName, url, DATE_FORMAT(created,GET_FORMAT(TIMESTAMP,'ISO')) AS created, nAccess, DATE_FORMAT(tLastAccess,GET_FORMAT(TIMESTAMP,'ISO')) AS tLastAccess FROM "+redirectWWWView+";");
   Sql.push("SELECT www AS wwwCommon FROM "+siteTab+" WHERE boDefault=1;");
   var sql=Sql.join('\n');
   var Val=[];
@@ -159,7 +159,7 @@ app.reqGetMeta=function*() {
   for(var k=0;k<matRedirect.length;k++){
     var r=matRedirect[k];
     var siteName=mysqlPool.escape(r.siteName),  pageName=mysqlPool.escape(r.pageName),  url=mysqlPool.escape(r.url),  created=mysqlPool.escape(r.created);
-    SqlB.push("REPLACE INTO mmmWiki_redirect (idSite, pageName, url, created, nAccess) (SELECT idSite, "+pageName+", "+url+", "+created+", "+r.nAccess+" FROM mmmWiki_site WHERE siteName="+siteName+");");
+    SqlB.push("REPLACE INTO mmmWiki_redirect (idSite, pageName, url, created, nAccess, tLastAccess) (SELECT idSite, "+pageName+", "+url+", "+created+", "+r.nAccess+", "+r.tLastAccess+" FROM mmmWiki_site WHERE siteName="+siteName+");");
   }
   var sql=SqlB.join("\n");
 
@@ -212,6 +212,12 @@ app.reqIndex=function*() {
   this.tModCache=new Date(0);
   this.CSRFCode='';  // If public then No CSRFCode since the page is going to be cacheable (look the same each time)
 
+  //if(req.boTLS) res.setHeader("Strict-Transport-Security", "max-age="+24*3600+"; includeSubDomains");
+  var tmpS=req.boTLS?'s':'';
+  //res.setHeader("Content-Security-Policy", "default-src http"+tmpS+": 'self'  *.google.com; img-src *");
+  //res.setHeader("Content-Security-Policy", "default-src http");
+  
+    
   if('version' in objQS) {  self.version=objQS.version;  self.rev=self.version-1 } else {  self.version=NaN; self.rev=-1; }
   self.eTagIn=getETag(req.headers); self.requesterCacheTime=getRequesterTime(req.headers);
   //if(bootTime>self.requesterCacheTime) self.requesterCacheTime=new Date(0);
@@ -262,7 +268,6 @@ app.reqIndex=function*() {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0"); // no-cache
     extend(self,{strHtmlText:'', boTalkExist:0, strEditText:'', arrVersion:[null,1], matVersion:[], objTemplateE:{}}); 
     extend(self,{idPage:NaN, boOR:0, boOW:1, boSiteMap:1});  
-    //self.CSRFCode=session[self.queredPage+'_CSRF']=randomHash(); 
     self.CSRFCode=randomHash(); 
     var redisVar=sessionID+'_'+self.queredPage+'_CSRF';
     var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,self.CSRFCode]);
@@ -505,7 +510,6 @@ app.reqStatic=function*() {
 app.reqCaptcha=function*(){
   var self=this, req=this.req, res=this.res;
   var sessionID=req.sessionID;
-  //var strCaptcha=session.captcha=parseInt(Math.random()*9000+1000);
   var strCaptcha=parseInt(Math.random()*9000+1000);
   var redisVar=sessionID+'_captcha';
   var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,strCaptcha]);
@@ -1258,6 +1262,7 @@ app.SetupSql.prototype.table=function(boDropOnly){
   url varchar(128) NOT NULL, \n\
   created TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
   nAccess int(4) NOT NULL DEFAULT 0, \n\
+  tLastAccess TIMESTAMP NOT NULL, \n\
   PRIMARY KEY (idSite,pageName) \n\
   ) ENGINE="+engine+" COLLATE "+collate+""); 
 
@@ -1300,8 +1305,8 @@ SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, b
 
 
   SqlTabDrop.push("DROP VIEW IF EXISTS "+redirectWWWView+"");
-  SqlTab.push("CREATE VIEW "+redirectWWWView+" (idSite, siteName, www, pageName, url, created, nAccess) AS \n\
-SELECT r.idSite, st.siteName, st.www, r.pageName, url, r.created, nAccess FROM "+redirectTab+" r JOIN "+siteTab+" st ON r.idSite=st.idSite");
+  SqlTab.push("CREATE VIEW "+redirectWWWView+" (idSite, siteName, www, pageName, url, created, nAccess, tLastAccess) AS \n\
+SELECT r.idSite, st.siteName, st.www, r.pageName, url, r.created, nAccess, tLastAccess FROM "+redirectTab+" r JOIN "+siteTab+" st ON r.idSite=st.idSite");
 
 
   
@@ -1840,7 +1845,7 @@ app.SetupSql.prototype.fun=function(boDropOnly){
       IF IboFront THEN \n\
         SELECT SQL_CALC_FOUND_ROWS url INTO urlRedir FROM "+redirectWWWView+" WHERE www=Iwww AND pageName=Iname;      \n\
         IF FOUND_ROWS()>0 THEN \n\
-          UPDATE "+redirectWWWView+" SET nAccess=nAccess+1 WHERE www=Iwww AND pageName=Iname; \n\
+          UPDATE "+redirectWWWView+" SET nAccess=nAccess+1, tLastAccess=now() WHERE www=Iwww AND pageName=Iname; \n\
           SELECT 'redirect' AS mess, urlRedir; LEAVE proc_label; \n\
         END IF; \n\
         SELECT SQL_CALC_FOUND_ROWS url INTO urlRedir FROM "+redirectDomainTab+" WHERE www=Iwww;      \n\

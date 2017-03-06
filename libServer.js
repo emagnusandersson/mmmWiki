@@ -410,7 +410,6 @@ vLogin=function*(callback,inObj){
     if('pass' in inObj) {
       var vPass=inObj.pass; 
       if(vPass==vPassword){
-        //session.viewTimer = unixNow()+maxViewUnactivityTime;
         var tmp=unixNow()+maxViewUnactivityTime;
         var redisVar=sessionID+'_viewTimer';
         var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,tmp]);
@@ -434,7 +433,6 @@ aLogin=function*(callback,inObj){
     if('pass' in inObj) {
       var aPass=inObj.pass; 
       if(aPass==aPassword) {
-        //session.adminTimer = unixNow()+maxAdminUnactivityTime;
         var tmp=unixNow()+maxAdminUnactivityTime;
         var redisVar=sessionID+'_adminTimer';
         var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,tmp]);

@@ -223,7 +223,7 @@ var flowStart=( function*(){
       }
     
       var cookies = parseCookies(req);
-      var sessionID;  if('sessionID' in cookies) sessionID=cookies.sessionID; else { sessionID=randomHash();   res.setHeader("Set-Cookie", "sessionID="+sessionID); }  //+ " HttpOnly" 
+      var sessionID;  if('sessionID' in cookies) sessionID=cookies.sessionID; else { sessionID=randomHash();   res.setHeader("Set-Cookie", "sessionID="+sessionID+"; SameSite=Lax"); }  //+ " HttpOnly" 
 
 
       var ipClient=getIP(req);

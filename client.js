@@ -2951,13 +2951,18 @@ redirectDeletePopExtend=function($el){
 redirectTabExtend=function($el){
 "use strict"
   $el.toString=function(){return 'redirectTab';}
+  var funcTTimeTmp=function(t){ var arrT=getSuitableTimeUnit(unixNow()-t);  $(this).text(Math.round(arrT[0])+arrT[1]);  }
   var TDProt={
     created:{
-      mySetVal:function(tCreated){ var arrT=getSuitableTimeUnit(unixNow()-tCreated);  $(this).text(Math.round(arrT[0])+arrT[1]);  }
+      mySetVal:funcTTimeTmp
+    },
+    tLastAccess:{
+      mySetVal:funcTTimeTmp
     }
   }
   var TDConstructors={
-    created:function(){ var $el=$('<td>');  $.extend($el[0],TDProt.created);  return $el;  }
+    created:function(){ var $el=$('<td>');  $.extend($el[0],TDProt.created);  return $el;  },
+    tLastAccess:function(){ var $el=$('<td>');  $.extend($el[0],TDProt.tLastAccess);  return $el;  }
   }
   $el.myAdd=function(r){
     var $Td=$([]);  for(var i=0;i<StrCol.length;i++) { 
@@ -3022,7 +3027,7 @@ redirectTabExtend=function($el){
   $el.$table=$("<table>").append($tbody); //.css({width:'100%',position:'relative'});
   $el.$divCont=$("<div>").append($el.$table).css({'margin':'1em auto','text-align':'left',display:'inline-block'});
 
-  var StrCol=['siteName','pageName','url', 'created', 'nAccess'], BoAscDefault={created:0};
+  var StrCol=['siteName','pageName','url', 'created', 'nAccess', 'tLastAccess'], BoAscDefault={created:0};
   var Label={created:'Age'};
   var $thead=headExtend($('<thead>'),$el,StrCol,BoAscDefault,Label);
   $thead.css({background:'white', width:'inherit'});  //,height:'calc(12px + 1.2em)'
@@ -3035,8 +3040,11 @@ redirectTabExtend=function($el){
     $redirectSetPop.openFunc.call({},0,0);
     //$redirectSetPop.openFunc.call({boButtonIns:1});
   });
+  var $buttonClearNAccess=$("<button>").append('Clear nAccess').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){
+    var vec=[['redirectTabResetNAccess', {}, function(){$el.boStale=1; $el.setUp();}]];   majax(oAJAX,vec);
+  });
   var $spanLabel=$('<span>').append('Redirect').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var $menuA=$('<div>').append($buttonAdd,$spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); 
+  var $menuA=$('<div>').append($buttonAdd,$buttonClearNAccess,$spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); 
 
   $el.addClass('redirectTab');
   $el.$fixedDiv=$('<div>').append($menuA).css(cssFixed);
@@ -3470,7 +3478,7 @@ setUp1=function(){
 
 
   indexAssign();
-  CSRFCode=typeof CSRFCode!=='undefined'?CSRFCode:'';    boVLoggedIn=typeof boVLoggedIn!=='undefined'?boVLoggedIn:'';     boALoggedIn=typeof boALoggedIn!=='undefined'?boALoggedIn:'';
+  CSRFCode=typeof CSRFCode!=='undefined'?CSRFCode:'';  boVLoggedIn=typeof boVLoggedIn!=='undefined'?boVLoggedIn:'';     boALoggedIn=typeof boALoggedIn!=='undefined'?boALoggedIn:'';
   nVersion=matVersion.length;
   assignCommonJS();
   //assignWWWJS();

@@ -9,6 +9,10 @@ thisChangedWArg=function(func,selfT,inObj){
 
 
 
+function getCookie(n) {
+    let a = `; ${document.cookie}`.match(`;\\s*${n}=([^;]+)`);
+    return a ? a[1] : '';
+}
 
 MyAsync=function(Func,finF){
   var self=this;

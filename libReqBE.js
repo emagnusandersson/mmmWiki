@@ -98,7 +98,7 @@ ReqBE.prototype.interpretInput=function*(){
 
            // Arrays of functions
     // Functions that changes something must check and refresh CSRF-code
-  var arrCSRF=['myChMod', 'myChModImage', 'saveByAdd', 'saveByReplace', 'uploadUser', 'uploadAdmin', 'getPageInfo', 'getImageInfo', 'setUpPageListCond','getPageList','getPageHist', 'setUpImageListCond','getImageList','getImageHist', 'getParent','getParentOfImage','getSingleParentExtraStuff', 'deletePage','deleteImage','renamePage','renameImage', 'redirectTabGet','redirectTabSet','redirectTabDelete', 'siteTabGet', 'siteTabSet', 'siteTabDelete', 'siteTabSetDefault'];
+  var arrCSRF=['myChMod', 'myChModImage', 'saveByAdd', 'saveByReplace', 'uploadUser', 'uploadAdmin', 'getPageInfo', 'getImageInfo', 'setUpPageListCond','getPageList','getPageHist', 'setUpImageListCond','getImageList','getImageHist', 'getParent','getParentOfImage','getSingleParentExtraStuff', 'deletePage','deleteImage','renamePage','renameImage', 'redirectTabGet','redirectTabSet','redirectTabDelete', 'redirectTabResetNAccess', 'siteTabGet', 'siteTabSet', 'siteTabDelete', 'siteTabSetDefault'];
   var arrNoCSRF=['specSetup','vLogin','aLogin','aLogout','pageLoad','pageCompare','getPreview'];  
   allowed=arrCSRF.concat(arrNoCSRF);
 
@@ -107,7 +107,7 @@ ReqBE.prototype.interpretInput=function*(){
   if(StrComp(StrInFunc,['specSetup'])){ boCheckCSRF=0; boSetNewCSRF=1; } // Public pages
   if(StrComp(StrInFunc,['pageLoad'])){ boCheckCSRF=0; boSetNewCSRF=0; } // Private pages: CSRF was set in index.html
   
-
+  if(boDbg) boCheckCSRF=0;
   // Private:
   //                                                             index  first ajax (pageLoad)
   //Shall look the same (be cacheable (not include CSRFcode))     no           yes
@@ -118,17 +118,14 @@ ReqBE.prototype.interpretInput=function*(){
 
 
     // cecking/set CSRF-code
-  var CSRFVar=this.queredPage+'_CSRF', CSRFCode;
   var redisVar=sessionID+'_'+this.queredPage+'_CSRF', CSRFCode;
   if(boCheckCSRF){
     if(!CSRFIn){ var tmp='CSRFCode not set (try reload page)', error=new MyError(tmp); self.mesO(tmp); return;}
-    //if(CSRFIn!==session[CSRFVar]){ var tmp='CSRFCode err (try reload page)', error=new MyError(tmp); self.mesO(tmp); return;}
     var tmp=yield* wrapRedisSendCommand.call(req, 'get',[redisVar]);
     if(CSRFIn!==tmp){ var tmp='CSRFCode err (try reload page)', error=new MyError(tmp); self.mesO(tmp); return;}
   }
   if(boSetNewCSRF) {
     var CSRFCode=randomHash();
-    //session[CSRFVar]=CSRFCode;
     var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,CSRFCode]);
     var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
     self.GRet.CSRFCode=CSRFCode;
@@ -283,7 +280,6 @@ ReqBE.prototype.aLogout=function*(callback, inObj){
   var self=this, req=this.req, res=this.res, sessionID=req.sessionID;
   var GRet=this.GRet;
   var Ou={};
-  //session.adminTimer = unixNow(); 
   //redisClient.del(sessionID+'_adminTimer');
   var redisVar=sessionID+'_adminTimer';
   var tmp=yield* wrapRedisSendCommand.call(req, 'del',[redisVar]);
@@ -1030,7 +1026,7 @@ ReqBE.prototype.redirectTabGet=function*(callback,inObj){
   var self=this, req=this.req, res=this.res;
   var GRet=this.GRet;
   if(!this.boALoggedIn) { self.mesO('Not logged in as admin'); callback('exited'); return; }
-  var sql="SELECT idSite, siteName, www, pageName, url, UNIX_TIMESTAMP(created) AS created, nAccess FROM "+redirectWWWView+";";
+  var sql="SELECT idSite, siteName, www, pageName, url, UNIX_TIMESTAMP(created) AS created, nAccess, UNIX_TIMESTAMP(tLastAccess) AS tLastAccess FROM "+redirectWWWView+";";
   //var sql="SELECT idSite, pageName, url, UNIX_TIMESTAMP(created) AS created FROM "+redirectTab+";";
   var Val=[];
   /*myQueryF(sql, Val, mysqlPool, function(err, results) {
@@ -1110,7 +1106,23 @@ ReqBE.prototype.redirectTabDelete=function*(callback,inObj){
     }
   });
 }
-
+ReqBE.prototype.redirectTabResetNAccess=function*(callback,inObj){
+  var self=this, req=this.req, res=this.res;
+  var GRet=this.GRet;
+  var Ou={};
+  if(!this.boALoggedIn) { self.mesO('Not logged in as admin'); callback('exited'); return; }
+  var sql="UPDATE "+redirectTab+" SET nAccess=0;"; 
+  var Val=[];
+  
+  myQueryF(sql, Val, mysqlPool, function(err, results){
+    var boOK=0, mestmp;
+    if(err) {  self.mesEO(err); callback('exited');  return;  }
+    else{  boOK=1; mestmp="Done";  }
+    self.mes(mestmp);
+    extend(Ou, {boOK:boOK});
+    callback(null, [Ou]);
+  });
+}
 ReqBE.prototype.siteTabGet=function*(callback,inObj){ 
   var self=this, req=this.req, res=this.res;
   var GRet=this.GRet;
@@ -1364,7 +1376,6 @@ ReqBE.prototype.uploadUser=function*(callback,inObj){
   var Ou={};
   var regImg=RegExp("^(png|jpeg|jpg|gif|svg)$"), regVid=RegExp('^(mp4|ogg|webm)$');
 
-  //if(self.captchaIn!=session.captcha) { Ou.strMessage='Wrong captcha'; callback(null,[Ou]);  return;}
   var redisVar=sessionID+'_captcha';
   var tmp=yield* wrapRedisSendCommand.call(req, 'get',[redisVar]);
   if(self.captchaIn!=tmp) { Ou.strMessage='Wrong captcha'; callback(null,[Ou]);  return;}
