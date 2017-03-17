@@ -431,7 +431,8 @@ adminMoreDivExtend=function($el){
   };  $aBUFilesToComp.setUp(boUsePrefix);
   var $aBUImageToComp=$('<a>').prop({href:'backUpImage', rel:'nofollow', download:''}).append('(Backup).zip');
   var $aBUVideoToComp=$('<a>').prop({href:'backUpVideo', rel:'nofollow', download:''}).append('(Backup).zip');
-  var $aTableColumnSettings=$('<a>').prop({href:'getMeta', rel:'nofollow', download:''}).append('(MetaData).sql');
+  var $aGetMeta=$('<a>').prop({href:'getMeta', rel:'nofollow', download:''}).append('(MetaData).sql');
+  var $aGetMetaCSV=$('<a>').prop({href:'getMetaCSV', rel:'nofollow', download:''}).append('(MetaData).csv');
   var $imgHSql=$imgHelp.clone().css({'margin':'0 1em'}); popupHoverM($imgHSql,$('<div>').html('Download "meta-data":<p>-extra data for pages/images (modification dates, access rights ...). <p>-redirect table.'));
   
 
@@ -454,7 +455,7 @@ adminMoreDivExtend=function($el){
   var $menuB=$('<div>').append("<b>Page: </b>", $pageListButton, ' | ', $aBUFilesToComp, ', Use prefix on default-site-pages: ', $cb, $imgHPrefix);
   var $menuC=$('<div>').append("<b>Image: </b>", $imageListButton, ' | ', $aBUImageToComp, ' | ', $buttonDiffBackUpDiv).css({'background':'lightblue'});
   var $menuD=$('<div>').append("<b>Video: </b>", $aBUVideoToComp);
-  var $menuE=$('<div>').append("<b>Other: </b>", $aTableColumnSettings, $imgHSql, ' | ', $statLink, '<hr>');
+  var $menuE=$('<div>').append("<b>Other: </b>", $aGetMeta, $aGetMetaCSV, $imgHSql, ' | ', $statLink, '<hr>');
   var $menuF=$('<div>').append($uploadAdminDiv);
   var $menuG=$('<div>').append($siteButton,$redirectButton);
   var $Menu=$([]).push($menuA,$menuB,$menuC,$menuE,$menuF,$menuG).css({margin:'0.5em 0'}); //,$menuD
@@ -791,7 +792,7 @@ diffBackUpDivExtend=function($el){
 
       // Check if it is OK to abort
     if(StrFetch.length==0 && StrDeleted.length==0) {
-      var $li=$('<li>').append('Aborting since your local files are (seem) up to date.'); $ul.append($li); $progress.detach();
+      var $li=$('<li>').append('Aborting since your local files are (seem (based on filesizes/modTimes)) up to date.'); $ul.append($li); $progress.detach();
       return;
     }
 

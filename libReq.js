@@ -158,8 +158,8 @@ app.reqGetMeta=function*() {
       // Redirect table
   for(var k=0;k<matRedirect.length;k++){
     var r=matRedirect[k];
-    var siteName=mysqlPool.escape(r.siteName),  pageName=mysqlPool.escape(r.pageName),  url=mysqlPool.escape(r.url),  created=mysqlPool.escape(r.created);
-    SqlB.push("REPLACE INTO mmmWiki_redirect (idSite, pageName, url, created, nAccess, tLastAccess) (SELECT idSite, "+pageName+", "+url+", "+created+", "+r.nAccess+", "+r.tLastAccess+" FROM mmmWiki_site WHERE siteName="+siteName+");");
+    var siteName=mysqlPool.escape(r.siteName),  pageName=mysqlPool.escape(r.pageName),  url=mysqlPool.escape(r.url),  created=mysqlPool.escape(r.created),  tLastAccess=mysqlPool.escape(r.tLastAccess);
+    SqlB.push("REPLACE INTO mmmWiki_redirect (idSite, pageName, url, created, nAccess, tLastAccess) (SELECT idSite, "+pageName+", "+url+", "+created+", "+r.nAccess+", "+tLastAccess+" FROM mmmWiki_site WHERE siteName="+siteName+");");
   }
   var sql=SqlB.join("\n");
 
@@ -1657,24 +1657,77 @@ app.SetupSql.prototype.fun=function(boDropOnly){
         INSERT INTO "+subImageTab+" (idPage, "+subImageTab+".imageName) SELECT IidPage, t.imageName FROM "+tmpSubNewImage+" t; \n\
  \n\
       END");
+      
+      
+  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"saveWhenUploading");
+  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"saveWhenUploading(IsiteName varchar(128), Iname varchar(128), Idata MEDIUMBLOB, Ihtml MEDIUMBLOB, IeTag varchar(32)) \n\
+      proc_label:BEGIN \n\
+        DECLARE Vc, VidSite, VidPage, VidFile, VidFileCache, VboTalk, VboTemplate, Vlen INT; \n\
+\n\
+          # Get VidSite \n\
+        IF(LENGTH(IsiteName)) THEN \n\
+          SELECT SQL_CALC_FOUND_ROWS idSite INTO VidSite FROM "+siteTab+" WHERE siteName=IsiteName; \n\
+          IF FOUND_ROWS()=0 THEN SELECT 'IsiteNameNotFound' AS mess; LEAVE proc_label; END IF; \n\
+        ELSE \n\
+          SELECT SQL_CALC_FOUND_ROWS idSite INTO VidSite FROM "+siteTab+" WHERE boDefault=1; \n\
+          IF FOUND_ROWS()=0 THEN SELECT 'noDefault' AS mess; LEAVE proc_label; END IF; \n\
+        END IF; \n\
+\n\
+        CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); \n\
+        SET VidFile=NULL; SET VidFileCache=NULL; \n\
+\n\
+        INSERT INTO "+pageTab+" (idSite, pageName, boTalk, boTemplate) VALUES (VidSite, Iname, VboTalk, VboTemplate)  \n\
+          ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=Iname, boTalk=VboTalk, boTemplate=VboTemplate, lastRev=0; \n\
+        SELECT LAST_INSERT_ID() INTO VidPage; \n\
+        CALL "+strDBPrefix+"markStaleParentsOfPage(VidSite, Iname, 1, VboTemplate); \n\
+\n\
+        IF LENGTH(Idata)=0 THEN    CALL "+strDBPrefix+"deletePageID(VidPage); SELECT 'deleting' AS mess; LEAVE proc_label;        END IF;    # Delete all \n\
+  \n\
+          # Delete old versions \n\
+        CALL "+strDBPrefix+"deleteAllButFirst(VidPage, Iname); \n\
+        SELECT count(*), idFile, idFileCache INTO Vc,VidFile, VidFileCache FROM "+versionTab+" WHERE idPage=VidPage AND rev=0; \n\
+  \n\
+        IF VidFile IS NULL THEN \n\
+          INSERT INTO "+fileTab+" (data) VALUES (Idata);    SELECT LAST_INSERT_ID() INTO VidFile; \n\
+        ELSE \n\
+          UPDATE "+fileTab+" SET data=Idata WHERE idFile=VidFile; \n\
+        END IF; \n\
+        IF VidFileCache IS NULL THEN \n\
+          INSERT INTO "+fileTab+" (data) VALUES (Ihtml);    SELECT LAST_INSERT_ID() INTO VidFileCache; \n\
+        ELSE \n\
+          UPDATE "+fileTab+" SET data=Ihtml WHERE idFile=VidFileCache; \n\
+        END IF; \n\
+  \n\
+        SET Vlen=LENGTH(Idata); \n\
+        IF Vc=0 THEN \n\
+          INSERT INTO "+versionTab+" (idPage,rev,idFile,tMod,idFileCache,tModCache,eTag,size) VALUES (VidPage,0,VidFile,now(),VidFileCache,now(),IeTag,Vlen); \n\
+        ELSE \n\
+          UPDATE "+versionTab+" SET idFile=VidFile, boOther=0, tMod=now(), idFileCache=VidFileCache, tModCache=now(), eTag=IeTag, size=Vlen WHERE idPage=VidPage AND rev=0; \n\
+        END IF; \n\
+  \n\
+        CALL "+strDBPrefix+"writeSubTables(VidPage); \n\
+        SELECT 'done' AS mess; \n\
+      END");
+      
 
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"saveByReplace");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"saveByReplace(IsiteName varchar(128), Iwww varchar(128), Iname varchar(128), Idata MEDIUMBLOB, Ihtml MEDIUMBLOB, IeTag varchar(32)) \n\
+  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"saveByReplace(Iwww varchar(128), Iname varchar(128), Idata MEDIUMBLOB, Ihtml MEDIUMBLOB, IeTag varchar(32), ItModBrowser INT) \n\
       proc_label:BEGIN \n\
-        DECLARE Vc, VidSite, VidPage, VidFile, VidFileCache, VboTalk, VboTemplate, Vlen INT; \n\
+        DECLARE Vc, VidSite, VidPage, VidFile, VidFileCache, VboTalk, VboTemplate, Vlen, VtMod INT; \n\
 \n\
           # Get VidSite \n\
         IF(LENGTH(Iwww)) THEN \n\
           SELECT SQL_CALC_FOUND_ROWS idSite INTO VidSite FROM "+siteTab+" WHERE www=Iwww; \n\
           IF FOUND_ROWS()=0 THEN SELECT 'IwwwNotFound' AS mess; LEAVE proc_label; END IF; \n\
-        ELSEIF(LENGTH(IsiteName)) THEN \n\
-          SELECT SQL_CALC_FOUND_ROWS idSite, www INTO VidSite, Iwww FROM "+siteTab+" WHERE siteName=IsiteName; \n\
-          IF FOUND_ROWS()=0 THEN SELECT 'IsiteNameNotFound' AS mess; LEAVE proc_label; END IF; \n\
         ELSE \n\
           SELECT SQL_CALC_FOUND_ROWS idSite, www INTO VidSite, Iwww FROM "+siteTab+" WHERE boDefault=1; \n\
           IF FOUND_ROWS()=0 THEN SELECT 'noDefault' AS mess; LEAVE proc_label; END IF; \n\
         END IF; \n\
+\n\
+\n\
+        SELECT UNIX_TIMESTAMP(tMod) INTO VtMod FROM "+pageLastView+" WHERE www=Iwww AND pageName=Iname; \n\
+        IF VtMod>ItModBrowser THEN SELECT 'boTModBrowserObs' AS mess, VtMod AS tMod; LEAVE proc_label; END IF; \n\
 \n\
         CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); \n\
         SET VidFile=NULL; SET VidFileCache=NULL; \n\
@@ -1720,22 +1773,22 @@ app.SetupSql.prototype.fun=function(boDropOnly){
     var tmpUrl="localhost:"+port;
     SqlFunction.push("START TRANSACTION");
     SqlFunction.push("TRUNCATE "+tmpSubNew); SqlFunction.push("INSERT INTO "+tmpSubNew+" VALUES ('mm',0),('nn',0),('oo',0)");
-    SqlFunction.push("CALL "+strDBPrefix+"saveByReplace('','"+tmpUrl+"','tmp','abc','ABC','0123456789abcdef0123456789abcdef')",'');
+    SqlFunction.push("CALL "+strDBPrefix+"saveByReplace('"+tmpUrl+"','tmp','abc','ABC','0123456789abcdef0123456789abcdef',0)",'');
     SqlFunction.push("COMMIT");
 
     SqlFunction.push("START TRANSACTION");
     SqlFunction.push("TRUNCATE "+tmpSubNew); SqlFunction.push("INSERT INTO "+tmpSubNew+" VALUES ('mm',0),('nn',0),('oo',0)");
-    SqlFunction.push("CALL "+strDBPrefix+"saveByReplace('','"+tmpUrl+"','mmm','abc','ABC','0123456789abcdef0123456789abcdef')",'');
+    SqlFunction.push("CALL "+strDBPrefix+"saveByReplace('"+tmpUrl+"','mmm','abc','ABC','0123456789abcdef0123456789abcdef',0)",'');
     SqlFunction.push("COMMIT");
 
     SqlFunction.push("START TRANSACTION");
     SqlFunction.push("TRUNCATE "+tmpSubNew); SqlFunction.push("INSERT INTO "+tmpSubNew+" VALUES ('pp',0),('mmm',1),('oo',0)");
-    SqlFunction.push("CALL "+strDBPrefix+"saveByReplace('','"+tmpUrl+"','template:nnn','abd','ABD','0123456789abcdef0123456789abcdef')",'');
+    SqlFunction.push("CALL "+strDBPrefix+"saveByReplace('"+tmpUrl+"','template:nnn','abd','ABD','0123456789abcdef0123456789abcdef',0)",'');
     SqlFunction.push("COMMIT");
 
     SqlFunction.push("START TRANSACTION");
     SqlFunction.push("TRUNCATE "+tmpSubNew); SqlFunction.push("INSERT INTO "+tmpSubNew+" VALUES ('pp',0),('qq',0),('oo',0)");
-    SqlFunction.push("CALL "+strDBPrefix+"saveByReplace('','"+tmpUrl+"','mmm','abcd','ABCD','0123456789abcdef0123456789abcdef')",'');
+    SqlFunction.push("CALL "+strDBPrefix+"saveByReplace('"+tmpUrl+"','mmm','abcd','ABCD','0123456789abcdef0123456789abcdef',0)",'');
     SqlFunction.push("COMMIT");
   }
 

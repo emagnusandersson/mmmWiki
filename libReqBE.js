@@ -84,11 +84,11 @@ ReqBE.prototype.interpretInput=function*(){
 
 
     // Remove the beArr[i][0] values that are not functions
-  var CSRFIn; this.tModIn=new Date(0); 
+  var CSRFIn; this.tModBrowser=0; //new Date(0); 
   for(var i=beArr.length-1;i>=0;i--){ 
     var row=beArr[i];
     if(row[0]=='page') {this.queredPage=row[1]; array_removeInd(beArr,i);}
-    else if(row[0]=='tMod') {this.tModIn=new Date(Number(row[1])*1000); array_removeInd(beArr,i);}
+    else if(row[0]=='tMod') {this.tModBrowser=Number(row[1]); array_removeInd(beArr,i);}   //this.tModBrowser=new Date(Number(row[1])*1000);
     else if(row[0]=='CSRFCode') {CSRFIn=row[1]; array_removeInd(beArr,i);}
   }
 
@@ -506,7 +506,9 @@ ReqBE.prototype.saveByAdd=function*(callback,inObj){
   else if(rowA.mess=='pageExist'){
     copySome(self,rowA,['boOR', 'boOW', 'boSiteMap', 'tMod', 'tModCache']);
     if(!self.boOR && !self.boVLoggedIn) {self.mesO('Not logged in'); callback("exited"); return;}
-    if(this.tModIn<self.tMod) { self.mesO("tModIn (from your action) ("+this.tModIn+") < tMod db ("+self.tMod+"), "+messPreventBecauseOfNewerVersions); callback("exited"); return; }
+    //if(this.tModBrowser<self.tMod) { self.mesO("tMod browser ("+this.tModBrowser+") < tMod db ("+self.tMod+"), "+messPreventBecauseOfNewerVersions); callback("exited"); return; }
+    var tBrowserTmp=new Date(this.tModBrowser*1000);
+    if(tBrowserTmp<self.tMod) { self.mesO("tMod browser ("+tBrowserTmp+") < tMod db ("+self.tMod+"), "+messPreventBecauseOfNewerVersions); callback("exited"); return; }
   }else if(rowA.mess=='noSuchPage'){
     extend(self,{boOW:1,boOR:1,boSiteMap:1});  
   }
@@ -568,7 +570,9 @@ ReqBE.prototype.saveByReplace=function*(callback,inObj){
   var queredPage=this.queredPage;
   var GRet=this.GRet;
   var Ou={};
+  if(!this.boALoggedIn) { self.mesO('Not logged in as admin'); callback('exited'); return; }
 
+  /*
       // getInfo
   var rowA, boDoExit=0;
   getInfo.call(self,function(err,results){
@@ -582,12 +586,13 @@ ReqBE.prototype.saveByReplace=function*(callback,inObj){
   else if(rowA.mess=='pageExist'){
     copySome(self,rowA,['boOR', 'boOW', 'boSiteMap', 'tMod', 'tModCache']);
     if(!self.boOR && !self.boVLoggedIn) {self.mesO('Not logged in'); callback("exited"); return;}
-    if(!self.boALoggedIn) {self.mesO('Not logged in as admin'); callback("exited"); return;} 
-    if(this.tModIn<self.tMod) { self.mesO("tModIn (from your action) ("+this.tModIn+") < tMod db ("+self.tMod+"), "+messPreventBecauseOfNewerVersions); callback("exited"); return; }
+    //if(this.tModBrowser<self.tMod) { self.mesO("tMod browser ("+this.tModBrowser+") < tMod db ("+self.tMod+"), "+messPreventBecauseOfNewerVersions); callback("exited"); return; }
+    var tBrowserTmp=new Date(this.tModBrowser*1000);
+    if(tBrowserTmp<self.tMod) { self.mesO("tMod browser ("+tBrowserTmp+") < tMod db ("+self.tMod+"), "+messPreventBecauseOfNewerVersions); callback("exited"); return; }
   }else if(rowA.mess=='noSuchPage'){
     extend(self,{boOW:1,boOR:1,boSiteMap:1});  
   }
-  
+  */
   extend(self,{strEditText:inObj.newcontent});
 
       // parse
@@ -601,18 +606,26 @@ ReqBE.prototype.saveByReplace=function*(callback,inObj){
   if(boDoExit==1) { callback('exited'); return; }
 
       // saveByReplace
-  var mess='', tmp=createSaveByReplaceSQL('', req.wwwSite, self.queredPage, self.strEditText, self.strHtmlText, self.eTag, self.arrSub, self.StrSubImage),     sql=tmp.sql, Val=tmp.Val, nEndingResults=tmp.nEndingResults; 
-  var boDoExit=0;
+  var mess='', tmp=createSaveByReplaceSQL(req.wwwSite, self.queredPage, self.strEditText, self.strHtmlText, self.eTag, self.tModBrowser, self.arrSub, self.StrSubImage),     sql=tmp.sql, Val=tmp.Val, nEndingResults=tmp.nEndingResults; 
+  var boDoExit=0, rowMess;
   myQueryF(sql, Val, mysqlPool, function(err, results) {
     if(err){boDoExit=1; self.mesEO(err); } 
     else{
       var iRowLast=results.length-nEndingResults-1;
-      mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
+      rowMess=results[iRowLast][0];
     }
     req.flow.next();
   });
   yield;
   if(boDoExit==1) { callback('exited'); return; }
+
+  var mess=rowMess.mess;
+
+  if(mess=='boTModBrowserObs') { 
+    var tBrowserTmp=new Date(this.tModBrowser*1000);
+    var tDiff=rowMess.tMod-this.tModBrowser, arrTmp=getSuitableTimeUnit(tDiff), strTTmp=Math.round(arrTmp[0])+arrTmp[1]; 
+    self.mesO("tMod browser ("+this.tModBrowser+") < tMod db ("+rowMess.tMod+") (someone saved "+strTTmp+" after you loaded the page), "+messPreventBecauseOfNewerVersions); callback("exited"); return;
+  }
 
       // getInfoNData
   self.boFront=0; self.rev=0; self.eTagIn='', self.requesterCacheTime=0;
@@ -1306,8 +1319,8 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data,callback){
     if(!semCB) { semY=1; yield;}
     if(boDoExit==1) { callback('exited'); return; }
 
-          // saveByReplace
-    var mess='', tmp=createSaveByReplaceSQL(siteName, '', pageName, self.strEditText, self.strHtmlText, '', self.arrSub, self.StrSubImage),     sql=tmp.sql, Val=tmp.Val, nEndingResults=tmp.nEndingResults;
+          // saveWhenUploading
+    var mess='', tmp=createSaveWhenUploadingSQL(siteName, pageName, self.strEditText, self.strHtmlText, '', self.arrSub, self.StrSubImage),     sql=tmp.sql, Val=tmp.Val, nEndingResults=tmp.nEndingResults;
     console.log(siteName+', '+pageName+', '+self.strEditText.length+', '+self.strHtmlText.length+', nSub:'+self.arrSub.length+', nsubImage:'+self.StrSubImage.length);
     console.time('bla');
     sql="SET autocommit=0;"+sql;  // +"SET autocommit=1;";
@@ -1323,7 +1336,7 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data,callback){
     yield;
     
  /*
-    var mess='', tmp=createSaveByReplaceNeo(siteName, '', pageName, self.strEditText, self.strHtmlText, '', self.arrSub, self.StrSubImage),     sql=tmp.sql, Val=tmp.Val, nEndingResults=tmp.nEndingResults;
+    var mess='', tmp=createSaveWhenUploadingNeo(siteName, pageName, self.strEditText, self.strHtmlText, '', self.arrSub, self.StrSubImage),     sql=tmp.sql, Val=tmp.Val, nEndingResults=tmp.nEndingResults;
     console.time('bla');
     var boDoExit=0;
     myQueryF(sql, Val, mysqlPool, function(err, results) {

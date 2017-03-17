@@ -189,7 +189,18 @@ createSubImageStr=function(StrT){
   return strSubQ;
 }
 
-createSaveByReplaceSQL=function(siteName, wwwSite, strName, strEditText, strHtmlText, eTag, arrSub, StrSubImage){ 
+createSaveWhenUploadingSQL=function(siteName, strName, strEditText, strHtmlText, eTag, arrSub, StrSubImage){ 
+  var tmp=createSubStr(arrSub), strSubQ=tmp[0], arrSubV=tmp[1];
+  var strSubImageQ=createSubImageStr(StrSubImage);
+  var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
+  Sql.push("START TRANSACTION; TRUNCATE "+tmpSubNew+"; "+strSubQ);
+  Sql.push("TRUNCATE "+tmpSubNewImage+"; "+strSubImageQ);
+  Sql.push("CALL "+strDBPrefix+"saveWhenUploading(?,?,?,?,?); COMMIT;");
+  var sql=Sql.join('\n'); 
+  var Val=array_merge(arrSubV, StrSubImage, [siteName, strName, strEditText, strHtmlText, eTag]);
+  return {sql:sql,Val:Val,nEndingResults:2};
+}
+createSaveByReplaceSQL=function(wwwSite, strName, strEditText, strHtmlText, eTag, tModBrowser, arrSub, StrSubImage){ 
   var tmp=createSubStr(arrSub), strSubQ=tmp[0], arrSubV=tmp[1];
   var strSubImageQ=createSubImageStr(StrSubImage);
   var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
@@ -197,7 +208,7 @@ createSaveByReplaceSQL=function(siteName, wwwSite, strName, strEditText, strHtml
   Sql.push("TRUNCATE "+tmpSubNewImage+"; "+strSubImageQ);
   Sql.push("CALL "+strDBPrefix+"saveByReplace(?,?,?,?,?,?); COMMIT;");
   var sql=Sql.join('\n'); 
-  var Val=array_merge(arrSubV, StrSubImage, [siteName, wwwSite, strName, strEditText, strHtmlText, eTag]);
+  var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, strEditText, strHtmlText, eTag, tModBrowser]);
   return {sql:sql,Val:Val,nEndingResults:2};
 }
 
@@ -228,7 +239,7 @@ createSetNewCacheSQL=function(wwwSite, strName, rev, strHtmlText, eTag, arrSub, 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-createSaveByReplaceNeo=function(siteName, wwwSite, strName, strEditText, strHtmlText, eTag, arrSub, StrSubImage){ 
+createSaveByReplaceNeo=function(siteName, wwwSite, strName, strEditText, strHtmlText, eTag, tModBrowser, arrSub, StrSubImage){ 
   var tmp=createSubStr(arrSub), strSubQ=tmp[0], arrSubV=tmp[1];
   var strSubImageQ=createSubImageStr(StrSubImage);
   var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
@@ -264,7 +275,7 @@ createSaveByReplaceNeo=function(siteName, wwwSite, strName, strEditText, strHtml
   Sql.push("TRUNCATE "+tmpSubNewImage+"; "+strSubImageQ);
   Sql.push("CALL "+strDBPrefix+"saveByReplace(?,?,?,?,?,?); COMMIT;");
   var sql=Sql.join('\n'); 
-  var Val=array_merge(arrSubV, StrSubImage, [siteName, wwwSite, strName, strEditText, strHtmlText, eTag]);
+  var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, strEditText, strHtmlText, eTag, tModBrowser]);
   return {sql:sql,Val:Val,nEndingResults:2};
 }
 /*
