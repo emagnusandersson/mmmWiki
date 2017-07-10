@@ -10,71 +10,157 @@ calcTalkName=function(strName){
   if(boTemplate) var strTalkName='template_talk:'.concat(strName.substr(9)); else var strTalkName='talk:'+strName;
   return {boErrAlreadyTalk:0, strTalkName:strTalkName};
 }
-neo4jConvertInt=function(objNeoInt){var n=objNeoInt.low+Math.pow(2,32)*objNeoInt.high; var err=null; if(!Number.isSafeInteger(n)) {err='neo4j integer is out of range for javascript';} return [err,n]; }
-neo4jConvertIntProp=function(obj,StrProp){ // "obj"=object, StrProp=Array of properties (given as strings). Run neo4jConvertInt() for each property given in StrProp 
-  for(var i=0;i<StrProp.length;i++) {
-    var strProp=StrProp[i], tmp=neo4jConvertInt(obj[strProp]);  
-    if(tmp[0]) return tmp[0]; obj[strProp]=tmp[1];
-  }  
-  return null;
+
+
+neo4jConvertInt=function(a){var n=a.toNumber(); if(!Number.isSafeInteger(n)) {n=a.toString(); console.trace('neo4j integer ('+n+') is out of range for javascript');} return n; }
+
+neo4jCheckNConvertInt=function(objNeoInt){
+  if(neo4j.isInt(objNeoInt)) var val=neo4jConvertInt(objNeoInt);  else var val=objNeoInt;   
+  return val;
 }
 
-
-
+neo4jConvertIntProp=function(obj){ // "obj"=object with properties that might be neo4j-Integers
+  Object.keys(obj).forEach(function(key,index) {
+    if(neo4j.isInt(obj[key])) obj[key]=neo4jConvertInt(obj[key]);
+  });
+}
+//Number.isSafeInteger    neo4j.integer.inSafeRange 
 splitCql=function(text){
-  var regCql=new RegExp('//-----\\s*([a-zA-Z0-9 ]+?)\\n','g')
-  var arrCqlName=[], arrCqlStart=[], arrCqlEnd=[], objCql={};
-  while (match = regCql.exec(text)) {  arrCqlName.push(match[1]);  arrCqlStart.push(match.index);  }
-  for(var i=0;i<arrCqlStart.length-1;i++){ arrCqlEnd[i]=arrCqlStart[i+1];}   if(arrCqlStart.length) arrCqlEnd.push(text.length);
-  for(var i=0;i<arrCqlStart.length;i++){ objCql[arrCqlName[i]]=text.substring(arrCqlStart[i],arrCqlEnd[i]);} 
+  //var regCql=new RegExp('//-----\\s*([a-zA-Z0-9, ]+?)\\n','g');
+  var regCql=new RegExp('//\\s*-----\\s*?(.*?)$','mg');
+  var arrCqlName=[], arrCqlStartFull=[], arrCqlStart=[], arrCqlEnd=[], objCql={};
+  while (match = regCql.exec(text)) {  arrCqlName.push(match[1].trim());  arrCqlStartFull.push(match.index);  arrCqlStart.push(match.index+match[0].length); }
+  var nCql=arrCqlStartFull.length;
+  for(var i=0;i<nCql-1;i++){ arrCqlEnd[i]=arrCqlStartFull[i+1];}   if(nCql) arrCqlEnd.push(text.length);
+  for(var i=0;i<nCql;i++){   if(arrCqlName[i]) objCql[arrCqlName[i]]=text.substring(arrCqlStart[i],arrCqlEnd[i]);   } 
   return objCql;
 }
 
 
-deletePageID=function*(){
-  var tx = session.beginTransaction();
+  //CREATE CONSTRAINT ON (p:Page) ASSERT p.idPage IS UNIQUE
+
+setUpNeo=function*(flow, objArg){
+  var www=objArg.www, boTLS=objArg.boTLS, strSiteName=objArg.strSiteName;
+  boTLS=Boolean(boTLS);
+  var Ou={};
+  var err, records, Val={};
+  var strCqlOrg=`CREATE CONSTRAINT ON (s:Site) ASSERT s.name IS UNIQUE`;
+  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  
+  var strCqlOrg=`CREATE CONSTRAINT ON (s:Site) ASSERT s.www IS UNIQUE`;
+  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
   var strCqlOrg=`
-      //-- Get Site
-    MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })
-    WITH s, p
-      //-- Delete Revisions
-    MATCH (p)-[h:hasRevision]->(r:Revision)
-    DETACH DELETE r
-    WITH p
-      //-- Delete Child links
-    MATCH (p)-[hc:hasChild]->(c:Page)
-    DELETE hc
-    WITH p
-      //-- Remove Orphan Stubs
+    MERGE (sd:Site {boDefault:true}) ON CREATE SET sd+={ name:coalesce($strSiteName, myMisc.myrandstringFunc(7)), www:$www, boTLS:$boTLS, googleAnalyticsTrackingID:"", urlIcon16:"", urlIcon200:"", aPassword:$aPassword, vPassword:"", boDefault:true }
+    RETURN sd`;
+  var err, records, Val={www:www, boTLS:boTLS, aPassword:"", vPassword:"", strSiteName:strSiteName?strSiteName:null};
+  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+
+  Ou.mess='OK';  return Ou;
+}
+
+    
+deletePageNeo=function*(flow, tx, objArg){
+  var www=objArg.www, strName=objArg.strName;
+  var Ou={};
+  
+  var strNameLC=strName.toLowerCase(); 
+  var err, records, Val={www:www, strNameLC:strNameLC};
+  
+      // Delete Revisions
+  var strCqlOrg=`
+    MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })-[h:hasRevision]->(r:Revision)
+    DETACH DELETE r`;
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+
+      // Delete Child links
+  var strCqlOrg=`
+    MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })-[hc:hasChild]->(c:Page)
+    DELETE hc`;
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+
+      // Delete orphan stubs
+  var strCqlOrg=`
     MATCH (cOrphan:Page) WHERE (NOT (:Page)-[:hasChild]->(cOrphan)) AND (NOT (cOrphan)-[:hasRevision]->(:Revision))
     DETACH DELETE cOrphan`;
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
-  var Val={www:www, strNameLC:strNameLC}; 
-  var strNameLC=strName.toLowerCase(); 
-  extend(Val, {www:www, strNameLC:strNameLC});
-  tx.run(strCqlOrg, Val).then(function(record){
-    flowStart.next();
-  }).catch(function(error){debugger; console.log(error); var boDoExit=1;flowStart.next();})
-  yield;
-  if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
-
+      // Delete Image links
+  var strCqlOrg=`
+    MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })-[hc:hasImage]->(i:Image)
+    DELETE hc`;
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
-  tx.commit().subscribe({
-    onCompleted: function() { session.close();  },
-    onError: function(error) {console.log(error);}
-  });
+       // Delete empty orphan images
+  var strCqlOrg=` 
+    MATCH (iOrphan:Image) WHERE (NOT (:Page)-[:hasImage]->(iOrphan)) AND iOrphan.boGotData IS NULL
+    DETACH DELETE iOrphan`;
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  
+  Ou.mess='OK';  return Ou;
 }
 
 
 
-childrenCreateNRemove=function*(Val, StrNewLink, tx, flow){
+deletePageByMultIDNeo=function*(flow, tx, objArg){
+  var Ou={}, err, records,  Val={IdPage:objArg.IdPage};
+  
+      // Delete Revisions
+  var strCqlOrg=` 
+    MATCH (p:Page)-[hasRevision]->(r:Revision) WHERE p.idPage IN $IdPage
+    DETACH DELETE r`;
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
+      // Delete Child links
+  var strCqlOrg=` 
+    MATCH (p:Page)-[hc:hasChild]->(c:Page) WHERE p.idPage IN $IdPage
+    DELETE hc`;
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+
+      // Delete orphan stubs
+  var strCqlOrg=`
+    MATCH (cOrphan:Page) WHERE (NOT (:Page)-[:hasChild]->(cOrphan)) AND (NOT (cOrphan)-[:hasRevision]->(:Revision))
+    DETACH DELETE cOrphan`;
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+
+
+      // Delete Image links
+  var strCqlOrg=`
+    MATCH (p:Page)-[hc:hasImage]->(i:Image) WHERE p.idPage IN $IdPage
+    DELETE hc`;
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+    
+     // Delete empty orphan images
+  var strCqlOrg=` 
+    MATCH (iOrphan:Image) WHERE (NOT (:Page)-[:hasImage]->(iOrphan)) AND iOrphan.boGotData IS NULL
+    DETACH DELETE iOrphan`;
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+
+  Ou.mess='OK';  return Ou;
+}
+
+
+
+childrenCreateNRemove=function*(flow, tx, Val, StrNewLink){
+  var err, records, Ou={};
   var strCqlOrg=`
       //----- Get Old Links
     MATCH (s:Site {name:$strSiteName})-[:hasPage]->(:Page { nameLC:$strNameLC })-[h:hasChild]->(c:Page)
-    RETURN c.nameLC
-      //----- AddNewChildRelations
+    RETURN c.nameLC AS nameLC
+      //----- Create relations to new children
     MATCH (s:Site {name:$strSiteName})-[:hasPage]->(p:Page {nameLC:$strNameLC})
     WITH s, p
     MATCH (s)-[:hasPage]->(cNew:Page) WHERE cNew.nameLC IN $StrToCreate
@@ -85,476 +171,806 @@ childrenCreateNRemove=function*(Val, StrNewLink, tx, flow){
     MATCH (s:Site {name:$strSiteName})-[:hasPage]->(p:Page {nameLC:$strNameLC})
     WITH s, p
     MATCH (par:Page)-[:hasChild]->(p) 
-    SET par.boStale=true
-      //----- RemoveOldChildRelations
+    WITH par
+    MATCH (par)-[:hasRevision]->(r:Revision) 
+    SET r.tModCache=0
+      //----- Remove relations to old children
     MATCH (s:Site {name:$strSiteName})-[:hasPage]->(p:Page {nameLC:$strNameLC})
     WITH s, p
     MATCH (p)-[rOld:hasChild]->(cOld:Page) WHERE cOld.nameLC IN $StrToRemove
     DETACH DELETE rOld
       //----- RemoveOrphanStubs
-    MATCH (cOrphan:Page) WHERE (NOT (:Page)-[:hasChild]->(cOrphan)) AND (NOT (cOrphan)-[:hasRevision]->(:Revision))
+    MATCH (cOrphan:Page) WHERE cOrphan.nameLC IN $StrToRemove AND (NOT (:Page)-[:hasChild]->(cOrphan)) AND (NOT (cOrphan)-[:hasRevision]->(:Revision))
     DETACH DELETE cOrphan`;
   var objCql=splitCql(strCqlOrg);
 
-  var err=null;
-
-
-  var StrOldLink=[];
-  tx.run(objCql['Get Old Links'], Val).then(function(record){ 
-    var arrTmp=record.records;  for(var i=0;i<arrTmp.length;i++) {StrOldLink[i]=arrTmp[i]._fields[0];}
-    flow.next();
-  }).catch(function(error){debugger; console.log(error); var boDoExit=1;flow.next();})
-  yield;
-  if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
+  
+  tx.cypher({query:objCql['Get Old Links'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  var StrOldLink=Array(records.length);  for(var i=0;i<records.length;i++){  StrOldLink[i]=records[i].nameLC;   }
+  
     
-    
+    // Calculate StrToCreate and StrToRemove
   var StrCql=[]; 
-  var StrNewLinkLC=[]; for(var i=0;i<StrNewLink.length;i++) StrNewLinkLC[i]=StrNewLink[i].toLowerCase();  // arrSub = [['starta',0], ['startb',1]], 
+  var StrNewLinkLC=Array(StrNewLink.length); for(var i=0;i<StrNewLink.length;i++) StrNewLinkLC[i]=StrNewLink[i].toLowerCase();  // arrSub = [['starta',0], ['startb',1]], 
   var StrToCreate=AMinusB(StrNewLinkLC,StrOldLink);
   var StrToRemove=AMinusB(StrOldLink,StrNewLinkLC);
+    // Create the new children 
   if(StrToCreate.length){
-    var StrTmp=[]; for(var i=0;i<StrToCreate.length;i++){ StrTmp[i]="MERGE (s)-[:hasPage]->(:Page { nameLC:'"+StrToCreate[i]+"' })"; }
+    var StrToCreateObj={};
+    var StrTmp=Array(StrToCreate.length); for(var i=0;i<StrToCreate.length;i++){ StrTmp[i]="MERGE (s)-[:hasPage]->(:Page { nameLC:$arg"+i+" })"; StrToCreateObj['arg'+i]=StrToCreate[i]; }
+    //var StrTmp=Array(StrToCreate.length); for(var i=0;i<StrToCreate.length;i++){ StrTmp[i]="MERGE (s)-[:hasPage]->(:Page { nameLC:'"+StrToCreate[i]+"' })"; }
     StrTmp.unshift('MATCH (s:Site {name:$strSiteName}) WITH s');
     StrCql.push(StrTmp.join('\n'));
-    var strCql=StrCql.join('\n'); 
-    tx.run(strCql, Val).then(function(record){
-      flow.next();
-    }).catch(function(error){debugger; console.log(error); var boDoExit=1;flow.next();});
-    yield;
-    if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
+    var strCql=StrCql.join('\n'); Val=extend(Val,StrToCreateObj);
+    tx.cypher({query:strCql, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   }
 
   extend(Val, {StrToCreate:StrToCreate, StrToRemove:StrToRemove});
-
-
-  tx.run(objCql['AddNewChildRelations'], Val).then(function(record){
-    flow.next(); }).catch(function(error){debugger; console.log(error); err=error; var boDoExit=1;flow.next();});
-  yield;
-  if(typeof boDoExit !== "undefined" ) { return err; }
-
-  tx.run(objCql['SetStaleParents'], Val).then(function(record){
-    flow.next(); }).catch(function(error){debugger; console.log(error); err=error; var boDoExit=1;flow.next();});
-  yield;
-  if(typeof boDoExit !== "undefined" ) { return err; }
-
-  tx.run(objCql['RemoveOldChildRelations'], Val).then(function(record){
-    flow.next(); }).catch(function(error){debugger; console.log(error); err=error; var boDoExit=1;flow.next();});
-  yield;
-  if(typeof boDoExit !== "undefined" ) { return err; }
-
-  tx.run(objCql['RemoveOrphanStubs'], Val).then(function(record){
-    flow.next(); }).catch(function(error){debugger; console.log(error); err=error; var boDoExit=1;flow.next();});
-  yield;
-  if(typeof boDoExit !== "undefined" ) { return err; }
-  return null;
-}
-
-
-saveWhenUploading=function*(){
-  var tx = session.beginTransaction();
+  tx.cypher({query:objCql['Create relations to new children'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
-  var strCqlOrg=`
-      //----- Create Site if necessary
-    MERGE (s:Site { name:$strSiteName })   ON CREATE SET s += { www:$www, boTLS:FALSE, googleAnalyticsTrackingID:"", urlIcon16:"", urlIcon200:"", aPassword:"", vPassword:"" }
-    RETURN s   
-      //----- Remaining
-      //-- Create Page if necessary
-    MERGE (s)-[:hasPage]->(p:Page { nameLC:$strNameLC })
-    ON CREATE SET p.created=timestamp(), p.nAccess=0
-    WITH p
-      //-- Set Page properties
-    SET p.name=$strName, p.boTalk=FALSE, p.boTemplate=FALSE, p.boOR=FALSE, p.boOW=FALSE, p.boSiteMap=FALSE, p.nChild=9, p.nImage=10, p.lastRev=0 
-    WITH p
-      //-- Create revision 0 if necessary
-    MERGE (p)-[h:hasRevision]->(r:Revision {revision:0})
-    SET r.tMod=timestamp(), r.data=$data, r.size=$size, r.eTag=$eTag 
-    WITH p
-      //-- Delete revision gt 0
-    MATCH (p)-[h:hasRevision]->(r:Revision) WHERE r.revision<>0
-    DETACH DELETE r`;
-  var objCql=splitCql(strCqlOrg);
-
-  var boTLS=false, eTag='bbb';
-  //if(typeof strSiteName=='undefined') var strSiteName=''; 
-  var www=randomHash().substr(0,7), Val={strSiteName:strSiteName, www:www};
-  tx.run(objCql['Create Site if necessary'], Val).then(function(record){ 
-    var fields=record.records[0]._fields; 
-    if(fields[0]) {site=fields[0].properties; www=site.www; strSiteName=site.name;  }
-    flowStart.next();
-  }).catch(function(error){debugger; console.log(error); var boDoExit=1;flowStart.next();})
-  yield;
-  if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
-
+  tx.cypher({query:objCql['SetStaleParents'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
-  var strNameLC=strName.toLowerCase(); 
-  Val={strSiteName:strSiteName, strNameLC:strNameLC, strName:strName, data:data, size:data.length, eTag:eTag};
-  tx.run(objCql['Remaining'], Val).then(function(record){
-    flowStart.next();
-  }).catch(function(error){debugger; console.log(error); var boDoExit=1;flowStart.next();})
-  yield;
-  if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
-
+  tx.cypher({query:objCql['Remove relations to old children'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
-    // childrenCreateNRemove
-  var Val={strSiteName:strSiteName, strNameLC:strNameLC};
-  var err=yield *childrenCreateNRemove(Val,StrNewLink,tx,flowStart);
-  if(err) { tx.rollback(); return; }
-
-  
-  tx.commit().subscribe({
-    onCompleted: function() {
-       session.close();  },
-    onError: function(error) {
-      console.log(error);}
-  });
+  tx.cypher({query:objCql['RemoveOrphanStubs'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  Ou.mess='OK'; return Ou;
 }
 
 
 
-saveByReplace=function*(){
-  var tx = session.beginTransaction();
-  
+imageLinksCreateNRemove=function*(flow, tx, Val, StrSubImage){
+  var err, records, Ou={};
   var strCqlOrg=`
-      //----- Create Site if necessary
-    MERGE (s:Site { www:$www })   ON CREATE SET s += { name:$strSiteName, boTLS:$boTLS, googleAnalyticsTrackingID:"", urlIcon16:"", urlIcon200:"", aPassword:"", vPassword:"" }
-    RETURN s 
-    
-      //----- Create Page if necessary
-    MATCH (s:Site { name:$strSiteName })
-    WITH s
-    MERGE (s)-[:hasPage]->(p:Page { nameLC:$strNameLC })
-    ON CREATE SET p.created=timestamp(), p.nAccess=0, p.tMod=0
+      //----- Get Old Images
+    MATCH (s:Site {name:$strSiteName})-[:hasPage]->(:Page { nameLC:$strNameLC })-[h:hasImage]->(i:Image)
+    RETURN i.nameLC AS nameLC
+      //----- Create relations to new images
+    MATCH (s:Site {name:$strSiteName})-[:hasPage]->(p:Page {nameLC:$strNameLC})
+    WITH s, p
+    MATCH (iNew:Image) WHERE iNew.nameLC IN $StrToCreate
+    WITH s, p, iNew
+    MERGE (p)-[:hasImage]->(iNew)
     RETURN p
-
-      //----- Remaining
-    MATCH (s:Site { name:$strSiteName })-[:hasPage]->(p:Page { nameLC:$strNameLC })
-      //-- Set Page properties
-    SET p.name=$strName, p.boTalk=FALSE, p.boTemplate=FALSE, p.boOR=FALSE, p.boOW=FALSE, p.boSiteMap=FALSE, p.nChild=9, p.nImage=10, p.lastRev=0, p.tMod=timestamp()
-    WITH p
-      //-- Create revision 0 if necessary 
-    MERGE (p)-[h:hasRevision]->(r:Revision {revision:0})
-    SET r.tMod=timestamp(), r.data=$data, r.size=$size, r.eTag=$eTag 
-    WITH p
-      //-- Delete revision >0 
-    MATCH (p)-[h:hasRevision]->(r:Revision) WHERE r.revision<>0
-    DETACH DELETE r`;
+      //----- Remove relations to old images
+    MATCH (s:Site {name:$strSiteName})-[:hasPage]->(p:Page {nameLC:$strNameLC})
+    WITH s, p
+    MATCH (p)-[rOld:hasImage]->(iOld:Image) WHERE iOld.nameLC IN $StrToRemove
+    DETACH DELETE rOld
+      //----- RemoveOrphanStubs
+    MATCH (iOrphan:Image) WHERE iOrphan.nameLC IN $StrToRemove AND (NOT (:Page)-[:hasImage]->(iOrphan)) AND iOrphan.boGotData IS NULL
+    DETACH DELETE iOrphan`;
   var objCql=splitCql(strCqlOrg);
-     
-  var boTLS=false, eTag='bbb';
-  var strSiteName=randomHash().substr(0,7);
-  var Val={www:www, strSiteName:strSiteName, boTLS:boTLS}; 
-  tx.run(objCql['Create Site if necessary'], Val).then(function(record){ 
-    var fields=record.records[0]._fields; 
-    if(fields[0]) {site=fields[0].properties; www=site.www; strSiteName=site.name;  }
-    flowStart.next();
-  }).catch(function(error){debugger; console.log(error); var boDoExit=1;flowStart.next();})
-  yield;
-  if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
 
   
-  var strNameLC=strName.toLowerCase(); 
-  var Val={strSiteName:strSiteName, strNameLC:strNameLC, strName:strName, data:data, size:data.length, eTag:eTag}; 
-  tx.run(objCql['Create Page if necessary'], Val).then(function(record){
-    flowStart.next();
-  }).catch(function(error){debugger; console.log(error); var boDoExit=1;flowStart.next();})
-  yield;
-  if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
+  tx.cypher({query:objCql['Get Old Images'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  var StrOldLink=Array(records.length);  for(var i=0;i<records.length;i++){  StrOldLink[i]=records[i].nameLC;   }
   
+    
+    // Calculate StrToCreate and StrToRemove
+  var StrCql=[]; 
+  var StrSubImageLC=Array(StrSubImage.length); for(var i=0;i<StrSubImage.length;i++) StrSubImageLC[i]=StrSubImage[i].toLowerCase();   
+  var StrToCreate=AMinusB(StrSubImageLC,StrOldLink);
+  var StrToRemove=AMinusB(StrOldLink,StrSubImageLC);
+    // Create the new Images 
+  if(StrToCreate.length){
+    var StrToCreateObj={};
+    var StrTmp=Array(StrToCreate.length); for(var i=0;i<StrToCreate.length;i++){
+      StrTmp[i]="MERGE (i"+i+":Image { nameLC:$arg"+i+" }) ON CREATE SET i"+i+".idImage=myMisc.myrandstringHexFunc(24)";   StrToCreateObj['arg'+i]=StrToCreate[i];
+    }
+    //var StrTmp=Array(StrToCreate.length); for(var i=0;i<StrToCreate.length;i++){ StrTmp[i]="MERGE (i"+i+":Image { nameLC:'"+StrToCreate[i]+"' }) ON CREATE SET i"+i+".idImage=myMisc.myrandstringHexFunc(24)"; }
+    StrCql.push(StrTmp.join('\n'));
+    var strCql=StrCql.join('\n');  Val=extend(Val,StrToCreateObj);
+    tx.cypher({query:strCql, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  }
 
-  var strNameLC=strName.toLowerCase(); 
-  var Val={strSiteName:strSiteName, strNameLC:strNameLC, strName:strName, data:data, size:data.length, eTag:eTag};
-  tx.run(objCql['Remaining'], Val).then(function(record){
-    flowStart.next();
-  }).catch(function(error){debugger; console.log(error); var boDoExit=1;flowStart.next();})
-  yield;
-  if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
-
-
-    // childrenCreateNRemove
-  var Val={strSiteName:strSiteName, strNameLC:strNameLC};
-  var err=yield *childrenCreateNRemove(Val,StrNewLink,tx,flowStart);
-  if(err) { tx.rollback(); return; }
-
+  extend(Val, {StrToCreate:StrToCreate, StrToRemove:StrToRemove});
+  tx.cypher({query:objCql['Create relations to new images'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
-  tx.commit().subscribe({
-    onCompleted: function() {
-       session.close();  },
-    onError: function(error) {
-      console.log(error);}
-  });
-}
-
-
-saveByAdd=function*(){
-  var tx = session.beginTransaction();
+  tx.cypher({query:objCql['Remove relations to old images'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
-  var strCqlOrg=`
-      //-- Get Site
-    OPTIONAL MATCH (s:Site { www:$www })
-    WITH s
-
-      //-- Count revision
-    OPTIONAL MATCH (s)-[:hasPage]->(p:Page { nameLC:$strNameLC })-[h:hasRevision]->(r:Revision) 
-    WITH COUNT(r) AS nr, p
-      
-      //-- Create Page if necessary
-    MERGE (p)-[h:hasRevision]->(r:Revision {revision:nr})
-    ON CREATE SET p.created=timestamp(), p.nAccess=0
-    WITH p, nr
-      //-- Set Page properties
-    SET p.name=$strName, p.boTalk=FALSE, p.boTemplate=FALSE, p.boOR=FALSE, p.boOW=FALSE, p.boSiteMap=FALSE, p.nChild=9, p.nImage=10, p.lastRev=nr 
-    WITH p, nr
-      //-- Create revision 0 if necessary 
-    MERGE (p)-[h:hasRevision]->(r:Revision {revision:nr})
-    SET r.tMod=timestamp(), r.data=$data, r.size=$size, r.eTag=$eTag, r.summary=$summary, r.signature=$signature`;
- 
-  var boTLS=false, eTag='bbb', summary='me', signature='abc';
-  if(typeof strSiteName=='undefined') var strSiteName='';if(typeof www=='undefined') var www='';if(typeof boTLS=='undefined') var boTLS=false; 
-  var strNameLC=strName.toLowerCase(); 
-  var Val={www:www, strNameLC:strNameLC, strName:strName, data:data, size:data.length, eTag:eTag, summary:summary, signature:signature };
-  tx.run(strCqlOrg, Val).then(function(record){
-    flowStart.next();
-  }).catch(function(error){debugger; console.log(error); var boDoExit=1;flowStart.next();})
-  yield;
-  if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
-
-
-    // childrenCreateNRemove
-  var Val={strSiteName:strSiteName, strNameLC:strNameLC};
-  var err=yield *childrenCreateNRemove(Val,StrNewLink,tx,flowStart);
-  if(err) { tx.rollback(); return; }  
-
-  tx.commit().subscribe({
-    onCompleted: function() { session.close();  },
-    onError: function(error) {console.log(error);}
-  });
+  tx.cypher({query:objCql['RemoveOrphanStubs'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  Ou.mess='OK'; return Ou;
 }
 
 
 
-setNewCache=function*(){
-  var tx = session.beginTransaction();
+
+
+saveWhenUploadingNeo=function*(flow, tx, objArg){
+  var boTLS=Boolean(objArg.boTLS), www=objArg.www, fileName=objArg.fileName, strEditText=objArg.strEditText;
+  
+  fileName=fileName.replace(RegExp('.txt$','i'),'');
+  var objMeta=parsePage(fileName);
+  var siteName=objMeta.siteName, strName=objMeta.pageName;
+  
+  var err, records, Ou={};
   
   var strCqlOrg=`
-      //----- Create Site if necessary
-    MERGE (s:Site { www:$www })
-    ON CREATE SET s += { name:$strSiteName, boTLS:$boTLS, googleAnalyticsTrackingID:"", urlIcon16:"", urlIcon200:"", aPassword:"", vPassword:"" }
+      //----- Merge Site, siteName
+    MERGE (s:Site { name:$siteName }) ON CREATE SET s += { www:myMisc.myrandstringFunc(7), boTLS:$boTLS, googleAnalyticsTrackingID:"", urlIcon16:"", urlIcon200:"", aPassword:"", vPassword:"" }
+    RETURN s   
+      //----- Match Site, default
+    MATCH (s:Site {boDefault:true}) //ON CREATE SET s += { www:myMisc.myrandstringFunc(7), www:$www, boTLS:$boTLS, googleAnalyticsTrackingID:"", urlIcon16:"", urlIcon200:"", aPassword:"", vPassword:"" }
     RETURN s
-
-      //----- Remaining
-      //-- Get site
-    MATCH (s:Site { name:$strSiteName })
-    WITH s
-    MATCH (s)-[:hasPage]->(p:Page { nameLC:$strNameLC })-[h:hasRevision]->(r:Revision) WHERE r.revision=$revision
-    WITH p,r
-      //-- Set Page properties
-    SET p.name=$strName, p.nChild=9, p.nImage=10, p.lastRev=0,   r.data=$data, r.size=$size, r.eTag=$eTag`;
-  var objCql=splitCql(strCqlOrg);
-  
-  var boTLS=false, eTag='bbb';
-  var revision=0;
-  var strNameLC=strName.toLowerCase();
-
-  var strSiteName=randomHash().substr(0,7);
-  var Val={www:www, strSiteName:strSiteName, boTLS:boTLS};
-  tx.run(objCql['Create Site if necessary'], Val).then(function(record){ 
-    var fields=record.records[0]._fields; 
-    if(fields[0]) {site=fields[0].properties; www=site.www; strSiteName=site.name;  }
-    flowStart.next();
-  }).catch(function(error){debugger; console.log(error); var boDoExit=1;flowStart.next();})
-  yield;
-  if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
-
-  var Val={strSiteName:strSiteName, strNameLC:strNameLC, revision:revision, strName:strName, data:data, size:data.length, eTag:eTag};  
-  tx.run(objCql['Remaining'], Val).then(function(record){ 
-    flowStart.next();
-  }).catch(function(error){debugger; console.log(error); var boDoExit=1;flowStart.next();})
-  yield;
-  if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
     
+      //-- (mergePageNeo)
+    
+      //----- Merge revision 0 and Delete others
+    MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })
+    OPTIONAL MATCH (p)-[h:hasRevision]->(rOld:Revision)
+    DETACH DELETE rOld
+    WITH p, count(rOld) AS trash
+    CREATE (p)-[h:hasRevision]->(r:Revision:RevisionLast {iRev:0})
+    SET r.tMod=$tNow, r.tModCache=0, r.strEditText=$strEditText, r.size=$size, r.hash=$hash`;
+  var objCql=splitCql(strCqlOrg);
+
+
+
+  var www, Val={siteName:siteName, www:www, boTLS:boTLS};  //=randomHash().substr(0,7)    , www:www
+  if(siteName.length){
+    tx.cypher({query:objCql['Merge Site, siteName'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  }else{
+    tx.cypher({query:objCql['Match Site, default'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  }
+  var site=records[0].s, strSiteName=site.name, www=site.www;
+  
+  
+  var objT=yield* getLastVersionMeta(flow, tx, {www:www, strName:strName}); if(objT.mess=='err') return objT;
+  var boOR=objT.boOR, boOW=objT.boOW, boSiteMap=objT.boSiteMap, tMod=objT.tMod, nRev=objT.nRev, strSiteName=objT.strSiteName;
+  boTLS=Boolean(boTLS);  boOR=Boolean(boOR);  boOW=Boolean(boOW);  boSiteMap=Boolean(boSiteMap);
+  
+    // parse
+  var objT=yield* parse(flow, tx, {www:www, strEditText:strEditText, boOW:boOW}); if(objT.mess=='err') return objT;
+  var strHtmlText=objT.strHtmlText;   Ou.objTemplateE=objT.objTemplateE;
+  var arrSub=objT.arrSub, StrSubImage=objT.StrSubImage;
+ 
+  var objT= yield* getBoTalkExistNeo(flow, tx, {www:www, strName:strName});    Ou.boTalkExist=objT.boTalkExist;      // getBoTalkExist
+  
+  var tNow=(new Date()).toUnix();
+  var objT=yield* mergePageNeo(flow, tx, {www:www, strName:strName, nChild:arrSub.length, nImage:StrSubImage.length, tNow:tNow, boAccDefault:false});  if(objT.mess=='err') return objT; Ou.objPage=objT.objPage;
+
+    
+  var strNameLC=strName.toLowerCase();
+  var size=strEditText.length;
+  var Val={www:www, strNameLC:strNameLC, strName:strName, strEditText:strEditText, size:size, hash:md5(strEditText), tNow:tNow};
+  tx.cypher({query:objCql['Merge revision 0 and Delete others'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+
 
     // childrenCreateNRemove
+  var StrNewLink=[];  for(var i=0;i<arrSub.length;i++){ StrNewLink[i]=arrSub[i][0]; }
   var Val={strSiteName:strSiteName, strNameLC:strNameLC};
-  var err=yield *childrenCreateNRemove(Val,StrNewLink,tx,flowStart);
-  if(err) { tx.rollback(); return; }
+  var objT=yield *childrenCreateNRemove(flow,tx,Val,StrNewLink);   if(objT.mess=='err') return objT;
   
-  tx.commit().subscribe({
-    onCompleted: function() { session.close();  },
-    onError: function(error) {console.log(error);}
-  });
+    // imageLinksCreateNRemove
+  var Val={strSiteName:strSiteName, strNameLC:strNameLC};
+  var objT=yield *imageLinksCreateNRemove(flow,tx,Val,StrSubImage);   if(objT.mess=='err') return objT;
+  
+      // getRevisionTable
+  var objT=yield* getRevisionTableNeo(flow, tx, {www:www, strName:strName});   if(objT.mess=='err') return objT;
+  var arrRev=Ou.arrRev=objT.arrRev;
+
+
+  Ou.mess='OK';  return Ou;
+}
+
+
+    //MATCH (s:Site { name:'SqrhrW5' })-[:hasPage]->(p:Page { nameLC:'start' })
+    //MATCH (p)-[h:hasRevision]->(rOld:Revision)
+    //DETACH DELETE rOld
+    //WITH p, count(rOld) AS trash
+    //CREATE (p)-[h:hasRevision]->(r:Revision:RevisionLast {iRev:0})
+    //SET r.tMod=$tNow, r.tModCache=$tNow, r.strEditText=$strEditText, r.strHtmlText=$strHtmlText, r.size=$size, r.hash=$hash
+    
+saveByReplaceNeo=function*(flow, tx, objArg){
+  var boTLS=objArg.boTLS, www=objArg.www, strName=objArg.strName, strEditText=objArg.strEditText;
+  var err, records, Ou={};
+  
+  var strCqlOrg=`
+      //----- Merge revision 0 and Delete others
+    MATCH (s:Site { name:$strSiteName })-[:hasPage]->(p:Page { nameLC:$strNameLC })
+    OPTIONAL MATCH (p)-[h:hasRevision]->(rOld:Revision)
+    DETACH DELETE rOld
+    WITH p, count(rOld) AS trash
+    CREATE (p)-[h:hasRevision]->(r:Revision:RevisionLast {iRev:0})
+    SET r.tMod=$tNow, r.tModCache=$tNow, r.strEditText=$strEditText, r.strHtmlText=$strHtmlText, r.size=$size, r.hash=$hash`;
+  var objCql=splitCql(strCqlOrg);
+
+  var objT=yield* getLastVersionMeta(flow, tx, {www:www, strName:strName}); if(objT.mess=='err') return objT;
+  var boOR=objT.boOR, boOW=objT.boOW, boSiteMap=objT.boSiteMap, tMod=objT.tMod, nRev=objT.nRev, strSiteName=objT.strSiteName;
+  boTLS=Boolean(boTLS);  boOR=Boolean(boOR);  boOW=Boolean(boOW);  boSiteMap=Boolean(boSiteMap);
+  
+  if(!boOR && !objArg.boVLoggedIn) { Ou.mess='boViewLoginRequired'; return Ou;}
+  if(objArg.tModBrowser<tMod) { Ou.mess="boTModBrowserObs"; Ou.tMod=tMod; return Ou; }
+ 
+ 
+  if(strEditText.length==0){
+    var objT=yield* deletePageNeo(flow, tx, objArg);  
+    Ou.mess='boPageDeleted';  return Ou;
+  }
+     
+    // parse
+  var objT=yield* parse(flow, tx, {www:www, strEditText:strEditText, boOW:boOW}); if(objT.mess=='err') return objT;
+  var strHtmlText=objT.strHtmlText;   Ou.objTemplateE=objT.objTemplateE;
+  var arrSub=objT.arrSub, StrSubImage=objT.StrSubImage;
+ 
+  var objT=yield* getBoTalkExistNeo(flow, tx, {www:www, strName:strName});    Ou.boTalkExist=objT.boTalkExist;      // getBoTalkExist
+ 
+  var tNow=(new Date()).toUnix();
+ 
+  var objT=yield* mergePageNeo(flow, tx, {www:www, strName:strName, nChild:arrSub.length, nImage:StrSubImage.length, tNow:tNow, boAccDefault:true});   if(objT.mess=='err') return objT;
+  Ou.objPage=objT.objPage;
+
+
+  var strNameLC=strName.toLowerCase();
+  var size=strEditText.length;
+  var Val={strSiteName:strSiteName, strNameLC:strNameLC, strName:strName, strEditText:strEditText, strHtmlText:strHtmlText, size:size, hash:md5(strEditText), tNow:tNow};
+  tx.cypher({query:objCql['Merge revision 0 and Delete others'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+
+
+    // childrenCreateNRemove
+  var StrNewLink=[];  for(var i=0;i<arrSub.length;i++){ StrNewLink[i]=arrSub[i][0]; }
+  var Val={strSiteName:strSiteName, strNameLC:strNameLC};
+  var objT=yield *childrenCreateNRemove(flow,tx,Val,StrNewLink);   if(objT.mess=='err') return objT;
+  
+    // imageLinksCreateNRemove
+  var Val={strSiteName:strSiteName, strNameLC:strNameLC};
+  var objT=yield *imageLinksCreateNRemove(flow,tx,Val,StrSubImage);   if(objT.mess=='err') return objT;
+  
+      // getRevisionTable
+  var objT=yield* getRevisionTableNeo(flow, tx, {www:www, strName:strName});   if(objT.mess=='err') return objT;
+  var arrRev=Ou.arrRev=objT.arrRev;
+  
+  Ou.mess='OK';  return Ou;
+}  
+
+saveByAddNeo=function*(flow, tx, objArg){
+  var boTLS=objArg.boTLS, www=objArg.www, strName=objArg.strName, strEditText=objArg.strEditText;
+  var err, records, Ou={};
+  
+  var strCqlOrg=`
+      //----- Remove RevisionLast
+    MATCH (s:Site { name:$strSiteName })-[:hasPage]->(p:Page { nameLC:$strNameLC }) 
+    WITH p
+    MATCH (p)-[h:hasRevision]->(r:Revision)
+    REMOVE r:RevisionLast
+    
+      //----- Create Revision
+    MATCH (s:Site { name:$strSiteName })-[:hasPage]->(p:Page { nameLC:$strNameLC }) 
+    CREATE (p)-[h:hasRevision]->(r:Revision:RevisionLast {iRev:$iRev})
+    SET r.tMod=$tNow, r.tModCache=$tNow, r.strEditText=$strEditText, r.strHtmlText=$strHtmlText, r.size=$size, r.hash=$hash, r.summary=$summary, r.signature=$signature
+    SET p.lastRev=$iRev`;
+  var objCql=splitCql(strCqlOrg);
+
+  var objT=yield* getLastVersionMeta(flow, tx, {www:www, strName:strName});   if(objT.mess=='err') return objT;
+  //var boOR=objT.boOR, boOW=objT.boOW, boSiteMap=objT.boSiteMap, tMod=objT.tMod, nRev=objT.nRev, strSiteName=objT.strSiteName;
+  var boOR=objT.boOR, boOW=objT.boOW, boSiteMap=objT.boSiteMap, tMod=objT.tMod, iRevOld=objT.iRev, strSiteName=objT.strSiteName;
+  boTLS=Boolean(boTLS);  boOR=Boolean(boOR);  boOW=Boolean(boOW);  boSiteMap=Boolean(boSiteMap);
+  
+  if(iRevOld===null) Ou.iRev=0; else Ou.iRev=iRevOld+1;
+  
+  
+  if(!boOW && !objArg.boALoggedIn) { Ou.mess='boViewALoginRequired'; return Ou;}
+  if(!boOR && !objArg.boVLoggedIn) { Ou.mess='boViewLoginRequired'; return Ou;}
+  if(objArg.tModBrowser<tMod) { Ou.mess="boTModBrowserObs"; Ou.tMod=tMod; return Ou; }
+ 
+     
+    // parse
+  var objT=yield* parse(flow, tx, {www:www, strEditText:strEditText, boOW:boOW});     if(objT.mess=='err') return objT;
+  var strHtmlText=objT.strHtmlText;   Ou.objTemplateE=objT.objTemplateE;
+  var arrSub=objT.arrSub, StrSubImage=objT.StrSubImage;
+ 
+  var objT=yield* getBoTalkExistNeo(flow, tx, {www:www, strName:strName});    if(objT.mess=='err') return objT;   Ou.boTalkExist=objT.boTalkExist;      // getBoTalkExist
+ 
+  var tNow=(new Date()).toUnix();
+   
+  var objT=yield* mergePageNeo(flow, tx, {www:www, strName:strName, nChild:arrSub.length, nImage:StrSubImage.length, tNow:tNow, boAccDefault:true});    if(objT.mess=='err') return objT;
+  Ou.objPage=objT.objPage;
+  
+
+  var strNameLC=strName.toLowerCase();
+  var Val={strSiteName:strSiteName, strNameLC:strNameLC};
+  tx.cypher({query:objCql['Remove RevisionLast'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  
+  var Val={strSiteName:strSiteName, strNameLC:strNameLC, iRev:Ou.iRev, strHtmlText:strHtmlText, size:strEditText.length, hash:md5(strEditText), tNow:tNow};
+  copySome(Val, objArg, ['strEditText', 'signature', 'summary']);
+  tx.cypher({query:objCql['Create Revision'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+
+
+    // childrenCreateNRemove
+  var StrNewLink=[];  for(var i=0;i<arrSub.length;i++){ StrNewLink[i]=arrSub[i][0]; }
+  var Val={strSiteName:strSiteName, strNameLC:strNameLC};
+  var objT=yield *childrenCreateNRemove(flow,tx,Val,StrNewLink);   if(objT.mess=='err') return objT;
+
+    // imageLinksCreateNRemove
+  var Val={strSiteName:strSiteName, strNameLC:strNameLC};
+  var objT=yield *imageLinksCreateNRemove(flow,tx,Val,StrSubImage);   if(objT.mess=='err') return objT;
+  
+    // getRevisionTable
+  var objT=yield* getRevisionTableNeo(flow, tx, {www:www, strName:strName});   if(objT.mess=='err') return objT;
+  var arrRev=Ou.arrRev=objT.arrRev;
+  
+  Ou.mess='OK';  return Ou;  
+
+}
+
+
+refreshRevNeo=function*(flow, tx, objArg){
+  var boTLS=objArg.boTLS, www=objArg.www, strName=objArg.strName, iRev=objArg.iRev;
+  boTLS=Boolean(boTLS);
+  var err, records, Ou={objTemplateE:{}, boTalkExist:0};
+  
+  var strCqlOrg=`
+      //----- Get Page meta and rev data
+    MATCH (s:Site { www:$www })
+    WITH s
+    OPTIONAL MATCH (s)-[:hasPage]->(p:Page { nameLC:$strNameLC })
+    WITH s, p
+    OPTIONAL MATCH (p)-[h:hasRevision]->(r:Revision)
+    WITH s, p, COUNT(r) AS nRev
+    OPTIONAL MATCH (p)-[h:hasRevision]->(r:Revision {iRev:coalesce($iRev, nRev-1)})
+    RETURN p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, MAX(r.tMod) AS tMod, nRev, r.strEditText AS strEditText, s.name AS strSiteName, r.iRev AS iRev
+    
+      //----- Set New Cache
+    MATCH (s:Site { name:$strSiteName  })-[:hasPage]->(p:Page { nameLC:$strNameLC })
+    MERGE (p)-[h:hasRevision]->(r:Revision {iRev:$iRev})
+    SET r.tModCache=$tNow, r.strHtmlText=$strHtmlText, r.size=$size, r.hash=$hash
+    SET p.nChild=$nChild, p.nImage=$nImage, p.idPage=coalesce(p.idPage, myMisc.myrandstringFunc(16))
+    RETURN p`;
+  var objCql=splitCql(strCqlOrg);
+  
+  if(iRev==-1) iRev=null;
+ 
+  var strNameLC=strName.toLowerCase();
+  var Val={strNameLC:strNameLC, www:objArg.www, iRev:iRev};
+  tx.cypher({query:objCql['Get Page meta and rev data'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  extend(Ou, {boOR:true, boOW:true, boSiteMap:true, tMod:0});
+  var rec=records[0];   for(var key in rec) {  if(rec[key]!==null) Ou[key]=rec[key]; }
+  
+  var strSiteName=Ou.strSiteName, iRev=Ou.iRev;
+  
+    // parse
+  var objT=yield* parse(flow, tx, {www:www, strEditText:Ou.strEditText, boOW:Ou.boOW});    if(objT.mess=='err') return objT;
+  var strHtmlText=objT.strHtmlText;   Ou.objTemplateE=objT.objTemplateE;
+  var arrSub=objT.arrSub, StrSubImage=objT.StrSubImage;
+ 
+  var objT=yield* getBoTalkExistNeo(flow, tx, {www:www, strName:strName});    if(objT.mess=='err') return objT;   Ou.boTalkExist=objT.boTalkExist;      // getBoTalkExist
+ 
+  var tNow=(new Date()).toUnix();
+
+  var size=Ou.strEditText.length, nChild=arrSub.length, nImage=StrSubImage.length;
+  var tmp=testIfTalkOrTemplate(strName), boTalk=tmp.boTalk, boTemplate=tmp.boTemplate;
+  var Val={strSiteName:strSiteName, strNameLC:strNameLC, strName:strName, iRev:iRev, tNow:tNow, nChild:nChild, nImage:nImage, strHtmlText:strHtmlText, size:size, hash:md5(Ou.strEditText)};
+  tx.cypher({query:objCql['Set New Cache'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  Ou.objPage=records[0].p;
+
+    
+  var boLast=Ou.boLast=iRev==Ou.nRev-1;
+  if(boLast){
+      // childrenCreateNRemove
+    var StrNewLink=[];  for(var i=0;i<arrSub.length;i++){ StrNewLink[i]=arrSub[i][0]; }
+    var Val={strSiteName:strSiteName, strNameLC:strNameLC};
+    var objT=yield *childrenCreateNRemove(flow,tx,Val,StrNewLink);    if(objT.mess=='err') return objT;
+    
+      // imageLinksCreateNRemove
+    var Val={strSiteName:strSiteName, strNameLC:strNameLC};
+    var objT=yield *imageLinksCreateNRemove(flow,tx,Val,StrSubImage);   if(objT.mess=='err') return objT;
+  }
+  
+    // getRevisionTable
+  var objT=yield* getRevisionTableNeo(flow, tx, {www:www, strName:strName});     if(objT.mess=='err') return objT;
+  var arrRev=Ou.arrRev=objT.arrRev;
+  
+  Ou.mess='OK';  return Ou;
 }
 
 
 
+storeImageNeo=function*(flow, tx, objArg){
+  var strName=objArg.strName, data=objArg.data, width=objArg.width, height=objArg.height, boOther=objArg.boOther;
+  var err, Ou={};
+  
+  var Match=RegExp('\\.([a-zA-Z0-9]+)$','i').exec(strName);
+  if(!Match){ extend(Ou, {mess:'err', err:new Error('image has no extension')}); return Ou; }
+  var extension=Match[1];
+  
+  var strCqlOrg=` 
+    MERGE (i:Image {nameLC:$strNameLC})
+    SET i.idImage=coalesce(i.idImage, myMisc.myrandstringHexFunc(24)), i.tCreated=coalesce(i.tCreated, $tNow), i.tMod=$tNow, i.size=$size, i.hash=$hash, i.name=$strName, i.width=$width, i.height=$height, i.widthSkipThumb=$width, i.boGotData=TRUE, i.nAccess=coalesce(i.nAccess, 0), i.boOther=$boOther, i.extension=$extension
+    RETURN i`;
+  
+  var Val=copySome({},objArg, ['strName', 'width', 'height', 'boOther']);
+  var records,  Val=extend(Val, {strNameLC:strName.toLowerCase(), tNow:unixNow(), size:data.length, hash:md5(data), extension:extension});
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  var objImg=records[0].i;
 
-getInfoNData=function*(){
-  var tx = session.beginTransaction();
+  
+  var collection = dbMongo.collection('documents');
+  var result, objDoc={_id:new mongodb.ObjectID(objImg.idImage), data:data};
+  collection.save( objDoc, function(errT, resultT) { err=errT; result=resultT;  flow.next(); });   yield;
+  if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  Ou.mess='OK';  return Ou;
+} 
+
+
+
+getInfoNeo=function*(flow, tx, objArg){
+  var Ou={};
   
   var strCqlOrg=`
-      //----- Check if RedirDomain
-    OPTIONAL MATCH (rd:RedirDomain { www:$www })  
-    RETURN rd.url
-    
-      //----- Check if Redir
-    OPTIONAL MATCH (s:Site { www:$www })
-    WITH s
-    OPTIONAL MATCH (s)-[:hasRedir]->(r:Redir { strNameLC:$strNameLC })
-    RETURN s, r.url
+    OPTIONAL MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })-[h:hasRevision]->(r:RevisionLast)
+    RETURN p.boOR AS boOR, p.boOW AS boOW, r.tMod AS tMod`;
+   
+  var strNameLC=objArg.strName.toLowerCase();
+  var err, records, Val={strNameLC:strNameLC, www:objArg.www};
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
-    
-      //----- Count sites resp default sites
-    OPTIONAL MATCH (s:Site)
-    WITH COUNT(s) AS ns
-    OPTIONAL MATCH (sDefault:Site {boDefault:true})
-    RETURN ns, COUNT(sDefault) AS nsDefault
-    
-        //-- Make sure there is a default site
-      //----- MakeDefaultSite0X
-      //-- If ns=0
-    CREATE (sDefault:Site { name:$strRnd, www:$www, boTLS:$boTLS, googleAnalyticsTrackingID:"", urlIcon16:"", urlIcon200:"", aPassword:"", vPassword:"", boDefault:true })
-    RETURN sDefault
-      //----- MakeDefaultSite10
-      //-- If ns>0 && nsDefault=0
-    MATCH (sDefault:Site) 
-    WITH sDefault LIMIT 1
-    SET sDefault.boDefault=true;
-    RETURN sDefault
-      //----- MakeDefaultSite11
-      //-- If ns>0 && nsDefault=1
-    MATCH (sDefault:Site {boDefault:true}) 
-    RETURN sDefault
+  if(records.length){
+    var tmp=records[0];
+    for(var key in tmp) {  if(tmp[key]!==null) Ou[key]=tmp[key]; }
+    Ou.mess='OK'
+  }else Ou.mess='noSuchPage'
+  return Ou; 
+}
 
 
-        //----- checkPageNTalkExistance
-      //-- Check if page exist
+    
+getInfoNDataNeo=function*(flow, tx, objArg){
+  var boTLS=objArg.boTLS, www=objArg.www, strName=objArg.strName, iRev=objArg.iRev, tReqCache=objArg.requesterCacheTime/1000, boFront=objArg.boFront;
+  boTLS=Boolean(boTLS);
+  var err, records, Ou={objTemplateE:{}, boTalkExist:0};
+  
+  var strCqlOrg=`
+      //----- Check if RedirectDomain
+    MATCH (rd:RedirectDomain { www:$www })  
+    RETURN rd.url AS url
+    
+      //----- MATCH siteDefault, MERGE site and check Redirect
+    MATCH (sd:Site {boDefault:true}) // ON CREATE SET sd+={ name:myMisc.myrandstringFunc(7), www:$www, boTLS:$boTLS, googleAnalyticsTrackingID:"", urlIcon16:"", urlIcon200:"", aPassword:"", vPassword:"", boDefault:true }
+    WITH sd
+    
+      //-- MERGE site and check Redirect
+    MERGE (s:Site { www:$www }) ON CREATE SET s+={ name:myMisc.myrandstringFunc(7), www:$www, boTLS:$boTLS, googleAnalyticsTrackingID:"", urlIcon16:"", urlIcon200:"", aPassword:"", vPassword:"", boDefault:false }
+    WITH sd,s
+    OPTIONAL MATCH (s)-[:hasRedirect]->(r:Redirect { nameLC:$strNameLC })
+    SET r.nAccess=r.nAccess+1, r.tLastAccess=timestamp()/1000
+    RETURN sd, s, r.url AS url
+
+
+        //----- getPage and getNRev
     OPTIONAL MATCH (s:Site { name:$strSiteName })-[:hasPage]->(p:Page { nameLC:$strNameLC })
+    SET p.nAccess=p.nAccess+1
     WITH p
-      //-- Check if talkPage Exist
-    OPTIONAL MATCH (s:Site { name:$strSiteName })-[:hasPage]->(t:Page { nameLC:$strTalkNameLC })  
-    RETURN p, t
+    OPTIONAL MATCH (p)-[h:hasRevision]->(r:Revision)
+    RETURN p, COUNT(r) AS nRev
     
     
-      //----- Get revision table
-    OPTIONAL MATCH (s:Site { name:$strSiteName })-[:hasPage]->(p:Page { nameLC:$strNameLC })-[h:hasRevision]->(r:Revision)
-    RETURN r`;
+      //----- Get templates
+    MATCH (:Site { name:$strSiteName })-[:hasPage]->(:Page { nameLC:$strNameLC })-[:hasChild]->(t:Page)-[h:hasRevision]->(r:RevisionLast) WHERE t.nameLC=~ 'template:.*'
+    RETURN t.name AS name`;
   var objCql=splitCql(strCqlOrg);
    
-  var www='localhost:5000', boTLS=false;
-  var strName='start'; 
-
-
-  var Val={www:www};
-  tx.run(objCql['Check if RedirDomain'], Val).then(function(record){
-    var fields=record.records[0]._fields; 
-    if(fields[0]) urlRedir=fields[0];
-    flowStart.next();
-  }).catch(function(error){debugger; console.log(error); var boDoExit=1;flowStart.next();})
-  yield;
-  if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
-
-  if(urlRedir) {console.log('Redir: '+urlRedir); return; }
-
-
   var strNameLC=strName.toLowerCase();
+  var Val={www:www};
+  tx.cypher({query:objCql['Check if RedirectDomain'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  if(records[0]) {  extend(Ou, {mess:'redirectDomain', urlRedirect:records[0].url}); return Ou; }
+
+
   var oTmp=calcTalkName(strName), strTalkName=oTmp.strTalkName, strTalkNameLC=strTalkName.toLowerCase();
-  var Val={www:www, strNameLC:strNameLC}, site, urlRedir;
-  tx.run(objCql['Check if Redir'], Val).then(function(record){
-    var fields=record.records[0]._fields; 
-    if(fields[0]) site=fields[0].properties;
-    if(fields[1]) urlRedir=fields[1];
-    flowStart.next();
-  }).catch(function(error){debugger; console.log(error); var boDoExit=1;flowStart.next();})
-  yield;
-  if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
+  var Val={www:www, strNameLC:strNameLC, boTLS:boTLS};
+  tx.cypher({query:objCql['MATCH siteDefault, MERGE site and check Redirect'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  if(records.length==0) { extend(Ou, {mess:'noDefaultSite'}); return Ou; }
+  var rec=records[0], site=rec.s,  urlRedirect=rec.url;  Ou.siteDefault=rec.sd;
 
-  if(urlRedir) {console.log('Redir: '+urlRedir); return; }
-  if(!site) {console.log('!site'); return; } var strSiteName=site.name;
+  if(urlRedirect) { extend(Ou, {mess:'redirect', urlRedirect:urlRedirect}); return Ou; }
+  if(!site) { extend(Ou, {mess:'wwwNotFound'}); return Ou; }
+  if(boTLS!=site.boTLS)  { Ou.mess='redirectTLS'; return Ou; }  // Redirect to correct boTLS
+  var strSiteName=site.name;    extend(Ou, {siteName:strSiteName});
+  Ou.site=site;
+  //copySome(Ou,site,['googleAnalyticsTrackingID', 'urlIcon16', 'urlIcon200', 'aPassword', 'vPassword']);
 
+  var Val={strNameLC:strNameLC, strSiteName:strSiteName};
+  tx.cypher({query:objCql['getPage and getNRev'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  var nRev=records[0].nRev, objPage=records[0].p;
+
+  if(objPage===null || nRev==0) { Ou.mess='noSuchPage'; return Ou; }
+  Ou.objPage=objPage;
   
-  var ns, nsDefault;
-  tx.run(objCql['Count sites resp default sites'], Val).then(function(record){
-    var fields=record.records[0]._fields; 
-    if(fields[0]) {var tmp=neo4jConvertInt(fields[0]); if(tmp[0]){console.log(tmp[0]); return;} else ns=tmp[1];  } 
-    if(fields[1]) {var tmp=neo4jConvertInt(fields[1]); if(tmp[0]){console.log(tmp[0]); return;} else nsDefault=tmp[1];  } 
-    flowStart.next();
-  }).catch(function(error){debugger; console.log(error); var boDoExit=1;flowStart.next();})
-  yield;
-  if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
+  
+      // getBoTalkExist
+  var objT=yield* getBoTalkExistNeo(flow, tx, {www:www, strName:strName});  if(objT.mess=='err') return objT;
+  Ou.boTalkExist=objT.boTalkExist;
+  
+  
+  if(strName!=objPage.name)  { Ou.mess='redirectCase'; return Ou; }  // Redirect to correct case
+  if(boFront && !objPage.boOR) { Ou.mess='private'; return Ou; }  // Return appropriate header if Private
 
 
+      // getRevisionTable
+  var objT=yield* getRevisionTableNeo(flow, tx, {www:www, strName:strName}); if(objT.mess=='err') return objT;
+  var arrRev=Ou.arrRev=objT.arrRev;
 
-    //-- Make sure there is a default site
-  var StrCql=[],Val={}; 
-  if(ns==0){       StrCql.push(objCql['MakeDefaultSite0X']);         var strRnd=randomHash().substr(0,7);        extend(Val, {strRnd:strRnd, www:www});    }
-  else if(nsDefault==0){ StrCql.push(objCql['MakeDefaultSite10']);  }
-  else if(nsDefault==1){ StrCql.push(objCql['MakeDefaultSite11']);  }
-  else{ console.error("ns:"+ns+", nsDefault:"+nsDefault); debugger; return;   }
-  var strCql=StrCql.join('\n');
-  var siteDefault, wwwDefault, strSiteDefaultName;
-  if(strCql){
-    tx.run(strCql, Val).then(function(record){
-      var fields=record.records[0]._fields; 
-      if(fields[0]) {siteDefault=fields[0].properties; wwwDefault=siteDefault.www; strSiteDefaultName=siteDefault.name;  }
-      flowStart.next();
-    }).catch(function(error){debugger; console.log(error); var boDoExit=1;flowStart.next();})
-    yield;
-    if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
+  var nRev=arrRev.length;
+  if(iRev>=nRev)  { Ou.mess='noSuchRev'; return Ou; }  // noSuchRev
+  if(iRev==-1) iRev=nRev-1;  // Use last rev
+  var objRev=arrRev[iRev];
+  Ou.iRev=iRev;
+      
+  //var boValidServerCache=objRev.tMod<=objRev.tModCache && objRev.eTag.length  // Calc boValidServerCache
+  //var boValidReqCache=boValidServerCache && eTag==objRev.eTag && objRev.tModCache<=tReqCache;    // Calc VboValidReqCache
+  var boValidServerCache=objRev.tMod<=objRev.tModCache  // Calc boValidServerCache
+  if(!boValidServerCache) { Ou.mess='serverCacheStale'; return Ou; }  // Exit if serverCache is stale
+  if(boValidServerCache && objRev.tModCache<=tReqCache)  { Ou.mess='304'; return Ou; }  // 304 (Valid request cache)
+  
+  
+  
+  var Val={strNameLC:strNameLC, strSiteName:strSiteName};
+  tx.cypher({query:objCql['Get templates'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  for(var i=0;i<records.length;i++){
+    var tmp=records[i].name.substr(9); Ou.objTemplateE[tmp]=1;
   }
 
 
-
-  var Val={strNameLC:strNameLC, strTalkNameLC:strTalkNameLC};
-  var page, pageTalk;
-  tx.run(objCql['checkPageNTalkExistance'], Val).then(function(record){
-    var fields=record.records[0]._fields; 
-    if(fields[0]) {page=fields[0].properties; 
-      var err=neo4jConvertIntProp(page,['created','nAccess','nChild','lastRev']); if(err){console.log(err); return;}}
-    if(fields[1]) {pageTalk=fields[1].properties; 
-      var err=neo4jConvertIntProp(pageTalk,['created','nAccess','nChild','lastRev']); if(err){console.log(err); return;}}
-    flowStart.next();
-  }).catch(function(error){debugger; console.log(error); var boDoExit=1;flowStart.next();})
-  yield;
-  if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
+  Ou.mess='serverCacheOK'; return Ou; 
+}
 
 
+getBoTalkExistNeo=function*(flow, tx, objArg){
+  var www=objArg.www, strName=objArg.strName;
+  var Ou={};
 
-  //-- Redirect to correct case OR correct boTLS
-  //-- Return appropriate header if Private
+  var strCqlOrg=`
+    MATCH (s:Site { www:$www })-[:hasPage]->(t:Page { nameLC:$strTalkNameLC })-[h:hasRevision]->(r:RevisionLast)
+    RETURN 1 AS boTalkExist`;
+
+  var oTmp=calcTalkName(strName), strTalkName=oTmp.strTalkName, strTalkNameLC=strTalkName.toLowerCase();
+  var err, records, Val={www:www, strTalkNameLC:strTalkNameLC};
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  Ou.boTalkExist=0;
+  if(records.length) Ou.boTalkExist=1; 
+
+  Ou.mess='OK'; return Ou; 
+}
+
+getRevisionTableNeo=function*(flow, tx, objArg){
+  var Ou={};
+  var strCqlOrg=`
+    OPTIONAL MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })-[h:hasRevision]->(r:Revision)
+    RETURN r ORDER BY r.iRev`;
 
 
+  var strNameLC=objArg.strName.toLowerCase();
+  var err, records, Val={strNameLC:strNameLC, www:objArg.www};
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  var arrRev=[];
+  for(var i=0;i<records.length;i++){
+    var tmp=records[i].r;  if(tmp) {  arrRev[tmp.iRev]=tmp; } 
+  }
 
-  var strRnd=randomHash().substr(0,7);
-  var Val={www:www, boTLS:boTLS, strRnd:strRnd , strNameLC:strNameLC, strName:strName, data:data, size:data.length, eTag:eTag};
-  var rev;
-  tx.run(objCql['Get revision table'], Val).then(function(record){debugger
-    var fields=record.records[0]._fields; 
-    if(fields[0]) {rev=fields[0].properties; 
-      var err=neo4jConvertIntProp(rev,[]); if(err){console.log(err); return;}
-    }
-    flowStart.next();
-  }).catch(function(error){debugger; console.log(error); var boDoExit=1;flowStart.next();})
-  yield;
-  if(typeof boDoExit !== "undefined" ) { tx.rollback(); return; }
+  Ou.arrRev=arrRev;
 
-    //-- If Irev>=Vc   noSuchRev
-  //-- If Irev=-1    Use last rev
+  Ou.mess='OK'; return Ou; 
+}
 
-  //-- Set some values from revision Irev
-  //-- Calc VboValidServerCache
-  //-- Calc VboValidReqCache
-  //-- 304
-  //-- Get strEditText
+
+mergePageNeo=function*(flow, tx, objArg){
+  var strName=objArg.strName;
+  var Ou={};
+
+    // , p.boOR=$boAccDefault, p.boOW=$boAccDefault, p.boSiteMap=$boAccDefault    //p.lastRev=0,
+    // , p.tMod=0 ,  p.tMod=$tNow
+  var strCqlOrg=`
+      //----- setPageNCreateIfNecessary
+    MATCH (s:Site { www:$www })
+    WITH s
+    MERGE (s)-[:hasPage]->(p:Page { nameLC:$strNameLC })
+    SET p.name=$strName, p.nChild=$nChild, p.nImage=$nImage, p.idPage=coalesce(p.idPage, myMisc.myrandstringFunc(16)), p.tLastAccess=coalesce(p.tLastAccess, 0), p.nAccess=coalesce(p.nAccess, 0), p.boOR=coalesce(p.boOR, $boAccDefault), p.boOW=coalesce(p.boOW, $boAccDefault), p.boSiteMap=coalesce(p.boSiteMap, $boAccDefault), 
+    p.tCreated=coalesce(p.tCreated, $tNow), p.boTalk=$boTalk, p.boTemplate=$boTemplate
+    RETURN p`;
+
+  var strNameLC=strName.toLowerCase();
+  var tmp=testIfTalkOrTemplate(strName), boTalk=tmp.boTalk, boTemplate=tmp.boTemplate;
+  var err, records, Val=copySome({}, objArg, ['www', 'strName', 'tNow', 'boAccDefault']);   Val.boAccDefault=Boolean(Val.boAccDefault);
+  extend(Val, {strNameLC:strNameLC, boTalk:boTalk, boTemplate:boTemplate, nChild:objArg.nChild, nImage:objArg.nImage});
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  Ou.objPage=records[0].p;
   
-  //-- If !VboValidServerCache THEN recalculate cache else use cache
-    
+  Ou.mess='OK'; return Ou; 
+}
 
-  tx.commit().subscribe({
-    onCompleted: function() { session.close();  },
-    onError: function(error) {console.log(error);}
-  });
-   
+mergeETagNeo=function*(flow, tx, objArg){
+  var strName=objArg.strName;
+  var Ou={};
+
+  var strCqlOrg=`
+    MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })
+    WITH p, p.hash=$hash AS boSame
+    SET p.hash=$hash
+    RETURN boSame`;
+
+  var strNameLC=strName.toLowerCase();
+  var err, records, Val={strNameLC:strNameLC, www:objArg.www, hash:objArg.hash};
+  extend(Val, {strNameLC:strNameLC, boTalk:boTalk, boTemplate:boTemplate, nChild:objArg.nChild, nImage:objArg.nImage});
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  Ou.boSame=records[0].boSame;
+
+  
+  Ou.mess='OK'; return Ou; 
+}
+mergeETagRevNeo=function*(flow, tx, objArg){
+  var strName=objArg.strName;
+  var Ou={};
+
+  var strCqlOrg=`
+    MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })-[h:hasRevision]->(r:Revision {iRev:$iRev})
+    WITH r, r.hashPageLoad=$hash AS boSame
+    SET r.hash=$hash
+    RETURN boSame`;
+
+  var strNameLC=strName.toLowerCase();
+  var err, records, Val={strNameLC:strNameLC, www:objArg.www, iRev:objArg.iRev, hash:objArg.hash};
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  Ou.boSame=records[0].boSame;
+
+  
+  Ou.mess='OK'; return Ou; 
 }
 
 
 
+getLastVersionMeta=function*(flow, tx, objArg){
+  var strName=objArg.strName;
+  var Ou={};
 
+  var strCqlOrg=`
+      //----- Get last version meta
+    MATCH (s:Site { www:$www })
+    WITH s
+    OPTIONAL MATCH (s)-[:hasPage]->(p:Page { nameLC:$strNameLC })
+    WITH s, p
+    OPTIONAL MATCH (p)-[h:hasRevision]->(r:RevisionLast)
+    RETURN p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, r.tMod AS tMod, r.iRev AS iRev, s.name AS strSiteName`;
+ 
+  var strNameLC=strName.toLowerCase();
+  var err, records, Val={strNameLC:strNameLC, www:objArg.www};
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  var rec=records[0];
+  extend(Ou, {boOR:true, boOW:true, boSiteMap:true, tMod:0, iRev:null});
+  for(var key in rec) {  if(rec[key]!==null) Ou[key]=rec[key]; }
+
+  
+  Ou.mess='OK'; return Ou; 
+}
+
+parse=function*(flow, tx, objArg) {
+  var www=objArg.www, strEditText=objArg.strEditText, boOW=objArg.boOW;
+  if(typeof boOW=="undefined") boOW=false;
+  var mPa=new Parser(strEditText, boOW==0);
+  mPa.text=strEditText;
+  mPa.preParse();
+  var StrTemplate=mPa.getStrTemplate(); // StrTemplate will look like this (sort of) ['XXX', 'YYY' ...]
+
+  var Ou={err:null};
+    // Call getTemplateDataNeo to get objTemplateText and Ou.objTemplateE
+  var nTemplate=StrTemplate.length, objTemplateText={};     Ou.objTemplateE={};
+  if(nTemplate) {
+    var objT=yield* getTemplateDataNeo(flow, tx, {www:www, StrTemplate:StrTemplate});   if(objT.mess=='err') return objT;
+    objTemplateText=objT.objTemplateText; Ou.objTemplateE=objT.objTemplateE;
+  }
+  
+    // Continue parsing
+  mPa.objTemplateText=objTemplateText;    mPa.parse();
+  var StrSub=mPa.getStrSub(); Ou.StrSubImage=mPa.getStrSubImage();
+
+    // get objExistingSub from DB
+  var nSub=StrSub.length, objExistingSub={};
+  if(nSub) {
+    var objT=yield* getExistingSubNeo(flow, tx, {www:www, StrSub:StrSub});    if(objT.mess=='err') return objT;
+    objExistingSub=objT.objExistingSub; 
+  }
+
+  mPa.createArrExistingSub(objExistingSub);  Ou.arrSub=mPa.getArrSub(StrSub);      mPa.endParse();
+  Ou.strHtmlText=mPa.text;  
+  return Ou;
+}
+
+
+//MATCH (s:Site { www:'localhost:5000' })-[:hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE p.nameLC IN ['template:tt', 'template:ttt', 'template:tttt']
+//  RETURN p.nameLC AS nameLC, r.strEditText AS strEditText
+getTemplateDataNeo=function*(flow, tx, objArg){
+  var www=objArg.www, StrTemplate=objArg.StrTemplate;
+  var Ou={};
+
+  var strCqlOrg=`
+    //----- Get strEditText
+  MATCH (s:Site { www:$www })-[:hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE p.nameLC IN $StrTemplate
+  RETURN p.name AS name, r.strEditText AS strEditText`;
+  var objCql=splitCql(strCqlOrg);
+  
+  Ou.objTemplateE={}; // Ou.objTemplateE (E for existance) looks like {XXX:1, YYY:0 ...} // Although only enties with a "1" are included 
+  for(var i=0;i<StrTemplate.length;i++){  var tmp=StrTemplate[i], tmpLC=tmp.toLowerCase();  StrTemplate[i]='template:'+tmpLC; }
+  
+  var err, records, Val={www:www, StrTemplate:StrTemplate};
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  Ou.objTemplateText={};
+  for(var i=0;i<records.length;i++){
+    var tmp=records[i].name.substr(9), tmpLC=tmp.toLowerCase(); Ou.objTemplateText[tmpLC]=records[i].strEditText; Ou.objTemplateE[tmp]=1;
+  }
+
+  
+  Ou.mess='OK'; return Ou; 
+}
+
+getExistingSubNeo=function*(flow, tx, objArg){
+  var www=objArg.www, StrSub=objArg.StrSub;
+  var Ou={};
+
+  var strCqlOrg=`
+  MATCH (s:Site { www:$www })-[:hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE p.nameLC IN $StrSubLC
+  RETURN p.name AS name`;
+
+  var StrSubLC=Array(StrSub.length); for(var i=0;i<StrSub.length;i++){ StrSubLC[i]=StrSub[i].toLowerCase(); }
+
+  var err, records, Val={www:www, StrSubLC:StrSubLC};
+  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  Ou.objExistingSub={};
+  for(var i=0;i<records.length;i++){
+    var tmp=records[i].name;  if(tmp) { Ou.objExistingSub[tmp]=1; }
+  }
+
+  Ou.mess='OK'; return Ou; 
+}
+
+
+readPageFile=function*(flow,leafDir,strIDPage){
+  var leafDataDir='mmmWikiData';
+  var fsPage=path.join(__dirname, '..', leafDataDir, leafDir, strIDPage+'.txt'); 
+  var err=null, buf=[];
+  fs.readFile(fsPage, function(errT, bufT) { err=errT; buf=bufT; flow.next();  });   yield;
+  if(err ) { console.log(err); }
+  var strData=buf.toString();
+  
+  return {err:err,strData:strData};
+}
+//ENOENT
+writePageFile=function*(flow, leafDir, strIDPage, strData){
+  var leafDataDir='mmmWikiData';
+  var fsPage=path.join(__dirname, '..', leafDataDir, leafDir, strIDPage+'.txt'); 
+  var err=null;
+  fs.writeFile(fsPage, strData, function(errT){ err=errT;  flow.next();  });   yield;
+  if(err ) { console.log(err); }
+  
+  return err;
+}

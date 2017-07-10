@@ -37,6 +37,10 @@ require('./lib/foundOnTheInternet/lcs.js');
 require('./lib/foundOnTheInternet/diff.js');
 require('./myDiff.js');
 //require('./store.js');
+//neo4j = require('neo4j-driver').v1;
+mongodb = require('mongodb');  MongoClient = mongodb.MongoClient;
+neo4j = require('neo4j');
+require('./libNeo4j.js');
 
 strAppName='mmmWiki';
 app=(typeof window==='undefined')?global:window;
@@ -48,19 +52,24 @@ boAF=strInfrastructure=='af';
 boLocal=strInfrastructure=='local'; 
 boDO=strInfrastructure=='do'; 
 
-
+var objSiteDefaultSetup={www:'', boTLS:0, strSiteName:'default'};
 interpretArgv=function(){
   var myArg=process.argv.slice(2);
   for(var i=0;i<myArg.length;i++){
-    var Match=RegExp("^(-{1,2})([^-\\s]+)$").exec(myArg[i]);
+    var Match=RegExp("^(-{1,2})(.*)$").exec(myArg[i]);
     if(Match[1]=='-') {
-      var tmp=Match[2][0];
-      if(tmp=='p') port=Match[2].substr(1);
-      else if(tmp=='h') helpTextExit();
+      var argCur=Match[2][0];
+      if(argCur=='p') port=Match[2].substr(1);
+      else if(argCur=='h') helpTextExit();
     }else if(Match[1]=='--') {
-      var tmp=Match[2], tmpSql='sql';
-      if(tmp.slice(0,tmpSql.length)==tmpSql) strCreateSql=Match[2].substr(tmpSql.length).toLowerCase();
-      else if(tmp=='help') helpTextExit();
+      var argCur=Match[2], tmpA='createSiteDefault';
+      if(argCur.slice(0,tmpA.length)==tmpA) objSiteDefaultSetup.www=Match[2].substr(tmpA.length);
+      var StrArg=['boTLS', 'strSiteName'];
+      for(var j=0;j<StrArg.length;j++){
+        var tmpA=StrArg[j];
+        if(argCur.slice(0,tmpA.length)==tmpA) objSiteDefaultSetup[tmpA]=Match[2].substr(tmpA.length);
+      }
+      if(argCur=='help') helpTextExit();
     }
   }
 }
@@ -70,9 +79,12 @@ helpTextExit=function(){
   arr.push('USAGE script [OPTION]...');
   arr.push('\t-h, --help\t\tDisplay this text');
   arr.push('\t-p[PORT]\t\tPort number (default: 5000)');
-  arr.push('\t--sql[SQL_ACTION]\tRun a sql action.');
-  var StrValid=['table', 'dropTable', 'fun', 'dropFun', 'truncate', 'dummy', 'dummies'];
-  arr.push('\t\tSQL_ACTION='+StrValid.join('|'));
+  arr.push('\t--createSiteDefault[DOMAIN]. The domain of the default site');
+  arr.push('\tIf --createSiteDefault then the following options can also be set for the default site');
+  arr.push('\t\t--vPassword[VPASSWORD]: VPASSWORD=administrator (view) password (for reading). Default:123.');
+  arr.push('\t\t--aPassword[APASSWORD]: APASSWORD=administrator password for writing etc. Default:123');
+  arr.push('\t\t--boTLS[BOTLS]: If tls is going to be used. Default:0 (false)');
+
   console.log(arr.join('\n'));
   process.exit(0);
 }
@@ -90,6 +102,13 @@ if(  (urlRedis=process.env.REDISTOGO_URL)  || (urlRedis=process.env.REDISCLOUD_U
   redisClient=redis.createClient();
 }
 
+process.on('exit', function (){
+  console.log('Goodbye!');
+});
+
+
+    // Set up sessionNeo4j
+dbNeo4j = new neo4j.GraphDatabase('http://neo4j:jh10k@localhost:7474');
 
 // Create a Neo4j client instance 
 /*
@@ -102,17 +121,16 @@ var client = Neo4j({
 })
 */
 
-var flowStart=( function*(){
-
+var flow=( function*(){
 
     // Default config variables
-  boDbg=0; boAllowSql=1; port=5000; levelMaintenance=0; googleSiteVerification='googleXXX.html';
+  boDbg=0; port=5000; levelMaintenance=0; googleSiteVerification='googleXXX.html';
   domainPayPal='www.paypal.com';
   urlPayPal='https://www.paypal.com/cgi-bin/webscr';
   maxViewUnactivityTime=24*60*60;
   maxAdminUnactivityTime=5*60;  
   intDDOSMax=100; tDDOSBan=5; 
-  strSalt='wqriinnabcradfcpose';
+  strSalt='abcdef';
   interpretArgv();
 
 
@@ -125,20 +143,21 @@ var flowStart=( function*(){
     fs.readFile('./config.js', function(errT, bufT) { //, this.encRead
       if(errT){  console.log(errT); }
       strConfig=bufT.toString();
-      flowStart.next();
+      flow.next();
     });
     yield;
     //require('./config.js');    //require('./config.example.js');
   } 
+  
+    // Detecting if the config-file has changed since last time (might be usefull to speed up things when the program is auto started)
   var strMd5Config=md5(strConfig);
   eval(strConfig);
   var redisVar='str'+ucfirst(strAppName)+'Md5Config';
-  var tmp=yield* wrapRedisSendCommand.call({flow:flowStart}, 'get',[redisVar]);
+  var tmp=yield* wrapRedisSendCommand.call({flow:flow}, 'get',[redisVar]);
   var boNewConfig=strMd5Config!==tmp; 
-  if(boNewConfig) { var tmp=yield* wrapRedisSendCommand.call({flow:flowStart}, 'set',[redisVar,strMd5Config]);  }
+  if(boNewConfig) { var tmp=yield* wrapRedisSendCommand.call({flow:flow}, 'set',[redisVar,strMd5Config]);  }
 
   if('levelMaintenance' in process.env) levelMaintenance=process.env.levelMaintenance;
-
 
   tmp=require('./lib/foundOnTheInternet/sha1.js');
   require('./filterServer.js'); 
@@ -148,18 +167,33 @@ var flowStart=( function*(){
   require('./parser.js'); 
   require('./parserTable.js'); 
 
-  setUpMysqlPool();
 
-  if(boNewConfig) { 
-    
-  }
+
+  var urlMongo = 'mongodb://localhost:27017/myproject';
+  dbMongo=null;
+  var err;
+  MongoClient.connect(urlMongo, function(errT, dbT) {
+    err=errT; dbMongo=dbT;
+    flow.next();
+  });
+  yield;
+  if(err) {console.log(err); return; }
   
-  SiteName=[strDBPrefix]; // To make the code analog to my other programs :-)
+  //setUpMysqlPool();
+
+  filterQueries=new FilterQueries();  var objT=yield* filterQueries.readQueryFile(flow);  if(objT.err) console.log(objT.err);
+  myNeo4j=new MyNeo4j();
+  
+  SiteName=[strAppName]; // To make the code analog to my other programs :-)
 
     // Do db-query if --sqlXXXX was set in the argument
-  if(typeof strCreateSql!='undefined'){
+  if(objSiteDefaultSetup.www){
     var tTmp=new Date().getTime();
-    var objSetupSql=new SetupSql(); yield* objSetupSql.doQuery(strCreateSql,flowStart);
+    //var objSetupSql=new SetupSql(); yield* objSetupSql.doQuery(strCreateCql,flow);
+
+    var objT=yield* app.setUpNeo(flow, objSiteDefaultSetup);
+    if(objT.mess=='err') { console.log(objT.err); return; }
+  
     console.log('Time elapsed: '+(new Date().getTime()-tTmp)/1000+' s'); 
     process.exit(0);
   }
@@ -211,9 +245,9 @@ var flowStart=( function*(){
   CacheUri=new CacheUriT();
   for(var i=0;i<StrFilePreCache.length;i++) {
     var filename=StrFilePreCache[i];
-    var err=yield* readFileToCache.call({flow:flowStart}, filename); if(err) {  console.log(err.message);  return;}
+    var err=yield* readFileToCache.call({flow:flow}, filename); if(err) {  console.log(err.message);  return;}
   }
-  yield* writeCacheDynamicJS.call({flow:flowStart});
+  yield* writeCacheDynamicJS.call({flow:flow});
   
 
   handler=function(req, res){
@@ -232,13 +266,12 @@ var flowStart=( function*(){
 
 
         // get intCount
-      var semY=0, semCB=0, intCount;
-      //var tmp=redisClient.send('eval',[luaCountFunc, 3, redisVarSession, redisVarCounter, redisVarCounterIP, tDDOSBan]).then(function(intCountT){
-      var tmp=redisClient.send_command('eval',[luaCountFunc, 3, redisVarSession, redisVarCounter, redisVarCounterIP, tDDOSBan], function(err,intCountT){
-        intCount=intCountT; 
-        if(semY) { req.flow.next(); } semCB=1;
+      var semY=0, semCB=0, err, intCount;
+      var tmp=redisClient.send_command('eval',[luaCountFunc, 3, redisVarSession, redisVarCounter, redisVarCounterIP, tDDOSBan], function(errT,intCountT){
+        err=errT; intCount=intCountT; if(semY) { req.flow.next(); } semCB=1;
       });
       if(!semCB) { semY=1; yield;}
+      if(err) {console.log(err); return;}
       if(intCount>intDDOSMax) {res.outCode(429,"Too Many Requests ("+intCount+"), wait "+tDDOSBan+"s\n"); return; }
 
 
@@ -250,10 +283,10 @@ var flowStart=( function*(){
       
       //var strSite=Site.getSite(wwwReq);
       //if(!strSite){ res.out404("404 Nothing at that url\n"); return; }
-      //var site=Site[strSite], wwwSite=site.wwwSite, pathName=wwwReq.substr(wwwSite.length); if(pathName.length==0) pathName='/';
+      //var site=Site[strSite], www=site.www, pathName=wwwReq.substr(www.length); if(pathName.length==0) pathName='/';
 
 
-      var wwwSite=domainName, pathName=pathNameOrg;
+      var www=domainName, pathName=pathNameOrg;
       
 
       if(pathName=='/index.php') { var qs=objUrl.query||'', objQS=querystring.parse(qs), tmp=objQS.page||''; res.out301('http://'+domainName+'/'+tmp); return; }
@@ -277,18 +310,11 @@ var flowStart=( function*(){
 
 
       var strScheme='http'+(boTLS?'s':''),   strSchemeLong=strScheme+'://';
-      //req.strSite=strSite; req.site=site;
-      req.wwwSite=wwwSite;
-      req.sessionID=sessionID; req.objUrl=objUrl;    req.boTLS=boTLS;  req.strSchemeLong=strSchemeLong;    req.pathName=pathName;   
+      //req.www=www; req.sessionID=sessionID; req.objUrl=objUrl;    req.boTLS=boTLS;  req.strSchemeLong=strSchemeLong;    req.pathName=pathName; 
+      extend(req,{www:www, sessionID:sessionID, objUrl:objUrl, boTLS:boTLS, strSchemeLong:strSchemeLong, pathName:pathName})
 
       var objReqRes={req:req, res:res};
-      if(pathName.substr(0,5)=='/sql/'){
-        if(!boDbg && !boAllowSql){ res.out200('Set boAllowSql=1 (or boDbg=1) in the config.js-file');  return }
-        var reqSql=new ReqSql(req, res),  objSetupSql=new SetupSql();
-        req.pathNameWOPrefix=pathName.substr(5);
-        if(req.pathNameWOPrefix=='zip'){       reqSql.createZip(objSetupSql);     }
-        else {  reqSql.toBrowser(objSetupSql); }             
-      }
+      if(pathName.substr(0,5)=='/sql/'){              }
       else {
         if(levelMaintenance){res.outCode(503, "Down for maintenance, try again in a little while."); return;}
         if(pathName=='/'+leafBE){ var reqBE=new ReqBE(req, res);  yield* reqBE.go();    }
@@ -301,11 +327,9 @@ var flowStart=( function*(){
         else if(pathName.toLowerCase()=='/sitemap.xml'){  yield* reqSiteMap.call(objReqRes);  }
         else if(pathName=='/robots.txt'){  yield* reqRobots.call(objReqRes);  }
         else if(pathName=='/stat.html'){     yield* reqStat.call(objReqRes);  }
-        else if(pathName=='/createDumpCommand'){  var str=createDumpCommand(); res.out200(str);     }
-        else if(pathName=='/backUpPage' ){   yield* reqBackUp.call(objReqRes, 'page');    }
-        else if(pathName=='/backUpImage'){   yield* reqBackUp.call(objReqRes, 'image');    }
-        else if(pathName=='/backUpVideo'){   yield* reqBackUp.call(objReqRes, 'video');    }
-        else if(pathName=='/getMeta'){    yield* reqGetMeta.call(objReqRes);    }
+        else if(pathName=='/BUMetaSQL'){    yield* reqBUMetaSQL.call(objReqRes,pathName);    }
+        else if(pathName.substr(0,7)=='/BUMeta'){    yield* reqBUMeta.call(objReqRes,pathName.substr(7));    }
+        else if(pathName.substr(0,3)=='/BU'){    yield* reqBU.call(objReqRes,pathName.substr(3));    }
         else if(pathName=='/debug'){    debugger;  res.end();}
         else if(pathName=='/mini'){
           var tserver=(new Date()).valueOf();  
@@ -315,7 +339,7 @@ var flowStart=( function*(){
         else if(pathName=='/'+googleSiteVerification) res.end('google-site-verification: '+googleSiteVerification);
         else { yield* reqIndex.call(objReqRes);   }
       }
-    }).call(); req.flow.next();
+    })(); req.flow.next();
   }
 
 
@@ -338,5 +362,5 @@ var flowStart=( function*(){
   } 
   http.createServer(handler).listen(port);   console.log("Listening to HTTP requests at port " + port);
 
-})(); flowStart.next();
+})(); flow.next();
 

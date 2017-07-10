@@ -4,29 +4,30 @@
   "description": "Wiki software",
   "main": "script.js",
   "scripts": {
-    "start": "node script.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "postinstall": "./node_modules/bower/bin/bower install"
   },
   "author": "Magnus Andersson",
   "license": "BSD-2-Clause",
   "dependencies": {
-    "request": "2.81.x",
-    "mysql": "2.13.x",
-    "gm": "1.23.x",
-    "through": "2.3.x",
+    "atob": "2.0.x",
+    "bower": "1.8.x",
+    "captchapng": "0.0.1",
     "concat-stream": "1.6.x",
     "formidable": "1.1.x",
-    "node-rsa": "0.4.x",
-    "atob": "2.0.x",
-    "node-zip": "1.1.x",
-    "captchapng": "0.0.1",
-    "image-size": "0.5.x",
-    "tmp": "0.0.31",
+    "gm": "1.23.x",
+    "image-size": "0.6.x",
     "imagemagick": "0.1.x",
-    "redis": "2.7.x",
-    "bower": "1.8.x",
+    "mongodb": "^2.2.30",
+    "mysql": "2.13.x",
+    "neo4j": "^2.0.0-RC2",
     "neo4j-driver": "1.x",
-    "neo4j-transactions": "x"
+    "neo4j-transactions": "x",
+    "node-rsa": "0.4.x",
+    "node-zip": "1.1.x",
+    "redis": "2.7.x",
+    "request": "2.81.x",
+    "through": "2.3.x",
+    "tmp": "0.0.31"
   },
   "devDependencies": {},
   "private": true,
@@ -37,8 +38,5 @@
   "engines": {
     "node": "7.x",
     "npm": ""
-  },
-  "scripts": {
-    "postinstall": "./node_modules/bower/bin/bower install"
   }
 }

@@ -46,6 +46,16 @@ var vippButtonExtend=function($el){
   return $el;
 }
 
+httpGetAsync=function(theUrl, callback){
+  var xmlHttp = new XMLHttpRequest();
+  xmlHttp.onreadystatechange = function() { 
+    if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+      callback(xmlHttp.responseText);
+  }
+  xmlHttp.open("GET", theUrl, true); // true for asynchronous 
+  xmlHttp.send(null);
+}
+
 //
 // Hardware checking
 //
@@ -358,7 +368,7 @@ function popupDragExtend($area,$bubble,strTitle,$parent){
     xBubStart=xBub;
 
     $bubble.css({opacity:0.70,'z-index':'auto'});  
-  	$parent.on(strEventMove,mouseMoveGrab).on(strEventEnd,mouseUpGrab);
+    $parent.on(strEventMove,mouseMoveGrab).on(strEventEnd,mouseUpGrab);
     $dragBarB.css({cursor:'move'});
     //setMess('Down');
     if(e.cancelable) e.preventDefault(); 
@@ -401,7 +411,7 @@ function popupDragExtend($area,$bubble,strTitle,$parent){
     xBubStart=xBub;
     xLoc=mouseX-xBub;yLoc=mouseY-yBub;
     wBubStart=$bubble.outerWidth();
-    $bubble.css({opacity:0.70,'z-index':'auto'});   	$parent.on(strEventMove,mouseMoveNW).on(strEventEnd,mouseUpNW); 
+    $bubble.css({opacity:0.70,'z-index':'auto'});     $parent.on(strEventMove,mouseMoveNW).on(strEventEnd,mouseUpNW); 
     if(e.cancelable) e.preventDefault();   
     return false;
   } 
@@ -431,7 +441,7 @@ function popupDragExtend($area,$bubble,strTitle,$parent){
     xMouseStart=mouseX; xBubStart=xBub; wWinStart=$window.width();
     xLoc=mouseX-xBub;yLoc=mouseY-yBub;
     wBubStart=$bubble.outerWidth();
-    $bubble.css({opacity:0.70,'z-index':'auto'});   	$parent.on(strEventMove,mouseMoveNE).on(strEventEnd,mouseUpNE); 
+    $bubble.css({opacity:0.70,'z-index':'auto'});     $parent.on(strEventMove,mouseMoveNE).on(strEventEnd,mouseUpNE); 
     if(e.cancelable) e.preventDefault();    
     return false;
   } 

@@ -102,7 +102,7 @@ array_merge=function(){  return Array.prototype.concat.apply([],arguments);  } /
 array_mergeM=function(){var t=[], a=arguments[0], b=t.slice.call(arguments, 1), c=t.concat.apply([],b); t.push.apply(a,c); return a; } // Modifies origin (first argument)
 
 mySplice1=function(arr,iItem){ var item=arr[iItem]; for(var i=iItem, len=arr.length-1; i<len; i++)  arr[i]=arr[i+1];  arr.length = len; return item; }  // GC-friendly splice
-myCopy=function(arr,brr){  if(typeof arr=="undefined") arr=[]; for(var i=0, len=brr.length; i<len; i++)  arr[i]=brr[i];  arr.length = len; return arr; }  // GC-friendly copy
+myCopy=function(arr,brr){ var len=brr.length; if(typeof arr=="undefined") arr=Array(len); for(var i=0; i<len; i++)  arr[i]=brr[i];  arr.length = len; return arr; }  // GC-friendly copy
 
 is_array=function(a){return a instanceof Array;}
 in_array=function(needle,haystack){ return haystack.indexOf(needle)!=-1;}
@@ -248,8 +248,10 @@ closest2Val=function(v, val){
   }
   return [v[best_i],best_i];
 }
+preferedValue=function(x,IntPref){  var len=IntPref.length; for(var i=0;i<len;i++) {if(IntPref[i]>=x) return i;} return -1; } // [[wikipedia:prefered value]] (return index above)
 
-
+numWithUnitPrefix=function(n){ if(n<1000) return n;     n=n/1000; if(n<1000) return n+'k';     n=n/1000; if(n<1000) return n+'M';     n=n/1000; if(n<1000) return n+'G';  return n+'T';}
+numWithUnitPrefixArr=function(N){var l=N.length, StrOut=Array(l);for(var i=0;i<l;i++){ StrOut[i]=numWithUnitPrefix(N[i]); } return StrOut; }
 //
 // Data Formatting
 //
@@ -275,24 +277,24 @@ tabNStrCol2ArrObj=function(tabNStrCol){  //Ex: {tab:[[0,1],[2,3]],StrCol:['abc',
   return arrObj;
 }
 
-calcZipFileNameParts=function(wwwSite){  // Calc pre/postfix of backup (zip) files
-  var preN=wwwSite.replace('/','_')+'_';
-  var postN='_'+swedDate(unixNow());
-  return [preN,postN];
+
+calcBUFileName=function(wwwSite,type,ending){
+  var www=wwwSite.replace('/','_').replace(':','_'), date=swedDate(unixNow());
+  return www+'_'+date+'_'+type+'.'+ending;
 }
 
-regKey=RegExp('([^:]+):','g');
+regParsePageKey=RegExp('([^:]+):','g');
 parsePage=function(strPage){
-  regKey.lastIndex=0;
-  var obj={talk:false, template:false, strTemplateTalk:'', siteName:''}, lastIndex;
+  regParsePageKey.lastIndex=0;
+  var obj={boTalk:false, boTemplate:false, strTemplateTalk:'', siteName:''}, lastIndex;
   while(true) {
-    var Match=regKey.exec(strPage);
+    var Match=regParsePageKey.exec(strPage);
     if(Match==null) break;
-    lastIndex=regKey.lastIndex;
+    lastIndex=regParsePageKey.lastIndex;
     var tmp=Match[1]; 
-    if(tmp=='talk') {obj.talk=true; obj.strTemplateTalk=tmp;}
-    else if(tmp=='template') {obj.template=true; obj.strTemplateTalk=tmp;}
-    else if(tmp=='template_talk') {obj.talk=true; obj.template=true; obj.strTemplateTalk=tmp;}
+    if(tmp=='talk') {obj.boTalk=true; obj.strTemplateTalk=tmp;}
+    else if(tmp=='template') {obj.boTemplate=true; obj.strTemplateTalk=tmp;}
+    else if(tmp=='template_talk') {obj.boTalk=true; obj.boTemplate=true; obj.strTemplateTalk=tmp;}
     else obj.siteName=tmp;
   }
   obj.pageNameA=strPage.substr(lastIndex);

@@ -1,169 +1,211 @@
 
-setUpCond=function(KeySel, StrOrderFilt, Prop, inObj){
-"use strict"
-  var Filt=inObj.Filt;
-  var Where=[];
 
-      // Filt (client-side): 'B/BF'-features: [vOffNames,vOnNames, boWhite],     'S'-features: [iOn,iOff]
-      // Filt (server-side): 'B/BF'-features: [vSpec, boWhite],     'S'-features: [iOn,iOff]
-      // Hist (client-side): 'B'-features: [vPosName,vPosVal],       'S'/'BF'-features: [vPosInd,vPosVal]
-      // Hist (server-side): histsPHP[iFeat][buttonNumber]=['name',value], (converts to:) Hist[iFeat][0]=names,  Hist[iFeat][1]=values
+
+FilterQueries=app.SelectFilter=function(){
+  this.regWhereWExt=new RegExp('\\$whereWExt', 'g'); this.regWhere=new RegExp('\\$where', 'g'); this.regColumn=new RegExp('\\$column', 'g'); this.regBucket=new RegExp('\\$bucket', 'g');
+}
+FilterQueries.prototype.readQueryFile=function*(flow){
+  var Ou={}, buf;
+  fs.readFile('./mmmWiki_filterqueries.cyp', function(errT, bufT) {  Ou.err=errT; buf=bufT;  flow.next(); });   yield;
+  if(!Ou.err){    var strCqlOrg=buf.toString(); this.objCqlFilter=splitCql(strCqlOrg);    }
+    
+  var arrType=['page', 'image'], arrNullFilterMode=['null', 'nullRemoved', 'all'];
+  for(var i=0;i<arrType.length;i++){
+    var type=arrType[i], cqlColumn=this.objCqlFilter['List.'+type+'.column'];
+    for(var j=0;j<arrNullFilterMode.length;j++){
+      var strNullFilterMode=arrNullFilterMode[j];
+      
+        // Insert $column
+      var tmpKeyOrg='List.'+type+'.'+strNullFilterMode;     this.objCqlFilter[tmpKeyOrg]=this.objCqlFilter[tmpKeyOrg].replace(this.regColumn, cqlColumn);
+      
+        // Insert $bucket
+      var StrOrderFilt=type=='page'?StrOrderFiltPage:StrOrderFiltImage;
+      var Prop=type=='page'?PropPage:PropImage;
+      for(var k=0;k<StrOrderFilt.length;k++){
+        var nameFeat=StrOrderFilt[k], prop=Prop[nameFeat], feat=prop.feat;
+        if('min' in feat){
+          var cqlBucket=JSON.stringify(feat.min);
+          var tmpKeyOrg='Hist.'+type+'.'+nameFeat+'.'+strNullFilterMode;    this.objCqlFilter[tmpKeyOrg]=this.objCqlFilter[tmpKeyOrg].replace(this.regBucket, cqlBucket);      
+        }
+      }
+    }
+  }
+  
+
+  return Ou;
+}
+
+
+filtClear=function(StrOrderFilt, Prop, Filt){
+"use strict"
+  var el=this;
+  for(var i=0;i<StrOrderFilt.length;i++){  
+    var strName=StrOrderFilt[i], feat=Prop[strName].feat, kind=feat.kind, len=feat.n, filt=Filt[i];
+    if(kind[0]=='S') {filt[0]=0; filt[1]=len; }
+    else if(kind[0]=='B') {   var tmp; if(kind=='BF') tmp=stepN(0,len); else tmp=[];      filt[0]=[]; filt[1]=tmp; filt[2]=0;    }
+  }
+}
+  
+setUpArrWhereETC=function(StrOrderFilt, Prop, inObj){  // KeySel seam to something one can remove
+"use strict"
+  var Filt=inObj.Filt,   Where=[], boFoundNull=0, strFeatWNull;
+  var Ou={err:false}
+  var strNullFilterMode='all';
   for(var i=0;i<StrOrderFilt.length;i++){
     if(Filt[i].length==0) continue;
-    var name=StrOrderFilt[i];
-    var pre; if('pre' in Prop[name]) pre=Prop[name].pre; else pre=preDefault;
-    var v=Prop[name].feat;
-    var arrCondInFeat=[];
-    var filt=Filt[i];
-    if(v.kind[0]=='B'){
+    var filt=Filt[i], nameFeat=StrOrderFilt[i], prop=Prop[nameFeat], feat=prop.feat;
+    var arrCondFeat=[];
+
+    var nameNode; if('nameNode' in prop) nameNode=prop.nameNode; else nameNode=nameNodeDefault;
+    if(feat.kind[0]=='B'){
+        // Assign "arrSpec" and "boWhite" from "filt"
       var arrSpec, boWhite;
       if(filt.length==1){arrSpec=[]; boWhite=filt[0];} //jQuery $.post deletes empty arrays 
       else {
         if(!is_array(filt[0])) {console.log('Filt['+i+'][0] is not an array ('+arrSpec+')');  }
         arrSpec=filt[0].slice(); boWhite=filt[1]; 
       }
-      var strNot=boWhite?'':' NOT';
-         
-      if(arrSpec.length==0){   if(boWhite==1) arrCondInFeat.push('FALSE'); }  // "FALSE" to prevent all matches 
-      else {  
-        var boAddExtraNull=Prop[name].boIncludeNull && !boWhite,    arrCondOuter=[];
-        var tmpName; if('condBNameF' in Prop[name]) tmpName=Prop[name].condBNameF(name,arrSpec); else tmpName="`"+name+"`"; 
-        var arrCondInner=[];
-        var ind=arrSpec.indexOf(null);
-        if(ind!=-1) {arrCondInner.push(pre+tmpName+" IS "+strNot+" NULL"); mySplice1(arrSpec,ind);  boAddExtraNull=0;}
-        
-        if(arrSpec.length){
-          for(var j=0;j<arrSpec.length;j++){ 
-            var value=arrSpec[j];
-            if(v.kind=='BF') {value=v.bucket[value];  arrSpec[j]="'"+value+"'"; } 
-            else {       value=mysql.escape(value);          arrSpec[j]=value;   }
-          }
-          arrCondInner.push(pre+tmpName+strNot+' IN('+arrSpec.join(', ')+')');
-        }
-        var strGlue=boWhite?' OR ':' AND ';
-        arrCondOuter.push("("+arrCondInner.join(strGlue)+")");
-        if(boAddExtraNull && arrCondOuter.length) arrCondOuter.push(pre+tmpName+" IS NULL");
-        var strCond=arrCondOuter.join(' OR ');
-        if(strCond) arrCondInFeat.push("("+strCond+")");
-      }
-    } else {
-      var val0=v.min[filt[0]], val1=v.max[filt[1]-1];
-      if(filt[0]>0) {
-        var tmp; if('cond0F' in Prop[name]) tmp=Prop[name].cond0F(pre+"`"+name+"`",val0);  else tmp=pre+"`"+name+"`>="+val0;       arrCondInFeat.push(tmp);
-      }
-      if(filt[1]<v.n) {
-        var tmp; if('cond1F' in Prop[name]) tmp=Prop[name].cond1F(pre+"`"+name+"`",val1);  else tmp=pre+"`"+name+"`<"+val1;       arrCondInFeat.push(tmp);
-      }
-    }
-    Where.push(arrCondInFeat.join(' AND '));
-  }
-  return {Where:Where};
+      
+      var strNot=boWhite?'':'NOT ',   strGlue=boWhite?' OR ':' AND ';
+      var lenSpec=arrSpec.length;
+      var boFilterByQuery=0;
+      if(prop.boFeatWNull) {
+        if(lenSpec){  
+          var iNull=arrSpec.indexOf(null), boNullInSpec=iNull!=-1; if(boNullInSpec) mySplice1(arrSpec,iNull);
+          if(boFoundNull) {Ou.err="Can't have filter for both "+strFeatWNull+" and "+nameFeat; return Ou;}
 
+          // WhiteListing:
+          // boNullInSpec\lenSpec  1    >1
+          //      1                OK  NOK
+          //      0                OK   OK
+          // BlackListing:
+          // boNullInSpec\lenSpec  1    >1
+          //      1                OK   OK
+          //      0               NOK  NOK
+
+          if(boWhite){ // If whitelisting then null must either alone OR must not be in the list.
+            if(boNullInSpec) {
+              if(lenSpec>1) {Ou.err="Null must be alone when whitelisting on the "+nameFeat+" feature. (lenSpec:"+lenSpec+")"; debugger; return Ou;}
+              strNullFilterMode='null'; boFilterByQuery=1; 
+            }else{ strNullFilterMode='nullRemoved'; }
+          }else{ // If blacklisting then null must be in the list
+            if(boNullInSpec){strNullFilterMode='nullRemoved';} else {Ou.err="Null must be in the list when backlisting on the "+nameFeat+" feature."; debugger; return Ou;}
+          }
+          boFoundNull=1; strFeatWNull=nameFeat;
+          //extend(objFeatWNull,{entry:arrSpec[0]}); 
+          
+        }
+      }
+      if(!boFilterByQuery){
+        if(lenSpec==0){   if(boWhite==1) arrCondFeat.push('FALSE'); }  // "FALSE" to prevent all matches 
+        else {  
+          if(lenSpec){
+            for(var j=0;j<lenSpec;j++){ 
+              if(feat.kind=='BF') arrSpec[j]="'"+feat.bucket[arrSpec[j]]+"'"; 
+              else if(feat.kind=='BN') ;
+              else   arrSpec[j]="'"+myNeo4j.escape(arrSpec[j])+"'";   
+            }
+            //var nameNode; if('nameNode' in prop) nameNode=prop.nameNode; else nameNode=nameNodeDefault;
+            //var condBNameFTmp=prop.condBNameF||condBNameFDefault,  tmpName=condBNameFTmp(nameFeat,arrSpec);  
+            var condBNameFTmp=prop.condBNameF||condBNameFDefault,  tmpName=condBNameFTmp(nameNode,nameFeat,arrSpec);  
+            arrCondFeat.push(strNot+tmpName+' IN(['+arrSpec.join(', ')+'])');
+          }
+        }
+      }
+    }else{
+      var iOn=filt[0], iOff=filt[1], val0=feat.min[iOn], val1=feat.max[iOff-1];     // If iOn==0 => no lower limit. If iOff==feat.n => no upper limit
+      //if(iOn>0) {     var cond0FTmp=prop.cond0F||cond0FDefault;   arrCondFeat.push(cond0FTmp(nameNode+".`"+nameFeat+"`",val0));       }
+      //if(iOff<feat.n) {   var cond1FTmp=prop.cond1F||cond1FDefault;   arrCondFeat.push(cond1FTmp(nameNode+".`"+nameFeat+"`",val1));     }
+      if(iOn>0) {     var cond0FTmp=prop.cond0F||cond0FDefault;   arrCondFeat.push(cond0FTmp(nameNode,nameFeat,val0));       }
+      if(iOff<feat.n) {   var cond1FTmp=prop.cond1F||cond1FDefault;   arrCondFeat.push(cond1FTmp(nameNode,nameFeat,val1));     }
+    }
+    Where.push(arrCondFeat.join(' AND '));
+  }
+  //if(objFeatWNull.boFound) {  if(objFeatWNull.entry===null) { strNullFilterMode='null';} else { strNullFilterMode='nullRemoved';}    }
+  extend(Ou, {Where:Where, strNullFilterMode:strNullFilterMode}); return Ou;
 }
+
+whereArrToStr=function(Where){
+  var WhereTmp=array_filter(Where), strWhere='', strWhereWExt='WHERE '; if(WhereTmp.length) { var strTmp=WhereTmp.join(' AND '); strWhere='WHERE '+strTmp; strWhereWExt='WHERE '+strTmp+' AND' };
+  return {strWhere:strWhere, strWhereWExt:strWhereWExt};
+}
+
+createListQuery=function(type, strNullFilterMode, strWhere, strWhereWExt){
+  var cqlList=filterQueries.objCqlFilter['List.'+type+'.'+strNullFilterMode];
+  cqlList=cqlList.replace(filterQueries.regWhereWExt, strWhereWExt);     cqlList=cqlList.replace(filterQueries.regWhere, strWhere);    
+  return cqlList;
+}
+createCountQuery=function(type, nameFeat, strNullFilterMode, strWhere, strWhereWExt){
+  var tmpKey, tmpKeyOrg='Hist.'+type+'.'+nameFeat+'.'+strNullFilterMode+'.nInRelaxedCond', objCqlFilter=filterQueries.objCqlFilter;
+  if(tmpKeyOrg in objCqlFilter) tmpKey=tmpKeyOrg; else tmpKey='Hist.'+type+'.'+nameFeat+'.nInRelaxedCond';
+  var cqlCount=objCqlFilter[tmpKey];
+  cqlCount=cqlCount.replace(filterQueries.regWhereWExt, strWhereWExt);     cqlCount=cqlCount.replace(filterQueries.regWhere, strWhere);
+  return cqlCount;
+}
+createHistQuery=function(type, nameFeat, strNullFilterMode, strWhere, strWhereWExt){
+  var tmpKey, tmpKeyOrg='Hist.'+type+'.'+nameFeat+'.'+strNullFilterMode, objCqlFilter=filterQueries.objCqlFilter;
+  if(tmpKeyOrg in objCqlFilter) tmpKey=tmpKeyOrg; else tmpKey='Hist.'+type+'.'+nameFeat;
+  var cqlHist=objCqlFilter[tmpKey];
+  cqlHist=cqlHist.replace(filterQueries.regWhereWExt, strWhereWExt);     cqlHist=cqlHist.replace(filterQueries.regWhere, strWhere);
+  return cqlHist;
+}
+
+  // Filt (client-side): 'B/BF'-features: [vOffNames,vOnNames, boWhite],     'S'-features: [iOn,iOff]
+  // Filt (server-side): 'B/BF'-features: [vSpec, boWhite],     'S'-features: [iOn,iOff]
+  // Hist (client-side): 'B'-features: [vPosName,vPosVal],       'S'/'BF'-features: [vPosInd,vPosVal]
+  // Hist (server-side): histsPHP[iFeat][buttonNumber]=['name',value], (converts to:) Hist[iFeat][0]=names,  Hist[iFeat][1]=values
+
 
 // condB->condBNameF
 // histColF->binKeyExp, histCountF->binValueF
 // relaxCountExp
 
 
-
-getHist=function(arg, callback){
-  var Sql=[], TypeNInd=[], nFilt=arg.StrOrderFilt.length;
-  var WhereWExtra=array_mergeM(arg.Where,arg.WhereExtra);
-  for(var i=0;i<arg.StrOrderFilt.length;i++){
-    var name=arg.StrOrderFilt[i];
-    var pre; if('pre' in arg.Prop[name]) pre=arg.Prop[name].pre; else pre=preDefault;
-    var v=arg.Prop[name].feat;
-    var kind=v.kind;
+getHist=function*(flow, arg){
+  var Ou={Hist:[]};
+  var StrOrderFilt=arg.StrOrderFilt, nFilt=arg.StrOrderFilt.length;
+  var objCqlFilter=filterQueries.objCqlFilter;
+  var Where=arg.where, strNullFilterMode=arg.strNullFilterMode;
+  var WhereWExtra=array_mergeM(arg.Where, arg.WhereExtra);
+  var tNow=(new Date()).toUnix();
+  for(var i=0;i<StrOrderFilt.length;i++){
+    var nameFeat=StrOrderFilt[i], prop=arg.Prop[nameFeat], feat=prop.feat, kind=feat.kind;
+    //var nameNode; if('nameNode' in prop) nameNode=prop.nameNode; else nameNode=nameNodeDefault;
     
     var WhereTmp=[].concat(WhereWExtra); WhereTmp.splice(i,1);
     
-    var boIsButt=(kind[0]=='B'); 
-    if(boIsButt){ 
-      var strOrder; if(kind=='BF') strOrder='bin ASC'; else strOrder="groupCount DESC, bin ASC";
-      var WhereTmp=array_filter(WhereTmp), strCond=''; if(WhereTmp.length) strCond='WHERE '+WhereTmp.join(' AND ');
-
-      var relaxCountExp; if('relaxCountExp' in arg.Prop[name]) { relaxCountExp=arg.Prop[name].relaxCountExp(name);  }  else relaxCountExp='count(*)';
-      Sql.push("SELECT "+relaxCountExp+" AS n FROM \n"+arg.strTableRef+" "+strCond+";");
-
-      var sqlHist;
-      if('histF' in arg.Prop[name]) { sqlHist=arg.Prop[name].histF(name, arg.strTableRef, strCond, strOrder);  }
-      else{
-        var colExp;  if('binKeyF' in arg.Prop[name]) { colExp=arg.Prop[name].binKeyF(name);  }  else if(kind=='BF') colExp=pre+"`"+name+"`-1";   else colExp=pre+"`"+name+"`";
-        var countExp;  if('binValueF' in arg.Prop[name]) { countExp=arg.Prop[name].binValueF(name);  }   else countExp="COUNT("+pre+"`"+name+"`)";
-        //Sql.push("SELECT "+colExp+" AS bin, "+countExp+" AS groupCount FROM \n"+arg.strTableRef+" \n"+strCond+"\nGROUP BY bin ORDER BY "+strOrder+";");
-        sqlHist="SELECT "+colExp+" AS bin, "+countExp+" AS groupCount FROM \n"+arg.strTableRef+" \n"+strCond+"\nGROUP BY bin ORDER BY "+strOrder+";";
-      }
-      Sql.push(sqlHist);
-
-      TypeNInd.push(['c',i]); TypeNInd.push([kind,i]);
-    }else{
-      var countExp;  if('binValueF' in arg.Prop[name]) { countExp=arg.Prop[name].binValueF(name);  } else countExp="SUM("+pre+"`"+name+"` IS NOT NULL)";
-      var colExpCond;  if('histCondF' in arg.Prop[name]) { colExpCond=arg.Prop[name].histCondF(name);  }    else colExpCond=pre+"`"+name+"`";
-      
-      var strOrder='bin ASC';
-
-      var binTable=arg.strDBPrefix+"_bins"+ucfirst(name);   
-      WhereTmp.push(colExpCond+" BETWEEN b.minVal AND b.maxVal");
-      var WhereTmp=array_filter(WhereTmp), strCond=''; if(WhereTmp.length) strCond='WHERE '+WhereTmp.join(' AND ');
-      Sql.push("SELECT b.id AS bin, "+countExp+" AS groupCount FROM "+binTable+" b, (\n"+arg.strTableRef+"\n)\n"+strCond+"\nGROUP BY bin ORDER BY "+strOrder+";");
-      TypeNInd.push([kind,i]);
+    var tmp=whereArrToStr(WhereTmp), strWhere=tmp.strWhere, strWhereWExt=tmp.strWhereWExt;
+    
+    var nCount=NaN;
+    if('boCount' in prop){
+      var cqlCount=createCountQuery(arg.type, nameFeat, strNullFilterMode, strWhere, strWhereWExt);
+      var Val={tNow:tNow};
+      dbNeo4j.cypher({query:cqlCount, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+      if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+      var rec=records[0];   nCount=rec.nInRelaxedCond;  
     }
+    
+    var cqlHist=createHistQuery(arg.type, nameFeat, strNullFilterMode, strWhere, strWhereWExt);
+    var Val={tNow:tNow};
+    dbNeo4j.cypher({query:cqlHist, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+    var len=records.length,   nGroupsInFeat=len,     boTrunk=len>maxGroupsInFeat,   nDisp=boTrunk?maxGroupsInFeat:len,     nWOTrunk=0;
+    if(boTrunk && isNaN(nCount)) console.log('Seams '+nameFeat+'-buckets should have been counted. Got '+len+' buckets, which is more than maxGroupsInFeat: '+maxGroupsInFeat);
+    Ou.Hist[i]=[];
+    for(var j=0;j<nDisp;j++){
+      var tmpRObj=records[j], tmpR, bucket=tmpRObj.bucket, val=Number(tmpRObj.nBucket); 
+      if(kind=='BF') tmpR=[Number(bucket), val]; 
+      else if(kind[0]=='B') tmpR=[bucket, val];   
+      else tmpR=[Number(bucket), val];
+      nWOTrunk+=val;
+      Ou.Hist[i].push(tmpR);
+    }
+    if(boTrunk){Ou.Hist[i].push(['',nCount-nWOTrunk]); } // (if boTrunk) the second-last-item is the trunk (remainder)
+    Ou.Hist[i].push(boTrunk);  // The last item marks if the second-last-item is a trunk (remainder)
+    
   }
-  var sql=Sql.join('\n'), Val=[]; //set GLOBAL max_heap_table_size=128*1024*1024, GLOBAL tmp_table_size=128*1024*1024
-//debugger
-  myQueryF(sql, Val, arg.pool, function(err, results) {
-    if(err){ callback(err);  return; } 
-    else{
-      var NInRelaxedCond=[], Hist=[];
-      for(var i=0;i<results.length;i++){
-        var tmp=TypeNInd[i], kind=tmp[0], ii=tmp[1]; 
-        if(kind=='c') NInRelaxedCond[ii]=results[i][0].n;
-        else {
-          var nGroupsInFeat=results[i].length,     boTrunk=nGroupsInFeat>maxGroupsInFeat,   nDisp=boTrunk?maxGroupsInFeat:nGroupsInFeat,     nWOTrunk=0;
-          Hist[ii]=[]; 
-          for(var j=0;j<nDisp;j++){ 
-            var tmpRObj=results[i][j], tmpR, bin=tmpRObj.bin, val=Number(tmpRObj.groupCount); 
-            if(kind=='BF') tmpR=[Number(bin), val]; 
-            else if(kind[0]=='B') tmpR=[bin, val];   
-            else tmpR=[Number(bin), val];
-            nWOTrunk+=val;
-            Hist[ii].push(tmpR);
-          }
-          if(boTrunk){Hist[ii].push(['',NInRelaxedCond[ii]-nWOTrunk]); } // (if boTrunk) the second-last-item is the trunk (remainder)
-          Hist[ii].push(boTrunk);  // The last item marks if the second-last-item is a trunk (remainder)
-        }
-      }
-      extend(arg.Ou,{Hist:Hist});
-      callback(null, arg.Ou);
-    }
-  });
+  return Ou;
 }
 
-
-addBinTableSql=function(SqlTabDrop,SqlTab,strDBPrefix,Prop,engine,collate){
-  var SqlTabDropTmp=[]
-  for(var name in Prop){
-    var vv=Prop[name];
-    if(('feat' in vv) && vv.feat.kind[0]=='S'){
-      var f=vv.feat;
-      var Name=ucfirst(name), binsTable=strDBPrefix+"_bins"+Name;
-      SqlTabDropTmp.push(binsTable);
-      //SqlTabDrop.push("DROP TABLE IF EXISTS "+binsTable+"");
-      SqlTab.push("CREATE TABLE "+binsTable+" (id INT, minVal INT, maxVal INT, PRIMARY KEY (id)) ENGINE="+engine+" COLLATE "+collate+"");
-
-      SqlVal=[];
-      var len=f.n;
-      for(var i=0;i<len;i++){
-        var val0=f.min[i],  val1=f.max[i]-1;
-        SqlVal.push("("+i+", "+val0+", "+val1+")");
-      }
-      var sqlVal=SqlVal.join(',\n');
-      SqlTab.push("INSERT INTO "+binsTable+" VALUES "+sqlVal);
-    }
-  }
-  var sqlTmp=SqlTabDropTmp.join(', '); SqlTabDrop.push("DROP TABLE IF EXISTS "+sqlTmp);
-
-}
 
 

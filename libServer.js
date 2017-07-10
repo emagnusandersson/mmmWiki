@@ -55,321 +55,39 @@ sanitizeStyle=function(attrIn){
   return out;
 }
 
-
+//MATCH (s:Site { www:'localhost:5000' })-[:hasPage]->(p:Page)-[h:hasRevision]->(r:Revision) WHERE p.nameLC IN ['template:tt', 'template:ttt', 'template:tttt'] RETURN p.nameLC AS nameLC, COUNT(r) AS nr
 
 //myDump=function(a,boStr){ if(typeof boStr=='undefined') boStr=1; var str='<pre>'+print_r(a,1)+'</pre>'; if(boStr) echo str; else return str;}
 //lcnotfirst=function(str){  if(count(str)>1) return str[0]+substr(str,1).toLowerCase(); else return str; }  // Make all except first lowercase
 
-parse=function*(callback) { // Should be seen as a method  (assigns things to this)
-  var self=this;
-  var mPa=new Parser(self.strEditText, self.boOW==0);
-  mPa.text=self.strEditText;
-  mPa.preParse();
-  self.StrTemplate=mPa.getStrTemplate();
 
-    // get objTemplate from DB
-  var len=this.StrTemplate.length, objTemplate={};   
-  if(len) {
-    var strQ=array_fill(len,'?').join(', ');
-    var sql="SELECT pageName, data FROM "+pageLastView+" p JOIN "+fileTab+" f WHERE f.idFile=p.idFile AND www=? AND pageName IN ("+strQ+")";
-    var Val=[this.req.wwwSite].concat(this.StrTemplate), results, boDoExit=0;
-    myQueryF(sql, Val, mysqlPool, function(err, resultsT) {
-      if(err){ boDoExit=1;  callback(err);  }  else{ results=resultsT;}  self.req.flow.next();
-    });
-    yield; if(boDoExit==1) return;
-    for(var i=0;i<results.length;i++){ var tmpR=results[i]; objTemplate[tmpR.pageName]=tmpR.data; }
-  }
-
-
-  var len=self.StrTemplate.length;
-  self.objTemplateE={}; for(var i=0;i<len;i++) { var key=self.StrTemplate[i]; self.objTemplateE[key]=key in objTemplate; }
-  mPa.objTemplate=objTemplate;    mPa.parse();
-  self.StrSub=mPa.getStrSub(); self.StrSubImage=mPa.getStrSubImage();
-
-
-    // get objExistingSub from DB
-  var len=this.StrSub.length, objExistingSub={};
-  if(len) {
-    var strQ=array_fill(len,'?').join(', ');
-    var sql="SELECT pageName FROM "+pageLastView+" WHERE pageName IN ("+strQ+") AND www=?";
-    var Val=this.StrSub.concat(this.req.wwwSite), results, boDoExit=0; 
-    myQueryF(sql, Val, mysqlPool, function(err, resultsT) {
-      if(err){ boDoExit=1;  callback(err);  }  else{ results=resultsT;} self.req.flow.next();
-    });
-    yield; if(boDoExit==1) return;
-    for(var i=0;i<results.length;i++){ var tmpR=results[i]; objExistingSub[tmpR.pageName]=1; }
-  }
-
-
-  mPa.objExistingSub=objExistingSub; mPa.setArrSub();      mPa.endParse();
-  self.strHtmlText=mPa.text;  self.arrSub=mPa.arrSub; self.eTag=calcETag.call(self);
-
-  callback(null,0);
-}
-
-getInfoNData=function(callback) {
-  var self=this, req=this.req;
-  var sql="CALL "+strDBPrefix+"getInfoNData(?, ?, ?, ?, ?, ?, ?);"; 
-  var Val=[this.boFront, req.boTLS, req.wwwSite, this.queredPage, this.rev, this.eTagIn, this.requesterCacheTime/1000]; 
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){ callback(err); } 
-    else{ 
-      var len=results.length, iRowLast=len-2; 
-      var rowLast=results[iRowLast][0]; 
-      //if('strEditText' in rowLast) rowLast.strEditText=rowLast.strEditText?rowLast.strEditText.toString():'';
-      //if('strHtmlText' in rowLast) rowLast.strHtmlText=rowLast.strHtmlText?rowLast.strHtmlText.toString():'';
-      if('rev' in rowLast) rowLast.version=rowLast.rev+1;
-      if('tMod' in rowLast) rowLast.tMod=new Date(rowLast.tMod*1000);
-      if('tModCache' in rowLast) rowLast.tModCache=new Date(rowLast.tModCache*1000);
-
-
-      var mess=rowLast.mess, nRes=0;
-      if(mess=='serverCacheOK') nRes=6;
-      else if(mess=='serverCacheStale') nRes=4;
-      else if(mess=='304' || mess=='noSuchRev' || mess=='zeroVersion' ) nRes=3; 
-      else if(mess=='noSuchPage' || mess=='redirectCase' || mess=='private' ) nRes=2; 
-      else if(mess=='IwwwNotFound') nRes=1; 
-      else if(mess=='redirect' || mess=='redirectDomain' || mess=='multDefault') nRes=0;
-
-      if(nRes>0) {  var tmp=results[0][0]; copySome(self,tmp,['boTLSCommon', 'wwwCommon']); }
-      if(nRes>1) {  var tmp=results[1][0]; copySome(self,tmp,['siteName', 'googleAnalyticsTrackingID', 'urlIcon16', 'urlIcon200', 'aPassword', 'vPassword']); }
-      if(nRes>2)    self.Version=results[2];
-      if(nRes>3)    rowLast.strEditText=results[3][0].strEditText.toString();
-      if(nRes>4)    rowLast.strHtmlText=results[4][0].strHtmlText.toString();
-      if(nRes>5) {
-        var resT=results[5], c=resT.length;
-        var obj={}; 
-        for(var i=0;i<c;i++){ 
-          var tmpR=resT[i];
-          var tmpname=tmpR.pageName.replace(RegExp('^template:'),''); obj[tmpname]=tmpR.boOnWhenCached; 
-        }
-        self.objTemplateE=obj;
-      }
-
-      callback(null,rowLast);
-    }
-  });
+calcETag=function(strHtmlText, objPage, objRev, boTalkExist){
+  var arrTmp=[strHtmlText, Number(objPage.boOR), Number(objPage.boOW), Number(objPage.boSiteMap), objRev.tMod, objRev.tModCache, Number(boTalkExist)];
+  return md5(arrTmp.join(" "));
 }
 
 
-getInfo=function(callback) {
-  var self=this, req=this.req;
-  var sql="CALL "+strDBPrefix+"getInfo(?,?);", Val=[req.wwwSite, this.queredPage]; 
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){callback(err);  return; } 
-    else{
-      var rowLast;
-      if(results[0].length==0) { rowLast={mess:'noSuchPage'}; }
-      else {
-        rowLast=results[0][0];    rowLast.mess='pageExist';
-        rowLast.tMod=new Date(rowLast.tMod*1000);
-        rowLast.tModCache=new Date(rowLast.tModCache*1000);
-      }
-      callback(null,rowLast);
-    }
-  });
+
+
+
+
+makeMatVersion=function(arrRev){ 
+  var nVersion=arrRev.length, t=Array(nVersion);
+  for(var i=0;i<nVersion;i++){    t[i]=[arrRev[i].tMod, arrRev[i].summary, arrRev[i].signature];   }  return t;
 }
 
 
-makeMatVersion=function(Version){ 
-  var nVersion=Version.length, t=Array(nVersion);
-  for(var i=0;i<nVersion;i++){    t[i]=[Version[i].tMod, Version[i].summary, Version[i].signature];   }  return t;
-}
-calcETag=function(){ return md5(this.strHtmlText +this.tMod +this.tModCache +this.boOR +this.boOW +this.boSiteMap +this.boTalkExist +JSON.stringify(this.objTemplateE) +JSON.stringify(this.arrVersion) +JSON.stringify(this.matVersion)  );}
 
-
-createSubStr=function(arrSub){ // arrSub = [[name,boExist], [name,boExist] ....]   (assigned by setArrSub (in parser.js)) 
-  var arrSubQ=[],  arrSubV=[];
-  for(var i=0;i<arrSub.length;i++){ var v=arrSub[i]; arrSubQ.push('(?,?)'); [].push.apply(arrSubV,v); }  //arrSubV.push(v[0], v[1], v[2])
-  var strSubQ=''; if(arrSubQ.length) strSubQ="INSERT INTO "+tmpSubNew+" VALUES "+arrSubQ.join(', ')+';';
-  return [strSubQ,arrSubV];
-}
-createSubImageStr=function(StrT){
-  var len=StrT.length,  strSubQ=''; if(len) strSubQ="INSERT INTO "+tmpSubNewImage+" VALUES "+array_fill(len,'(?)').join(', ')+';';
-  return strSubQ;
-}
-
-createSaveWhenUploadingSQL=function(siteName, strName, strEditText, strHtmlText, eTag, arrSub, StrSubImage){ 
-  var tmp=createSubStr(arrSub), strSubQ=tmp[0], arrSubV=tmp[1];
-  var strSubImageQ=createSubImageStr(StrSubImage);
-  var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  Sql.push("START TRANSACTION; TRUNCATE "+tmpSubNew+"; "+strSubQ);
-  Sql.push("TRUNCATE "+tmpSubNewImage+"; "+strSubImageQ);
-  Sql.push("CALL "+strDBPrefix+"saveWhenUploading(?,?,?,?,?); COMMIT;");
-  var sql=Sql.join('\n'); 
-  var Val=array_merge(arrSubV, StrSubImage, [siteName, strName, strEditText, strHtmlText, eTag]);
-  return {sql:sql,Val:Val,nEndingResults:2};
-}
-createSaveByReplaceSQL=function(wwwSite, strName, strEditText, strHtmlText, eTag, tModBrowser, arrSub, StrSubImage){ 
-  var tmp=createSubStr(arrSub), strSubQ=tmp[0], arrSubV=tmp[1];
-  var strSubImageQ=createSubImageStr(StrSubImage);
-  var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  Sql.push("START TRANSACTION; TRUNCATE "+tmpSubNew+"; "+strSubQ);
-  Sql.push("TRUNCATE "+tmpSubNewImage+"; "+strSubImageQ);
-  Sql.push("CALL "+strDBPrefix+"saveByReplace(?,?,?,?,?,?); COMMIT;");
-  var sql=Sql.join('\n'); 
-  var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, strEditText, strHtmlText, eTag, tModBrowser]);
-  return {sql:sql,Val:Val,nEndingResults:2};
-}
-
-createSaveByAddSQL=function(wwwSite, strName, summary, signature, strEditText, strHtmlText, eTag, arrSub, StrSubImage){ 
-  var tmp=createSubStr(arrSub), strSubQ=tmp[0], arrSubV=tmp[1];
-  var strSubImageQ=createSubImageStr(StrSubImage);
-  var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  Sql.push("START TRANSACTION; TRUNCATE "+tmpSubNew+"; "+strSubQ);
-  Sql.push("TRUNCATE "+tmpSubNewImage+"; "+strSubImageQ);
-  Sql.push("CALL "+strDBPrefix+"saveByAdd(?,?,?,?,?,?,?); COMMIT;");
-  var sql=Sql.join('\n');
-  var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, summary, signature, strEditText, strHtmlText, eTag]);
-  return {sql:sql,Val:Val,nEndingResults:2};
-}
-
-createSetNewCacheSQL=function(wwwSite, strName, rev, strHtmlText, eTag, arrSub, StrSubImage){
-  var tmp=createSubStr(arrSub), strSubQ=tmp[0], arrSubV=tmp[1];
-  var strSubImageQ=createSubImageStr(StrSubImage);
-  var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  Sql.push("START TRANSACTION;");
-  Sql.push("TRUNCATE "+tmpSubNew+"; "+strSubQ);
-  Sql.push("TRUNCATE "+tmpSubNewImage+"; "+strSubImageQ);
-  Sql.push("CALL "+strDBPrefix+"setNewCache(?,?,?,?,?); COMMIT;");
-  var sql=Sql.join('\n');
-  var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, rev, strHtmlText, eTag]);
-  return {sql:sql,Val:Val,nEndingResults:2}; 
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-createSaveByReplaceNeo=function(siteName, wwwSite, strName, strEditText, strHtmlText, eTag, tModBrowser, arrSub, StrSubImage){ 
-  var tmp=createSubStr(arrSub), strSubQ=tmp[0], arrSubV=tmp[1];
-  var strSubImageQ=createSubImageStr(StrSubImage);
-  var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  var Page = {
-    name: strName,
-    boTalk: boTalk,
-    boTemplate: boTemplate,
-    boOR: boOR,
-    boOW: boOW,
-    boSiteMap: boSiteMap,
-    lastRev: lastRev
-  }
-  var Version = {
-    rev: rev,
-    summary: summary,
-    signature: signature,
-    boOther: boOther,
-    tMod: tMod,
-    tModCache: tModCache,
-    eTag: eTag,
-    size: size,
-    strEditText: strEditText
-  }
-
-  var ChildPlanned = {    name: name   }
-  var ImagePlanned = {    name: name   }
-
-
-
-  Sql.push("CREATE (p:Page) SET p={Page}")
-  Sql.push("CREATE (v:Version SET v={Version}")
-  Sql.push("START TRANSACTION; TRUNCATE "+tmpSubNew+"; "+strSubQ);
-  Sql.push("TRUNCATE "+tmpSubNewImage+"; "+strSubImageQ);
-  Sql.push("CALL "+strDBPrefix+"saveByReplace(?,?,?,?,?,?); COMMIT;");
-  var sql=Sql.join('\n'); 
-  var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, strEditText, strHtmlText, eTag, tModBrowser]);
-  return {sql:sql,Val:Val,nEndingResults:2};
-}
-/*
-  CREATE CONSTRAINT ON (n:Page) ASSERT n.name IS UNIQUE
-  CREATE CONSTRAINT ON (n:Site) ASSERT n.prefix IS UNIQUE
-  CREATE CONSTRAINT ON (n:Site) ASSERT n.www IS UNIQUE
-  CREATE CONSTRAINT ON (n:Image) ASSERT n.name IS UNIQUE
-  CREATE CONSTRAINT ON (n:Video) ASSERT n.name IS UNIQUE
-  CREATE CONSTRAINT ON (n:Setting) ASSERT n.name IS UNIQUE
-  CREATE CONSTRAINT ON (n:Redirect) ASSERT n.name IS UNIQUE
-  CREATE CONSTRAINT ON (n:RedirectDomain) ASSERT n.www IS UNIQUE
-  CREATE CONSTRAINT ON (n:ChildPlanned) ASSERT n.name IS UNIQUE
-  CREATE CONSTRAINT ON (n:ImagePlanned) ASSERT n.name IS UNIQUE
-  CREATE CONSTRAINT ON (n:Page) ASSERT exists(n.name)
-  CREATE CONSTRAINT ON (n:Site) ASSERT exists(n.prefix)
-  CREATE CONSTRAINT ON (n:Site) ASSERT exists(n.www)
-  CREATE CONSTRAINT ON (n:Image) ASSERT exists(n.name)
-  CREATE CONSTRAINT ON (n:Video) ASSERT exists(n.name)
-  CREATE CONSTRAINT ON (n:Setting) ASSERT exists(n.name)
-  CREATE CONSTRAINT ON (n:Redirect) ASSERT exists(n.name)
-  CREATE CONSTRAINT ON (n:RedirectDomain) ASSERT exists(n.www)
-  CREATE CONSTRAINT ON (n:ChildPlanned) ASSERT exists(n.name)
-  CREATE CONSTRAINT ON (n:ImagePlanned) ASSERT exists(n.name)
-  
-  var Site={
-    boDefault:boDefault
-    boTLS:boTLS,
-    prefix:siteName,
-    www:www,
-    googleAnalyticsTrackingID:googleAnalyticsTrackingID,
-    urlIcon16:urlIcon16,
-    urlIcon200:urlIcon200,
-    aPassword:aPassword,
-    vPassword:vPassword,
-    created:created
-  }
-  var Image = {
-    idImage: idImage,
-    name: imageName,
-    idFile: idFile,
-    boOther: boOther,
-    created: created,
-    eTag: eTag,
-    size: size
-  } 
-  var Thumb = {
-    idImage: idImage,
-    width: width,
-    height: height,
-    created: created,
-    eTag: eTag
-  } 
-  
-  var Video = {
-    idVideo: idVideo,
-    name: videoName,
-    idFile: idFile,
-    created: created,
-    eTag: eTag,
-    size: size
-  } 
-  var Setting = {
-    name: name,
-    value: value
-  } 
-  var Redirect = {
-    name: name,
-    url: url,
-    created: created
-  } 
-  var RedirectDomain = {
-    www: www,
-    url: url,
-    created: created
-  } 
-*/
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
 
 
 echoAllAndExitObj=function(){
-	//global Out,GRet; 
+  //global Out,GRet; 
   Out.GRet=GRet;
   Out.GRet.strMessageText=Out.GRet.strMessageText.join(', ');; 
-	//echo json_encode(Out);
-		
+  //echo json_encode(Out);
 }
-
-
-
-
-
 
 
 
@@ -386,17 +104,17 @@ is_crawler=function() {
 
 
   // getSetting and setSetting aren't maintained or used, I just keep them around because they might become useful.
-getSetting=function*(callback,inObj){ 
-  var self=this, req=this.req;
+getSetting=function*(inObj){ 
+  var req=this.req;
   var Ou={}
   if( count(array_diff(inObj,['lastOthersEdit','lastOthersUpload'])) ) mesEO(__LINE__,'Illegal invariable');  strV=inObj.join("', '");;
   var sth=dbh.prepare("SELECT * FROM "+settingTab+" WHERE name IN('"+strV+"')");    if(!sth.execute()) mesESqlO(sth,__LINE__);
   while(1){   tmp=sth.fetch(PDO.FETCH_NUM); if(!tmp) break; Ou[tmp[0]]=tmp[1];  }
-  callback(null,[Ou]);
+  return {err:null, result:[Ou]};
 }
 
-setSetting=function*(callback,inObj){ 
-  var self=this, req=this.req, Ou={}
+setSetting=function*(inObj){ 
+  var req=this.req, Ou={}
   var Str=['lastOthersEdit','lastOthersUpload'];
 
   if( count(array_diff(array_keys(inObj), Str)) ) mesEO(__LINE__,'Illegal invariable');
@@ -408,56 +126,7 @@ setSetting=function*(callback,inObj){
     if(!sth.execute([name,value,value])) mesESqlO(sth,__LINE__);
     Ou[name]=value;
   }
-  callback(null,[Ou]);
-}
-
-
-
-vLogin=function*(callback,inObj){
-  var self=this, req=this.req, sessionID=req.sessionID;
-  var GRet=this.GRet;
-  var Ou={};  
-  if(this.boVLoggedIn!=1 ){
-    if('pass' in inObj) {
-      var vPass=inObj.pass; 
-      if(vPass==vPassword){
-        var tmp=unixNow()+maxViewUnactivityTime;
-        var redisVar=sessionID+'_viewTimer';
-        var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,tmp]);
-        var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
-        this.boVLoggedIn=1; self.mes('Logged in (viewing)');
-      } else if(vPass=='')  self.mes('Password needed'); else self.mes('Wrong password');
-    }
-    else {self.mes('Password needed'); }
-  }
-  GRet.boVLoggedIn=this.boVLoggedIn;
-  callback(null, [Ou]);
-}
-
-aLogin=function*(callback,inObj){
-  var self=this, req=this.req, sessionID=req.sessionID;
-  var GRet=this.GRet;
-
-
-  var Ou={};  
-  if(this.boALoggedIn!=1 ){
-    if('pass' in inObj) {
-      var aPass=inObj.pass; 
-      if(aPass==aPassword) {
-        var tmp=unixNow()+maxAdminUnactivityTime;
-        var redisVar=sessionID+'_adminTimer';
-        var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,tmp]);
-        var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxAdminUnactivityTime]);
-        this.boVLoggedIn=1; this.boALoggedIn=1; self.mes('Logged in');
-        if(objOthersActivity) extend(objOthersActivity,objOthersActivityDefault);
-      }
-      else if(aPass=='') {self.mes('Password needed');}
-      else {self.mes('Wrong password');}
-    }
-    else {self.mes("Password needed"); }
-  } 
-  GRet.boALoggedIn=this.boALoggedIn; 
-  callback(null, [Ou]); 
+  return {err:null, result:[Ou]};
 }
 
 
@@ -475,14 +144,14 @@ writeCacheDynamicJS=function*() {
 
 /*
 var makeSiteLimited=function(site){
-  var StrLimited=['wwwSite', 'strRootDomain', 'AliasBack', 'domain'];  
+  var StrLimited=['www', 'strRootDomain', 'AliasBack', 'domain'];  
   var siteLimited={}; for(var i=0;i<StrLimited.length;i++){ var name=StrLimited[i]; siteLimited[name]=site[name]; }
   return siteLimited;
 }
 */
 /*
 createWWWJS=function(strSite) {
-  var site=Site[strSite], wwwSite=site.wwwSite; 
+  var site=Site[strSite], www=site.www; 
 
   var siteLimited=makeSiteLimited(site);
 
@@ -491,7 +160,7 @@ createWWWJS=function(strSite) {
 \n\
 strBTC="+JSON.stringify(strBTC)+";\n\
 ppStoredButt="+JSON.stringify(ppStoredButt)+";\n\
-wwwSite="+JSON.stringify(wwwSite)+";\n\
+www="+JSON.stringify(www)+";\n\
 }");
   var str=Str.join('\n');    return str;
 }
@@ -528,37 +197,4 @@ StrOrderFiltImage="+JSON.stringify(StrOrderFiltImage)+";\n\
 
 regTalkNTemplateNSite=RegExp('^(talk:|template:|template_talk:|)(?:([^:]+):)?(.+)','i')
 
-configChanged=function(){
-  for(var key in Site){
-    var site=Site[key];   
-  }
-  var site=Site.mmmWikiL
-  var sql="SELECT COUNT(*) FROM "+siteTab+";";
-  var Val=[];
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){ callback(err); } 
-    else{ 
-      var len=results.length;
-      var rowLast=results[len-2][0]; 
-      if('strEditText' in rowLast) rowLast.strEditText=rowLast.strEditText?rowLast.strEditText.toString():'';
-      if('strHtmlText' in rowLast) rowLast.strHtmlText=rowLast.strHtmlText?rowLast.strHtmlText.toString():'';
-      if('rev' in rowLast) rowLast.version=rowLast.rev+1;
-      if('tMod' in rowLast) rowLast.tMod=new Date(rowLast.tMod*1000);
-      if('tModCache' in rowLast) rowLast.tModCache=new Date(rowLast.tModCache*1000);
-
-      if(len>2)    self.Version=results[0];
-      if(len>3) {
-        var resT=results[1], c=resT.length;
-        var obj={}; 
-        for(var i=0;i<c;i++){ 
-          var tmpR=resT[i];
-          var tmpname=tmpR.siteName.replace(RegExp('^template:'),''); obj[tmpname]=tmpR.boOnWhenCached; 
-        }
-        self.objTemplateE=obj;
-      }
-      callback(null,rowLast);
-    }
-  });
-
-}
 

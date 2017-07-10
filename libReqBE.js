@@ -8,70 +8,42 @@ var ReqBE=app.ReqBE=function(req, res){
 }
 
 ReqBE.prototype.go=function*(){
-  var self=this, req=this.req, res=this.res;
-  var sessionID=req.sessionID;
+  var req=this.req, res=this.res;
+  var flow=req.flow;
   
- 
   this.Out={GRet:{boSpecialistExistDiff:{}}, dataArr:[]}; this.GRet=this.Out.GRet;
 
-    
+    // Extract input data either 'POST' or 'GET'
   if(req.method=='POST'){ 
     if('x-type' in req.headers ){ //&& req.headers['x-type']=='single'
       var form = new formidable.IncomingForm();
       form.multiples = true;  
-      //form.uploadDir='tmp';
-      
-      //var fT=thisChangedWArg(this.myStoreF, this, null);
-      //var myStore=concat(fT);
-      //form.onPart = function(part) { debugger
-      //  if(!part.filename){  form.handlePart(part);  }  // let formidable handle all non-file parts
-      //  //part.pipe(myStore);
-      // }
 
-      form.parse(req, function(err, fields, files) {
-        if(err){self.mesEO(err);  return; } 
-        else{
-          self.File=files['fileToUpload[]'];
-          if('captcha' in fields) self.captchaIn=fields.captcha; else self.captchaIn='';
-          if('strName' in fields) self.strName=fields.strName; else self.strName='';
-          if(!(self.File instanceof Array)) self.File=[self.File];
-          self.jsonInput=fields.vec;
-          //Fiber( function(){ self.interpretInput.call(self); }).run();
-          req.flow.next();
-        }
-      });
-      yield;
-      yield* self.interpretInput.call(self);
+      var err, fields, files;
+      form.parse(req, function(errT, fieldsT, filesT) { err=errT; fields=fieldsT; files=filesT; flow.next();  });  yield;
+      if(err){this.mesEO(err);  return; } 
+      
+      this.File=files['fileToUpload[]'];
+      if('captcha' in fields) this.captchaIn=fields.captcha; else this.captchaIn='';
+      if('strName' in fields) this.strName=fields.strName; else this.strName='';
+      if(!(this.File instanceof Array)) this.File=[this.File];
+      this.jsonInput=fields.vec;
+      
 
     }else{  
-      var myConcat=concat(function(buf){
-        self.jsonInput=buf.toString();
-        //Fiber( function(){ self.interpretInput.call(self); }).run();
-        req.flow.next();
-      });
-      req.pipe(myConcat);
-      yield;
-      yield* self.interpretInput.call(self);
+      var buf, myConcat=concat(function(bufT){ buf=bufT; flow.next();  });    req.pipe(myConcat);    yield;
+      this.jsonInput=buf.toString();
     }
+  } else if(req.method=='GET'){
+    var objUrl=url.parse(req.url), qs=objUrl.query||''; this.jsonInput=urldecode(qs);
   }
-  else if(req.method=='GET'){
-    var objUrl=url.parse(req.url), qs=objUrl.query||''; self.jsonInput=urldecode(qs);
-    //Fiber( function(){ self.interpretInput.call(self); }).run();
-    yield* self.interpretInput.call(self);
-  }
-}
-
-
-
-
-
-ReqBE.prototype.interpretInput=function*(){
-  var self=this, req=this.req, res=this.res, sessionID=req.sessionID;
-  var redisVar=this.req.sessionID+'_Main', strTmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,1]);   var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
+  
+  
+  var redisVar=req.sessionID+'_Main', strTmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,1]);   var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
 
       // Conditionally push deadlines forward
-  this.boVLoggedIn=yield* wrapRedisSendCommand.call(req, 'expire',[this.req.sessionID+'_viewTimer',maxViewUnactivityTime]);
-  this.boALoggedIn=yield* wrapRedisSendCommand.call(req, 'expire',[this.req.sessionID+'_adminTimer',maxAdminUnactivityTime]);
+  this.boVLoggedIn=yield* wrapRedisSendCommand.call(req, 'expire',[req.sessionID+'_viewTimer',maxViewUnactivityTime]);
+  this.boALoggedIn=yield* wrapRedisSendCommand.call(req, 'expire',[req.sessionID+'_adminTimer',maxAdminUnactivityTime]);
 
   var jsonInput=this.jsonInput;
   try{
@@ -98,7 +70,7 @@ ReqBE.prototype.interpretInput=function*(){
 
            // Arrays of functions
     // Functions that changes something must check and refresh CSRF-code
-  var arrCSRF=['myChMod', 'myChModImage', 'saveByAdd', 'saveByReplace', 'uploadUser', 'uploadAdmin', 'getPageInfo', 'getImageInfo', 'setUpPageListCond','getPageList','getPageHist', 'setUpImageListCond','getImageList','getImageHist', 'getParent','getParentOfImage','getSingleParentExtraStuff', 'deletePage','deleteImage','renamePage','renameImage', 'redirectTabGet','redirectTabSet','redirectTabDelete', 'redirectTabResetNAccess', 'siteTabGet', 'siteTabSet', 'siteTabDelete', 'siteTabSetDefault'];
+  var arrCSRF=['myChMod', 'myChModImage', 'saveByAdd', 'saveByReplace', 'uploadUser', 'uploadAdmin', 'uploadAdminServ', 'getPageInfo', 'getImageInfo', 'setUpPageListCond','getPageList','getPageHist', 'setUpImageListCond','getImageList','getImageHist', 'getParent','getParentOfImage','getSingleParentExtraStuff', 'deletePage','deleteImage','renamePage','renameImage', 'redirectTabGet','redirectTabSet','redirectTabDelete', 'redirectTabResetNAccess', 'siteTabGet', 'siteTabSet', 'siteTabDelete', 'siteTabSetDefault'];
   var arrNoCSRF=['specSetup','vLogin','aLogin','aLogout','pageLoad','pageCompare','getPreview'];  
   allowed=arrCSRF.concat(arrNoCSRF);
 
@@ -118,47 +90,86 @@ ReqBE.prototype.interpretInput=function*(){
 
 
     // cecking/set CSRF-code
-  var redisVar=sessionID+'_'+this.queredPage+'_CSRF', CSRFCode;
+  var redisVar=req.sessionID+'_'+this.queredPage+'_CSRF', CSRFCode;
   if(boCheckCSRF){
-    if(!CSRFIn){ var tmp='CSRFCode not set (try reload page)', error=new MyError(tmp); self.mesO(tmp); return;}
+    if(!CSRFIn){ var tmp='CSRFCode not set (try reload page)', error=new MyError(tmp); this.mesO(tmp); return;}
     var tmp=yield* wrapRedisSendCommand.call(req, 'get',[redisVar]);
-    if(CSRFIn!==tmp){ var tmp='CSRFCode err (try reload page)', error=new MyError(tmp); self.mesO(tmp); return;}
+    if(CSRFIn!==tmp){ var tmp='CSRFCode err (try reload page)', error=new MyError(tmp); this.mesO(tmp); return;}
   }
   if(boSetNewCSRF) {
     var CSRFCode=randomHash();
     var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,CSRFCode]);
     var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
-    self.GRet.CSRFCode=CSRFCode;
+    this.GRet.CSRFCode=CSRFCode;
   }
 
   var Func=[];
   for(var k=0; k<beArr.length; k++){
     var strFun=beArr[k][0]; 
     if(in_array(strFun,allowed)) { 
-      var inObj=beArr[k][1],     tmpf; if(strFun in self) tmpf=self[strFun]; else tmpf=global[strFun];     
-      //var fT=thisChangedWArg(tmpf, self, inObj);   Func.push(fT);
+      var inObj=beArr[k][1],     tmpf; if(strFun in this) tmpf=this[strFun]; else tmpf=global[strFun];
       var fT=[tmpf,inObj];   Func.push(fT);
     }
   }
+  //var tmp=randomHash(); console.log(tmp); res.setHeader("Set-Cookie", "myCookieUpdatedOn304Test="+tmp);  //getCookie('myCookieUpdatedOn304Test')
 
   for(var k=0; k<Func.length; k++){
     var Tmp=Func[k], func=Tmp[0], inObj=Tmp[1];
-    var semY=0, semCB=0, boDoExit=0;
-    var tmpRet=function(err, results) {
-      if(err){ 
-        boDoExit=1;
-        if(err!='exited') { debugger; res.out500(err); }
-      }
-      else {
-        self.Out.dataArr.push(results);
-      }      
-      if(semY) { req.flow.next(); } semCB=1;
+    var objT=yield* func.call(this, inObj);
+    if(typeof objT=='undefined' || objT.err) { 
+      //if(objT.err!='exited') { res.out500(objT.err); } return; 
+      if(!res.finished) { res.out500(objT.err); } return; 
+    }else{
+      this.Out.dataArr.push(objT.result);
     }
-    yield* func.call(self, tmpRet, inObj);      
-    if(!semCB) { semY=1; yield;}
-    if(boDoExit==1) return;
   }
-  self.mesO();
+  this.mesO();
+}
+
+
+ReqBE.prototype.vLogin=function*(inObj){
+  var req=this.req, sessionID=req.sessionID;
+  var GRet=this.GRet;
+  var Ou={};  
+  if(this.boVLoggedIn!=1 ){
+    if('pass' in inObj) {
+      var vPass=inObj.pass; 
+      if(vPass==vPassword){
+        var tmp=unixNow()+maxViewUnactivityTime;
+        var redisVar=sessionID+'_viewTimer';
+        var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,tmp]);
+        var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
+        this.boVLoggedIn=1; this.mes('Logged in (viewing)');
+      } else if(vPass=='')  this.mes('Password needed'); else this.mes('Wrong password');
+    }
+    else {this.mes('Password needed'); }
+  }
+  GRet.boVLoggedIn=this.boVLoggedIn;
+  return {err:null, result:[Ou]};
+}
+
+ReqBE.prototype.aLogin=function*(inObj){
+  var req=this.req, sessionID=req.sessionID;
+  var GRet=this.GRet;
+  var Ou={};  
+  if(this.boALoggedIn!=1 ){
+    if('pass' in inObj) {
+      var aPass=inObj.pass; 
+      if(aPass==aPassword) {
+        var tmp=unixNow()+maxAdminUnactivityTime;
+        var redisVar=sessionID+'_adminTimer';
+        var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,tmp]);
+        var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxAdminUnactivityTime]);
+        this.boVLoggedIn=1; this.boALoggedIn=1; this.mes('Logged in');
+        if(objOthersActivity) extend(objOthersActivity,objOthersActivityDefault);
+      }
+      else if(aPass=='') {this.mes('Password needed');}
+      else {this.mes('Wrong password');}
+    }
+    else {this.mes("Password needed"); }
+  } 
+  GRet.boALoggedIn=this.boALoggedIn; 
+  return {err:null, result:[Ou]};
 }
 
 
@@ -170,7 +181,7 @@ ReqBE.prototype.mesO=function(str){
   GRet.strMessageText=this.Str.join(', '); 
   if('tMod' in GRet) GRet.tMod=GRet.tMod.toUnix();
   if('tModCache' in GRet) GRet.tModCache=GRet.tModCache.toUnix();
-  this.res.end(JSON.stringify(this.Out));	
+  this.res.end(JSON.stringify(this.Out));
 }
 ReqBE.prototype.mesEO=function(errIn){
   var GRet=this.GRet;
@@ -185,108 +196,138 @@ ReqBE.prototype.mesEO=function(errIn){
   if('tModCache' in GRet) GRet.tModCache=GRet.tModCache.toUnix();
 
   this.res.writeHead(500, {"Content-Type": "text/plain"}); 
-  this.res.end(JSON.stringify(this.Out));	
+  this.res.end(JSON.stringify(this.Out));
 }
 
 
-ReqBE.prototype.myChMod=function*(callback,inObj){   
-  var self=this, req=this.req, res=this.res, queredPage=this.queredPage;
-  var GRet=this.GRet;
+
+ReqBE.prototype.myChMod=function*(inObj){   
+  var req=this.req, res=this.res, queredPage=this.queredPage;
+  var GRet=this.GRet, flow=req.flow;
   var Ou={};
-	if(!this.boALoggedIn) {self.mesO('not logged in (as Administrator)'); callback('exited'); return;}
-	
-  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {var tmp='chmod: no files'; self.mesEO(tmp); callback('exited');  return; }   
-  var strQ=array_fill(File.length, "?").join(', ');
-  var tmpBit; if('boOR' in inObj) tmpBit='boOR'; else if('boOW' in inObj) tmpBit='boOW'; else if('boSiteMap' in inObj) tmpBit='boSiteMap'; 
-  var Sql=[],Val=[inObj[tmpBit]];
-	Sql.push("UPDATE "+pageTab+" SET "+tmpBit+"=? WHERE idPage IN ("+strQ+");");
-  array_mergeM(Val,File);
+  if(!this.boALoggedIn) {this.mesO('not logged in (as Administrator)'); return;}
   
-  array_mergeM(Sql, array_fill(File.length, "CALL "+strDBPrefix+"markStale(?);"));
-  array_mergeM(Val,File); 
-  var sql=Sql.join('\n'); 
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){self.mesEO(err); callback('exited');  return; } 
-    else{
-      self.mes('chmod');
-      GRet[tmpBit]=inObj[tmpBit]; // Sending boOW/boSiteMap  back will trigger closing/opening of the save/preview buttons
-      callback(null, [Ou]);
-    }
-  });
-}
-ReqBE.prototype.myChModImage=function*(callback,inObj){   
-  var self=this, req=this.req, res=this.res, queredPage=this.queredPage;
-  var GRet=this.GRet;
-  var Ou={};
-	if(!this.boALoggedIn) {self.mesO('not logged in (as Administrator)'); callback('exited'); return;}
-	
-  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {var tmp='chmodImage: no files'; self.mesEO(tmp); callback('exited');  return; }   
-  var strQ=array_fill(File.length, "?").join(', ');
-  var Sql=[],Val=[inObj.boOther];
-	Sql.push("UPDATE "+imageTab+" SET boOther=? WHERE idImage IN ("+strQ+");");
-  array_mergeM(Val,File);
+  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {var tmp='chmod: no files'; this.mesEO(tmp); return }  
   
-  var sql=Sql.join('\n'); 
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){self.mesEO(err); callback('exited');  return; } 
-    else{
-      self.mes('chmodImage');
-      GRet.boOther=inObj.boOther; // Sending boOther  back will trigger closing/opening of the save/preview buttons
-      callback(null, [Ou]);
-    }
-  });
+  var tmpBit; if('boOR' in inObj) tmpBit='boOR'; else if('boOW' in inObj) tmpBit='boOW'; else if('boSiteMap' in inObj) tmpBit='boSiteMap'; else {this.mesEO('No allowed bit specified'); return }
+  
+  var strCqlOrg=` 
+    MATCH (p:Page)-[hasRevision]->(r:Revision) WHERE p.idPage IN $IdPage
+    SET p.`+tmpBit+`=$bit, r.tModCache=0`;
+  var err, records, Val={IdPage:File, bit:Boolean(inObj[tmpBit])};
+  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+
+  this.mes('chmod');
+  GRet[tmpBit]=inObj[tmpBit]; // Sending boOW/boSiteMap  back will trigger closing/opening of the save/preview buttons
+  return {err:null, result:[Ou]};
+}
+ReqBE.prototype.myChModImage=function*(inObj){   
+  var req=this.req, res=this.res, queredPage=this.queredPage;
+  var GRet=this.GRet, flow=req.flow;
+  var Ou={};
+  if(!this.boALoggedIn) {this.mesO('not logged in (as Administrator)'); return;}
+  
+  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {var tmp='chmodImage: no files'; this.mesEO(tmp); return; }  
+   
+  var strCqlOrg=` 
+    MATCH (i:Image) WHERE i.idImage IN $idImage
+    SET i.boOther=$bit`;
+  var err, records, Val={idImage:File, bit:Boolean(inObj.boOther)};
+  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+
+  this.mes('chmodImage');
+  GRet.boOther=inObj.boOther; // Sending boOther  back will trigger closing/opening of the save/preview buttons
+  return {err:null, result:[Ou]};
 }
 
-ReqBE.prototype.deletePage=function*(callback,inObj){   
-  var self=this, req=this.req, res=this.res;
+ReqBE.prototype.deletePage=function*(inObj){   
+  var req=this.req, res=this.res;
   var queredPage=this.queredPage;
-  var GRet=this.GRet;
+  var GRet=this.GRet, flow=req.flow;
   var Ou={};
-	if(!this.boALoggedIn) {self.mesO('not logged in (as Administrator)'); callback('exited'); return;}
-	
-  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {var tmp='chmod: no files'; self.mesEO(tmp); callback('exited');  return; }
-  var sql=array_fill(File.length, "CALL "+strDBPrefix+"deletePageID(?);").join('\n'); 
-  var Val=File;
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){self.mesEO(err); callback('exited');  return; } 
-    else{
-      self.mes('pages deleted');
-       
-      callback(null, [Ou]);
-    }
-  });
-}
-ReqBE.prototype.deleteImage=function*(callback,inObj){   
-  var self=this, req=this.req, res=this.res;
-  var queredPage=this.queredPage;
-  var GRet=this.GRet;
-  var Ou={};
-	if(!this.boALoggedIn) {self.mesO('not logged in (as Administrator)'); callback('exited'); return;}
+  if(!this.boALoggedIn) {this.mesO('not logged in (as Administrator)'); return;}
+  
+  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {var tmp='deletePage: no files'; this.mesEO(tmp); return; }
 
-  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {var tmp='chmod: no files'; self.mesEO(tmp); callback('exited');  return; }
-  var sql=array_fill(File.length, "CALL "+strDBPrefix+"deleteImage(?);").join('\n');
-  var Val=File;
+  var tx=dbNeo4j.beginTransaction();
+  var objArg={};      extend(objArg, {IdPage:File});
+  var objT=yield* deletePageByMultIDNeo(flow, tx, objArg);
+  if(objT.mess=='err') {
+    yield* neo4jRollbackGenerator(tx,flow);
+    this.mesEO('err'); return;
+  }else{
+    yield* neo4jCommitGenerator(tx,flow);
+  }
+
+  this.mes('pages deleted');
+  return {err:null, result:[Ou]};
+}
+  
+ReqBE.prototype.deleteImage=function*(inObj){   
+  var req=this.req, res=this.res;
+  var queredPage=this.queredPage;
+  var GRet=this.GRet, flow=req.flow;
+  var Ou={};
+  if(!this.boALoggedIn) {this.mesO('not logged in (as Administrator)'); return;}
+
+  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {var tmp='deleteImage: no files'; this.mesEO(tmp); return; }
+  
   var err;
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){self.mesEO(err); callback('exited');  return; } 
-    else{
-      self.mes('images deleted');       
-      callback(null, [Ou]);
-    }
-  });
+  
+    // Get IDs
+  var strCqlOrg=` 
+    MATCH (ii:Image) WHERE ii.idImage IN $IdImage
+    RETURN ii.idImage AS id
+    UNION 
+    MATCH (i:Image)-[h:hasThumb]->(t:ImageThumb) WHERE i.idImage IN $IdImage
+    RETURN t.idThumb AS id`;
+  var records,  Val={IdImage:File}
+  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  var arrID=Array(records.length);   for(var i=0;i<records.length;i++){      arrID[i]=new mongodb.ObjectID(records[i].id);    }
+  
+    // Delete documents
+  var collection = dbMongo.collection('documents');
+  var result, objDoc={_id:{ "$in": arrID}};
+  collection.deleteMany( objDoc, function(errT, resultT) { err=errT; result=resultT;  flow.next(); });   yield;
+  if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }  
+  
+  
+     // Delete thumb-meta-data
+  var strCqlOrg=`
+    MATCH (i:Image) WHERE i.idImage IN $IdImage
+    WITH i
+    OPTIONAL MATCH (i)-[h:hasThumb]->(t:ImageThumb)
+    DETACH DELETE t
+    SET i.boGotData=NULL`;
+  var records,  Val={IdImage:File}
+  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+ 
+     // Delete orphaned Images with no data
+  var strCqlOrg=` 
+    MATCH (iOrphan:Image) WHERE iOrphan.idImage IN $IdImage AND (NOT (:Page)-[:hasImage]->(iOrphan)) AND iOrphan.boGotData IS NULL
+    DETACH DELETE iOrphan`;
+  var Val={IdImage:File};
+  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  this.mes('images deleted');   
+  return {err:null, result:[Ou]};
+  
 }
-
-ReqBE.prototype.aLogout=function*(callback, inObj){  
-  var self=this, req=this.req, res=this.res, sessionID=req.sessionID;
+ReqBE.prototype.aLogout=function*(inObj){  
+  var req=this.req, res=this.res;
   var GRet=this.GRet;
   var Ou={};
   //redisClient.del(sessionID+'_adminTimer');
-  var redisVar=sessionID+'_adminTimer';
+  var redisVar=req.sessionID+'_adminTimer';
   var tmp=yield* wrapRedisSendCommand.call(req, 'del',[redisVar]);
 
-	if(this.boALoggedIn) {self.mes('Logged out (as Administrator)'); GRet.strDiffText=''; } 
+  if(this.boALoggedIn) {this.mes('Logged out (as Administrator)'); GRet.strDiffText=''; } 
   GRet.boALoggedIn=0; 
-  callback(null, [Ou]);
+  return {err:null, result:[Ou]};
 }
 
 
@@ -294,12 +335,12 @@ ReqBE.prototype.aLogout=function*(callback, inObj){
 //////////////////////////////////////////////////////////////////////////////////////////////
 // pageLoad
 //////////////////////////////////////////////////////////////////////////////////////////////
-
-ReqBE.prototype.pageLoad=function*(callback,inObj) { 
-  var self=this, req=this.req, res=this.res, sessionID=req.sessionID;
+  
+ReqBE.prototype.pageLoad=function*(inObj) { 
+  var req=this.req, res=this.res;
   var queredPage=this.queredPage;
   var GRet=this.GRet;
-  var Ou={};
+  var Ou={}, flow=req.flow;
 
   // Private:
   //                                                           index.html  first ajax (pageLoad)
@@ -309,970 +350,824 @@ ReqBE.prototype.pageLoad=function*(callback,inObj) {
   //                                                           index.html  first ajax (specSetup)
   //Shall look the same (be cacheable (not include CSRFcode))     yes          no
 
-  //this.tModCache=UTC2JS(  bootTime.toUnix()  );
-  //this.tModCache=new Date(bootTime.toUnix()*1000);
-  this.tMod=new Date(0);
-  this.tModCache=new Date(0);
-  this.CSRFCode='';  // If Private then No CSRFCode since the page is going to be cacheable (look the same each time)
-  if(typeof inObj=='object' && 'version' in inObj) {  self.version=inObj.version;  self.rev=self.version-1 } else {  self.version=NaN; self.rev=-1; }
-  this.eTagIn=''; this.requesterCacheTime=new Date(0);
-  if(req.method=='GET') {this.eTagIn=getETag(req.headers); this.requesterCacheTime=getRequesterTime(req.headers); }
-  //if(bootTime>this.requesterCacheTime) this.requesterCacheTime=new Date(0);
-  extend(self,{strHtmlText:'', boTalkExist:0, strEditText:'', arrVersion:[null,1], matVersion:[], objTemplateE:{}}); 
-  self.boFront=0;
+  var tMod=new Date(0);
+  var tModCache=new Date(0);
+  //this.CSRFCode='';  // If Private then No CSRFCode since the page is going to be cacheable (look the same each time)
+  if(typeof inObj=='object' && 'version' in inObj) {  var iRev=inObj.version-1 } else {  var iRev=-1; }
+  var eTagIn='', requesterCacheTime=new Date(0);
+  if(req.method=='GET') {eTagIn=getETag(req.headers); requesterCacheTime=getRequesterTime(req.headers); }
+  GRet.arrVersionCompared=[null,1];
+  GRet.matVersion=[];
 
 
       // getInfoNData
-  var mess='', rowA, boDoExit=0;
-  getInfoNData.call(self,function(err,results){
-    if(err){boDoExit=1; self.mesEO(err); } 
-    else{ rowA=results;}
-    req.flow.next();
-  });
-  yield;
-  if(boDoExit==1) { callback('exited'); return; }
-
-  var mess=rowA.mess;
-  if(mess=='IwwwNotFound'){ res.out404('No wiki there'); callback('exited'); return;   }
-  else if(mess=='304') { res.out304(); callback('exited'); return; }
-  else if(mess=='noSuchRev') {res.out500(mess); callback('exited'); return; }
-  else if(mess=='noSuchPage'){ res.out404(); callback('exited'); return;   }
-  else if(mess=='serverCacheStale' || mess=='serverCacheOK'){
-    copySome(self,rowA,['idPage', 'rev', 'version', 'eTag', 'boOR', 'boOW', 'boSiteMap', 'talkPage', 'boTalkExist', 'tMod', 'tModCache', 'strEditText']);
-    var boValidServerCache=mess=='serverCacheOK'; 
-    //self.tModCache=new Date(Math.max(self.tModCache, bootTime)); 
-    //self.tMod=new Date(self.tMod); 
-    //self.tModCache=new Date(self.tModCache); 
+  var tx=dbNeo4j.beginTransaction();
+  var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:queredPage, iRev:iRev, eTag:eTagIn, requesterCacheTime:requesterCacheTime, boFront:0});
+  var objT=yield* getInfoNDataNeo(flow, tx, objArg);
+  if(objT.mess=='err') {
+    yield* neo4jRollbackGenerator(tx,flow);
+    this.mesEO('err'); return;
+  }else{
+    yield* neo4jCommitGenerator(tx,flow);
+  }
+  var objDBData=objT;
   
-    var tmp=self.boOR?'':', private';
-    res.setHeader("Cache-Control", "must-revalidate"+tmp);  res.setHeader('Last-Modified',self.tModCache.toUTCString());  res.setHeader('ETag',self.eTag);
-    
-    //self.matVersion=makeMatVersion.call(self);
-    self.matVersion=makeMatVersion(self.Version);
-    self.arrVersion=[null,self.rev+1];
+  var mess=objDBData.mess;
+  if(mess=='wwwNotFound'){ res.out404('No wiki there'); return;   }
+  else if(mess=='noSuchPage'){ res.out404(); return;   }
+  else if(mess=='noSuchRev') {res.out500(mess); return; }
+  else if(mess=='noDefaultSite'){ res.out500(mess); return;   }
+  else if(mess=='serverCacheStale' || mess=='304' || mess=='serverCacheOK'){
+    var iRev=objDBData.iRev, objRev=objDBData.arrRev[iRev];
+    var objPage=objDBData.objPage;
+    var tmp=objPage.boOR?'':', private';
+    res.setHeader("Cache-Control", "must-revalidate"+tmp);  res.setHeader('Last-Modified',(new Date(objRev.tModCache*1000)).toUTCString());
+    if(mess=='304') { res.out304();  return; }
+    else{
+      
+      GRet.strEditText=objRev.strEditText;
+      GRet.matVersion=makeMatVersion(objDBData.arrRev);  // tMod, summary and signature
+      GRet.arrVersionCompared=[null, iRev+1];
 
-    if(!boValidServerCache){
-
-            // parse
-      var semY=0, semCB=0, err, boDoExit=0;
-      var tmpf=function(err,results){
-        if(err){boDoExit=1; self.mesEO(err); }      
-        if(semY) { req.flow.next(); } semCB=1;
-      }
-      yield* parse.call(self,tmpf);       
-      if(!semCB) { semY=1; yield;}
-      if(boDoExit==1) { callback('exited'); return; }
-
-          // setNewCacheSQL
-      var mess='', tmp=createSetNewCacheSQL(req.wwwSite, queredPage, self.rev, self.strHtmlText, self.eTag, self.arrSub, self.StrSubImage),    sql=tmp.sql, Val=tmp.Val, nEndingResults=tmp.nEndingResults;
-      var boDoExit=0;
-      myQueryF(sql, Val, mysqlPool, function(err, results) {
-        if(err){boDoExit=1; self.mesEO(err); }
-        else{
-          var iRowLast=results.length-nEndingResults-1;
-          mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
+      if(mess=='serverCacheStale'){  //  && iRev+1==objDBData.arrRev.length   // if viewing old versions then serve stale cache
+            // refreshRevNeo
+        var tx=dbNeo4j.beginTransaction();
+        var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:queredPage, iRev:iRev});
+        var objT=yield* refreshRevNeo(flow, tx, objArg);
+        if(objT.mess=='err') {
+          yield* neo4jRollbackGenerator(tx,flow);
+          this.mesEO('err'); return;
+        }else{
+          yield* neo4jCommitGenerator(tx,flow);
         }
-        req.flow.next();
-      });
-      yield;
-      if(boDoExit==1) { callback('exited'); return; }
-
-    } else {
-      self.strHtmlText=rowA.strHtmlText;
+        var objDBData=objT;
+        
+        var objPage=objDBData.objPage;
+        var objRev=objDBData.arrRev[iRev];
+        
+      } 
+      //res.setHeader('ETag',eTag);
+      copySome(GRet, objDBData, ['objTemplateE', 'boTalkExist']);
+      //if(typeof objPage=='undefined') var objPageT={boOR:1, boOW:1, boSiteMap:1, idPage:NaN}; else  var objPageT=copySome({},objPage, ['boOR','boOW', 'boSiteMap', 'idPage']); GRet.objPage=objPageT;
+      GRet.objPage=copySome({},objPage, ['boOR','boOW', 'boSiteMap', 'idPage']);
+      GRet.objRev=copySome({},objRev, ['tMod']);
+      GRet.strHtmlText=objRev.strHtmlText;
+      GRet.strDiffText='';
+      return {err:null, result:[Ou]};
     }
-
   }
-  else { res.out500('mess='+mess); callback('exited'); return; }
-  //'redir', 'noSuchPage', 'redirCase', 'private', '304', 'serverCacheStale', 'serverCacheOK'
-  //self.myAsyncPageLoad.Func.push(         thisChangedWArg(self.pageLoadC, self)        ); 
-  //self.pageLoadC.call(self);
-  copySome(GRet,self,['idPage', 'boOR', 'boOW', 'boSiteMap', 'tMod', 'tModCache', 'boTalkExist', 'strEditText', 'strHtmlText', 'matVersion', 'objTemplateE']);
-  extend(GRet,{strDiffText:'', arrVersion:self.arrVersion});
-  callback(null,[Ou]);
+  else { res.out500('mess='+mess); return; }
 }
 
 
-ReqBE.prototype.pageCompare=function*(callback,inObj){ 
-  var self=this, req=this.req, res=this.res;
-  var GRet=this.GRet;
-  var Ou={};
-  self.versionOld=arr_min(inObj.arrVersion);  self.version=arr_max(inObj.arrVersion); 
-  self.versionOld=Math.max(1,self.versionOld);  self.version=Math.max(1,self.version);
-  if(self.version==self.versionOld) {this.mesO('Same version'); callback('exited'); return;}
-  this.eTagIn=''; this.requesterCacheTime=0;
-  self.rev=self.versionOld-1;
-
-  self.boFront=0; self.eTagIn=''; self.requesterCacheTime=0;
+ReqBE.prototype.pageCompare=function*(inObj){ 
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, Ou={}, flow=req.flow;
+  var versionO=arr_min(inObj.arrVersionCompared), version=arr_max(inObj.arrVersionCompared);     versionO=Math.max(1,versionO); version=Math.max(1,version);    var iRev=version-1, iRevO=versionO-1;
+  if(version==versionO) {this.mesEO('Same version'); return;}
 
 
-      // getInfoNData Old
-  var rowA, boDoExit=0;
-  getInfoNData.call(self,function(err,results){
-    if(err){boDoExit=1; self.mesEO(err); } 
-    else{ rowA=results;}
-    req.flow.next();
-  });
-  yield;
-  if(boDoExit==1) { callback('exited'); return; }
+  var tx=dbNeo4j.beginTransaction(), err, objOut;
+  try{
+    var strCqlOrg=`
+          //----- getNRev
+      MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })-[h:hasRevision]->(r:Revision)
+      RETURN count(*) AS nRev
+      
+          //----- getPage and revs
+      MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })
+      WITH p
+      MATCH (p)-[h:hasRevision]->(rO:Revision {iRev:$iRevO})
+      WITH p, rO
+      MATCH (p)-[h:hasRevision]->(r:Revision {iRev:$iRev})
+      RETURN p, rO, r`;
+    var objCql=splitCql(strCqlOrg);
+    
+    var strNameLC=this.queredPage.toLowerCase();
+    var Val={strNameLC:strNameLC, www:req.www}, err, records;
+    tx.cypher({query:objCql['getNRev'], params:Val, lean: true}, function(errT, recordsT){ err=errT, records=recordsT; flow.next(); }); yield;
+    if(err){throw {mess:'err', err:err}; } 
+    var nRev=records[0].nRev;
+    if(nRev==0) throw {mess:'noSuchPage'};
+    if(version>nRev || versionO>nRev) { throw {mess:'noSuchRev', nRev:nRev}; } 
+     
+    
+    var Val={www:req.www, strNameLC:strNameLC, iRevO:iRevO, iRev:iRev}, err, records;
+    tx.cypher({query:objCql['getPage and revs'], params:Val, lean: true}, function(errT, recordsT){ err=errT, records=recordsT; flow.next(); }); yield;
+    if(err) throw {mess:'err', err:err}; 
+    var objPage=records[0].p, objRevO=records[0].rO, objRev=records[0].r;
+    
+    
+    if(!objPage.boOR && !this.boVLoggedIn){ throw {mess:'boViewLoginRequired'};;}
 
-	var nVersion=self.Version.length; 
-	if(nVersion==0){this.mesO('Page does not exist'); callback('exited'); return;} 
-	if(!rowA.boOR && !self.boVLoggedIn){this.mesO('Not logged in'); callback('exited'); return;}
 
-  self.strEditTextOld=rowA.strEditText;
-
-      // getInfoNData 
-  self.rev=self.version-1;
-  var rowA, boDoExit=0;
-  getInfoNData.call(self,function(err,results){
-    if(err){boDoExit=1; self.mesEO(err); } 
-    else{ rowA=results;}
-    req.flow.next();
-  });
-  yield;
-  if(boDoExit==1) { callback('exited'); return; }
-  copySome(self,rowA,['idPage', 'rev', 'version', 'eTag', 'boOR', 'boOW', 'boSiteMap', 'boTalkExist', 'tMod', 'tModCache', 'strEditText']);
-  
-      // parse
-  var semY=0, semCB=0, boDoExit=0;
-  var tmpf=function(err,results){
-    if(err){boDoExit=1; self.mesEO(err); }      
-    if(semY) { req.flow.next(); } semCB=1;
+    var strEditTextO=objRevO.strEditText;
+    var strEditText=objRev.strEditText;
+    
+        // parse (Reparsing to get right link coloring and the latest templates)
+    objOut=yield* parse(flow, tx, {www:req.www, strEditText:strEditText, boOW:objPage.boOW});
+    objOut.mess='OK';
+  } catch(e){
+    objOut=e;
+  }finally{
+    if(objOut.mess=='err') {
+      yield* neo4jRollbackGenerator(tx,flow);
+    }else{
+      yield* neo4jCommitGenerator(tx,flow);
+    }
+    if(objOut.mess=='err') { return {err:err}; }
+    else if(objOut.mess=='noSuchPage') { this.mesEO('Page does not exist'); return; }
+    else if(objOut.mess=='noSuchRev') {this.mesO('Only '+e.nRev+' versions, (trying to compare '+versionO+' and '+version+')'); return; }
+    else if(objOut.mess=='boViewLoginRequired') {this.mesEO('Not logged in'); return; }
+    
   }
-  yield* parse.call(self,tmpf);
-  if(!semCB) { semY=1; yield;}
-  if(boDoExit==1) { callback('exited'); return; }
-  self.strEditText=rowA.strEditText;
-  self.strHtmlText=rowA.strHtmlText;
-
-  self.strDiffText='';
-  if(self.versionOld!==null){
-  	self.strDiffText=myDiff(self.strEditTextOld,self.strEditText);
-    if(self.strDiffText.length==0) self.strDiffText='(equal)';
-    self.mes("v "+self.versionOld+" vs "+self.version);
-	} else self.mes("v "+self.version);
-
-  //self.matVersion=makeMatVersion.call(self);
-  self.matVersion=makeMatVersion(self.Version);
-  
-  copySome(GRet,self,['idPage', 'boOR', 'boOW', 'boSiteMap', 'tMod', 'tModCache', 'boTalkExist', 'strEditText', 'strHtmlText', 'matVersion', 'objTemplateE']);
-  extend(GRet,{strDiffText:self.strDiffText, arrVersion:[self.versionOld,self.version]});
-	callback(null, [0]);
-}
-
-ReqBE.prototype.getPreview=function*(callback,inObj){ 
-  var self=this, req=this.req, res=this.res;
-  var queredPage=this.queredPage;
-  var GRet=this.GRet;
-  var Ou={};
-  this.strEditText=inObj.newcontent;
-	
-  self.boOW==1;
-
-      // parse
-  var semY=0, semCB=0, boDoExit=0;
-  var tmpf=function(err,results){
-    if(err){boDoExit=1; self.mesEO(err); }  
-    if(semY) { req.flow.next(); } semCB=1;
-  }
-  yield* parse.call(self,tmpf);
-  if(!semCB) { semY=1; yield;}
-  if(boDoExit==1) { callback('exited'); return; }
-
-	self.mes('Preview');
-	GRet.strHtmlText=self.strHtmlText;
-	GRet.strEditText=self.strEditText;
-	GRet.objTemplateE=self.objTemplateE;
+      
   GRet.strDiffText='';
+  if(versionO!==null){
+    GRet.strDiffText=myDiff(strEditTextO,strEditText);
+    if(GRet.strDiffText.length==0) GRet.strDiffText='(equal)';
+    this.mes("v "+versionO+" vs "+version);
+  } else this.mes("v "+version);
+
+  copySome(GRet, objOut, ['strHtmlText']);
+  extend(GRet, {strEditText:strEditText, arrVersionCompared:[versionO,version]});
+  //GRet.objPage=copySome({},objPage, ['boOR','boOW', 'boSiteMap', 'idPage']);
+  //GRet.objRev=copySome({},objRev, ['tMod']);
+
+  return {err:null, result:[0]};
+}
+
+
+ReqBE.prototype.getPreview=function*(inObj){ 
+  var req=this.req, res=this.res;
+  var Ou={}, GRet=this.GRet, flow=req.flow;
   
-	callback(null, [0]);
+  var tx=dbNeo4j.beginTransaction();
+    // getInfoNeo
+  var objT=yield* getInfoNeo(flow, tx, {www:req.www, strName:this.queredPage});
+  if(objT.mess=='err') {
+    yield* neo4jRollbackGenerator(tx,flow);
+    this.mesEO('err'); return;
+  }
+  var objInfo=objT;
+    // parse
+  var objParseOut=yield* parse(flow, tx, {www:req.www, strEditText:inObj.strEditText, boOW:objT.boOW});
+  if(objT.mess=='err') {
+    yield* neo4jRollbackGenerator(tx,flow);
+    this.mesEO('err'); return;
+  }else{
+    yield* neo4jCommitGenerator(tx,flow);
+  }
+  var arrSub=objParseOut.arrSub, StrSubImage=objParseOut.StrSubImage;
+
+  this.mes('Preview');
+  copySome(GRet, objParseOut, ['objTemplateE', 'strHtmlText']);
+  GRet.strEditText=inObj.strEditText;
+  
+  return {err:null, result:[0]};
 } 
-ReqBE.prototype.saveByAdd=function*(callback,inObj){  
-  var self=this, req=this.req, res=this.res;
+
+
+ReqBE.prototype.saveByReplace=function*(inObj){   
+  var req=this.req, res=this.res;
   var queredPage=this.queredPage;
-  var GRet=this.GRet;
-  var Ou={};
+  var Ou={}, GRet=this.GRet, flow=req.flow;
+  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
 
-      // getInfo
-  var rowA, boDoExit=0;
-  getInfo.call(self,function(err,results){
-    if(err){boDoExit=1; self.mesEO(err); } 
-    else{ rowA=results;}
-    req.flow.next();
-  });
-  yield;
-  if(boDoExit==1) { callback('exited'); return; }
-  if(rowA.mess=='IwwwNotFound'){ res.out404('No wiki there'); callback('exited'); return;   }
-  else if(rowA.mess=='pageExist'){
-    copySome(self,rowA,['boOR', 'boOW', 'boSiteMap', 'tMod', 'tModCache']);
-    if(!self.boOR && !self.boVLoggedIn) {self.mesO('Not logged in'); callback("exited"); return;}
-    //if(this.tModBrowser<self.tMod) { self.mesO("tMod browser ("+this.tModBrowser+") < tMod db ("+self.tMod+"), "+messPreventBecauseOfNewerVersions); callback("exited"); return; }
-    var tBrowserTmp=new Date(this.tModBrowser*1000);
-    if(tBrowserTmp<self.tMod) { self.mesO("tMod browser ("+tBrowserTmp+") < tMod db ("+self.tMod+"), "+messPreventBecauseOfNewerVersions); callback("exited"); return; }
-  }else if(rowA.mess=='noSuchPage'){
-    extend(self,{boOW:1,boOR:1,boSiteMap:1});  
+  var strEditText=inObj.strEditText;
+
+  var tx=dbNeo4j.beginTransaction();
+  var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:queredPage, strEditText:strEditText, tModBrowser:this.tModBrowser, boVLoggedIn:this.boVLoggedIn});
+  var objT=yield* saveByReplaceNeo(flow, tx, objArg);
+  if(objT.mess=='err') {
+    yield* neo4jRollbackGenerator(tx,flow);
+    this.mesEO('err'); return;
+  }else{
+    yield* neo4jCommitGenerator(tx,flow);
   }
-	if(self.boOW==0) {this.mesO('Not authorized'); callback('exited'); return;} 
-  copySome(self,inObj,['summary', 'signature']);    self.strEditText=inObj.newcontent;
-		 
-      // parse
-  var semY=0, semCB=0, boDoExit=0;
-  var tmpf=function(err,results){
-    if(err){boDoExit=1; self.mesEO(err); }       
-    if(semY) { req.flow.next(); } semCB=1;
+  
+  var mess=objT.mess;
+  if(mess=='boViewLoginRequired'){this.mesO('Not logged in'); return;}
+  else if(mess=='boTModBrowserObs') { 
+    var tDiff=objT.tMod-this.tModBrowser, arrTmp=getSuitableTimeUnit(tDiff), strTTmp=Math.round(arrTmp[0])+arrTmp[1]; 
+    this.mesO("tMod browser ("+this.tModBrowser+") < tMod db ("+objT.tMod+") (someone saved "+strTTmp+" after you loaded the page), "+messPreventBecauseOfNewerVersions); return;
+  }else if(mess=='boPageDeleted'){
+    GRet.objTemplateE={}; GRet.boTalkExist=0; GRet.strHtmlText=''; GRet.objRev={strHtmlText:'', tMod:0}; GRet.objPage={idPage:NaN, tMod:0, tModCache:0, boOR:1, boOW:1, boSiteMap:1};
+    extend(GRet, {strDiffText:'', strEditText:strEditText, arrVersionCompared:[null,1]});
+    this.mes("No content, Page deleted");
+  }else if(mess=='OK') {
+    GRet.objPage=copySome({},objT.objPage, ['boOR','boOW', 'boSiteMap', 'idPage']);
+    var arrRev=objT.arrRev;
+    var objRev=arrRev[0];
+    GRet.objRev=copySome({},objRev, ['tMod']);
+    GRet.strHtmlText=objRev.strHtmlText;
+    GRet.matVersion=makeMatVersion(objT.arrRev);
+    copySome(GRet, objT, ['objTemplateE', 'objPage', 'boTalkExist']);
+    extend(GRet, {strDiffText:'', strEditText:strEditText, arrVersionCompared:[null,1]});
+    this.mes("Page overwritten");
+  }else if(mess!='OK') {
+    res.out500(mess); return;
   }
-  yield* parse.call(self,tmpf);       
-  if(!semCB) { semY=1; yield;}
-  if(boDoExit==1) { callback('exited'); return; }
 
-      // saveByAddSQL
-  var mess='', tmp=createSaveByAddSQL(req.wwwSite, queredPage, self.summary, self.signature, self.strEditText, self.strHtmlText, self.eTag, self.arrSub, self.StrSubImage),    sql=tmp.sql, Val=tmp.Val, nEndingResults=tmp.nEndingResults;
-  var boDoExit=0;
-  myQueryF(sql, Val, mysqlPool, function(err, results, fields) {
-    if(err){boDoExit=1; self.mesEO(err); }
-    else{
-      var iRowLast=results.length-nEndingResults-1;
-      mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
-    }
-    req.flow.next();
-  });
-  yield;
-  if(boDoExit==1) { callback('exited'); return; }
-  
-
-
-      // getInfoNData
-  self.boFront=0; self.rev=-1; self.eTagIn=''; self.requesterCacheTime=0;
-  var rowA, boDoExit=0;
-  getInfoNData.call(self,function(err,results){
-    if(err){boDoExit=1; self.mesEO(err); } 
-    else{ rowA=results;}
-    req.flow.next();
-  });
-  yield;
-  if(boDoExit==1) { callback('exited'); return; }
-  copySome(self,rowA,['idPage', 'rev', 'version', 'eTag', 'boOR', 'boOW', 'boSiteMap', 'boTalkExist', 'tMod', 'tModCache', 'strEditText']);
-  //self.matVersion=makeMatVersion.call(self);
-  self.matVersion=makeMatVersion(self.Version);
-  
-  self.mes("New version added");
-  if(objOthersActivity) { objOthersActivity.nEdit++; objOthersActivity.pageName=this.siteName+':'+this.queredPage; }
-
-  copySome(GRet,self,['idPage', 'boOR', 'boOW', 'boSiteMap', 'tMod', 'tModCache', 'boTalkExist', 'strEditText', 'strHtmlText', 'matVersion', 'objTemplateE']);
-  extend(GRet,{strDiffText:'', arrVersion:[null,this.matVersion.length]});
-
-	callback(null, [0]);
+  return {err:null, result:[0]};
 }
 
 
-ReqBE.prototype.saveByReplace=function*(callback,inObj){   
-  var self=this, req=this.req, res=this.res;
-  var queredPage=this.queredPage;
-  var GRet=this.GRet;
-  var Ou={};
-  if(!this.boALoggedIn) { self.mesO('Not logged in as admin'); callback('exited'); return; }
+ReqBE.prototype.saveByAdd=function*(inObj){  
+  var req=this.req, res=this.res;
+  var Ou={}, GRet=this.GRet, flow=req.flow;
 
-  /*
-      // getInfo
-  var rowA, boDoExit=0;
-  getInfo.call(self,function(err,results){
-    if(err){boDoExit=1; self.mesEO(err); } 
-    else{ rowA=results;}
-    req.flow.next();
-  });
-  yield;
-  if(boDoExit==1) { callback('exited'); return; }
-  if(rowA.mess=='IwwwNotFound'){ res.out404('No wiki there'); callback('exited'); return;   }
-  else if(rowA.mess=='pageExist'){
-    copySome(self,rowA,['boOR', 'boOW', 'boSiteMap', 'tMod', 'tModCache']);
-    if(!self.boOR && !self.boVLoggedIn) {self.mesO('Not logged in'); callback("exited"); return;}
-    //if(this.tModBrowser<self.tMod) { self.mesO("tMod browser ("+this.tModBrowser+") < tMod db ("+self.tMod+"), "+messPreventBecauseOfNewerVersions); callback("exited"); return; }
-    var tBrowserTmp=new Date(this.tModBrowser*1000);
-    if(tBrowserTmp<self.tMod) { self.mesO("tMod browser ("+tBrowserTmp+") < tMod db ("+self.tMod+"), "+messPreventBecauseOfNewerVersions); callback("exited"); return; }
-  }else if(rowA.mess=='noSuchPage'){
-    extend(self,{boOW:1,boOR:1,boSiteMap:1});  
+  var tx=dbNeo4j.beginTransaction();
+  var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:this.queredPage, strEditText:inObj.strEditText, tModBrowser:this.tModBrowser, boVLoggedIn:this.boVLoggedIn});
+  copySome(objArg,inObj,['summary', 'signature']);    
+  var objT=yield* saveByAddNeo(flow, tx, objArg);
+  if(objT.mess=='err') {
+    yield* neo4jRollbackGenerator(tx,flow);
+    this.mesEO('err'); return;
+  }else{
+    yield* neo4jCommitGenerator(tx,flow);
   }
-  */
-  extend(self,{strEditText:inObj.newcontent});
+  var iRev=objT.iRev, objRev=objT.arrRev[iRev];
+  var objPage=objT.objPage;
 
-      // parse
-  var semY=0, semCB=0, boDoExit=0;
-  var tmpf=function(err,results){
-    if(err){boDoExit=1; self.mesEO(err); } 
-    if(semY) { req.flow.next(); } semCB=1;
+  var mess=objT.mess;
+  if(mess=='boViewLoginRequired'){this.mesO('Not logged in'); return;}
+  else if(mess=='boViewALoginRequired'){this.mesO('Not authorized'); return;}
+  else if(mess=='boTModBrowserObs') { 
+    var tDiff=objT.tMod-this.tModBrowser, arrTmp=getSuitableTimeUnit(tDiff), strTTmp=Math.round(arrTmp[0])+arrTmp[1]; 
+    this.mesO("tMod browser ("+this.tModBrowser+") < tMod db ("+objT.tMod+") (someone saved "+strTTmp+" after you loaded the page), "+messPreventBecauseOfNewerVersions); return;
   }
-  yield* parse.call(self,tmpf);
-  if(!semCB) { semY=1; yield;}
-  if(boDoExit==1) { callback('exited'); return; }
-
-      // saveByReplace
-  var mess='', tmp=createSaveByReplaceSQL(req.wwwSite, self.queredPage, self.strEditText, self.strHtmlText, self.eTag, self.tModBrowser, self.arrSub, self.StrSubImage),     sql=tmp.sql, Val=tmp.Val, nEndingResults=tmp.nEndingResults; 
-  var boDoExit=0, rowMess;
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){boDoExit=1; self.mesEO(err); } 
-    else{
-      var iRowLast=results.length-nEndingResults-1;
-      rowMess=results[iRowLast][0];
-    }
-    req.flow.next();
-  });
-  yield;
-  if(boDoExit==1) { callback('exited'); return; }
-
-  var mess=rowMess.mess;
-
-  if(mess=='boTModBrowserObs') { 
-    var tBrowserTmp=new Date(this.tModBrowser*1000);
-    var tDiff=rowMess.tMod-this.tModBrowser, arrTmp=getSuitableTimeUnit(tDiff), strTTmp=Math.round(arrTmp[0])+arrTmp[1]; 
-    self.mesO("tMod browser ("+this.tModBrowser+") < tMod db ("+rowMess.tMod+") (someone saved "+strTTmp+" after you loaded the page), "+messPreventBecauseOfNewerVersions); callback("exited"); return;
-  }
-
-      // getInfoNData
-  self.boFront=0; self.rev=0; self.eTagIn='', self.requesterCacheTime=0;
-  var rowA, boDoExit=0;
-  getInfoNData.call(self,function(err,results){
-    if(err){boDoExit=1; self.mesEO(err); } 
-    else{ rowA=results;}
-    req.flow.next();
-  });
-  yield;
-  if(boDoExit==1) { callback('exited'); return; }
-  if(self.strEditText.length>0){
-    copySome(self, rowA, ['idPage', 'rev', 'version', 'eTag', 'boOR', 'boOW', 'boSiteMap', 'boTalkExist', 'tMod', 'tModCache', 'strEditText']);
-    //self.matVersion=makeMatVersion.call(self);
-    self.matVersion=makeMatVersion(self.Version);
-    self.mes("Page overwritten");
-  } else {
-    extend(self, {idPage:NaN, rev:0, version:1, eTag:'', boOR:1, boOW:1, boSiteMap:1, boTalkExist:0, tMod:new Date(0), tModCache:new Date(0), strPageHtml:'', objTemplateE:{}});
-    self.mes("No content, Page deleted");
-  }
+  else if(mess!='OK') {res.out500(mess); return;  }
   
-  //boPageBUNeeded=true; 
-	
-  copySome(GRet,self,['idPage', 'boOR', 'boOW', 'boSiteMap', 'tMod', 'tModCache', 'boTalkExist', 'strEditText', 'strHtmlText', 'matVersion', 'objTemplateE']);
-  extend(GRet,{strDiffText:'', arrVersion:[null,1]});
-	callback(null, [0]);
+  GRet.matVersion=makeMatVersion(objT.arrRev);
+  
+  this.mes("New version added");
+  if(objOthersActivity) { objOthersActivity.nEdit++; objOthersActivity.pageName=objT.siteName+':'+this.queredPage; }
+
+  copySome(GRet, objT, ['objTemplateE', 'boTalkExist']);
+  extend(GRet, {strDiffText:'', strEditText:inObj.strEditText, arrVersionCompared:[null,GRet.matVersion.length]});
+  GRet.objPage=copySome({},objPage, ['boOR','boOW', 'boSiteMap', 'idPage']);
+  GRet.objRev=copySome({},objRev, ['tMod']);
+  GRet.strHtmlText=objRev.strHtmlText;
+  return {err:null, result:[0]};
 }
 
 
-ReqBE.prototype.renamePage=function*(callback,inObj){ 
-  var self=this, req=this.req, res=this.res;
-  var GRet=this.GRet;
+ReqBE.prototype.renamePage=function*(inObj){ 
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { self.mesO('Not logged in as admin'); callback('exited'); return; }
-  var sql="UPDATE "+pageTab+" SET pageName=? WHERE idPage=?";
+  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+
+  var strCqlOrg=` 
+    MATCH (p:Page {idPage:$idPage})
+    SET p.name=$name, p.nameLC=$nameLC
+    RETURN p.name AS name`;
   var strNewName=inObj.strNewName.replace(RegExp(' ','g'),'_');
-  var Val=[strNewName, inObj.id];
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){self.mesEO(err); callback('exited');  return; } 
-    else{
-      var c=results.affectedRows, boOK, mestmp; 
-      if(c==1) { boOK=1; mestmp="1 page renamed"; } else {boOK=0; mestmp=c+" pages renamed!?"; }
-      self.mes(mestmp);
-      Ou.boOK=boOK;      
-      callback(null, [Ou]);
-    }
-  });
+  var err, records, Val={idPage:inObj.id, name:strNewName, nameLC:strNewName.toLowerCase()};
+  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
+
+  var c=records.length, boOK, mestmp; if(c==1) { boOK=1; mestmp="1 page renamed"; } else {boOK=0; mestmp=c+" pages renamed!?"; }
+  this.mes(mestmp);
+  Ou.boOK=boOK;      
+  return {err:null, result:[Ou]};
 }
 
-ReqBE.prototype.renameImage=function*(callback,inObj){ 
-  var self=this, req=this.req, res=this.res;
-  var GRet=this.GRet;
+ReqBE.prototype.renameImage=function*(inObj){ 
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { self.mesO('Not logged in as admin'); callback('exited'); return; }
-  var sql="UPDATE "+imageTab+" SET imageName=? WHERE idImage=?";
-  var Val=[inObj.strNewName, inObj.id];
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){self.mesEO(err); callback('exited');  return; } 
-    else{
-      var c=results.affectedRows, boOK, mestmp; 
-      if(c==1) { boOK=1; mestmp="1 image renamed"; } else {boOK=0; mestmp=c+" images renamed!?"; }
-      self.mes(mestmp);
-      Ou.boOK=boOK;      
-      callback(null, [Ou]);
-    }
-  });
+  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+
+  var strCqlOrg=` 
+    MATCH (i:Image {idImage:$idImage})
+    SET i.name=$name, i.nameLC=$nameLC
+    RETURN i.name AS name`;
+  var strNewName=inObj.strNewName.replace(RegExp(' ','g'),'_');
+  var err, records, Val={idImage:inObj.id, name:strNewName, nameLC:strNewName.toLowerCase()};
+  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
+
+  var c=records.length, boOK, mestmp; if(c==1) { boOK=1; mestmp="1 image renamed"; } else {boOK=0; mestmp=c+" images renamed!?"; }
+  this.mes(mestmp);
+  Ou.boOK=boOK;      
+  return {err:null, result:[Ou]};
+  
 }
 
 
-ReqBE.prototype.specSetup=function*(callback,inObj){
-  var self=this, req=this.req, res=this.res;
+ReqBE.prototype.specSetup=function*(inObj){
+  var req=this.req, res=this.res;
   var GRet=this.GRet;
 
   var Ou={};
   GRet.boVLoggedIn=this.boVLoggedIn; 
   GRet.boALoggedIn=this.boALoggedIn;
-  callback(null, [Ou]);  
+  return {err:null, result:[Ou]};  
 }
 
-ReqBE.prototype.setUpPageListCond=function*(callback,inObj){
+ReqBE.prototype.setUpPageListCond=function*(inObj){
   var Ou={};
-  var tmp=setUpCond(undefined, StrOrderFiltPage, PropPage, inObj);
-  copySome(this,tmp,['strCol', 'Where']);
-  callback(null, [Ou]);
+  var oTmp=setUpArrWhereETC(StrOrderFiltPage, PropPage, inObj), Where=oTmp.Where, strFeatWNullEntry=oTmp.strFeatWNullEntry;
+  if(oTmp.err)  { return oTmp; }
+  
+  extend(inObj, {type:'page'});
+  copySome(this,oTmp,['Where', 'strNullFilterMode']);
+  return {err:null, result:[Ou]};
 }
  
-ReqBE.prototype.getParent=function*(callback,inObj){
-  var self=this, req=this.req, res=this.res;
-  //var Ou={}, sql="SELECT p.pageName FROM "+pageTab+" p JOIN "+subTab+" s ON s.idPage=p.idPage WHERE s.pageName=?;",   Val=[inObj.pageName];
-  var Ou={}, sql="SELECT p.boTLS, p.www, p.idPage, p.pageName FROM "+pageWWWView+" p JOIN "+subTab+" s ON s.idPage=p.idPage JOIN "+pageTab+" c ON s.pageName=c.pageName WHERE c.idPage=?;",   Val=[inObj.idPage];
+ReqBE.prototype.getParent=function*(inObj){
+  var req=this.req, res=this.res, flow=req.flow, Ou={};
+  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
 
-  var semY=0, semCB=0, err, results;
-  myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {
-    err=errT;  results=resultsT;
-    if(semY) { req.flow.next(); } semCB=1;
-  });
-  if(!semCB) { semY=1; yield;}
-  if(err){ self.mesEO(err); callback('exited');  return;  }
-  Ou=arrObj2TabNStrCol(results);
-  callback(null, [Ou]);
+  var strCqlOrg=`
+    MATCH (s:Site)-[hasPage]->(p:Page)-[hc:hasChild]->(c:Page {idPage:$idPage})
+    RETURN s.boTLS AS boTLS, s.www AS www, p.idPage AS idPage, p.name AS pageName`;
+  var err, records, Val={idPage:inObj.idPage};
+  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  
+  Ou=arrObj2TabNStrCol(records);
+  return {err:null, result:[Ou]};
 }
-ReqBE.prototype.getParentOfImage=function*(callback,inObj){
-  var self=this, req=this.req, res=this.res;
-  //var Ou={}, sql="SELECT p.pageName FROM "+pageTab+" p JOIN "+subImageTab+" s ON s.idPage=p.idPage WHERE s.imageName=?;",   Val=[inObj.imageName];
-  var Ou={}, sql="SELECT p.boTLS, p.www, p.idPage, p.pageName FROM "+pageWWWView+" p JOIN "+subImageTab+" s ON s.idPage=p.idPage JOIN "+imageTab+" c ON s.imageName=c.imageName  WHERE c.idImage=?;",   Val=[inObj.idImage];
-  /*myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){self.mesEO(err); callback('exited');  return; } 
-    else{
-      var lenI=results.length; Ou.tab=Array(lenI);
-      var StrCol=[]; if(lenI) StrCol=Object.keys(results[0]); var lenJ=StrCol.length;
-      for(var i=0;i<lenI;i++) {
-        var row=results[i], rowN=Array(lenJ);
-        for(var j=0;j<lenJ;j++){ var key=StrCol[j]; rowN[j]=row[key]; }
-        Ou.tab.push(rowN);
-      } 
-      Ou.StrCol=StrCol;
-      callback(null, [Ou]);
-    }
-  });*/
-  var semY=0, semCB=0, err, results;
-  myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {
-    err=errT;  results=resultsT;
-    if(semY) { req.flow.next(); } semCB=1;
-  });
-  if(!semCB) { semY=1; yield;}
-  if(err){ self.mesEO(err); callback('exited');  return;  }
-  Ou=arrObj2TabNStrCol(results);
-  callback(null, [Ou]);
+
+ReqBE.prototype.getParentOfImage=function*(inObj){
+  var req=this.req, res=this.res, flow=req.flow, Ou={};
+  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+
+  var strCqlOrg=`
+    MATCH (s:Site)-[hasPage]->(p:Page)-[hi:hasImage]->(i:Image {idImage:$idImage})
+    RETURN s.boTLS AS boTLS, s.www AS www, p.idPage AS idPage, p.name AS pageName`;
+  var err, records, Val={idImage:inObj.idImage};
+  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  
+  Ou=arrObj2TabNStrCol(records);
+  return {err:null, result:[Ou]};
 }
-ReqBE.prototype.getSingleParentExtraStuff=function*(callback,inObj){
-  var self=this, req=this.req, res=this.res;
-  var Ou={}, Sql=[], Val=[];
+
+ReqBE.prototype.getSingleParentExtraStuff=function*(inObj){
+  var req=this.req, res=this.res, flow=req.flow, Ou={};
+  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  
   if(inObj.idPage===null){
-    Sql.push("SELECT COUNT(*) AS nSub FROM "+pageTab+" p LEFT JOIN "+subTab+" s ON s.pageName=p.pageName AND s.idSite=p.idSite WHERE s.pageName IS NULL;");   
-    Sql.push("SELECT COUNT(*) AS nImage FROM "+imageTab+" p LEFT JOIN "+subImageTab+" s ON s.imageName=p.imageName WHERE s.imageName IS NULL;"); 
-    //Sql.push("SELECT p.siteName AS siteName FROM "+pageView+" p WHERE p.pageName=?;"); 
+      // Get number of orphaned pages / orphaned images
+    var strCqlOrg=`
+      OPTIONAL MATCH (pOrphan:Page) WHERE (NOT (:Page)-[:hasChild]->(pOrphan)) 
+      WITH COUNT(pOrphan) AS nSub
+      OPTIONAL MATCH (iOrphan:Image)  WHERE (NOT (:Page)-[:hasImage]->(iOrphan))
+      RETURN nSub, COUNT(iOrphan) AS nImage`;
+    var err, records, Val={};
+    dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
+    if(records.length!=1) {  return {err:new Error('records.length!=1')}; }
+    Ou=records[0];
 
-  } else {
-    Sql.push("SELECT COUNT(*) AS nSub FROM "+pageTab+" p JOIN "+subTab+" s ON s.idPage=p.idPage WHERE p.idPage=?;");   
-    Sql.push("SELECT COUNT(*) AS nImage FROM "+pageTab+" p JOIN "+subImageTab+" s ON s.idPage=p.idPage WHERE p.idPage=?;"); 
-    Sql.push("SELECT boTLS, siteName, www, pageName FROM "+pageWWWView+" p WHERE p.idPage=?;"); 
-    Sql.push("SELECT COUNT(*) AS nSame FROM "+pageTab+" pA JOIN "+pageTab+" pB ON pA.pageName=pB.pageName WHERE pB.idPage=?;"); // nSame is >1 if multiple sites have the same pageName 
-    Val.push(inObj.idPage, inObj.idPage, inObj.idPage, inObj.idPage);
-  }  
-  var sql=Sql.join('\n');
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){self.mesEO(err); callback('exited');  return; } 
-    else{
-      Ou.nSub=results[0][0].nSub;
-      Ou.nImage=results[1][0].nImage;
-      if(inObj.idPage!==null) { extend(Ou, results[2][0]); extend(Ou, results[3][0]); }
-      callback(null, [Ou]);
-    }
-  });
-}/*
-ReqBE.prototype.getExtraPageStat=function*(callback,inObj){
-  var self=this, req=this.req, res=this.res;
-  var Ou={}, Sql=[], Val=[];
-  var strName=inObj.pageName;
-  if(strName===null){
-    Sql.push("SELECT 1 FROM "+pageTab+" WHERE FALSE;"); 
-    Sql.push("SELECT COUNT(*) AS nSub FROM "+pageTab+" p LEFT JOIN "+subTab+" s ON s.pageName=p.pageName WHERE s.pageName IS NULL;");   
-    //Sql.push("SELECT COUNT(*) AS nImage FROM "+imageTab+" p WHERE p.imageName NOT IN (SELECT DISTINCT imageName FROM "+subImageTab+";"); 
-    Sql.push("SELECT COUNT(*) AS nImage FROM "+imageTab+" p LEFT JOIN "+subImageTab+" s ON s.imageName=p.imageName WHERE s.imageName IS NULL;"); 
-    //Sql.push("SELECT p.siteName AS siteName FROM "+pageView+" p WHERE p.pageName=?;"); 
-
-  } else {
-    Sql.push("SELECT p.pageName FROM "+pageTab+" p JOIN "+subTab+" s ON s.idPage=p.idPage WHERE s.pageName=?;"); 
-    Sql.push("SELECT COUNT(*) AS nSub FROM "+pageTab+" p JOIN "+subTab+" s ON s.idPage=p.idPage WHERE p.pageName=?;");   
-    Sql.push("SELECT COUNT(*) AS nImage FROM "+pageTab+" p JOIN "+subImageTab+" s ON s.idPage=p.idPage WHERE p.pageName=?;"); 
-    //Sql.push("SELECT p.siteName AS siteName FROM "+pageView+" p WHERE p.pageName=?;"); 
-    Val.push(strName,strName,strName);
-  }  
-  var sql=Sql.join('\n');
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){self.mesEO(err); callback('exited');  return; } 
-    else{
-      var len=results[0].length; Ou.Parent=Array(len);
-      for(var i=0;i<len;i++) { Ou.Parent[i]=results[0][i].pageName;     }
-      Ou.nSub=results[1][0].nSub;
-      Ou.nImage=results[2][0].nImage;
-      callback(null, [Ou]);
-    }
-  });
-}*/
-ReqBE.prototype.getPageList=function*(callback,inObj) {
-  var self=this, req=this.req, res=this.res;
-  var Sql=[];
-  //var sql="SELECT pageName, boOR, boOW, boSiteMap, UNIX_TIMESTAMP(v.tMod) AS tMod, lastRev, boOther, p.idPage, idFile FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev";
-  var tmpCond=array_filter(this.Where), strCond=''; if(tmpCond.length) strCond='WHERE '+tmpCond.join(' AND ');
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(v.tMod) AS tMod, p.lastRev, v.boOther AS boOther, p.idPage AS idPage, v.idFile AS idFile, v.size AS size, COUNT(DISTINCT sc.pageName) AS nChild, COUNT(DISTINCT sI.imageName) AS nImage  FROM "+strTableRefPage+" "+strCond+" GROUP BY pageName;"); 
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(v.tMod) AS tMod, p.lastRev, v.boOther AS boOther, p.idPage AS idPage, v.idFile AS idFile, v.size AS size, COUNT(DISTINCT sc.pageName) AS nChild, COUNT(DISTINCT sI.imageName) AS nImage, COUNT(DISTINCT pp.pageName) AS nParent, pp.pageName AS nameParent  FROM "+strTableRefPage+" "+strCond+" GROUP BY pageName;"); 
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(v.tMod) AS tMod, p.lastRev, v.boOther AS boOther, p.idPage AS idPage, v.idFile AS idFile, v.size AS size, COUNT(DISTINCT sc.pageName) AS nChild, COUNT(DISTINCT sI.imageName) AS nImage, COUNT(DISTINCT sParCount.idPage) AS nParent, pParCount.pageName AS nameParent  FROM "+strTableRefPage+" "+strCond+" GROUP BY pageName;"); 
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther AS boOther, p.idPage AS idPage, p.idFile AS idFile, p.size AS size, COUNT(DISTINCT sc.pageName) AS nChild, COUNT(DISTINCT sI.imageName) AS nImage, COUNT(DISTINCT sParCount.idPage) AS nParent, pParCount.pageName AS nameParent  FROM "+strTableRefPage+" "+strCond+" GROUP BY pageName;"); 
-//, pParCount.siteName AS siteParent
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS p.boTLS, p.siteName AS siteName, p.www AS www, p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther AS boOther, p.idPage AS idPage, p.idFile AS idFile, p.size AS size, COUNT(DISTINCT sc.idSite, sc.pageName) AS nChild, COUNT(DISTINCT sI.imageName) AS nImage, COUNT(DISTINCT sParCount.idPage) AS nParent, pParCount.idPage AS idParent, pParCount.pageName AS nameParent  FROM "+strTableRefPage+" "+strCond+" GROUP BY siteName, pageName;"); 
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS p.boTLS, p.siteName AS siteName, p.www AS www, p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther AS boOther, p.idPage AS idPage, p.idFile AS idFile, p.size AS size, p.nChild AS nChild, p.nImage AS nImage, COUNT(DISTINCT sParCount.idPage) AS nParent, pParCount.idPage AS idParent, pParCount.pageName AS nameParent  FROM "+strTableRefPage+" "+strCond+" GROUP BY siteName, pageName;"); 
-
-  Sql.push("SELECT SQL_CALC_FOUND_ROWS p.boTLS, p.siteName AS siteName, p.www AS www, p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther AS boOther, p.idPage AS idPage, p.idFile AS idFile, p.size AS size, p.nChild AS nChild, p.nImage AS nImage, np.nParent, pp.idPage AS idParent, pp.pageName AS nameParent  FROM "+strTableRefPage+" "+strCond+" GROUP BY siteName, pageName;"); 
-
-  Sql.push("SELECT FOUND_ROWS() AS n;"); // nFound
-  Sql.push("SELECT count(idPage) AS n FROM "+pageTab+";"); // nUnFiltered
-  var sql=Sql.join('\n'),   Val=[]; 
-  /*myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){self.mesEO(err); callback('exited');  return; } 
-    else{
-      var res0=results[0], len0=res0.length, tab=[], StrCol=[]; if(len0) StrCol=Object.keys(res0[0]);  var lenJ=StrCol.length;
-      for(var i=0;i<len0;i++) {
-        var row=res0[i], rowN=Array(lenJ);
-        for(var j=0;j<lenJ;j++){ var key=StrCol[j]; rowN[j]=row[key]; }
-        tab.push(rowN);
-      } 
-      Ou.tab=tab;Ou.StrCol=StrCol;
-      Ou.NFilt=[results[1][0].n, results[2][0].n];
-      callback(null, [Ou]);
-    }
-  });*/
-  var semY=0, semCB=0, err, results;
-  myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {
-    err=errT;  results=resultsT;
-    if(semY) { req.flow.next(); } semCB=1;
-  });
-  if(!semCB) { semY=1; yield;}
-  if(err){ self.mesEO(err); callback('exited');  return;  }
-  var Ou=arrObj2TabNStrCol(results[0]);
-  Ou.NFilt=[results[1][0].n, results[2][0].n];
-  callback(null, [Ou]);
+  } else {  
+    var strCqlOrg=`
+      MATCH (s:Site)-[hasPage]->(p:Page {idPage:$idPage})
+      OPTIONAL MATCH (p)-[hc:hasChild]->(c:Page)
+      WITH s, p, COUNT(c) AS nSub
+      OPTIONAL MATCH (p)-[hc:hasImage]->(i:Image)
+      WITH s, p, nSub, COUNT(i) AS nImage
+      OPTIONAL MATCH (p2:Page {nameLC:p.nameLC})
+      RETURN s.boTLS AS boTLS, s.name AS siteName, s.www AS www, p.name AS pageName, p.nameLC AS nameLC, nSub, nImage, COUNT(p2) AS nSame`;
+    var err, records, Val={idPage:inObj.idPage};
+    dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
+    if(records.length!=1) {  return {err:new Error('records.length!=1')}; }
+    Ou=records[0];
+  } 
+  
+  return {err:null, result:[Ou]};
 }
 
-ReqBE.prototype.getPageHist=function*(callback,inObj){
-  var self=this, req=this.req, res=this.res;
-  var Ou={}
-  //var strTableRefCount=pageTab+' p';
-  var arg={strTableRef:strTableRefPageHist, Ou:Ou, WhereExtra:[], Prop:PropPage, StrOrderFilt:StrOrderFiltPage};  
-  copySome(arg, this, ['Where']); arg.strDBPrefix=strDBPrefix; arg.pool=mysqlPool;
+
+ReqBE.prototype.getPageList=function*(inObj) {
+  var req=this.req, res=this.res;
+  var flow=req.flow;
+
+  var tmp=whereArrToStr(this.Where), strWhere=tmp.strWhere, strWhereWExt=tmp.strWhereWExt;
+  var cqlList=createListQuery('page', this.strNullFilterMode, strWhere, strWhereWExt);
+  var Val={}, err, records;
+  dbNeo4j.cypher({query:cqlList, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err){ this.mesEO(err); return;  }
+  var Ou=arrObj2TabNStrCol(records), nFiltered=records.length;
   
-  var semY=0, semCB=0, err, results;
-  getHist(arg, function(errT, resultsT){
-    err=errT;  results=resultsT;
-    if(semY) { req.flow.next(); } semCB=1;
-  });
-  if(!semCB) { semY=1; yield;}
-  if(err){ self.mesEO(err); callback('exited');  return;  }
-  Ou=results;
+  var cqlNUnFiltered="MATCH (p:Page)-[h:hasRevision]->(r:RevisionLast), (s:Site)-[hasPage]->(p) RETURN COUNT(p) AS nUnFiltered";
+  var Val={}, err, records;
+  dbNeo4j.cypher({query:cqlNUnFiltered , params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err){ this.mesEO(err); return;  }
+  var nUnFiltered=records[0].nUnFiltered;
 
-  var iColParent=KeyColPageFlip.parent, arrTmpA=results.Hist[iColParent], arrTmpB=[];
-  //for(var i=arrTmpA.length-1;i>=0;i--){var boKeep=(arrTmpA[i] instanceof Array) && (typeof arrTmpA[i][0]==='number') if(!boKeep) mysplice1(arrTmpA,i); else arrTmpA[i]=arrTmpA[i][0]; }
-  for(var i=0;i<arrTmpA.length;i++){var tmp=arrTmpA[i], boKeep=(tmp instanceof Array) && (typeof tmp[0]==='number'); if(boKeep) arrTmpB.push(tmp[0]);  }
+  Ou.NFilt=[nFiltered, nUnFiltered];
+  return {err:null, result:[Ou]};
+}
 
+ReqBE.prototype.getPageHist=function*(inObj){
+  var req=this.req, res=this.res;
+  var Ou={}, flow=req.flow;
+  var arg={Ou:Ou, WhereExtra:[], Prop:PropPage, StrOrderFilt:StrOrderFiltPage, type:'page'};  
+  copySome(arg, this, ['Where', 'strNullFilterMode']);
+  
+  var objT=yield* getHist(flow, arg);
+  if(objT.err){ this.mesEO(objT.err); return;  }
+  Ou={Hist:objT.Hist};
+
+    // Removing null parent
+  var iColParent=KeyColPageFlip.parent, arrTmpA=Ou.Hist[iColParent], arrTmpB=[];
+  for(var i=0;i<arrTmpA.length;i++){var tmp=arrTmpA[i]; if(  (tmp instanceof Array) && (tmp[0]!==null)  ) arrTmpB.push(tmp[0]);  }
+
+    // Fetching the names of the parents
   var len=arrTmpB.length;
   if(len){
-    var sql="SELECT idPage, boTLS, www, siteName, pageName FROM "+pageWWWView+" WHERE idPage IN ("+arrTmpB.join(', ')+")",  Val=[];
-    var semY=0, semCB=0, err, results;
-    myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {
-      err=errT;  results=resultsT;
-      if(semY) { req.flow.next(); } semCB=1;
-    });
-    if(!semCB) { semY=1; yield;}
-    if(err){ self.mesEO(err); callback('exited');  return;  }
-    Ou.ParentName=arrObj2TabNStrCol(results);
+    var strCqlOrg=`MATCH (s:Site)-[hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE p.idPage IN $IdPage
+    RETURN s.name AS siteName, p.idPage AS idPage, p.nameLC AS pageName`;
+
+    var err, records, Val={IdPage:arrTmpB};
+    dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    if(err){ this.mesEO(err); return;  }
+    Ou.ParentName=arrObj2TabNStrCol(records);
   }
 
-  callback(null, [Ou]);
-
+  return {err:null, result:[Ou]};
 }
 
 
-ReqBE.prototype.setUpImageListCond=function*(callback,inObj){
+ReqBE.prototype.setUpImageListCond=function*(inObj){
   var Ou={};
-  var tmp=setUpCond(undefined, StrOrderFiltImage, PropImage, inObj);
-  copySome(this,tmp,['strCol', 'Where']);
-  callback(null, [Ou]);
-}
-
-ReqBE.prototype.getImageList=function*(callback,inObj) {
-  var self=this, req=this.req, res=this.res;
-  var Sql=[];
-  //var sql="SELECT imageName, UNIX_TIMESTAMP(created) AS created, boOther, idImage, idFile FROM "+imageTab+"";
-  var tmpCond=array_filter(this.Where), strCond=''; if(tmpCond.length) strCond='WHERE '+tmpCond.join(' AND ');
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.created) AS created, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.created) AS created, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, COUNT(DISTINCT pp.pageName) AS nParent, pp.pageName AS nameParent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.created) AS created, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, COUNT(DISTINCT sParCount.idPage) AS nParent, pParCount.pageName AS nameParent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
-// , pParCount.siteName AS siteParent
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.created) AS created, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, COUNT(DISTINCT sParCount.idPage) AS nParent, pParCount.idPage AS idParent, pParCount.pageName AS nameParent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
-  Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.created) AS created, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, np.nParent, pp.idPage AS idParent, pp.pageName AS nameParent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
-
-  Sql.push("SELECT FOUND_ROWS() AS n;"); // nFound
-  Sql.push("SELECT count(idImage) AS n FROM "+imageTab+";"); // nUnFiltered
-  var sql=Sql.join('\n'),   Val=[]; 
-  /*myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){self.mesEO(err); callback('exited');  return; } 
-    else{
-      var res0=results[0], len0=res0.length, tab=[], StrCol=[]; if(len0) StrCol=Object.keys(res0[0]);  var lenJ=StrCol.length;
-      for(var i=0;i<len0;i++) {
-        var row=res0[i], rowN=Array(lenJ);
-        for(var j=0;j<lenJ;j++){ var key=StrCol[j]; rowN[j]=row[key]; }
-        tab.push(rowN);
-      }   
-      Ou.tab=tab; Ou.StrCol=StrCol;
-      Ou.NFilt=[results[1][0].n, results[2][0].n];
-      callback(null, [Ou]);
-    }
-  }); */
-  var semY=0, semCB=0, err, results;
-  myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {
-    err=errT;  results=resultsT;
-    if(semY) { req.flow.next(); } semCB=1;
-  });
-  if(!semCB) { semY=1; yield;}
-  if(err){ self.mesEO(err); callback('exited');  return;  }
-  var Ou=arrObj2TabNStrCol(results[0]);
-  Ou.NFilt=[results[1][0].n, results[2][0].n];
-  callback(null, [Ou]);
-}
-
-ReqBE.prototype.getImageHist=function*(callback,inObj){
-  var self=this, req=this.req, res=this.res;
-  var Ou={}
-  //var arg={strTableRef:strTableRefImage, Ou:Ou, WhereExtra:[], Prop:PropImage, StrOrderFilt:StrOrderFiltImage};
-  var arg={strTableRef:strTableRefImageHist, Ou:Ou, WhereExtra:[], Prop:PropImage, StrOrderFilt:StrOrderFiltImage};  
-  copySome(arg, this, ['Where']); arg.strDBPrefix=strDBPrefix;  arg.pool=mysqlPool;
+  var oTmp=setUpArrWhereETC(StrOrderFiltImage, PropImage, inObj), Where=oTmp.Where, strFeatWNullEntry=oTmp.strFeatWNullEntry;
+  if(oTmp.err)  { return oTmp; }
   
+  extend(inObj, {type:'image'});
+  copySome(this,oTmp,['Where', 'strNullFilterMode']);
+  return {err:null, result:[Ou]};
+}
 
-  var semY=0, semCB=0, err, results;
-  getHist(arg, function(errT, resultsT){
-    err=errT;  results=resultsT;
-    if(semY) { req.flow.next(); } semCB=1;
-  });
-  if(!semCB) { semY=1; yield;}
-  if(err){ self.mesEO(err); callback('exited');  return;  }
-  Ou=results;
+ReqBE.prototype.getImageList=function*(inObj) {
+  var req=this.req, res=this.res;
+  var flow=req.flow;
 
-  var iColParent=KeyColImageFlip.parent, arrTmpA=results.Hist[iColParent], arrTmpB=[];
-  //for(var i=arrTmpA.length-1;i>=0;i--){var boKeep=(arrTmpA[i] instanceof Array) && (typeof arrTmpA[i][0]==='number') if(!boKeep) mysplice1(arrTmpA,i); else arrTmpA[i]=arrTmpA[i][0]; }
-  for(var i=0;i<arrTmpA.length;i++){var tmp=arrTmpA[i], boKeep=(tmp instanceof Array) && (typeof tmp[0]==='number'); if(boKeep) arrTmpB.push(tmp[0]);  }
+  var tmp=whereArrToStr(this.Where), strWhere=tmp.strWhere, strWhereWExt=tmp.strWhereWExt;
+  var cqlList=createListQuery('image', this.strNullFilterMode, strWhere, strWhereWExt);
+  var Val={}, err, records;
+  dbNeo4j.cypher({query:cqlList, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err){ this.mesEO(err); return;  }
+  var Ou=arrObj2TabNStrCol(records), nFiltered=records.length;
 
+  var cqlNUnFiltered="MATCH (i:Image) WHERE i.boGotData RETURN COUNT(i) AS nUnFiltered";
+  var Val={}, err, records;
+  dbNeo4j.cypher({query:cqlNUnFiltered , params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  if(err){ this.mesEO(err); return;  }
+  var nUnFiltered=records[0].nUnFiltered;
+
+  Ou.NFilt=[nFiltered, nUnFiltered];
+  return {err:null, result:[Ou]};
+}
+
+ReqBE.prototype.getImageHist=function*(inObj){
+  var req=this.req, res=this.res;
+  var Ou={}, flow=req.flow;
+  var arg={Ou:Ou, WhereExtra:[], Prop:PropImage, StrOrderFilt:StrOrderFiltImage, type:'image'};  
+  copySome(arg, this, ['Where', 'strNullFilterMode']);
+  
+  var objT=yield* getHist(flow, arg);
+  if(objT.err){ this.mesEO(objT.err); return;  }
+  Ou={Hist:objT.Hist};
+
+    // Removing some parents (Not sure why this is needed (to remove null perhaps))
+  var iColParent=KeyColImageFlip.parent, arrTmpA=Ou.Hist[iColParent], arrTmpB=[];
+  for(var i=0;i<arrTmpA.length;i++){var tmp=arrTmpA[i]; if(  (tmp instanceof Array) && (tmp[0]!==null)  ) arrTmpB.push(tmp[0]);  }
+
+    // Fetching the names of the parents
   var len=arrTmpB.length;
   if(len){
-    var sql="SELECT idPage, boTLS, www, siteName, pageName FROM "+pageWWWView+" WHERE idPage IN ("+arrTmpB.join(', ')+")",  Val=[];
-    var semY=0, semCB=0, err, results;
-    myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {
-      err=errT;  results=resultsT;
-      if(semY) { req.flow.next(); } semCB=1;
-    });
-    if(!semCB) { semY=1; yield;}
-    if(err){ self.mesEO(err); callback('exited');  return;  }
-    Ou.ParentName=arrObj2TabNStrCol(results);
+    var strCqlOrg=`MATCH (s:Site)-[hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE p.idPage IN $IdPage
+    RETURN s.name AS siteName, p.idPage AS idPage, p.nameLC AS pageName`;
+
+    var err, records, Val={IdPage:arrTmpB};
+    dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    if(err){ this.mesEO(err); return;  }
+    Ou.ParentName=arrObj2TabNStrCol(records);
   }
 
-  callback(null, [Ou]);
-
+  return {err:null, result:[Ou]};
 }
 
-ReqBE.prototype.getPageInfo=function*(callback,inObj){
-  var self=this, req=this.req, res=this.res, Ou={}
-  var GRet=this.GRet;
-  var Ou={};
-
-  var sql="SELECT pageName, boOR, boOW, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther, eTag, size FROM "+pageLastView;
-  var Val=[]; 
-  if('objName' in inObj) {
+//MATCH (s:Site)-[:hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE s.boDefault=1 AND p.nameLC IN ['start', 'starta', 'startb']
+//    RETURN p.name AS pageName, p.boOR AS boOR, p.boOW AS boOW, r.tMod AS tMod, p.boOther AS boOther, r.size AS size
+    
+ReqBE.prototype.getPageInfo=function*(inObj){
+  var req=this.req, res=this.res, Ou={}
+  var GRet=this.GRet, flow=req.flow;
+  var Ou={FileInfo:[]};
+  var strCqlOrg=`
+      // ----- start
+    MATCH (s:Site)-[:hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE 
+    
+      // ----- end
+    RETURN p.name AS pageName, p.boOR AS boOR, p.boOW AS boOW, r.tMod AS tMod, p.boOther AS boOther, r.size AS size`;
+  var objCql=splitCql(strCqlOrg);
+    
+  var Val={}; 
+  if('objName' in inObj) {  // objName, Ex: {siteA:['start', 'starta' ...], siteB:['start', 'starta' ...] ...} 
     var strKeyDefault=inObj.strKeyDefault;
     var objName=inObj.objName, arrQ=[];
     var objTmp={};
     for(var siteName in objName){
       var arrName=objName[siteName];
       var nName=arrName.length;
-      if(siteName==strKeyDefault){  arrQ.push("boDefault=1 AND pageName IN ("+array_fill(nName, "?").join(',')+")");     Val=Val.concat(arrName);  } 
-      else {  arrQ.push("siteName=? AND pageName IN ("+array_fill(nName, "?").join(',')+")");     Val=Val.concat(siteName,arrName);  } 
+      var strTmp; if(siteName==strKeyDefault){  strTmp="s.boDefault=true";   }   else {  strTmp="s.name='"+siteName+"'";  } 
+      arrQ.push(strTmp+" AND p.nameLC IN $Str"+siteName+" ");  Val['Str'+siteName]=arrName;
     }
     var strQ='false'; if(arrQ.length) strQ=arrQ.join(' OR ');
-    sql+=" WHERE "+strQ;
+    var strCql=objCql['start']+strQ+objCql['end'];
+    
+    var err, records;
+    dbNeo4j.cypher({query:strCql, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next(); });  yield;
+    if(err) { return {err:err}; }
+    Ou.FileInfo=records;
   } 
-
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){res.out500(err); callback('exited');  return; } 
-    else{
-      //var tmp=results[0];
-      Ou.FileInfo=results;
-      callback(null, [Ou]);
-    }
-  });
-}
-ReqBE.prototype.getImageInfo=function*(callback,inObj){
-  var self=this, req=this.req, res=this.res, Ou={}
-  var GRet=this.GRet;
-  var Ou={};
-
-  var boLimited=0, arrName=[], nName, tmpQ; 
-  if('arrName' in inObj) {
-    boLimited=1; arrName=inObj.arrName;
-    nName=arrName.length; if(nName>1) { tmpQ=array_fill(nName, "?").join(','); tmpQ="imageName IN ("+tmpQ+")";  } else if(nName==1) tmpQ="imageName=?"; else tmpQ="false";
-  } 
-
-  var sql="SELECT imageName, UNIX_TIMESTAMP(created) AS created, boOther, eTag, size FROM "+imageTab;
-  
-  var strLim=''; if(boLimited){ strLim=" WHERE "+tmpQ; }
-  sql+=strLim;
-  var Val=arrName;
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){res.out500(err); callback('exited');  return; } 
-    else{
-      Ou.FileInfo=results;
-      callback(null, [Ou]);
-    }
-  });
-}
-
-
-ReqBE.prototype.redirectTabGet=function*(callback,inObj){ 
-  var self=this, req=this.req, res=this.res;
-  var GRet=this.GRet;
-  if(!this.boALoggedIn) { self.mesO('Not logged in as admin'); callback('exited'); return; }
-  var sql="SELECT idSite, siteName, www, pageName, url, UNIX_TIMESTAMP(created) AS created, nAccess, UNIX_TIMESTAMP(tLastAccess) AS tLastAccess FROM "+redirectWWWView+";";
-  //var sql="SELECT idSite, pageName, url, UNIX_TIMESTAMP(created) AS created FROM "+redirectTab+";";
-  var Val=[];
-  /*myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){self.mesEO(err); callback('exited');  return; } 
-    else{
-      var lenI=results.length; Ou.tab=Array(lenI);
-      var StrCol=[]; if(lenI) StrCol=Object.keys(results[0]); var lenJ=StrCol.length;
-      for(var i=0;i<lenI;i++) {
-        var row=results[i], rowN=Array(lenJ);
-        for(var j=0;j<lenJ;j++){ var key=StrCol[j]; rowN[j]=row[key]; }
-        Ou.tab.push(rowN);
-      } 
-      Ou.StrCol=StrCol;
-      self.mes("Got "+lenI+" entries"); 
-      extend(Ou, {boOK:1,nEntry:lenI});     
-      callback(null, [Ou]);
-    }
-  });*/
-  var semY=0, semCB=0, err, results;
-  myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {
-    err=errT;  results=resultsT;
-    if(semY) { req.flow.next(); } semCB=1;
-  });
-  if(!semCB) { semY=1; yield;}
-  if(err){ self.mesEO(err); callback('exited');  return;  }
-  var Ou=arrObj2TabNStrCol(results);
-  self.mes("Got "+results.length+" entries"); 
-  extend(Ou, {boOK:1,nEntry:results.length});
-  callback(null, [Ou]);
-}
-ReqBE.prototype.redirectTabSet=function*(callback,inObj){
-  var self=this, req=this.req, res=this.res;
-  var GRet=this.GRet;
-  var Ou={};
-  if(!this.boALoggedIn) { self.mesO('Not logged in as admin'); callback('exited'); return; }
-  var boUpd=inObj.boUpd||false;
-  if(boUpd){
-    //var sql="UPDATE "+redirectTab+" SET url=?, created=now() WHERE idSite=? AND pageName=?;";
-    //var Val=[inObj.url, inObj.idSite, inObj.pageName.replace(RegExp(' ','g'),'_')];
-    var sql="UPDATE "+redirectTab+" SET idSite=?, pageName=?, url=?, created=now() WHERE idSite=? AND pageName=?;"; 
-    var Val=[inObj.idSite, inObj.pageName.replace(RegExp(' ','g'),'_'), inObj.url, inObj.idSiteOld, inObj.pageNameOld.replace(RegExp(' ','g'),'_')];
-  } else {
-    var sql="INSERT INTO "+redirectTab+" (idSite, pageName, url, created) VALUES (?, ?, ?, now())";
-    var Val=[inObj.idSite, inObj.pageName.replace(RegExp(' ','g'),'_'), inObj.url];
+  else{
+    setTimeout(function(){ Ou.FileInfo=[];  flow.next();  });
+    yield;
   }
   
-  myQueryF(sql, Val, mysqlPool, function(err, results){
-    var boOK, mestmp;
-    if(err && (typeof err=='object') && err.code=='ER_DUP_ENTRY'){boOK=0; mestmp='dup key';}
-    else if(err){
-      self.mesEO(err); callback('exited');  return;
-    }
-    else{
-      boOK=1; mestmp="Done";
-    }
-    self.mes(mestmp);
-    extend(Ou, {boOK:boOK});
-    callback(null, [Ou]);
+  return {err:null, result:[Ou]};
+}
+
+
+ReqBE.prototype.getImageInfo=function*(inObj){
+  var req=this.req, res=this.res, Ou={}
+  var GRet=this.GRet, flow=req.flow;
+  var Ou={FileInfo:[]};
+  var strCqlOrg=`
+      // ----- start
+    MATCH (i:Image) WHERE i.boGotData=TRUE
     
-  });
+      // ----- end
+    RETURN i.name AS imageName, i.tMod AS tMod, i.boOther AS boOther, i.hash AS eTag, i.size AS size`;
+  var objCql=splitCql(strCqlOrg);
+
+  var StrNameLC=[], strCond='';
+  if('arrName' in inObj) {  // arrName, Ex: ['a.jpg', 'b.jpg' ...]  
+    var arrName=inObj.arrName, nName=arrName.length;
+    StrNameLC=Array(nName);    for(var i=0;i<nName;i++){ StrNameLC[i]=arrName[i].toLowerCase();}
+    strCond=" AND i.nameLC IN $StrNameLC \n";    
+  } 
+  var Val={StrNameLC:StrNameLC}; 
+  var strCql=objCql['start']+strCond+objCql['end'];
+  var err, records;
+  dbNeo4j.cypher({query:strCql, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next(); });  yield;
+  if(err) { return {err:err}; }
+  Ou.FileInfo=records;
+  return {err:null, result:[Ou]};
 }
-ReqBE.prototype.redirectTabDelete=function*(callback,inObj){ 
-  var self=this, req=this.req, res=this.res;
-  var GRet=this.GRet;
-  var Ou={};
-  if(!this.boALoggedIn) { self.mesO('Not logged in as admin'); callback('exited'); return; }
-  var sql="DELETE FROM "+redirectTab+" WHERE idSite=? AND pageName=?";
-  var Val=[inObj.idSite, inObj.pageName];
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){self.mesEO(err); callback('exited');  return; } 
-    else{
-      var c=results.affectedRows, boOK, mestmp; 
-      if(c==1) {boOK=1; mestmp="Entry deleted"; } else {boOK=1; mestmp=c+ " entries deleted!?"; }
-      self.mes(mestmp);
-      Ou.boOK=boOK;      
-      callback(null, [Ou]);
-    }
-  });
+
+////////////////////////////////////////////////////////////////////////
+// RedirectTab
+////////////////////////////////////////////////////////////////////////
+ReqBE.prototype.redirectTabGet=function*(inObj){ 
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
+  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  var strCqlOrg=` 
+    MATCH (s:Site)-[:hasRedirect]->(r:Redirect)
+    RETURN s.name AS idSite, s.name AS siteName, s.www AS www, r.nameLC AS pageName, r.url AS url, r.tCreated AS tCreated, r.tMod AS tMod, r.nAccess AS nAccess, r.tLastAccess AS tLastAccess`;
+  var err, records, Val={};
+  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT;  flow.next();  });   yield;
+  if(err ) { res.out500(err); return; }
+
+  var Ou=arrObj2TabNStrCol(records);
+  this.mes("Got "+records.length+" entries"); 
+  extend(Ou, {boOK:1,nEntry:records.length});
+  return {err:null, result:[Ou]};
 }
-ReqBE.prototype.redirectTabResetNAccess=function*(callback,inObj){
-  var self=this, req=this.req, res=this.res;
-  var GRet=this.GRet;
+
+ReqBE.prototype.redirectTabSet=function*(inObj){
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { self.mesO('Not logged in as admin'); callback('exited'); return; }
-  var sql="UPDATE "+redirectTab+" SET nAccess=0;"; 
-  var Val=[];
+  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  var boUpd=inObj.boUpd||false;
+  if(boUpd){
+      // If r.nameLC or idSite changes then nAccess, tLastAccess, tCreated are set as if the Redirect was created.
+    var strCqlOrg=`MATCH (sOld:Site {name:$idSiteOld})-[relOld:hasRedirect]->(r:Redirect {nameLC:$nameLCOld}), (s:Site {name:$idSite}) 
+      CREATE (s)-[relNew:hasRedirect]->(r) 
+      SET r.nameLC=$nameLC, r.url=$url, r.tMod=$tNow, r.nAccess=coalesce($boNew*0, r.nAccess), r.tLastAccess=coalesce($boNew*$tNow, r.tLastAccess), r.tCreated=coalesce($boNew*$tNow, r.tCreated)
+      DELETE relOld
+      RETURN s.name AS idSite, s.name AS siteName, s.www AS www, r.nameLC AS pageName, r.url AS url, r.tCreated AS tCreated, r.tMod AS tMod, r.nAccess AS nAccess, r.tLastAccess AS tLastAccess`;
+    var Val=copySome({}, inObj, ['idSiteOld', 'idSite', 'url']);
+    Val.nameLC=inObj.pageName.replace(RegExp(' ','g'),'_').toLowerCase();  Val.nameLCOld=inObj.pageNameOld.replace(RegExp(' ','g'),'_').toLowerCase();
+    Val.boNew=(Val.nameLC!=Val.nameLCOld || Val.idSite!=Val.idSiteOld)?1:null;
+  } else {
+    var strCqlOrg=`MATCH (s:Site {name:$idSite})
+      CREATE (s)-[:hasRedirect]->(r:Redirect) SET r.nameLC=$nameLC, r.url=$url, r.tCreated=$tNow, r.tMod=$tNow, r.tLastAccess=$tNow, r.nAccess=0
+      RETURN s.name AS idSite, s.name AS siteName, s.www AS www, r.nameLC AS pageName, r.url AS url, r.tCreated AS tCreated, r.tMod AS tMod, r.nAccess AS nAccess, r.tLastAccess AS tLastAccess`;
+    var Val=copySome({}, inObj, ['idSite', 'url']); Val.nameLC=inObj.pageName.replace(RegExp(' ','g'),'_');
+  }
+  Val.tNow=(new Date()).toUnix();
+  var err, records; dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT;  flow.next();  });   yield;
   
-  myQueryF(sql, Val, mysqlPool, function(err, results){
-    var boOK=0, mestmp;
-    if(err) {  self.mesEO(err); callback('exited');  return;  }
-    else{  boOK=1; mestmp="Done";  }
-    self.mes(mestmp);
-    extend(Ou, {boOK:boOK});
-    callback(null, [Ou]);
-  });
+  var boOK, mestmp;
+  if(err && (typeof err=='object') && 'neo4j' in err && 'message' in err.neo4j){boOK=0; mestmp=err.neo4j.message;}
+  else if(err){ this.mesEO(err); return;  }
+  else{ boOK=1; mestmp="Done";  }
+  var Ou=arrObj2TabNStrCol(records);
+  
+  this.mes(mestmp);
+  extend(Ou, {boOK:boOK});   //if(boUpd) Ou.idSiteOld=inObj.idSite;
+  return {err:null, result:[Ou]};
 }
-ReqBE.prototype.siteTabGet=function*(callback,inObj){ 
-  var self=this, req=this.req, res=this.res;
-  var GRet=this.GRet;
+ReqBE.prototype.redirectTabDelete=function*(inObj){ 
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { self.mesO('Not logged in as admin'); callback('exited'); return; }
-  //var sql="SELECT idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, UNIX_TIMESTAMP(created) AS created FROM "+siteTab+";";
-  var sql="SELECT boDefault, boTLS, st.idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, UNIX_TIMESTAMP(st.created) AS created, SUM(p.idSite IS NOT NULL) AS nPage FROM "+siteTab+" st LEFT JOIN "+pageTab+" p ON st.idSite=p.idSite GROUP BY idSite;"
-  var Val=[];
-  /*myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){self.mesEO(err); callback('exited');  return; } 
-    else{
-      var lenI=results.length; Ou.tab=Array(lenI);
-      var StrCol=[]; if(lenI) StrCol=Object.keys(results[0]); var lenJ=StrCol.length;
-      for(var i=0;i<lenI;i++) {
-        var row=results[i], rowN=Array(lenJ);
-        for(var j=0;j<lenJ;j++){ var key=StrCol[j]; rowN[j]=row[key]; }
-        Ou.tab.push(rowN);
-      } 
-      Ou.StrCol=StrCol;
-      self.mes("Got "+lenI+" entries");
-      Ou.boOK=1;      
-      callback(null, [Ou]);
-    }
-  });*/
-  var semY=0, semCB=0, err, results;
-  myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {
-    err=errT;  results=resultsT;
-    if(semY) { req.flow.next(); } semCB=1;
-  });
-  if(!semCB) { semY=1; yield;}
-  if(err){ self.mesEO(err); callback('exited');  return;  }
-  var Ou=arrObj2TabNStrCol(results);
-  self.mes("Got "+results.length+" entries");
+  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  var strCqlOrg=`MATCH (s:Site)-[:hasRedirect]->(r:Redirect) WHERE s.name=$name AND r.nameLC=$nameLC DETACH DELETE r RETURN COUNT(r) AS nDelete`;
+  var Val={name:inObj.idSite, nameLC:inObj.pageName.replace(RegExp(' ','g'),'_')};
+  
+  var err, records; dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT;  flow.next();  });   yield;
+
+  var c=records[0].nDelete, boOK, mestmp; 
+  if(c==1) {boOK=1; mestmp="Entry deleted"; } else {boOK=1; mestmp=c+ " entries deleted!?"; }
+  this.mes(mestmp);
+  Ou.boOK=boOK;      
+  return {err:null, result:[Ou]};
+}
+
+ReqBE.prototype.redirectTabResetNAccess=function*(inObj){
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
+  var Ou={};
+  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  var strCqlOrg=`MATCH (r:Redirect) SET r.nAccess=0`;
+  var Val={}, err, records; dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT;  flow.next();  });   yield;
+
+  var boOK=0, mestmp;
+  if(err) {  this.mesEO(err); return;  } else{  boOK=1; mestmp="Done";  }
+  this.mes(mestmp);
+  extend(Ou, {boOK:boOK});
+  return {err:null, result:[Ou]};
+}
+
+////////////////////////////////////////////////////////////////////////
+// SiteTab
+////////////////////////////////////////////////////////////////////////
+
+  // Notice! "idSite" is the same as "name". TODO: The client side should be fixed to conform with this, then these functions (siteTabGet, siteTabSet ...) can be simplified.  
+ReqBE.prototype.siteTabGet=function*(inObj){ 
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
+  var Ou={};
+  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  
+  var strCqlOrg=`
+    MATCH (s:Site)
+    OPTIONAL MATCH (s)-[:hasPage]->(p:Page)-[:hasRevision]->(:Revision)
+    RETURN s.boDefault AS boDefault, s.boTLS AS boTLS, s.name AS idSite, s.name AS siteName, s.www AS www, s.googleAnalyticsTrackingID AS googleAnalyticsTrackingID, s.urlIcon16 AS urlIcon16, s.urlIcon200 AS urlIcon200, s.tCreated AS tCreated, COUNT(p) AS nPage`;
+
+  var err, records, Val={};
+  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next(); });  yield;
+  if(err) { return {err:err}; }
+
+  var Ou=arrObj2TabNStrCol(records);
+  this.mes("Got "+records.length+" entries");
   Ou.boOK=1;
-  callback(null, [Ou]);
+  return {err:null, result:[Ou]};
 }
-
-ReqBE.prototype.siteTabSet=function*(callback,inObj){ 
-  var self=this, req=this.req, res=this.res;
-  var GRet=this.GRet;
+  
+ReqBE.prototype.siteTabSet=function*(inObj){ 
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { self.mesO('Not logged in as admin'); callback('exited'); return; }
+  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
   var boUpd=inObj.boUpd||false;
 
-  if(boUpd){
-    var sql="UPDATE "+siteTab+" SET boTLS=?, siteName=?, www=?, googleAnalyticsTrackingID=?, urlIcon16=?, urlIcon200=? WHERE idSite=?;";  //, created=now() 
-    var Val=[inObj.boTLS, inObj.siteName, inObj.www, inObj.googleAnalyticsTrackingID, inObj.urlIcon16, inObj.urlIcon200, inObj.idSite];
+  if(boUpd) { 
+    var strCql=`
+      MATCH (s:Site {name:$nameLC}) 
+      SET s.boTLS=$boTLS, s.www=$www, s.googleAnalyticsTrackingID=$googleAnalyticsTrackingID, s.urlIcon16=$urlIcon16, s.urlIcon200=$urlIcon200, s.name=$nameLCNew`;
+    var strNameLC=inObj.idSite, strNameLCNew=inObj.siteName.toLowerCase();
   } else {
-    var sql="INSERT INTO "+siteTab+" (boTLS, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, created) VALUES (?, ?, ?, ?, ?, ?, now());";
-    var Val=[inObj.boTLS, inObj.siteName, inObj.www, inObj.googleAnalyticsTrackingID, inObj.urlIcon16, inObj.urlIcon200];
-    sql+="SELECT LAST_INSERT_ID() AS idSite;";
+    var strCql=`
+      CREATE (s:Site {name:$nameLC}) 
+      SET s.boTLS=$boTLS, s.www=$www, s.googleAnalyticsTrackingID=$googleAnalyticsTrackingID, s.urlIcon16=$urlIcon16, s.urlIcon200=$urlIcon200`;
+    var strNameLC=inObj.siteName.toLowerCase(), strNameLCNew=strNameLC;
   }
+
+  var err, records, Val={nameLC: strNameLC, nameLCNew: strNameLCNew};  copySome(Val, inObj, ['www', 'googleAnalyticsTrackingID', 'urlIcon16', 'urlIcon200']); Val.boTLS=Boolean(inObj.boTLS);
+  dbNeo4j.cypher({query:strCql, params:Val, raw: true}, function(errT, recordsT){  //, lean: true
+     err=errT; records=recordsT; flow.next(); });  yield;
+
+  var boOK, mestmp;
+  if(err && (typeof err=='object') && 'neo4j' in err && 'message' in err.neo4j){boOK=0; mestmp=err.neo4j.message;}
+  else if(err){ this.mesEO(err); return;  }
+  else{ boOK=1; mestmp="Done";  }
   
-  myQueryF(sql, Val, mysqlPool, function(err, results){
-    var boOK, mestmp, idSite=inObj.idSite;
-    if(err && (typeof err=='object') && err.code=='ER_DUP_ENTRY'){boOK=0; mestmp='dup key';}
-    else if(err){
-      self.mesEO(err); callback('exited');  return;
-    }
-    else{
-      boOK=1; mestmp="Done";
-      if(boUpd){}
-      else{idSite=results[1][0].idSite;}
-    }
-    self.mes(mestmp);
-    extend(Ou, {boOK:boOK, idSite:idSite});
-    callback(null, [Ou]);
+  this.mes(mestmp);
+  extend(Ou, {boOK:boOK, idSite:strNameLCNew});   //if(boUpd) Ou.idSiteOld=inObj.idSite;
+  return {err:null, result:[Ou]};
+}
+ReqBE.prototype.siteTabDelete=function*(inObj){ 
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
+  var Ou={};
+  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  
+  var strCqlOrg=`MATCH (s:Site {name:$nameLC}) DETACH DELETE s RETURN COUNT(s) AS nDelete`;
+
+  var err, records, Val={nameLC:inObj.siteName.toLowerCase()};
+  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next(); });  yield;
+  if(err) { return {err:err}; }
+  
+  var c=records[0].nDelete, boOK, mestmp; 
+  if(c==1) {boOK=1; mestmp="Entry deleted"; } else {boOK=1; mestmp=c+ " entries deleted!?"; }
+  this.mes(mestmp);
+  Ou.boOK=boOK;      
+  return {err:null, result:[Ou]};
+}
+ReqBE.prototype.siteTabSetDefault=function*(inObj){
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
+  var Ou={};
+  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+
+  var tx=dbNeo4j.beginTransaction(), err, records;
+  var Val={nameLC:inObj.idSite.toLowerCase()};
+  try{
+    var strCqlOrg=`MATCH (s:Site) SET s.boDefault=null`;
+    tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next(); });  yield;
+    if(err) { throw {mess:'err', err:err}; }
     
-  });
-}
-ReqBE.prototype.siteTabDelete=function*(callback,inObj){ 
-  var self=this, req=this.req, res=this.res;
-  var GRet=this.GRet;
-  var Ou={};
-  if(!this.boALoggedIn) { self.mesO('Not logged in as admin'); callback('exited'); return; }
-  var sql="DELETE FROM "+siteTab+" WHERE siteName=?";
-  var Val=[inObj.siteName];
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){self.mesEO(err); callback('exited');  return; } 
-    else{
-      var c=results.affectedRows, boOK, mestmp; 
-      if(c==1) {boOK=1; mestmp="Entry deleted"; } else {boOK=1; mestmp=c+ " entries deleted!?"; }
-      self.mes(mestmp);
-      Ou.boOK=boOK;      
-      callback(null, [Ou]);
+    var strCqlOrg=`MATCH (s:Site {name:$nameLC}) SET s.boDefault=true`;
+    tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next(); });  yield;
+    if(err) { throw {mess:'err', err:err}; }
+    var objOut={mess:'OK', err:null};
+  } catch(e){
+    var objOut=e;
+  }finally{
+    if(objOut.mess=='err') {
+      yield* neo4jRollbackGenerator(tx,flow);
+    }else{
+      yield* neo4jCommitGenerator(tx,flow);
     }
-  });
-}
-ReqBE.prototype.siteTabSetDefault=function*(callback,inObj){ 
-  var self=this, req=this.req, res=this.res;
-  var GRet=this.GRet;
-  var Ou={};
-  if(!this.boALoggedIn) { self.mesO('Not logged in as admin'); callback('exited'); return; }
-  var Sql=[];
-  Sql.push("START TRANSACTION;");
-  Sql.push("UPDATE "+siteTab+" SET boDefault=0;");
-  Sql.push("UPDATE "+siteTab+" SET boDefault=1 WHERE idSite=?;");
-  Sql.push("COMMIT;");
-  var sql=Sql.join('\n'),    Val=[inObj.idSite];
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){self.mesEO(err); callback('exited');  return; } 
-    else{
-      self.mes("OK");
-      callback(null, [Ou]);
-    }
-  });
+    if(objOut.mess=='err') { return objOut; }
+
+  }
+
+  this.mes("OK");
+  return {err:null, result:[Ou]};
 }
 
+////////////////////////////////////////////////////////////////////////
+// Uploading
+////////////////////////////////////////////////////////////////////////
 
+ReqBE.prototype.uploadAdminServ=function*(inObj){
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
+  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  var strFileToLoadFolder=path.join(__dirname, '..', 'mmmWikiData', 'FileToLoad'); 
+  var err, files;
+  fs.readdir(strFileToLoadFolder, function(errT, filesT){ err=errT; files=filesT; flow.next(); }); yield;
+  if(err ) { console.log(err); res.out500(err); }
 
+  this.File=Array(files.length);
+  for(var i=0;i<files.length;i++){
+    var file=files[i], strPath=path.join(strFileToLoadFolder,file);
+    var strType=''; if(file.substr(-4)=='.zip') strType='application/zip';
+    this.File[i]={name:file, path:strPath,type:strType};
+  }
+  //files.forEach(file => { console.log(file);  });
+  
+  var objT=yield* this.uploadAdmin(inObj);
+  return objT;
+}
 
-ReqBE.prototype.uploadAdmin=function*(callback,inObj){
-  var self=this, req=this.req, res=this.res;
-  var GRet=this.GRet;
+ReqBE.prototype.uploadAdmin=function*(inObj){
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { self.mesO('Not logged in as admin'); callback('exited'); return; }
+  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
   var regBoTalk=RegExp('(template_)?talk:');
-  var FileOrg=self.File;
+  var FileOrg=this.File;
   var n=FileOrg.length;
-  var tmp=n+" files."; console.log(tmp); self.mes(tmp); 
+  var tmp=n+" files."; console.log(tmp); this.mes(tmp); 
   var FileTalk=[]; for(var i=FileOrg.length-1;i>=0;i--){ if(regBoTalk.test(FileOrg[i].name)) { var item=mySplice1(FileOrg,i);  FileTalk.push(item);  }  } FileOrg=FileTalk.concat(FileOrg);
   for(var i=0;i<FileOrg.length;i++){
     var fileOrg=FileOrg[i], tmpname=fileOrg.path;
-    var dataOrg, boDoExit=0;
-    fs.readFile(tmpname, function(err, buf) { //, this.encRead
-      if(err){ boDoExit=1; res.out500(err);  }
-      else dataOrg=buf; //.toString();
-      req.flow.next();
-    });
-    yield;
-    if(boDoExit==1) { callback('exited'); return; }
+    var err, buf;
+    fs.readFile(tmpname, function(errT, bufT) { err=errT; buf=bufT; flow.next(); }); yield;
+    if(err){  res.out500(err); return; }
+    var dataOrg=buf; 
     if(fileOrg.type=='application/zip' || fileOrg.type=='application/x-zip-compressed'){
        
       var zip=new NodeZip(dataOrg, {base64: false, checkCRC32: true});
       var FileInZip=zip.files;
       
-      var tmp="Zip file with "+Object.keys(FileInZip).length+" files."; console.log(tmp); self.mes(tmp);
+      var tmp="Zip file with "+Object.keys(FileInZip).length+" files."; console.log(tmp); this.mes(tmp);
       var Key=Object.keys(FileInZip), KeyTalk=[];  for(var j=Key.length-1;j>=0;j--){ if(regBoTalk.test(Key[j])) { var item=mySplice1(Key,j);  KeyTalk.push(item); } }  Key=KeyTalk.concat(Key);  
       //for(var fileName in File){
       for(var j=0;j<Key.length;j++){
@@ -1281,7 +1176,8 @@ ReqBE.prototype.uploadAdmin=function*(callback,inObj){
         var Match=RegExp('\\.(\\w{1,3})$').exec(fileName);
         var type=Match[1].toLowerCase(), bufT=new Buffer(fileInZip._data,'binary');//b.toString();
 
-        yield* self.storeUploadedFile.call(self,fileName,type,bufT,callback);  
+        console.log(j+'/'+Key.length+' '+fileName+' '+bufT.length);
+        yield* this.storeUploadedFile.call(this,fileName,type,bufT);  
       } 
 
     } else {  
@@ -1289,162 +1185,141 @@ ReqBE.prototype.uploadAdmin=function*(callback,inObj){
       var Match=RegExp('\\.(\\w{1,4})$').exec(fileName);
       var type=Match[1].toLowerCase();
  
-      yield* self.storeUploadedFile.call(self,fileName,type,dataOrg,callback);  
+      console.log(i+'/'+FileOrg.length+' '+fileName+' '+dataOrg.length);
+      yield* this.storeUploadedFile.call(this,fileName,type,dataOrg);  
     } 
   }
-  callback(null, [0]);
+  return {err:null, result:[0]};
 }
 
 //regTalkOrTemplate=RegExp("(template_)?talk");
 
-ReqBE.prototype.storeUploadedFile=function*(fileName,type,data,callback){
-  var self=this, req=this.req, res=this.res;
+ReqBE.prototype.storeUploadedFile=function*(fileName,type,data){
+  var req=this.req, res=this.res;
   var regImg=RegExp("^(png|jpeg|jpg|gif|svg)$"), regVid=RegExp('^(mp4|ogg|webm)$');
+  var flow=req.flow;
   
   if(type=='txt'){
     //fileName=fileName.replace(RegExp('(talk|template|template_talk) ','i'),'$1:');   
-    fileName=fileName.replace(RegExp('.txt$','i'),'');
-    var obj=parsePage(fileName);
-    var siteName=obj.siteName, pageName=obj.pageName;
 
-    extend(self,{strEditText:data.toString(), boOW:1, boOR:1, boSiteMap:1});
+    var strEditText=data.toString();
 
-            // parse
-    var semY=0, semCB=0, boDoExit=0;
-    var tmpf=function(err,results){
-      if(err){boDoExit=1; self.mesEO(err); } 
-      if(semY) { req.flow.next(); } semCB=1;
-    }
-    yield* parse.call(self,tmpf);
-    if(!semCB) { semY=1; yield;}
-    if(boDoExit==1) { callback('exited'); return; }
-
-          // saveWhenUploading
-    var mess='', tmp=createSaveWhenUploadingSQL(siteName, pageName, self.strEditText, self.strHtmlText, '', self.arrSub, self.StrSubImage),     sql=tmp.sql, Val=tmp.Val, nEndingResults=tmp.nEndingResults;
-    console.log(siteName+', '+pageName+', '+self.strEditText.length+', '+self.strHtmlText.length+', nSub:'+self.arrSub.length+', nsubImage:'+self.StrSubImage.length);
-    console.time('bla');
-    sql="SET autocommit=0;"+sql;  // +"SET autocommit=1;";
-    var boDoExit=0;
-    myQueryF(sql, Val, mysqlPool, function(err, results) {
-      if(err){boDoExit=1; self.mesEO(err); }
-      else{
-        var iRowLast=results.length-nEndingResults-1;
-        mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
-      }
-      req.flow.next();
-    });
-    yield;
+    //console.log(fileName+', '+strEditText.length);
+    console.time('dbOperations');
     
- /*
-    var mess='', tmp=createSaveWhenUploadingNeo(siteName, pageName, self.strEditText, self.strHtmlText, '', self.arrSub, self.StrSubImage),     sql=tmp.sql, Val=tmp.Val, nEndingResults=tmp.nEndingResults;
-    console.time('bla');
-    var boDoExit=0;
-    myQueryF(sql, Val, mysqlPool, function(err, results) {
-      if(err){boDoExit=1; self.mesEO(err); }
-      else{
-        var iRowLast=results.length-nEndingResults-1;
-        mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
-      }
-      req.flow.next();
-    });
-    yield;
- */
- 
-    console.timeEnd('bla');
-    if(boDoExit==1) { callback('exited'); return; }
-    if(mess!='done'){console.log(mess); debugger;}
+        // saveWhenUploading
+    var tx=dbNeo4j.beginTransaction();
+    var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {fileName:fileName, strEditText:strEditText});
+    var objT=yield* saveWhenUploadingNeo(flow, tx, objArg);
+    if(objT.mess=='err') {
+      yield* neo4jRollbackGenerator(tx,flow);
+      this.mesEO('err'); return;
+    }else{
+      yield* neo4jCommitGenerator(tx,flow);
+    }
+
+    var mess=objT.mess;
+    if(mess!='OK') {console.log(mess); debugger; return; }
+
+    console.timeEnd('dbOperations');
 
   }else if(regImg.test(type)){
-    var eTag=md5(data); 
-    //var dim=imageSize(data);  console.log(fileName+', w/h: '+dim.width+' / '+dim.height);
-    var sql="CALL "+strDBPrefix+"storeImage(?,?,?,?,@boOK)";
-    var Val=[fileName,0,data,eTag], boDoExit=0;
-    myQueryF(sql, Val, mysqlPool, function(err, results) {
-      if(err){ boDoExit=1; self.mesEO(err); } 
-      req.flow.next();
-    });
-    yield;
-    if(boDoExit==1) { callback('exited'); return; }
+    
+      // Get original image size from data 
+    var err, value;
+    var semY=0, semCB=0; gm(data).size(function(errT, valueT){ err=errT; value=valueT; if(semY) flow.next(); semCB=1;   });  if(!semCB) { semY=1; yield;}
+    if(err){this.mesEO(err);  return; }
+    var width=value.width, height=value.height;
+    
+    var tx=dbNeo4j.beginTransaction();
+    
+    var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:fileName, data:data, width:width, height:height, boOther:false});
+    var objT=yield* storeImageNeo(flow, tx, objArg);
+    if(objT.mess=='err') {
+      yield* neo4jRollbackGenerator(tx,flow);
+      this.mesEO('err'); return;
+    }else{
+      yield* neo4jCommitGenerator(tx,flow);
+    }
   }else if(regVid.test(type)){ 
     var eTag=md5(data);
     var sql="CALL "+strDBPrefix+"storeVideo(?,?,?)";
-    var Val=[fileName,data,eTag], boDoExit=0;
-    myQueryF(sql, Val, mysqlPool, function(err, results) {
-      if(err){ boDoExit=1; self.mesEO(err);  } 
-      req.flow.next();
-    });
-    yield;
-    if(boDoExit==1) { callback('exited'); return; }
+    var Val=[fileName,data,eTag];
+    var objT=yield* myQueryGen(flow, sql, Val, mysqlPool), err=objT.err; if(err) {  this.mesEO(err); return; }   var results=objT.results;
   }
-  else{ self.mes("Unrecognized file type: "+type); callback(null,[Ou]); return; }
+  else{ this.mes("Unrecognized file type: "+type); return {err:null, result:[Ou]}; }
 
   //process.stdout.write("*");
 }
 
 
-
-ReqBE.prototype.uploadUser=function*(callback,inObj){
-  var self=this, req=this.req, res=this.res, sessionID=req.sessionID;
-  var GRet=this.GRet;
+ReqBE.prototype.uploadUser=function*(inObj){
+  var self=this, req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
   var Ou={};
   var regImg=RegExp("^(png|jpeg|jpg|gif|svg)$"), regVid=RegExp('^(mp4|ogg|webm)$');
 
-  var redisVar=sessionID+'_captcha';
+  var redisVar=req.sessionID+'_captcha';
   var tmp=yield* wrapRedisSendCommand.call(req, 'get',[redisVar]);
-  if(self.captchaIn!=tmp) { Ou.strMessage='Wrong captcha'; callback(null,[Ou]);  return;}
-  var File=self.File;
-  var n=File.length; self.mes("nFile: "+n);
+  if(this.captchaIn!=tmp) { Ou.strMessage='Wrong captcha'; return {err:null, result:[Ou]};}
+  var File=this.File;
+  var n=File.length; this.mes("nFile: "+n);
 
   
-  var file=File[0], tmpname=file.path, fileName=file.name; if(self.strName.length) fileName=self.strName;
+  var file=File[0], tmpname=file.path, fileName=file.name; if(this.strName.length) fileName=this.strName;
   var Match=RegExp('\\.(\\w{1,3})$').exec(fileName); 
-  if(!Match){ Ou.strMessage="The file name should be in the form xxxx.xxx"; callback(null,[Ou]); return; }
-  var type=Match[1].toLowerCase(),data, boDoExit=0;
-  fs.readFile(tmpname, function(err, buf) { //, this.encRead
-    if(err){ boDoExit=1; self.mesEO(err);   }
-    else data=buf;//.toString();
-    req.flow.next();
-  });
-  yield;
-  if(boDoExit==1) { callback('exited'); return; }
-  if(data.length==0){ self.mes("data.length==0"); callback(null,[Ou]); return; }
+  if(!Match){ Ou.strMessage="The file name should be in the form xxxx.xxx"; return {err:null, result:[Ou]}; }
+  var type=Match[1].toLowerCase(), err, buf;
+  fs.readFile(tmpname, function(errT, bufT) { err=errT; buf=bufT; flow.next(); });  yield;
+  if(err){  this.mesEO(err); return; }
+  var data=buf;
+  if(data.length==0){ this.mes("data.length==0"); return {err:null, result:[Ou]}; }
 
   if(regImg.test(type)){
           // autoOrient
-    var myCollector=concat(function(buf){      data=buf;  req.flow.next();     }), boDoExit=0; 
+    var myCollector=concat(function(buf){      data=buf;  flow.next();     }), boDoExit=0; 
     var streamImg=gm(data).autoOrient().stream(function streamOut(err, stdout, stderr) {
       if(err){ boDoExit=1; self.mesEO(err); return; } 
       stdout.pipe(myCollector); 
     });
     yield;
-    if(boDoExit==1) { callback('exited'); return; }  
+    if(boDoExit==1) { return; }  
 
     var eTag=md5(data);
-    //var dim=imageSize(data);  console.log(fileName+', w/h: '+dim.width+' / '+dim.height);
-    var sql="CALL "+strDBPrefix+"storeImage(?,?,?,?,@boOK)";
-    var Val=[fileName,1,data,eTag], boDoExit=0;
-    myQueryF(sql, Val, mysqlPool, function(err, results) {
-      if(err){ boDoExit=1; self.mesEO(err); } 
-      req.flow.next();
-    });
-    yield;
-    if(boDoExit==1) { callback('exited'); return; }
+
+      // Get original image size from data 
+    var err, value;
+    gm(data).size(function(errT, valueT){ err=errT; value=valueT; flow.next();   });  yield;
+    if(err){this.mesEO(err);  return; }
+    var width=value.width, height=value.height;
+    
+ 
+      // Call storeImageNeo 
+    var tx=dbNeo4j.beginTransaction();
+    
+    var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:fileName, data:data, width:width, height:height, boOther:true});
+    var objT=yield* storeImageNeo(flow, tx, objArg);
+    if(objT.mess=='err') {
+      yield* neo4jRollbackGenerator(tx,flow);
+      this.mesEO('err'); return;
+    }else{
+      yield* neo4jCommitGenerator(tx,flow);
+    }
+    
+    
+    
   }else if(regVid.test(type)){ 
     var eTag=md5(data);
     var sql="CALL "+strDBPrefix+"storeVideo(?,?,?)";
-    var Val=[fileName,data,eTag], boDoExit=0;
-    myQueryF(sql, Val, mysqlPool, function(err, results) {
-      if(err){ boDoExit=1; self.mesEO(err);  } 
-      req.flow.next();
-    });
-    yield;
-    if(boDoExit==1) { callback('exited'); return; }
+    var Val=[fileName,data,eTag];
+    var objT=yield* myQueryGen(flow, sql, Val, mysqlPool), err=objT.err; if(err) {  this.mesEO(err); return; }   var results=objT.results;
   }
-  else{ Ou.strMessage="Unrecognized file type: "+type; callback(null,[Ou]); return; }
+  else{ Ou.strMessage="Unrecognized file type: "+type; return {err:null, result:[Ou]}; }
 
   Ou.strMessage="Done";
-  callback(null, [Ou]);
+  return {err:null, result:[Ou]};
 }
+
 
 
 

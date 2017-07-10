@@ -29,7 +29,7 @@ var Parser=app.Parser=function(text, boTrustEditors){
   this.arrInterWikiLink=[]; // For storing the link (page) name of so called interwiki links (links to Wikipedia, wiktionary ...)
   this.arrInterWiki_WikiType=[]; // For storing what kind of interwiki link. (Wikipedia, wiktionary ...)
 
-	this.arrILink=[]; // For storing of all the internal links 
+  this.arrILink=[]; // For storing of all the internal links 
 
   this.arrExtLink=[]; // For storing of all the external links
 
@@ -46,7 +46,7 @@ var Parser=app.Parser=function(text, boTrustEditors){
   this.arrImgRawAttr=[];
   this.arrBRAttr=[];
   this.arrIframeAttr=[];
-  this.bagTemplate=[]; // Will look like: [[name,boExist], [name,boExist],	....]
+  this.bagTemplate=[]; // Will look like: [[name,boExist], [name,boExist],  ....]
   this.arrPre=[]; // For storing all pre sections
 
   this.boSimpleTagReplaced;
@@ -138,9 +138,9 @@ Parser.prototype.parse = function(callback) {
   text = text.replace(/<horizontallist>([\s\S]*?)<\/horizontallist>/ig ,thisChanged(this.replaceHLCB,this));
  
 
-	//
-	// Do some of the translations
-	//
+  //
+  // Do some of the translations
+  //
 
   text = text.replace(RegExp("'''([^\n\']+)'''",'g'),thisChanged(this.replaceBoldCB,this));
   text = text.replace(RegExp("''([^\n\']+)''",'g'),thisChanged(this.replaceItalicCB,this));
@@ -488,11 +488,13 @@ Parser.prototype.replaceTemplateCB=function(m,n){
   this.bagTemplate.push([templateName,0]);
   return STARTCHAR+'template'+i+'/'+ENDCHAR;;
 }
+
 Parser.prototype.putBackTemplateCB=function(m,n){
   var templateName=this.bagTemplate[n][0];
-  var templateNameAsQuered='template:'+templateName; 
-  if(templateNameAsQuered in this.objTemplate){
-    return this.objTemplate[templateNameAsQuered];
+  //var templateNameAsQuered='template:'+templateName;
+  var templateNameLC=templateName.toLowerCase()
+  if(templateNameLC in this.objTemplateText){
+    return this.objTemplateText[templateNameLC];
   }else{    return m;   }
 }
 Parser.prototype.putBackTemplateStubsCB=function(m,n){ 
@@ -658,25 +660,45 @@ Parser.prototype.putBackImgRawCB=function(m,n){
 }
 
 
+/*
+Parser.prototype.setGetArrSub=function(StrSub, objExistingSub){ // Uses objExistingSub and StrSub to calculate (assign) arrSub = [[name,boExist], [name,boExist] ....] 
+  var arrSub=[]; this.arrExistingSub=[], this.arrExistingSubLower=[]; 
+  for(var name in objExistingSub) { this.arrExistingSub.push(name);  this.arrExistingSubLower.push(name.toLowerCase()); }
+  for(var i=0;i<StrSub.length;i++){ var name=StrSub[i], boExist=this.arrExistingSubLower.indexOf(name.toLowerCase())!=-1; arrSub.push([name,boExist]);  }
+  return arrSub;
+}*/
 
-Parser.prototype.setArrSub=function(){ // Uses objExistingSub and StrSub to calculate (assign) this.arrSub = [[name,boExist], [name,boExist] ....] 
-  this.arrSub=[], this.arrExistingSub=[], this.arrExistingSubLower=[]; 
-  for(var name in this.objExistingSub) { this.arrExistingSub.push(name);  this.arrExistingSubLower.push(name.toLowerCase()); }
-  for(var i=0;i<this.StrSub.length;i++){ var name=this.StrSub[i], boExist=this.arrExistingSubLower.indexOf(name.toLowerCase())!=-1; this.arrSub.push([name,boExist]);  }
+Parser.prototype.createArrExistingSub=function(objExistingSub){ // Uses objExistingSub to create this.arrExistingSub and this.arrExistingSubLower (both [name, name ....] (contains only existing subPages))
+  this.arrExistingSub=[], this.arrExistingSubLower=[]; 
+  for(var name in objExistingSub) { this.arrExistingSub.push(name);  this.arrExistingSubLower.push(name.toLowerCase()); }
+}
+Parser.prototype.getArrSub=function(StrSub){ // Uses this.arrExistingSub, this.arrExistingSubLower and StrSub to calculate (assign) arrSub = [[name,boExist], [name,boExist] ....] 
+  var arrSub=[];
+  for(var i=0;i<StrSub.length;i++){ var name=StrSub[i], boExist=this.arrExistingSubLower.indexOf(name.toLowerCase())!=-1; arrSub.push([name,boExist]);  }
+  return arrSub;
 }
 
-
-Parser.prototype.getStrTemplate=function(){ // Returns [name, name ....] 
+Parser.prototype.getStrTemplateLong=function(){ // Returns ['template:name', 'template:name' ....] 
   var obj={};
   for(var i=0;i<this.bagTemplate.length;i++) {
     var strName='template:'+this.bagTemplate[i][0], key=strName.toLowerCase();
     obj[key]=strName;
   }
-  this.StrTemplate=[]; for(var name in obj){ this.StrTemplate.push(obj[name]);  }
-  return this.StrTemplate;
+  var StrTemplate=[]; for(var key in obj){ StrTemplate.push(obj[key]);  }
+  return StrTemplate;
+}
+Parser.prototype.getStrTemplate=function(){ // Returns [name, name ....] 
+  var obj={};
+  for(var i=0;i<this.bagTemplate.length;i++) {
+    var strName=this.bagTemplate[i][0], key=strName.toLowerCase();
+    obj[key]=strName;
+  }
+  var StrTemplate=[]; for(var key in obj){ StrTemplate.push(obj[key]);  }
+  return StrTemplate;
 }
 
-Parser.prototype.getStrSub=function(){ // Returns [name, name ....] 
+
+Parser.prototype.getStrSub=function(){ // Returns [name, name ....] (An array of unique strings)
   var obj={};
   for(var i=0;i<this.bagTemplate.length;i++) {
     var strName='template:'+this.bagTemplate[i][0], key=strName.toLowerCase();
@@ -684,12 +706,12 @@ Parser.prototype.getStrSub=function(){ // Returns [name, name ....]
   }
   for(var i=0; i<this.arrILink.length;i++) { var v=this.arrILink[i], strName=v[1], key=strName.toLowerCase();    obj[key]=strName;     }
 
-  this.StrSub=[]; for(var name in obj){ this.StrSub.push(obj[name]);  }
-  return this.StrSub;
+  var StrSub=[]; for(var key in obj){ StrSub.push(obj[key]);  }
+  return StrSub;
 }
 
 
-Parser.prototype.getStrSubImage=function(){ // Returns [name, name ....] 
+Parser.prototype.getStrSubImage=function(){ // Returns [name, name ....] (An array of unique strings)
   var obj={};
   for(var i=0;i<this.arrImageLink.length;i++) {   var strName=this.arrImageLink[i], key=strName.toLowerCase(); obj[key]=strName;  }
   for(var i=0; i<this.arrGalleryImageLink.length;i++) { 
@@ -697,7 +719,7 @@ Parser.prototype.getStrSubImage=function(){ // Returns [name, name ....]
     for(var j=0; j<arrLoc.length;j++) {  var strName=arrLoc[j], key=strName.toLowerCase(); obj[key]=strName;        }
   }
 
-  var StrSub=[]; for(var name in obj){ StrSub.push(obj[name]);  }
+  var StrSub=[]; for(var key in obj){ StrSub.push(obj[key]);  }
   return StrSub;
 }
 
