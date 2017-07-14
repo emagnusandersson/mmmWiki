@@ -3,8 +3,6 @@
 two31=Math.pow(2,31);  intMax=two31-1;  intMin=-two31;
 sPerDay=24*3600;  sPerMonth=sPerDay*30;
 
-
-
 fsWebRootFolder=process.cwd();
 flLibFolder='lib';
 
@@ -17,24 +15,7 @@ leafBE='be.json';
 leafCommon='common.js';
 
 
-
-
-
-
-
-
-//versionC={};
-//versionC.KeyCol=['index','date','summary','signature',  'button']; // versionC: version columns
-//versionC.dateMask=[0,1,0,0, 0];
-//versionC.backSel=[1,2,3]; 
-//versionC.backVis=[0,1,2,3,4]; 
-
-
-
 StrImageExt=['jpg','jpeg','png','gif','svg'];
-
-
-
 
 
 messPreventBecauseOfNewerVersions="Preventing overwrite since there are newer versions. Copy your edits temporary, then reload page.";
@@ -257,7 +238,6 @@ featCalcValExtend=function(Prop){
 
 KeyColPage=Object.keys(PropPage);   nColPage=KeyColPage.length;   KeyColPageFlip=array_flip(KeyColPage);
 KeyColImage=Object.keys(PropImage);   nColImage=KeyColImage.length;   KeyColImageFlip=array_flip(KeyColImage);
-
 
 
 featCalcValExtend(PropPage);

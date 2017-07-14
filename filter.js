@@ -569,13 +569,11 @@ FilterDivProt.frStored=function(o){
   for(var i=0;i<Filt.length;i++){
     var strName=$el.StrOrderFilt[i];
     if($el.Prop[strName].feat.kind[0]=='B'){ 
-      for(var j=0;j<FiltS[i][0].length;j++)     Filt[i][0][j]=FiltS[i][0][j];
-      for(var j=0;j<FiltS[i][1].length;j++)     Filt[i][1][j]=FiltS[i][1][j];
+      myCopy(Filt[i][0],FiltS[i][0]);  myCopy(Filt[i][1],FiltS[i][1]);
       Filt[i][2]=FiltS[i][2];
     } else  { Filt[i][0]=FiltS[i][0]; Filt[i][1]=FiltS[i][1]; }
   }
 }
-
 
 
 

@@ -61,30 +61,29 @@ sanitizeStyle=function(attrIn){
 //lcnotfirst=function(str){  if(count(str)>1) return str[0]+substr(str,1).toLowerCase(); else return str; }  // Make all except first lowercase
 
 parse=function*(callback) { // Should be seen as a method  (assigns things to this)
-  var self=this;
-  var mPa=new Parser(self.strEditText, self.boOW==0);
-  mPa.text=self.strEditText;
+  var req=this.req, flow=req.flow;
+  var mPa=new Parser(this.strEditText, this.boOW==0);
+  mPa.text=this.strEditText;
   mPa.preParse();
-  self.StrTemplate=mPa.getStrTemplate();
+  this.StrTemplate=mPa.getStrTemplate();
 
     // get objTemplate from DB
   var len=this.StrTemplate.length, objTemplate={};   
   if(len) {
     var strQ=array_fill(len,'?').join(', ');
     var sql="SELECT pageName, data FROM "+pageLastView+" p JOIN "+fileTab+" f WHERE f.idFile=p.idFile AND www=? AND pageName IN ("+strQ+")";
-    var Val=[this.req.wwwSite].concat(this.StrTemplate), results, boDoExit=0;
-    myQueryF(sql, Val, mysqlPool, function(err, resultsT) {
-      if(err){ boDoExit=1;  callback(err);  }  else{ results=resultsT;}  self.req.flow.next();
-    });
-    yield; if(boDoExit==1) return;
+    var Val=[this.req.wwwSite].concat(this.StrTemplate), err, results;
+    myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {err=errT; results=resultsT; flow.next(); });  yield;
+    if(err){   callback(err); return; } 
+    
     for(var i=0;i<results.length;i++){ var tmpR=results[i]; objTemplate[tmpR.pageName]=tmpR.data; }
   }
 
 
-  var len=self.StrTemplate.length;
-  self.objTemplateE={}; for(var i=0;i<len;i++) { var key=self.StrTemplate[i]; self.objTemplateE[key]=key in objTemplate; }
+  var len=this.StrTemplate.length;
+  this.objTemplateE={}; for(var i=0;i<len;i++) { var key=this.StrTemplate[i]; this.objTemplateE[key]=key in objTemplate; }
   mPa.objTemplate=objTemplate;    mPa.parse();
-  self.StrSub=mPa.getStrSub(); self.StrSubImage=mPa.getStrSubImage();
+  this.StrSub=mPa.getStrSub(); this.StrSubImage=mPa.getStrSubImage();
 
 
     // get objExistingSub from DB
@@ -92,82 +91,78 @@ parse=function*(callback) { // Should be seen as a method  (assigns things to th
   if(len) {
     var strQ=array_fill(len,'?').join(', ');
     var sql="SELECT pageName FROM "+pageLastView+" WHERE pageName IN ("+strQ+") AND www=?";
-    var Val=this.StrSub.concat(this.req.wwwSite), results, boDoExit=0; 
-    myQueryF(sql, Val, mysqlPool, function(err, resultsT) {
-      if(err){ boDoExit=1;  callback(err);  }  else{ results=resultsT;} self.req.flow.next();
-    });
-    yield; if(boDoExit==1) return;
+    var Val=this.StrSub.concat(this.req.wwwSite), err, results;
+    myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {err=errT; results=resultsT; flow.next(); });  yield;
+    if(err){   callback(err); return; } 
     for(var i=0;i<results.length;i++){ var tmpR=results[i]; objExistingSub[tmpR.pageName]=1; }
   }
 
 
   mPa.objExistingSub=objExistingSub; mPa.setArrSub();      mPa.endParse();
-  self.strHtmlText=mPa.text;  self.arrSub=mPa.arrSub; self.eTag=calcETag.call(self);
+  this.strHtmlText=mPa.text;  this.arrSub=mPa.arrSub; this.eTag=calcETag.call(this);
 
   callback(null,0);
 }
 
 getInfoNData=function(callback) {
-  var self=this, req=this.req;
+  var req=this.req;
   var sql="CALL "+strDBPrefix+"getInfoNData(?, ?, ?, ?, ?, ?, ?);"; 
-  var Val=[this.boFront, req.boTLS, req.wwwSite, this.queredPage, this.rev, this.eTagIn, this.requesterCacheTime/1000]; 
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){ callback(err); } 
-    else{ 
-      var len=results.length, iRowLast=len-2; 
-      var rowLast=results[iRowLast][0]; 
-      //if('strEditText' in rowLast) rowLast.strEditText=rowLast.strEditText?rowLast.strEditText.toString():'';
-      //if('strHtmlText' in rowLast) rowLast.strHtmlText=rowLast.strHtmlText?rowLast.strHtmlText.toString():'';
-      if('rev' in rowLast) rowLast.version=rowLast.rev+1;
-      if('tMod' in rowLast) rowLast.tMod=new Date(rowLast.tMod*1000);
-      if('tModCache' in rowLast) rowLast.tModCache=new Date(rowLast.tModCache*1000);
+  var Val=[this.boFront, req.boTLS, req.wwwSite, this.queredPage, this.rev, this.eTagIn, this.requesterCacheTime/1000];
+  var err, results;
+  myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {err=errT; results=resultsT; flow.next(); });  yield;
+  if(err){   callback(err); return; } 
+  var len=results.length, iRowLast=len-2; 
+  var rowLast=results[iRowLast][0]; 
+  //if('strEditText' in rowLast) rowLast.strEditText=rowLast.strEditText?rowLast.strEditText.toString():'';
+  //if('strHtmlText' in rowLast) rowLast.strHtmlText=rowLast.strHtmlText?rowLast.strHtmlText.toString():'';
+  if('rev' in rowLast) rowLast.version=rowLast.rev+1;
+  if('tMod' in rowLast) rowLast.tMod=new Date(rowLast.tMod*1000);
+  if('tModCache' in rowLast) rowLast.tModCache=new Date(rowLast.tModCache*1000);
 
 
-      var mess=rowLast.mess, nRes=0;
-      if(mess=='serverCacheOK') nRes=6;
-      else if(mess=='serverCacheStale') nRes=4;
-      else if(mess=='304' || mess=='noSuchRev' || mess=='zeroVersion' ) nRes=3; 
-      else if(mess=='noSuchPage' || mess=='redirectCase' || mess=='private' ) nRes=2; 
-      else if(mess=='IwwwNotFound') nRes=1; 
-      else if(mess=='redirect' || mess=='redirectDomain' || mess=='multDefault') nRes=0;
+  var mess=rowLast.mess, nRes=0;
+  if(mess=='serverCacheOK') nRes=6;
+  else if(mess=='serverCacheStale') nRes=4;
+  else if(mess=='304' || mess=='noSuchRev' || mess=='zeroVersion' ) nRes=3; 
+  else if(mess=='noSuchPage' || mess=='redirectCase' || mess=='private' ) nRes=2; 
+  else if(mess=='IwwwNotFound') nRes=1; 
+  else if(mess=='redirect' || mess=='redirectDomain' || mess=='multDefault') nRes=0;
 
-      if(nRes>0) {  var tmp=results[0][0]; copySome(self,tmp,['boTLSCommon', 'wwwCommon']); }
-      if(nRes>1) {  var tmp=results[1][0]; copySome(self,tmp,['siteName', 'googleAnalyticsTrackingID', 'urlIcon16', 'urlIcon200', 'aPassword', 'vPassword']); }
-      if(nRes>2)    self.Version=results[2];
-      if(nRes>3)    rowLast.strEditText=results[3][0].strEditText.toString();
-      if(nRes>4)    rowLast.strHtmlText=results[4][0].strHtmlText.toString();
-      if(nRes>5) {
-        var resT=results[5], c=resT.length;
-        var obj={}; 
-        for(var i=0;i<c;i++){ 
-          var tmpR=resT[i];
-          var tmpname=tmpR.pageName.replace(RegExp('^template:'),''); obj[tmpname]=tmpR.boOnWhenCached; 
-        }
-        self.objTemplateE=obj;
-      }
-
-      callback(null,rowLast);
+  if(nRes>0) {  var tmp=results[0][0]; copySome(this,tmp,['boTLSCommon', 'wwwCommon']); }
+  if(nRes>1) {  var tmp=results[1][0]; copySome(this,tmp,['siteName', 'googleAnalyticsTrackingID', 'urlIcon16', 'urlIcon200', 'aPassword', 'vPassword']); }
+  if(nRes>2)    this.Version=results[2];
+  if(nRes>3)    rowLast.strEditText=results[3][0].strEditText.toString();
+  if(nRes>4)    rowLast.strHtmlText=results[4][0].strHtmlText.toString();
+  if(nRes>5) {
+    var resT=results[5], c=resT.length;
+    var obj={}; 
+    for(var i=0;i<c;i++){ 
+      var tmpR=resT[i];
+      var tmpname=tmpR.pageName.replace(RegExp('^template:'),''); obj[tmpname]=tmpR.boOnWhenCached; 
     }
-  });
+    this.objTemplateE=obj;
+  }
+
+  callback(null,rowLast);
+      
 }
 
 
 getInfo=function(callback) {
-  var self=this, req=this.req;
+  var req=this.req;
   var sql="CALL "+strDBPrefix+"getInfo(?,?);", Val=[req.wwwSite, this.queredPage]; 
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){callback(err);  return; } 
-    else{
-      var rowLast;
-      if(results[0].length==0) { rowLast={mess:'noSuchPage'}; }
-      else {
-        rowLast=results[0][0];    rowLast.mess='pageExist';
-        rowLast.tMod=new Date(rowLast.tMod*1000);
-        rowLast.tModCache=new Date(rowLast.tModCache*1000);
-      }
-      callback(null,rowLast);
-    }
-  });
+  var err, results;
+  myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {err=errT; results=resultsT; flow.next(); });  yield;
+  if(err){   callback(err); return; } 
+  var rowLast;
+  if(results[0].length==0) { rowLast={mess:'noSuchPage'}; }
+  else {
+    rowLast=results[0][0];    rowLast.mess='pageExist';
+    rowLast.tMod=new Date(rowLast.tMod*1000);
+    rowLast.tModCache=new Date(rowLast.tModCache*1000);
+  }
+  callback(null,rowLast);
+  
 }
 
 
@@ -348,11 +343,10 @@ createSaveByReplaceNeo=function(siteName, wwwSite, strName, strEditText, strHtml
 
 
 echoAllAndExitObj=function(){
-	//global Out,GRet; 
+  //global Out,GRet; 
   Out.GRet=GRet;
   Out.GRet.strMessageText=Out.GRet.strMessageText.join(', ');; 
-	//echo json_encode(Out);
-		
+  //echo json_encode(Out);
 }
 
 
@@ -376,7 +370,7 @@ is_crawler=function() {
 
   // getSetting and setSetting aren't maintained or used, I just keep them around because they might become useful.
 getSetting=function*(callback,inObj){ 
-  var self=this, req=this.req;
+  var req=this.req;
   var Ou={}
   if( count(array_diff(inObj,['lastOthersEdit','lastOthersUpload'])) ) mesEO(__LINE__,'Illegal invariable');  strV=inObj.join("', '");;
   var sth=dbh.prepare("SELECT * FROM "+settingTab+" WHERE name IN('"+strV+"')");    if(!sth.execute()) mesESqlO(sth,__LINE__);
@@ -385,7 +379,7 @@ getSetting=function*(callback,inObj){
 }
 
 setSetting=function*(callback,inObj){ 
-  var self=this, req=this.req, Ou={}
+  var req=this.req, Ou={}
   var Str=['lastOthersEdit','lastOthersUpload'];
 
   if( count(array_diff(array_keys(inObj), Str)) ) mesEO(__LINE__,'Illegal invariable');
@@ -403,7 +397,7 @@ setSetting=function*(callback,inObj){
 
 
 vLogin=function*(callback,inObj){
-  var self=this, req=this.req, sessionID=req.sessionID;
+  var req=this.req, sessionID=req.sessionID;
   var GRet=this.GRet;
   var Ou={};  
   if(this.boVLoggedIn!=1 ){
@@ -414,17 +408,17 @@ vLogin=function*(callback,inObj){
         var redisVar=sessionID+'_viewTimer';
         var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,tmp]);
         var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
-        this.boVLoggedIn=1; self.mes('Logged in (viewing)');
-      } else if(vPass=='')  self.mes('Password needed'); else self.mes('Wrong password');
+        this.boVLoggedIn=1; this.mes('Logged in (viewing)');
+      } else if(vPass=='')  this.mes('Password needed'); else this.mes('Wrong password');
     }
-    else {self.mes('Password needed'); }
+    else {this.mes('Password needed'); }
   }
   GRet.boVLoggedIn=this.boVLoggedIn;
   callback(null, [Ou]);
 }
 
 aLogin=function*(callback,inObj){
-  var self=this, req=this.req, sessionID=req.sessionID;
+  var req=this.req, sessionID=req.sessionID;
   var GRet=this.GRet;
 
 
@@ -437,13 +431,13 @@ aLogin=function*(callback,inObj){
         var redisVar=sessionID+'_adminTimer';
         var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,tmp]);
         var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxAdminUnactivityTime]);
-        this.boVLoggedIn=1; this.boALoggedIn=1; self.mes('Logged in');
+        this.boVLoggedIn=1; this.boALoggedIn=1; this.mes('Logged in');
         if(objOthersActivity) extend(objOthersActivity,objOthersActivityDefault);
       }
-      else if(aPass=='') {self.mes('Password needed');}
-      else {self.mes('Wrong password');}
+      else if(aPass=='') {this.mes('Password needed');}
+      else {this.mes('Wrong password');}
     }
-    else {self.mes("Password needed"); }
+    else {this.mes("Password needed"); }
   } 
   GRet.boALoggedIn=this.boALoggedIn; 
   callback(null, [Ou]); 
@@ -523,31 +517,28 @@ configChanged=function(){
   }
   var site=Site.mmmWikiL
   var sql="SELECT COUNT(*) FROM "+siteTab+";";
-  var Val=[];
-  myQueryF(sql, Val, mysqlPool, function(err, results) {
-    if(err){ callback(err); } 
-    else{ 
-      var len=results.length;
-      var rowLast=results[len-2][0]; 
-      if('strEditText' in rowLast) rowLast.strEditText=rowLast.strEditText?rowLast.strEditText.toString():'';
-      if('strHtmlText' in rowLast) rowLast.strHtmlText=rowLast.strHtmlText?rowLast.strHtmlText.toString():'';
-      if('rev' in rowLast) rowLast.version=rowLast.rev+1;
-      if('tMod' in rowLast) rowLast.tMod=new Date(rowLast.tMod*1000);
-      if('tModCache' in rowLast) rowLast.tModCache=new Date(rowLast.tModCache*1000);
+  var Val=[], err, results;
+  myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {err=errT; results=resultsT; flow.next(); });  yield;
+  if(err){   callback(err); return; } 
+  var len=results.length;
+  var rowLast=results[len-2][0]; 
+  if('strEditText' in rowLast) rowLast.strEditText=rowLast.strEditText?rowLast.strEditText.toString():'';
+  if('strHtmlText' in rowLast) rowLast.strHtmlText=rowLast.strHtmlText?rowLast.strHtmlText.toString():'';
+  if('rev' in rowLast) rowLast.version=rowLast.rev+1;
+  if('tMod' in rowLast) rowLast.tMod=new Date(rowLast.tMod*1000);
+  if('tModCache' in rowLast) rowLast.tModCache=new Date(rowLast.tModCache*1000);
 
-      if(len>2)    self.Version=results[0];
-      if(len>3) {
-        var resT=results[1], c=resT.length;
-        var obj={}; 
-        for(var i=0;i<c;i++){ 
-          var tmpR=resT[i];
-          var tmpname=tmpR.siteName.replace(RegExp('^template:'),''); obj[tmpname]=tmpR.boOnWhenCached; 
-        }
-        self.objTemplateE=obj;
-      }
-      callback(null,rowLast);
+  if(len>2)    this.Version=results[0];
+  if(len>3) {
+    var resT=results[1], c=resT.length;
+    var obj={}; 
+    for(var i=0;i<c;i++){ 
+      var tmpR=resT[i];
+      var tmpname=tmpR.siteName.replace(RegExp('^template:'),''); obj[tmpname]=tmpR.boOnWhenCached; 
     }
-  });
+    this.objTemplateE=obj;
+  }
+  callback(null,rowLast);
 
 }
 

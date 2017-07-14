@@ -59,6 +59,12 @@ myQueryF=function(sql,Val,pool,callback){
 }
 
 
+MyNeo4j=function(){
+  var chars = ['\\"', '\\\'', '\\\\'],   tmpStr='[' +chars.join("") +']';  this.regEscape=new RegExp(tmpStr, 'g');
+  this.funEscape=function(m){ return "\\"+m;  }
+}
+MyNeo4j.prototype.escape=function(str){  return str.replace(this.regEscape,this.funEscape);    }
+
 
 MyError=Error;
 //MyError=function(){ debugger;}
@@ -107,7 +113,7 @@ getBrowserLang=function(req){
   var strLang='en';
   for(var i=0; i<Lang.length; i++){
     var lang=Lang[i][0];
-	  if(lang.substr(0,2)=='sv'){  strLang='sv';  } 
+    if(lang.substr(0,2)=='sv'){  strLang='sv';  } 
   }
   return strLang;
 }
@@ -146,9 +152,9 @@ md5=function(str){return crypto.createHash('md5').update(str).digest('hex');}
 
 
 wrapRedisSendCommand=function*(strCommand,arr){
-  var self=this, value;
+  var flow=this.flow, value;
   redisClient.send_command(strCommand,arr, function(err, valueT){
-    value=valueT; self.flow.next();
+    value=valueT; flow.next();
   });
   yield;
   return value;
@@ -207,7 +213,7 @@ return c";
 
 var regFileType=RegExp('\\.([a-z0-9]+)$','i'),    regZip=RegExp('^(css|js|txt|html)$'),   regUglify=RegExp('^js$');
 readFileToCache=function*(strFileName) {
-  var self=this;
+  var flow=this.flow;
   var type, Match=regFileType.exec(strFileName);    if(Match && Match.length>1) type=Match[1]; else type='txt';
   var boZip=regZip.test(type),  boUglify=regUglify.test(type);
   var buf;
@@ -215,7 +221,7 @@ readFileToCache=function*(strFileName) {
   fs.readFile(strFileName, function(errT, bufT) { //, this.encRead
     if(errT){  err=errT; }
     buf=bufT;
-    self.flow.next();
+    flow.next();
   });
   yield;
   if(!err) {    yield* CacheUri.set.call(this, '/'+strFileName, buf, type, boZip, boUglify);    }

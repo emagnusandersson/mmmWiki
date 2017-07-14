@@ -425,39 +425,42 @@ adminMoreDivExtend=function($el){
   })
 
   //var $imgHDownload=$imgHelp.clone().css({'margin-left':'1em','margin-right':'1em'}); popupHoverM($imgHDownload,$('<div>').html('Put all pages (or images or videos) in a zip-file and download.'));
-  var $aBUFilesToComp=$('<a>').prop({rel:'nofollow', download:''}).append('(Backup).zip');
+  var $aBUFilesToComp=$('<a>').prop({rel:'nofollow', download:''}).append('(pages).zip');
   $aBUFilesToComp.setUp=function(boUsePrefix){
-    var tmpUrl='backUpPage'+(boUsePrefix?'':'?{"boUsePrefixOnDefaultSitePages":0}'); $(this).prop({href:tmpUrl});
+    var tmpUrl='BUPage'+(boUsePrefix?'':'?{"boUsePrefixOnDefaultSitePages":0}'); $(this).prop({href:tmpUrl});
   };  $aBUFilesToComp.setUp(boUsePrefix);
-  var $aBUImageToComp=$('<a>').prop({href:'backUpImage', rel:'nofollow', download:''}).append('(Backup).zip');
-  var $aBUVideoToComp=$('<a>').prop({href:'backUpVideo', rel:'nofollow', download:''}).append('(Backup).zip');
-  var $aTableColumnSettings=$('<a>').prop({href:'getMeta', rel:'nofollow', download:''}).append('(MetaData).sql');
-  var $imgHSql=$imgHelp.clone().css({'margin':'0 1em'}); popupHoverM($imgHSql,$('<div>').html('Download "meta-data":<p>-extra data for pages/images (modification dates, access rights ...). <p>-redirect table.'));
+  var $aBUImageToComp=$('<a>').prop({href:'BUImage', rel:'nofollow', download:''}).append('(images).zip');
+  var $aBUVideoToComp=$('<a>').prop({href:'BUVideo', rel:'nofollow', download:''}).append('(vidoes).zip');
+  var $aBUMeta=$('<a>').prop({href:'BUMeta', rel:'nofollow', download:''}).append('(MetaData).zip');
+  var $aBUMetaSQL=$('<a>').prop({href:'BUMetaSQL', rel:'nofollow', download:''}).append('(MetaData).sql');
+  var $imgHSql=$imgHelp.clone().css({'margin':'0 1em'}); popupHoverM($imgHSql,$('<div>').html('<p>Download "meta-data":<br>-extra data for pages/images (modification dates, access rights ...). <br>-redirect table.'));
+  
+  var $butBUPageServ=$('<button>').append('(pages).zip').click(  function(){    httpGetAsync('BUPageServ',function(str) {setMess(str,3);});    });
+  var $butBUImageServ=$('<button>').append('(images).zip').click(function(){    httpGetAsync('BUImageServ',function(str) {setMess(str,3);});   });
+  var $butBUMetaServ=$('<button>').append('(MetaData).zip').click(function(){      httpGetAsync('BUMetaServ',function(str) {setMess(str,3);});    });
   
 
+  var $butLoadFromServer=$('<button>').append('Load from server').click(function(){   var vec=[['uploadAdminServ',1]];   majax(oAJAX,vec);    });
   
-  var $siteButton=$('<button>').append('Site table').addClass('fixWidth').click(function(){
-    doHistPush({$view:$siteTab});
-    $siteTab.setVis();
-  });
-  var $redirectButton=$('<button>').append('Redirect table').addClass('fixWidth').click(function(){
-    doHistPush({$view:$redirectTab});
-    $redirectTab.setVis();
-  });
+  var $siteButton=$('<button>').append('Site table').addClass('fixWidth').click(function(){    doHistPush({$view:$siteTab}); $siteTab.setVis();   });
+  var $redirectButton=$('<button>').append('Redirect table').addClass('fixWidth').click(function(){   doHistPush({$view:$redirectTab}); $redirectTab.setVis();   });
 
   var $imgHRename=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverM($imgHRename,$('<div>').html('"Rename" will <b>not</b> rename any links to the page. (maybe something for future versions)'));  
   var $renameButton=$('<button>').append('Rename').css({'margin-left':'0.5em'}).click(function(){
     $renamePop.openFunc('page',null,idPage,queredPage);
   });
-
-  var $menuA=$('<div>').append('r:', $accessORead, ' w:', $accessOWrite, ' p:', $accessSiteMap, $imgH, ' | ', $renameButton, $imgHRename, '<hr>');
+  var objBottomLine={'border-bottom':'gray solid 1px'};
+  var $menuA=$('<div>').append('r:', $accessORead, ' w:', $accessOWrite, ' p:', $accessSiteMap, $imgH, ' | ', $renameButton, $imgHRename).css(objBottomLine);
+  var $menuB0=$('<div>').append("<b>BU download: </b>");
   var $menuB=$('<div>').append("<b>Page: </b>", $pageListButton, ' | ', $aBUFilesToComp, ', Use prefix on default-site-pages: ', $cb, $imgHPrefix);
   var $menuC=$('<div>').append("<b>Image: </b>", $imageListButton, ' | ', $aBUImageToComp, ' | ', $buttonDiffBackUpDiv).css({'background':'lightblue'});
   var $menuD=$('<div>').append("<b>Video: </b>", $aBUVideoToComp);
-  var $menuE=$('<div>').append("<b>Other: </b>", $aTableColumnSettings, $imgHSql, ' | ', $statLink, '<hr>');
-  var $menuF=$('<div>').append($uploadAdminDiv);
-  var $menuG=$('<div>').append($siteButton,$redirectButton);
-  var $Menu=$([]).push($menuA,$menuB,$menuC,$menuE,$menuF,$menuG).css({margin:'0.5em 0'}); //,$menuD
+  var $menuE=$('<div>').append("<b>Other: </b>", $aBUMeta, $imgHSql, ' | ', $statLink, ' | ', $aBUMetaSQL).css(objBottomLine);
+  var $menuF=$('<div>').append($uploadAdminDiv).css(objBottomLine);
+  var $menuG=$('<div>').append($siteButton,$redirectButton).css(objBottomLine);
+  var $menuH=$('<div>').append("<b>BU to server: </b>", $butBUPageServ,$butBUImageServ,$butBUMetaServ).css(objBottomLine);
+  var $menuI=$('<div>').append($butLoadFromServer);
+  var $Menu=$([]).push($menuA,$menuB0, $menuB,$menuC,$menuE,$menuF,$menuG, $menuH, $menuI).css({margin:'0.5em 0'}); //,$menuD
 
   $el.$divCont=$('<div>').append($Menu);
   $el.$divCont.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'1em auto'});
@@ -661,23 +664,23 @@ diffBackUpDivExtend=function($el){
 
   var onerror=function(message) {
     debugger
-	  alert(message);
+    alert(message);
   }
   var createTempFile=function(callback) {
-	  var tmpFilename="tmp.zip";
-	  requestFileSystem(TEMPORARY, 4 * 1024 * 1024 * 1024, function(filesystem) {
-		  function create() {
-			  filesystem.root.getFile(tmpFilename, {
-				  create : true
-			  }, function(zipFile) {
-				  callback(zipFile);
-			  });
-		  }
+    var tmpFilename="tmp.zip";
+    requestFileSystem(TEMPORARY, 4 * 1024 * 1024 * 1024, function(filesystem) {
+      function create() {
+        filesystem.root.getFile(tmpFilename, {
+          create : true
+        }, function(zipFile) {
+          callback(zipFile);
+        });
+      }
 
-		  filesystem.root.getFile(tmpFilename, null, function(entry) {
-			  entry.remove(create, create);
-		  }, create);
-	  });
+      filesystem.root.getFile(tmpFilename, null, function(entry) {
+        entry.remove(create, create);
+      }, create);
+    });
   }
 
 
@@ -731,7 +734,7 @@ diffBackUpDivExtend=function($el){
     }
     var semCB=0, semY=0;  // Create zipWriter
     zip.createWriter(writer, function(writerT) {
-	    zipWriter=writerT;
+      zipWriter=writerT;
       if(semY) { flowDiff.next(); } semCB=1;
     }, onerror);
     if(!semCB) { semY=1; yield;}
@@ -744,7 +747,7 @@ diffBackUpDivExtend=function($el){
     }
   
     var $progress=$('<progress>'), iNew=0, $imgDoneLast=$imgDone.clone();
-    var $li=$('<li>').append('Extracting meta data from old zip-file (names, modification times and file-sizes): ', $progress, $imgDoneLast); $ul.append($li);
+    var $li=$('<li>').append('Extracting meta data from the selected file (names, modification times and file-sizes): ', $progress, $imgDoneLast); $ul.append($li);
     
     for(var key in FileNew){  // Create StrReuse, StrFetch and objFetch
       if(key in EntryLocal){
@@ -791,7 +794,7 @@ diffBackUpDivExtend=function($el){
 
       // Check if it is OK to abort
     if(StrFetch.length==0 && StrDeleted.length==0) {
-      var $li=$('<li>').append('Aborting since your local files are (seem) up to date.'); $ul.append($li); $progress.detach();
+      var $li=$('<li>').append('Aborting since your local files are (seem (based on filesizes/modTimes)) up to date.'); $ul.append($li); $progress.detach();
       return;
     }
 
@@ -910,7 +913,7 @@ diffBackUpDivExtend=function($el){
   var saveFun=function(){
     getBlobURL(function(blobURL) {
       var aSave = document.createElement("a");
-      var tmp=calcZipFileNameParts(wwwCommon), outFileName=tmp[0]+'image'+tmp[1]+'.zip'; // Todo: wwwCommon-variable should change after siteTabView changes
+      var outFileName=calcBUFileName(wwwCommon,'image','zip'); // Todo: wwwCommon-variable should change after siteTabView changes
       aSave.download = outFileName;
       aSave.href = blobURL;
       var event = document.createEvent("MouseEvents");
@@ -933,7 +936,7 @@ diffBackUpDivExtend=function($el){
 
   //var creationMethod="File";
   var creationMethod="Blob";
-  if(typeof requestFileSystem == "undefined")	creationMethod="Blob";
+  if(typeof requestFileSystem == "undefined") creationMethod="Blob";
 
   var zipFileEntry=null, zipWriter=null;
 
@@ -1428,7 +1431,7 @@ pageListExtend=function($el){
         vec.push(['getParent',{idPage:idParent},getParentRet],['getSingleParentExtraStuff',{idPage:idParent},getSingleParentExtraStuffRet]);  // If filtering for single parent then also get the "grandparents"
 
         var boOrphan=idParent==null;
-        if(boOrphan) $spanSingleFilter.html('(orphans)').css({color:'grey'}); else $spanSingleFilter.empty().append($aSingleFilter).css({color:''});
+        if(boOrphan) $spanSingleFilter.html('orphans (roots)').css({color:'grey'}); else $spanSingleFilter.empty().append($aSingleFilter).css({color:''});
         $buttPI.prop('title',boOrphan?'Orphan images':'Images');
       }else {
         $spanGrandParent.setUpClear(); $spanGrandParentI.setUpClear();
@@ -1467,6 +1470,8 @@ pageListExtend=function($el){
   var histRet=function(data){
     var tmp, HistPHP;
     var HistPHP=data.Hist||[];
+    
+      // If there are pages with the same "pageName" (on different sites) then use siteName:pageName (when the page is listed). 
     ParentName=[]; if('ParentName' in data) ParentName=tabNStrCol2ArrObj(data.ParentName);  
     IndParentName={}; var objOne={}, objMult={};
     for(var i=0;i<ParentName.length;i++) {
@@ -1996,7 +2001,7 @@ imageListExtend=function($el){
         //vec.push(['getExtraPageStat',{idPage:idParent},getExtraPageStatRet]);  // If filtering for single parent then also get the "grandparents"
         vec.push(['getParent',{idPage:idParent},getParentRet],['getSingleParentExtraStuff',{idPage:idParent},getSingleParentExtraStuffRet]);  // If filtering for single parent then also get the "grandparents"
         var boOrphan=idParent===null;
-        if(boOrphan) $spanSingleFilter.html('(showing orphans)').css({color:'grey'}); else $spanSingleFilter.empty().append($aSingleFilter).css({color:''});
+        if(boOrphan) $spanSingleFilter.html('(orphans)').css({color:'grey'}); else $spanSingleFilter.empty().append($aSingleFilter).css({color:''});
         $buttPI.prop('title',boOrphan?'Orphan pages':'Children');
       }else {
         $spanGrandParent.setUpClear(); $spanGrandParentI.setUpClear();
@@ -2062,7 +2067,7 @@ imageListExtend=function($el){
     //$imageList.setCBStat(0); 
   }
   var getChecked=function(){
-    var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')'), $checked=$Tr.find('input:checked'), FileTmp=[]; $checked.each(function(){var tmp=$(this).parent().parent().data('idDb'); FileTmp.push(tmp);});
+    var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')'), $checked=$Tr.find('input:checked'), FileTmp=[]; $checked.each(function(){var tmp=$(this).parent().parent().data('idImage'); FileTmp.push(tmp);});
     return FileTmp;
   }
   var getRenameData=function(){
@@ -2153,7 +2158,7 @@ imageListExtend=function($el){
 
     // menuMult
   var $buttonDownload=$('<div>').html('Download');
-  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){  var FileTmp=getChecked(), strLab='Are sure you want to delete these images';   $areYouSurePop.openFunc(strLab,function(){$el.deleteF(FileTmp);}); });
+  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){  var FileTmp=getChecked(), strLab='Deleting '+FileTmp.length+' image(s).';   $areYouSurePop.openFunc(strLab,function(){$el.deleteF(FileTmp);}); });
   
   var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
   var $executeButton=$('<button>').append($tmpImg).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
@@ -2260,9 +2265,7 @@ editButtonExtend=function($el){
   return $el;
 }
 spanModExtend=function($el){
-  $el.setup=function(data){
-    $el.html((data.boOR?'r':' ') + (data.boOW?'w':' ') + (data.boSiteMap?'p':' '));
-  }
+  $el.setup=function(data){   $el.html((data.boOR?'r':' ') + (data.boOW?'w':' ') + (data.boSiteMap?'p':' '));  }
   return $el;
 }
 
@@ -2451,7 +2454,7 @@ versionTableExtend=function($el){
       $r.append($tInd,$tDate,$tSummary,$('<td>').css({'vertical-align':'bottom'}).append($bEdit),$('<td>').append($bRed),$('<td>').append($bGreen));  //,$('<td>').append($bView)
       
       $tBody.append($r);
-    }          
+    }
   }
   $el.versionTable2TBody=function(){
     nVersion=matVersion.length;
@@ -2848,7 +2851,7 @@ redirectSetPopExtend=function($el){
 "use strict"
   $el.toString=function(){return 'redirectSetPop';}
   var save=function(){
-    r.idSiteOld=r.idSite;r.pageNameOld=r.pageName;
+    r.idSiteOld=r.idSite; r.pageNameOld=r.pageName;
     r.idSite=$selSite.val(); var rS=$redirectTab.indexSiteTabById[r.idSite]; r.siteName=rS.siteName; r.www=rS.www;
     r.pageName=$inpPageName.val(); if(r.pageName.length==0){ setMess('empty page name',2);  return;}
     r.url=$inpURL.val();  if(r.url.length==0){ setMess('empty url',2);  return;}
@@ -2930,6 +2933,7 @@ redirectDeletePopExtend=function($el){
     $r=$(this).parent().parent(); $spanPage.text($r.data('r').siteName+':'+$r.attr('pageName'));
     doHistPush({$view:$redirectDeletePop});
     $el.setVis();
+    $ok.focus();
   }
   $el.setVis=function(){
     $el.show(); return 1;
@@ -2953,12 +2957,8 @@ redirectTabExtend=function($el){
   $el.toString=function(){return 'redirectTab';}
   var funcTTimeTmp=function(t){ var arrT=getSuitableTimeUnit(unixNow()-t);  $(this).text(Math.round(arrT[0])+arrT[1]);  }
   var TDProt={
-    created:{
-      mySetVal:funcTTimeTmp
-    },
-    tLastAccess:{
-      mySetVal:funcTTimeTmp
-    }
+    created:{ mySetVal:funcTTimeTmp },
+    tLastAccess:{ mySetVal:funcTTimeTmp }
   }
   var TDConstructors={
     created:function(){ var $el=$('<td>');  $.extend($el[0],TDProt.created);  return $el;  },
@@ -3141,6 +3141,7 @@ siteDeletePopExtend=function($el){
     $r=$(this).parent().parent(); siteName=$r.data('r').siteName; $spanSite.text(siteName);
     doHistPush({$view:$siteDeletePop});
     $el.setVis();
+    $ok.focus();
   }
   $el.setVis=function(){
     $el.show(); return 1;
@@ -3393,16 +3394,7 @@ created:'Created'
 helpBub={}
 
 setUp1=function(){
-  /*var input = new Uint8Array();
-  var input='abcåäö';
-  var output = pako.deflate(input);
-  var compressed = new Uint8Array();
-  compressed=output;
-  try {
-    var result = pako.inflate(compressed, { to: 'string' });
-  } catch (err) {
-    console.log(err);
-  }*/
+
 
   $body=$('body');  $html=$('html');
   $bodyNHtml=$body.add($html);  

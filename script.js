@@ -103,7 +103,7 @@ var client = Neo4j({
 */
 
 var flowStart=( function*(){
-
+  var flow=flowStart;
 
     // Default config variables
   boDbg=0; boAllowSql=1; port=5000; levelMaintenance=0; googleSiteVerification='googleXXX.html';
@@ -112,7 +112,7 @@ var flowStart=( function*(){
   maxViewUnactivityTime=24*60*60;
   maxAdminUnactivityTime=5*60;  
   intDDOSMax=100; tDDOSBan=5; 
-  strSalt='wqriinnabcradfcpose';
+  strSalt='abcdef';
   interpretArgv();
 
 
@@ -125,20 +125,21 @@ var flowStart=( function*(){
     fs.readFile('./config.js', function(errT, bufT) { //, this.encRead
       if(errT){  console.log(errT); }
       strConfig=bufT.toString();
-      flowStart.next();
+      flow.next();
     });
     yield;
     //require('./config.js');    //require('./config.example.js');
   } 
+  
+    // Detecting if the config-file has changed since last time (might be usefull to speed up things when the program is auto started)
   var strMd5Config=md5(strConfig);
   eval(strConfig);
   var redisVar='str'+ucfirst(strAppName)+'Md5Config';
-  var tmp=yield* wrapRedisSendCommand.call({flow:flowStart}, 'get',[redisVar]);
+  var tmp=yield* wrapRedisSendCommand.call({flow:flow}, 'get',[redisVar]);
   var boNewConfig=strMd5Config!==tmp; 
-  if(boNewConfig) { var tmp=yield* wrapRedisSendCommand.call({flow:flowStart}, 'set',[redisVar,strMd5Config]);  }
+  if(boNewConfig) { var tmp=yield* wrapRedisSendCommand.call({flow:flow}, 'set',[redisVar,strMd5Config]);  }
 
   if('levelMaintenance' in process.env) levelMaintenance=process.env.levelMaintenance;
-
 
   tmp=require('./lib/foundOnTheInternet/sha1.js');
   require('./filterServer.js'); 
@@ -149,6 +150,7 @@ var flowStart=( function*(){
   require('./parserTable.js'); 
 
   setUpMysqlPool();
+  myNeo4j=new MyNeo4j();
 
   if(boNewConfig) { 
     
@@ -159,7 +161,7 @@ var flowStart=( function*(){
     // Do db-query if --sqlXXXX was set in the argument
   if(typeof strCreateSql!='undefined'){
     var tTmp=new Date().getTime();
-    var objSetupSql=new SetupSql(); yield* objSetupSql.doQuery(strCreateSql,flowStart);
+    var objSetupSql=new SetupSql(); yield* objSetupSql.doQuery(strCreateSql,flow);
     console.log('Time elapsed: '+(new Date().getTime()-tTmp)/1000+' s'); 
     process.exit(0);
   }
@@ -211,9 +213,9 @@ var flowStart=( function*(){
   CacheUri=new CacheUriT();
   for(var i=0;i<StrFilePreCache.length;i++) {
     var filename=StrFilePreCache[i];
-    var err=yield* readFileToCache.call({flow:flowStart}, filename); if(err) {  console.log(err.message);  return;}
+    var err=yield* readFileToCache.call({flow:flow}, filename); if(err) {  console.log(err.message);  return;}
   }
-  yield* writeCacheDynamicJS.call({flow:flowStart});
+  yield* writeCacheDynamicJS.call({flow:flow});
   
 
   handler=function(req, res){
@@ -302,10 +304,9 @@ var flowStart=( function*(){
         else if(pathName=='/robots.txt'){  yield* reqRobots.call(objReqRes);  }
         else if(pathName=='/stat.html'){     yield* reqStat.call(objReqRes);  }
         else if(pathName=='/createDumpCommand'){  var str=createDumpCommand(); res.out200(str);     }
-        else if(pathName=='/backUpPage' ){   yield* reqBackUp.call(objReqRes, 'page');    }
-        else if(pathName=='/backUpImage'){   yield* reqBackUp.call(objReqRes, 'image');    }
-        else if(pathName=='/backUpVideo'){   yield* reqBackUp.call(objReqRes, 'video');    }
-        else if(pathName=='/getMeta'){    yield* reqGetMeta.call(objReqRes);    }
+        else if(pathName=='/BUMetaSQL'){    yield* reqBUMetaSQL.call(objReqRes,pathName);    }
+        else if(pathName.substr(0,7)=='/BUMeta'){    yield* reqBUMeta.call(objReqRes,pathName.substr(7));    }
+        else if(pathName.substr(0,3)=='/BU'){    yield* reqBU.call(objReqRes,pathName.substr(3));    }
         else if(pathName=='/debug'){    debugger;  res.end();}
         else if(pathName=='/mini'){
           var tserver=(new Date()).valueOf();  

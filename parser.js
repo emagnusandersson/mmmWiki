@@ -29,7 +29,7 @@ var Parser=app.Parser=function(text, boTrustEditors){
   this.arrInterWikiLink=[]; // For storing the link (page) name of so called interwiki links (links to Wikipedia, wiktionary ...)
   this.arrInterWiki_WikiType=[]; // For storing what kind of interwiki link. (Wikipedia, wiktionary ...)
 
-	this.arrILink=[]; // For storing of all the internal links 
+  this.arrILink=[]; // For storing of all the internal links 
 
   this.arrExtLink=[]; // For storing of all the external links
 
@@ -46,7 +46,7 @@ var Parser=app.Parser=function(text, boTrustEditors){
   this.arrImgRawAttr=[];
   this.arrBRAttr=[];
   this.arrIframeAttr=[];
-  this.bagTemplate=[]; // Will look like: [[name,boExist], [name,boExist],	....]
+  this.bagTemplate=[]; // Will look like: [[name,boExist], [name,boExist],  ....]
   this.arrPre=[]; // For storing all pre sections
 
   this.boSimpleTagReplaced;
@@ -138,9 +138,9 @@ Parser.prototype.parse = function(callback) {
   text = text.replace(/<horizontallist>([\s\S]*?)<\/horizontallist>/ig ,thisChanged(this.replaceHLCB,this));
  
 
-	//
-	// Do some of the translations
-	//
+  //
+  // Do some of the translations
+  //
 
   text = text.replace(RegExp("'''([^\n\']+)'''",'g'),thisChanged(this.replaceBoldCB,this));
   text = text.replace(RegExp("''([^\n\']+)''",'g'),thisChanged(this.replaceItalicCB,this));
@@ -488,6 +488,7 @@ Parser.prototype.replaceTemplateCB=function(m,n){
   this.bagTemplate.push([templateName,0]);
   return STARTCHAR+'template'+i+'/'+ENDCHAR;;
 }
+
 Parser.prototype.putBackTemplateCB=function(m,n){
   var templateName=this.bagTemplate[n][0];
   var templateNameAsQuered='template:'+templateName; 

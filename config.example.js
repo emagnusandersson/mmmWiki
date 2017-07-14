@@ -5,6 +5,10 @@
 //
 
 
+//
+// See also under the "Default config variables" in the script.js-file for the default values and for more variables that can be configured.
+//
+
 
   // Leave these empty if don't want to show them.
 strBTC='1abcdefghijklmnopqrstuvwxyzABCDEFG'; // Bitcoin address 
@@ -19,10 +23,10 @@ ppStoredButt="ABCDEFGHIJKLM";  // Paypal-stored-button
 
 
 
-intDDOSMax=200; // intDDOSMax: How many requests before DDOSBlocking occurs. 
-tDDOSBan=5; // tDDOSBan: How long in seconds till the blocking is lifted
+intDDOSMax=300; // intDDOSMax: How many requests before DDOSBlocking occurs. 
+tDDOSBan=5; // tDDOSBan: How long in seconds till the blocking is lifted.
 
-strSalt='abcdefghij'; // Random letters to prevent that the hashed passwords looks the same as on other sites.
+strSalt='abcdef'; // Random letters to prevent that the hashed passwords looks the same as on other sites. (See more at https://en.wikipedia.org/wiki/Salt_(cryptography))
 
 
 googleSiteVerification="googleXXXXXXXXXXXXXXXX.html"; // Needed if you use Google Webmaster Tools  (www.google.com/webmasters)
@@ -54,7 +58,7 @@ if(process.env.strInfrastructure=='heroku'){
 
 
     // vPassword=view password, aPassword= admin password
-  vPassword="1234"; aPassword="1234";
+  vPassword="123"; aPassword="123";
 
 
     // If levelMaintenance=1 then site visitors gets a "Down for maintenance"-message
@@ -93,13 +97,13 @@ else if(process.env.strInfrastructure=='af'){
 }else if(process.env.strInfrastructure=='do'){  // (is yet to be written)
   uriDB=='mysql://user:password@host/database';
   port = 8080;
-  vPassword="1234"; aPassword="1234"; 
+  vPassword="123"; aPassword="123"; 
   //levelMaintenance=1;
   //strStartPageTitle='blabla'; 
 
 }else {
   uriDB='mysql://user:password@localhost/database';
-  vPassword="1234"; aPassword="1234"; 
+  vPassword="123"; aPassword="123"; 
   //levelMaintenance=1;
   //strStartPageTitle='blabla'; 
 } 
