@@ -232,14 +232,14 @@ var rangeExtend=function($el, Prop, Filt, Hist, vBoHasRem, StrOrderFilt, iFeat, 
   
   var $graph=$('<div>').css({display:"inline-block",'font-size':'80%',border:'0px','white-space':'nowrap'});   $el.append($graph);
   var $staps=$([]), $spanLabs=$([]);
-	for(var i=0;i<len;i++){   // Create slider spans  
-	  var $staple=$('<span>').css({width:'9px',display:'block',"margin-left":'auto',"margin-right":'auto', "vertical-align":"bottom" });    $staps.push($staple);  
+  for(var i=0;i<len;i++){   // Create slider spans  
+    var $staple=$('<span>').css({width:'9px',display:'block',"margin-left":'auto',"margin-right":'auto', "vertical-align":"bottom" });    $staps.push($staple);  
     $staple.css({height:i+'px',background:colStapleOn});
-	  //var strtmp=Prop[strName].feat.bucketLabel[i],   $spanLab=$('<span>').append(strtmp).css({display:'block','border':'0px solid white',"border-width":"0px 1px 0px 0px"});     $spanLabs.push($spanLab);
-	  var strtmp=Prop[strName].feat.bucketLabel[i],   $spanLab=$('<span>').append(strtmp).css({display:'block','border':'0px'});     $spanLabs.push($spanLab);
-	  var $divT=$('<div>').append($staple,$spanLab).css({display:"inline-block","vertical-align":"bottom","margin":"0px 2px 0px 0px"}); 
-	  $graph.append($divT);
-	}
+    //var strtmp=Prop[strName].feat.bucketLabel[i],   $spanLab=$('<span>').append(strtmp).css({display:'block','border':'0px solid white',"border-width":"0px 1px 0px 0px"});     $spanLabs.push($spanLab);
+    var strtmp=Prop[strName].feat.bucketLabel[i],   $spanLab=$('<span>').append(strtmp).css({display:'block','border':'0px'});     $spanLabs.push($spanLab);
+    var $divT=$('<div>').append($staple,$spanLab).css({display:"inline-block","vertical-align":"bottom","margin":"0px 2px 0px 0px"}); 
+    $graph.append($divT);
+  }
   if(len<7) {var tmpW=8/len; $spanLabs.css({width:tmpW+'em'});} // make small ranges a bit wider
   var $spanLabsLast=$spanLabs.last();
   var arrX=Array(len+1);
@@ -556,10 +556,11 @@ FilterDivProt.toStored=function(){
 "use strict"
   var $el=this;
   var Filt=$el.Filt;
-  var FiltS=[];
-  for(var i=0;i<Filt.length;i++){
-    FiltS[i]=$.extend(true, [], Filt[i]);
-  }
+  //var FiltS=[];
+  //for(var i=0;i<Filt.length;i++){
+  //  FiltS[i]=$.extend(true, [], Filt[i]);
+  //}
+  var FiltS = JSON.parse(JSON.stringify(Filt));
   return FiltS;
 }
 FilterDivProt.frStored=function(o){

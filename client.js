@@ -189,10 +189,7 @@ vLoginDivExtend=function($el){
 
   return $el;
 }
-function fff(str){alert(str);}
 
-
-function gid(element) {return document.getElementById(element);}
 
 
 createChildInd=function(arrI){
@@ -239,7 +236,7 @@ pageViewExtend=function($el){
   $el.setDetail=function(){
     var strNR='',  str='';
     if(matVersion.length){
-      var ver=arrVersion[1], rev=ver-1;
+      var ver=arrVersionCompared[1], rev=ver-1;
       var r=matVersion[rev];
       strNR='v'+ver+'/'+nVersion;  str=r[1]+' <b><i>'+r[2]+'</i></b>';//+mySwedDate(r[0]);
     }
@@ -252,21 +249,21 @@ pageViewExtend=function($el){
     $versionTable.setVis();
   });    
   var $diffButton=$('<button>').append('Diff').addClass('fixWidth').css({'margin-right':'1em'}).click(function(){
-    //var arrVersion=[bound(nVersion-iRow-1,1),nVersion-iRow];
+    //var arrVersionCompared=[bound(nVersion-iRow-1,1),nVersion-iRow];
     if(nVersion<2) return;
-    arrVersion[0]=arrVersion[1]-1;
-    if(arrVersion[1]==1) arrVersion=[2,1]; 
-    var vec=[['pageCompare',{arrVersion:arrVersion }]];   majax(oAJAX,vec); 
+    arrVersionCompared[0]=arrVersionCompared[1]-1;
+    if(arrVersionCompared[1]==1) arrVersionCompared=[2,1]; 
+    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
     doHistPush({$view:$diffDiv});
     $diffDiv.setVis();
   });
   $el.$spanNR=$('<span>').css({margin:'0em 0.1em'});
   var $nextButton=$('<button>').append('⇧').addClass('fixWidth').click(function(){
-    var iVer=arrVersion[1]+1; if(iVer>nVersion) iVer=1;
+    var iVer=arrVersionCompared[1]+1; if(iVer>nVersion) iVer=1;
     var vec=[['pageLoad',{version:iVer}]];   majax(oAJAX,vec); 
   });
   var $prevButton=$('<button>').append('⇩').addClass('fixWidth').css({'margin-left':'0.8em'}).click(function(){
-    var iVer=arrVersion[1]-1; if(iVer<1) iVer=nVersion;
+    var iVer=arrVersionCompared[1]-1; if(iVer<1) iVer=nVersion;
     var vec=[['pageLoad',{version:iVer}]];   majax(oAJAX,vec); 
   });
   var $spanDetail=$('<span>').append('ggggggggggg').css({'margin-right':'0.5em', 'margin-left':'0.5em'});
@@ -991,7 +988,7 @@ uploadAdminDivExtend=function($el){
   }
   oAJAXL.boFormData=1;
   var onerror=function(message) {
-    alert(message);
+    debugger; alert(message);
   }
   var regTxt=RegExp('^(.*)\\.txt$');
   var sendConflictCheck=function(arrName){
@@ -1005,7 +1002,8 @@ uploadAdminDivExtend=function($el){
         var siteName=obj.siteName, pageName=obj.pageName;
         if(siteName.length==0) siteName=strKeyDefault;
         if(!(siteName in StrTxt)) StrTxt[siteName]=[];
-        StrTxt[siteName].push(pageName);
+        //StrTxt[siteName].push(pageName);
+        StrTxt[siteName].push(pageName.toLowerCase());
       }
       else{ StrImage.push(arrName[i]); }  
     }
@@ -1626,7 +1624,7 @@ pageListExtend=function($el){
   var File=[]; $el.nRowVisible=0;
 
   //var $buttonBack=$('<button>').append('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(doHistBack);
-  var $spanTmp=$('<span>').append('◀◀').css({'font-size':'0.7em'});
+  var $spanTmp=$('<span>').append('◄◄').css({'font-size':'0.7em'});
   var $buttonFastBack=$('<button>').append($spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){history.fastBack($adminMoreDiv);});
   //var $spanLabel=$('<span>').append('Pages').css({'float':'right',margin:'0.2em 0 0 0'});  
   var $buttPI=$('<button>').click(function(){  
@@ -2178,7 +2176,7 @@ imageListExtend=function($el){
   var File=[]; $el.nRowVisible=0;
 
   //var $buttonBack=$('<button>').append('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(doHistBack);
-  var $spanTmp=$('<span>').append('◀◀').css({'font-size':'0.7em'});
+  var $spanTmp=$('<span>').append('◄◄').css({'font-size':'0.7em'});
   var $buttonFastBack=$('<button>').append($spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){history.fastBack($adminMoreDiv);});
   //var $spanLabel=$('<span>').append('Images').css({'float':'right',margin:'0.2em 0 0 0'}); 
   var $buttPI=$('<button>').click(function(){  //.append($tmpImg)
@@ -2392,8 +2390,8 @@ versionTableExtend=function($el){
 "use strict"
   $el.toString=function(){return 'versionTable';}
   function cbCompareWPrev(){ 
-    var iVer=$(this).parent().parent().data('iMy');  arrVersion=[bound(iVer-1,1),iVer];
-    var vec=[['pageCompare',{arrVersion:arrVersion }]];   majax(oAJAX,vec); 
+    var iVer=$(this).parent().parent().data('iMy');  arrVersionCompared=[bound(iVer-1,1),iVer];
+    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
     doHistPush({$view:$diffDiv}); $diffDiv.setVis();
     return false;
   }
@@ -2407,22 +2405,22 @@ versionTableExtend=function($el){
     var iRow=$(this).parent().index();
     if(iRow==nVersion-1) { var vec=[['pageLoad',{version:nVersion-iRow}]];   majax(oAJAX,vec);   }
     else{
-      arrVersion=[bound(nVersion-iRow-1,1),nVersion-iRow];
-      var vec=[['pageCompare',{arrVersion:arrVersion }]];   majax(oAJAX,vec); 
+      arrVersionCompared=[bound(nVersion-iRow-1,1),nVersion-iRow];
+      var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
     }
     return false;
   }*/
   function redClick(){ 
-    var verR=$(this).parent().parent().data('iMy'), verGT=arrVersion[1]; verGT=verGT<=verR?verR+1:verGT; verGT=Math.min(verGT,nVersion);
-    arrVersion=[verR, verGT]; 
-    var vec=[['pageCompare',{arrVersion:arrVersion }]];   majax(oAJAX,vec); 
+    var verR=$(this).parent().parent().data('iMy'), verGT=arrVersionCompared[1]; verGT=verGT<=verR?verR+1:verGT; verGT=Math.min(verGT,nVersion);
+    arrVersionCompared=[verR, verGT]; 
+    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
     doHistPush({$view:$diffDiv}); $diffDiv.setVis();
     return false;
   }
   function greenClick(){ 
-    var verG=$(this).parent().parent().data('iMy'),  verRT=arrVersion[0]; verRT=verRT>=verG?verG-1:verRT; verRT=Math.max(verRT,1);
-    arrVersion=[verRT, verG];
-    var vec=[['pageCompare',{arrVersion:arrVersion }]];   majax(oAJAX,vec); 
+    var verG=$(this).parent().parent().data('iMy'),  verRT=arrVersionCompared[0]; verRT=verRT>=verG?verG-1:verRT; verRT=Math.max(verRT,1);
+    arrVersionCompared=[verRT, verG];
+    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
     doHistPush({$view:$diffDiv}); $diffDiv.setVis();
     return false;
   }  
@@ -2478,11 +2476,11 @@ versionTableExtend=function($el){
     $rEarliest.find('button:eq('+jBGreen+')').hide(); // Hide earliest green-button
     var $rLatest=$myRows.eq(0);  $rLatest.find('button:eq('+jBRed+')').hide(); // Hide latest red-button
 
-    if(arrVersion[0]!==null){
-      var iRowRedT=nVersion-arrVersion[0];      $tBody.children('tr:eq('+iRowRedT+')').css({"background-color":'#faa'}); // rowRed
+    if(arrVersionCompared[0]!==null){
+      var iRowRedT=nVersion-arrVersionCompared[0];      $tBody.children('tr:eq('+iRowRedT+')').css({"background-color":'#faa'}); // rowRed
       $tBody.children('tr:eq('+iRowRedT+')').find('button:eq('+jBRed+')').css({"background-color":'red'}); // buttRed
     } 
-    var iRowVerT=nVersion-arrVersion[1];     $tBody.children('tr:eq('+iRowVerT+')').css({"background-color":"#afa"}); // rowGreen
+    var iRowVerT=nVersion-arrVersionCompared[1];     $tBody.children('tr:eq('+iRowVerT+')').css({"background-color":"#afa"}); // rowGreen
     $tBody.children('tr:eq('+iRowVerT+')').find('button:eq('+jBGreen+')').css({"background-color":'green'}); // buttGreen
   
   }
@@ -2524,12 +2522,12 @@ diffDivExtend=function($el){
 
     var strNR='', str='';
     if(matVersion.length>0){
-      var ver=arrVersion[1], rev=ver-1;
+      var ver=arrVersionCompared[1], rev=ver-1;
       var r=matVersion[rev];
       strNR='v'+ver;   str=r[1]+' <b><i>'+r[2]+'</i></b> '+mySwedDate(r[0]);
     }
     $versionNew.html(strNR); $detailNew.html(str);  
-    var strNR='', str='', ver=arrVersion[0];
+    var strNR='', str='', ver=arrVersionCompared[0];
     if(ver){  // ver is 1-indexed
       var rev=ver-1;
       var r=matVersion[rev];
@@ -2545,26 +2543,26 @@ diffDivExtend=function($el){
 
         // menuC
   var $nextButtonNew=$('<button>').append('⇧').addClass('fixWidth').click(function(){
-    arrVersion[1]++;   if(arrVersion[1]>nVersion) {arrVersion[1]=nVersion;}
-    var vec=[['pageCompare',{arrVersion:arrVersion }]];   majax(oAJAX,vec); 
+    arrVersionCompared[1]++;   if(arrVersionCompared[1]>nVersion) {arrVersionCompared[1]=nVersion;}
+    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
   });
   var $prevButtonNew=$('<button>').append('⇩').addClass('fixWidth').click(function(){
-    arrVersion[1]--; if(arrVersion[0]==arrVersion[1]) arrVersion[0]--;
-    if(arrVersion[0]==0) {arrVersion=[nVersion-1,nVersion];}
-    var vec=[['pageCompare',{arrVersion:arrVersion }]];   majax(oAJAX,vec);  
+    arrVersionCompared[1]--; if(arrVersionCompared[0]==arrVersionCompared[1]) arrVersionCompared[0]--;
+    if(arrVersionCompared[0]==0) {arrVersionCompared=[nVersion-1,nVersion];}
+    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec);  
   });
   var $versionNew=$('<span>').css({'background':'#afa'}), $detailNew=$('<span>'); 
   
 
         // menuB
   var $nextButtonOld=$('<button>').append('⇧').addClass('fixWidth').click(function(){
-    arrVersion[0]++; if(arrVersion[0]==arrVersion[1]) arrVersion[1]++;
-    if(arrVersion[1]>nVersion) {arrVersion=[1,2];}
-    var vec=[['pageCompare',{arrVersion:arrVersion }]];   majax(oAJAX,vec);
+    arrVersionCompared[0]++; if(arrVersionCompared[0]==arrVersionCompared[1]) arrVersionCompared[1]++;
+    if(arrVersionCompared[1]>nVersion) {arrVersionCompared=[1,2];}
+    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec);
   });
   var $prevButtonOld=$('<button>').append('⇩').addClass('fixWidth').click(function(){
-    arrVersion[0]--;   if(arrVersion[0]==0) {arrVersion[0]=1;}
-    var vec=[['pageCompare',{arrVersion:arrVersion }]];   majax(oAJAX,vec); 
+    arrVersionCompared[0]--;   if(arrVersionCompared[0]==0) {arrVersionCompared[0]=1;}
+    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
   });
   var $versionOld=$('<span>').css({'background':'#faa'}), $detailOld=$('<span>'); 
 
@@ -2580,14 +2578,14 @@ diffDivExtend=function($el){
 
         // menuA
   var $nextButton=$('<button>').append('⇧').addClass('fixWidth').css({'margin-right':'1em'}).click(function(){
-    arrVersion[0]++; arrVersion[1]++;
-    if(arrVersion[1]>nVersion) {arrVersion=[1,2];}
-    var vec=[['pageCompare',{arrVersion:arrVersion }]];   majax(oAJAX,vec);
+    arrVersionCompared[0]++; arrVersionCompared[1]++;
+    if(arrVersionCompared[1]>nVersion) {arrVersionCompared=[1,2];}
+    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec);
   });
   var $prevButton=$('<button>').append('⇩').addClass('fixWidth').css({'margin-right':'1em'}).click(function(){
-    arrVersion[0]--; arrVersion[1]--; 
-    if(arrVersion[0]==0) {arrVersion=[nVersion-1,nVersion];}
-    var vec=[['pageCompare',{arrVersion:arrVersion }]];   majax(oAJAX,vec);  
+    arrVersionCompared[0]--; arrVersionCompared[1]--; 
+    if(arrVersionCompared[0]==0) {arrVersionCompared=[nVersion-1,nVersion];}
+    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec);  
   });
   // var $buttonBack=$('<button>').append('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(doHistBack);
   var $spanLabel=$('<span>').append('Diff').css({'float':'right',margin:'0.2em 0 0 0'});  
@@ -2984,8 +2982,9 @@ redirectTabExtend=function($el){
     return $el;
   }
   $el.myRemove=function($r){
-    $r.remove();  return $el; 
+    $r.remove();  
     $el.nRowVisible=$tbody.children('tr').length;
+    return $el; 
   }
   $el.myEdit=function(r){
     var $r=$tbody.children('[idSite='+r.idSiteOld+'][pageName='+r.pageNameOld+']');
@@ -3216,8 +3215,9 @@ siteTabExtend=function($el){
     return $el;
   }
   $el.myRemove=function($r){
-    $r.remove();  return $el; 
+    $r.remove();
     $el.nRowVisible=$tbody.children('tr').length;
+    return $el; 
   }
   $el.myEdit=function(r){
     var $r=$tbody.children('[idSite='+r.idSite+']');
@@ -3340,7 +3340,7 @@ GRet=function(data){
   tmp=data.boSiteMap;   if(typeof tmp!="undefined") { boSiteMap=tmp; $accessSiteMap.setStat(tmp); }
   $spanMod.setup({boOW:boOW, boOR:boOR, boSiteMap:boSiteMap});
 
-  tmp=data.arrVersion;   if(typeof tmp!="undefined") arrVersion=tmp;
+  tmp=data.arrVersionCompared;   if(typeof tmp!="undefined") arrVersionCompared=tmp;
 
   tmp=data.matVersion;   if(typeof tmp!='undefined') {  nVersion=tmp.length;  matVersion=tmp; $versionTable.setTable(); $pageView.setDetail(); }
 
@@ -3568,7 +3568,7 @@ setUp1=function(){
       }
 
       var stateMy=history.StateMy[history.state.ind];
-      if(typeof stateMy!='object' ) {alert("Error: typeof stateMy!='object'"); return; }
+      if(typeof stateMy!='object' ) {var tmpStr=window.location.href +" Error: typeof stateMy: "+(typeof stateMy); if(!boEpiphany) alert(tmpStr); else  console.log(tmpStr); return; }
       var $view=stateMy.$view;
       $view.setVis();
       if(typeof $view.getScroll=='function') {
@@ -3933,5 +3933,6 @@ $(function(){  setUp1(); });
 
 })();
 
-
+//var root = document.documentElement,   node = document.createTextNode("This is some new textA.");    root.appendChild(node);
+ 
 

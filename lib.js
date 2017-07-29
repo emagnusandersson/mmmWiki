@@ -248,8 +248,10 @@ closest2Val=function(v, val){
   }
   return [v[best_i],best_i];
 }
+preferedValue=function(x,IntPref){  var len=IntPref.length; for(var i=0;i<len;i++) {if(IntPref[i]>=x) return i;} return -1; } // [[wikipedia:prefered value]] (return index above)
 
-
+numWithUnitPrefix=function(n){ if(n<1000) return n;     n=n/1000; if(n<1000) return n+'k';     n=n/1000; if(n<1000) return n+'M';     n=n/1000; if(n<1000) return n+'G';  return n+'T';}
+numWithUnitPrefixArr=function(N){var l=N.length, StrOut=Array(l);for(var i=0;i<l;i++){ StrOut[i]=numWithUnitPrefix(N[i]); } return StrOut; }
 //
 // Data Formatting
 //
@@ -281,18 +283,18 @@ calcBUFileName=function(wwwSite,type,ending){
   return www+'_'+date+'_'+type+'.'+ending;
 }
 
-regKey=RegExp('([^:]+):','g');
+regParsePageKey=RegExp('([^:]+):','g');
 parsePage=function(strPage){
-  regKey.lastIndex=0;
-  var obj={talk:false, template:false, strTemplateTalk:'', siteName:''}, lastIndex;
+  regParsePageKey.lastIndex=0;
+  var obj={boTalk:false, boTemplate:false, strTemplateTalk:'', siteName:''}, lastIndex;
   while(true) {
-    var Match=regKey.exec(strPage);
+    var Match=regParsePageKey.exec(strPage);
     if(Match==null) break;
-    lastIndex=regKey.lastIndex;
+    lastIndex=regParsePageKey.lastIndex;
     var tmp=Match[1]; 
-    if(tmp=='talk') {obj.talk=true; obj.strTemplateTalk=tmp;}
-    else if(tmp=='template') {obj.template=true; obj.strTemplateTalk=tmp;}
-    else if(tmp=='template_talk') {obj.talk=true; obj.template=true; obj.strTemplateTalk=tmp;}
+    if(tmp=='talk') {obj.boTalk=true; obj.strTemplateTalk=tmp;}
+    else if(tmp=='template') {obj.boTemplate=true; obj.strTemplateTalk=tmp;}
+    else if(tmp=='template_talk') {obj.boTalk=true; obj.boTemplate=true; obj.strTemplateTalk=tmp;}
     else obj.siteName=tmp;
   }
   obj.pageNameA=strPage.substr(lastIndex);

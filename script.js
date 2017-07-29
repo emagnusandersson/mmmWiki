@@ -49,6 +49,7 @@ boLocal=strInfrastructure=='local';
 boDO=strInfrastructure=='do'; 
 
 
+
 interpretArgv=function(){
   var myArg=process.argv.slice(2);
   for(var i=0;i<myArg.length;i++){
@@ -57,13 +58,19 @@ interpretArgv=function(){
       var tmp=Match[2][0];
       if(tmp=='p') port=Match[2].substr(1);
       else if(tmp=='h') helpTextExit();
+      else {console.log('Neglected option: '+myArg[i]); }
     }else if(Match[1]=='--') {
       var tmp=Match[2], tmpSql='sql';
-      if(tmp.slice(0,tmpSql.length)==tmpSql) strCreateSql=Match[2].substr(tmpSql.length).toLowerCase();
+      if(tmp.slice(0,tmpSql.length)==tmpSql) strCreateSql=Match[2].substr(tmpSql.length);
       else if(tmp=='help') helpTextExit();
+      else {console.log('Neglected option: '+myArg[i]); }
     }
   }
 }
+
+StrValidSqlCalls=['createTable', 'dropTable', 'createFunction', 'dropFunction', 'truncate', 'createDummy', 'createDummies'];
+ 
+
 
 helpTextExit=function(){
   var arr=[];
@@ -71,8 +78,7 @@ helpTextExit=function(){
   arr.push('\t-h, --help\t\tDisplay this text');
   arr.push('\t-p[PORT]\t\tPort number (default: 5000)');
   arr.push('\t--sql[SQL_ACTION]\tRun a sql action.');
-  var StrValid=['table', 'dropTable', 'fun', 'dropFun', 'truncate', 'dummy', 'dummies'];
-  arr.push('\t\tSQL_ACTION='+StrValid.join('|'));
+  arr.push('\t\tSQL_ACTION='+StrValidSqlCalls.join('|'));
   console.log(arr.join('\n'));
   process.exit(0);
 }
@@ -102,8 +108,7 @@ var client = Neo4j({
 })
 */
 
-var flowStart=( function*(){
-  var flow=flowStart;
+var flow=( function*(){
 
     // Default config variables
   boDbg=0; boAllowSql=1; port=5000; levelMaintenance=0; googleSiteVerification='googleXXX.html';
@@ -149,7 +154,7 @@ var flowStart=( function*(){
   require('./parser.js'); 
   require('./parserTable.js'); 
 
-  setUpMysqlPool();
+  mysqlPool=setUpMysqlPool();
   myNeo4j=new MyNeo4j();
 
   if(boNewConfig) { 
@@ -234,13 +239,12 @@ var flowStart=( function*(){
 
 
         // get intCount
-      var semY=0, semCB=0, intCount;
-      //var tmp=redisClient.send('eval',[luaCountFunc, 3, redisVarSession, redisVarCounter, redisVarCounterIP, tDDOSBan]).then(function(intCountT){
-      var tmp=redisClient.send_command('eval',[luaCountFunc, 3, redisVarSession, redisVarCounter, redisVarCounterIP, tDDOSBan], function(err,intCountT){
-        intCount=intCountT; 
-        if(semY) { req.flow.next(); } semCB=1;
+      var semY=0, semCB=0, err, intCount;
+      var tmp=redisClient.send_command('eval',[luaCountFunc, 3, redisVarSession, redisVarCounter, redisVarCounterIP, tDDOSBan], function(errT,intCountT){
+        err=errT; intCount=intCountT; if(semY) { req.flow.next(); } semCB=1;
       });
       if(!semCB) { semY=1; yield;}
+      if(err) {console.log(err); return;}
       if(intCount>intDDOSMax) {res.outCode(429,"Too Many Requests ("+intCount+"), wait "+tDDOSBan+"s\n"); return; }
 
 
@@ -316,7 +320,7 @@ var flowStart=( function*(){
         else if(pathName=='/'+googleSiteVerification) res.end('google-site-verification: '+googleSiteVerification);
         else { yield* reqIndex.call(objReqRes);   }
       }
-    }).call(); req.flow.next();
+    })(); req.flow.next();
   }
 
 
@@ -339,5 +343,5 @@ var flowStart=( function*(){
   } 
   http.createServer(handler).listen(port);   console.log("Listening to HTTP requests at port " + port);
 
-})(); flowStart.next();
+})(); flow.next();
 

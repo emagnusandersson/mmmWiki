@@ -67,9 +67,10 @@ setUpCond=function(KeySel, StrOrderFilt, Prop, inObj){
 
 
 
-getHist=function(arg, callback){
+getHist=function*(flow, mysqlPool, arg){
   var Sql=[], TypeNInd=[], nFilt=arg.StrOrderFilt.length;
   var WhereWExtra=array_mergeM(arg.Where,arg.WhereExtra);
+  var Ou={err:null};
   for(var i=0;i<arg.StrOrderFilt.length;i++){
     var name=arg.StrOrderFilt[i];
     var pre; if('pre' in arg.Prop[name]) pre=arg.Prop[name].pre; else pre=preDefault;
@@ -112,32 +113,28 @@ getHist=function(arg, callback){
   }
   var sql=Sql.join('\n'), Val=[]; //set GLOBAL max_heap_table_size=128*1024*1024, GLOBAL tmp_table_size=128*1024*1024
 //debugger
-  myQueryF(sql, Val, arg.pool, function(err, results) {
-    if(err){ callback(err);  return; } 
-    else{
-      var NInRelaxedCond=[], Hist=[];
-      for(var i=0;i<results.length;i++){
-        var tmp=TypeNInd[i], kind=tmp[0], ii=tmp[1]; 
-        if(kind=='c') NInRelaxedCond[ii]=results[i][0].n;
-        else {
-          var nGroupsInFeat=results[i].length,     boTrunk=nGroupsInFeat>maxGroupsInFeat,   nDisp=boTrunk?maxGroupsInFeat:nGroupsInFeat,     nWOTrunk=0;
-          Hist[ii]=[]; 
-          for(var j=0;j<nDisp;j++){ 
-            var tmpRObj=results[i][j], tmpR, bin=tmpRObj.bin, val=Number(tmpRObj.groupCount); 
-            if(kind=='BF') tmpR=[Number(bin), val]; 
-            else if(kind[0]=='B') tmpR=[bin, val];   
-            else tmpR=[Number(bin), val];
-            nWOTrunk+=val;
-            Hist[ii].push(tmpR);
-          }
-          if(boTrunk){Hist[ii].push(['',NInRelaxedCond[ii]-nWOTrunk]); } // (if boTrunk) the second-last-item is the trunk (remainder)
-          Hist[ii].push(boTrunk);  // The last item marks if the second-last-item is a trunk (remainder)
-        }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) { extend(Ou, {err:err}); return Ou; }
+  var NInRelaxedCond=[], Hist=[];
+  for(var i=0;i<results.length;i++){
+    var [kind,ii]=TypeNInd[i]; 
+    if(kind=='c') NInRelaxedCond[ii]=results[i][0].n;
+    else {
+      var nGroupsInFeat=results[i].length,     boTrunk=nGroupsInFeat>maxGroupsInFeat,   nDisp=boTrunk?maxGroupsInFeat:nGroupsInFeat,     nWOTrunk=0;
+      Hist[ii]=[]; 
+      for(var j=0;j<nDisp;j++){ 
+        var tmpRObj=results[i][j], tmpR, bin=tmpRObj.bin, val=Number(tmpRObj.groupCount); 
+        if(kind=='BF') tmpR=[Number(bin), val]; 
+        else if(kind[0]=='B') tmpR=[bin, val];   
+        else tmpR=[Number(bin), val];
+        nWOTrunk+=val;
+        Hist[ii].push(tmpR);
       }
-      extend(arg.Ou,{Hist:Hist});
-      callback(null, arg.Ou);
+      if(boTrunk){Hist[ii].push(['',NInRelaxedCond[ii]-nWOTrunk]); } // (if boTrunk) the second-last-item is the trunk (remainder)
+      Hist[ii].push(boTrunk);  // The last item marks if the second-last-item is a trunk (remainder)
     }
-  });
+  }
+  extend(Ou, {Hist:Hist});  return Ou;
+
 }
 
 

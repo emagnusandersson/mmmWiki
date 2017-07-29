@@ -208,30 +208,31 @@ PropImage.size.histCondF=function(name){ return "i.size";};
 
 featCalcValExtend=function(Prop){
   for(var name in Prop){
-    var vv=Prop[name];
-    if(!('feat' in vv)) continue;
-    var v=vv.feat, boBucket='bucket' in v, boMin='min' in v;
+    var prop=Prop[name];
+    if(!('feat' in prop)) continue;
+    var feat=prop.feat, boBucket='bucket' in feat, boMin='min' in feat;
     if(boBucket||boMin){  // set n (=length) (if applicable)
-      var len;   if(boBucket) len=v.bucket.length; else if(boMin) len=v.min.length; 
+      //var len;   if(boBucket) len=feat.bucket.length; else if(boMin) len=feat.min.length;
+      var len=boBucket?feat.bucket.length:feat.min.length;
       Prop[name].feat.n=len;  Prop[name].feat.last=len-1;
     }
   
-    if(v.kind[0]=='S'){
-            // Create v.max;  maxClosed
-      v.max=[]; var maxClosed=[];
-      var jlast=v.last;    
+    if(feat.kind[0]=='S'){
+            // Create feat.max;  maxClosed
+      feat.max=[]; var maxClosed=[];
+      var jlast=feat.last;    
       for(var j=0;j<jlast;j++){ 
-        var tmp=v.min[j+1]; v.max[j]=tmp; maxClosed[j]=tmp-1;
+        var tmp=feat.min[j+1]; feat.max[j]=tmp; maxClosed[j]=tmp-1;
       }
-      v.max[jlast]=intMax; maxClosed[jlast]=intMax;
+      feat.max[jlast]=intMax; maxClosed[jlast]=intMax;
 
-            // Create minName/maxName (labels in 'sel0') and  v.maxName (labels in 'sel1') 
-      v.minName=[].concat(v.min);
-      v.maxName=[].concat(maxClosed);  v.maxName[v.last]="&infin;";
+            // Create minName/maxName (labels in 'sel0') and  feat.maxName (labels in 'sel1') 
+      feat.minName=[].concat(feat.min);
+      feat.maxName=[].concat(maxClosed);  feat.maxName[feat.last]="&infin;";
 
-      if(!('bucketLabel' in v)){   v.bucketLabel=[].concat(v.min);       v.bucketLabel[v.last]='&ge;'+v.bucketLabel[v.last]; } // (labels in histogram)
+      if(!('bucketLabel' in feat)){   feat.bucketLabel=[].concat(feat.min);       feat.bucketLabel[feat.last]='&ge;'+feat.bucketLabel[feat.last]; } // (labels in histogram)
 
-      Prop[name].feat=v;
+      Prop[name].feat=feat;
     }
   }
 }
@@ -364,7 +365,7 @@ setUpMysqlPool=function(){
   var uriObj=url.parse(uriDB); 
   var StrMatch=RegExp('^(.*):(.*)$').exec(uriObj.auth);
   var nameDB=uriObj.pathname.substr(1);
-  mysqlPool  = mysql.createPool({
+  var mysqlPool  = mysql.createPool({
     connectionLimit : nDBConnectionLimit,
     host            : uriObj.host,
     user            : StrMatch[1],
@@ -376,6 +377,7 @@ setUpMysqlPool=function(){
     flags:'-FOUND_ROWS'
   });
   mysqlPool.on('error',function(e){debugger});
+  return mysqlPool;
 }
 
 TLSDataExtend=function(){

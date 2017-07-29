@@ -60,8 +60,18 @@ sanitizeStyle=function(attrIn){
 //myDump=function(a,boStr){ if(typeof boStr=='undefined') boStr=1; var str='<pre>'+print_r(a,1)+'</pre>'; if(boStr) echo str; else return str;}
 //lcnotfirst=function(str){  if(count(str)>1) return str[0]+substr(str,1).toLowerCase(); else return str; }  // Make all except first lowercase
 
-parse=function*(callback) { // Should be seen as a method  (assigns things to this)
+
+calcETag=function(){ return md5(this.strHtmlText +this.tMod +this.tModCache +this.boOR +this.boOW +this.boSiteMap +this.boTalkExist +JSON.stringify(this.objTemplateE) +JSON.stringify(this.arrVersionCompared) +JSON.stringify(this.matVersion)  );}
+
+
+makeMatVersion=function(Version){ 
+  var nVersion=Version.length, t=Array(nVersion);
+  for(var i=0;i<nVersion;i++){    t[i]=[Version[i].tMod, Version[i].summary, Version[i].signature];   }  return t;
+}
+
+parse=function*() { // Should be seen as a method  (assigns things to this)
   var req=this.req, flow=req.flow;
+  var Ou={};
   var mPa=new Parser(this.strEditText, this.boOW==0);
   mPa.text=this.strEditText;
   mPa.preParse();
@@ -72,10 +82,9 @@ parse=function*(callback) { // Should be seen as a method  (assigns things to th
   if(len) {
     var strQ=array_fill(len,'?').join(', ');
     var sql="SELECT pageName, data FROM "+pageLastView+" p JOIN "+fileTab+" f WHERE f.idFile=p.idFile AND www=? AND pageName IN ("+strQ+")";
-    var Val=[this.req.wwwSite].concat(this.StrTemplate), err, results;
-    myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {err=errT; results=resultsT; flow.next(); });  yield;
-    if(err){   callback(err); return; } 
-    
+    var Val=[this.req.wwwSite].concat(this.StrTemplate);
+    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);   if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
+     
     for(var i=0;i<results.length;i++){ var tmpR=results[i]; objTemplate[tmpR.pageName]=tmpR.data; }
   }
 
@@ -91,9 +100,9 @@ parse=function*(callback) { // Should be seen as a method  (assigns things to th
   if(len) {
     var strQ=array_fill(len,'?').join(', ');
     var sql="SELECT pageName FROM "+pageLastView+" WHERE pageName IN ("+strQ+") AND www=?";
-    var Val=this.StrSub.concat(this.req.wwwSite), err, results;
-    myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {err=errT; results=resultsT; flow.next(); });  yield;
-    if(err){   callback(err); return; } 
+    var Val=this.StrSub.concat(this.req.wwwSite);
+    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
+    
     for(var i=0;i<results.length;i++){ var tmpR=results[i]; objExistingSub[tmpR.pageName]=1; }
   }
 
@@ -101,16 +110,16 @@ parse=function*(callback) { // Should be seen as a method  (assigns things to th
   mPa.objExistingSub=objExistingSub; mPa.setArrSub();      mPa.endParse();
   this.strHtmlText=mPa.text;  this.arrSub=mPa.arrSub; this.eTag=calcETag.call(this);
 
-  callback(null,0);
+  //callback(null,0);
+  extend(Ou, {mess:'OK'}); return Ou;
 }
 
-getInfoNData=function(callback) {
-  var req=this.req;
+getInfoNData=function*() {
+  var req=this.req, flow=req.flow;
+  var Ou={};
   var sql="CALL "+strDBPrefix+"getInfoNData(?, ?, ?, ?, ?, ?, ?);"; 
   var Val=[this.boFront, req.boTLS, req.wwwSite, this.queredPage, this.rev, this.eTagIn, this.requesterCacheTime/1000];
-  var err, results;
-  myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {err=errT; results=resultsT; flow.next(); });  yield;
-  if(err){   callback(err); return; } 
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
   var len=results.length, iRowLast=len-2; 
   var rowLast=results[iRowLast][0]; 
   //if('strEditText' in rowLast) rowLast.strEditText=rowLast.strEditText?rowLast.strEditText.toString():'';
@@ -143,17 +152,16 @@ getInfoNData=function(callback) {
     this.objTemplateE=obj;
   }
 
-  callback(null,rowLast);
-      
+  //callback(null,rowLast);
+  extend(Ou, {mess:'OK', row:rowLast}); return Ou;  
 }
 
 
-getInfo=function(callback) {
-  var req=this.req;
-  var sql="CALL "+strDBPrefix+"getInfo(?,?);", Val=[req.wwwSite, this.queredPage]; 
-  var err, results;
-  myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {err=errT; results=resultsT; flow.next(); });  yield;
-  if(err){   callback(err); return; } 
+getInfo=function*() {
+  var Ou={};
+  var req=this.req, flow=req.flow;
+  var sql="CALL "+strDBPrefix+"getInfo(?,?);", Val=[req.wwwSite, this.queredPage];
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
   var rowLast;
   if(results[0].length==0) { rowLast={mess:'noSuchPage'}; }
   else {
@@ -161,16 +169,9 @@ getInfo=function(callback) {
     rowLast.tMod=new Date(rowLast.tMod*1000);
     rowLast.tModCache=new Date(rowLast.tModCache*1000);
   }
-  callback(null,rowLast);
-  
+  //callback(null,rowLast);
+  extend(Ou, {mess:'OK', row:rowLast}); return Ou; 
 }
-
-
-makeMatVersion=function(Version){ 
-  var nVersion=Version.length, t=Array(nVersion);
-  for(var i=0;i<nVersion;i++){    t[i]=[Version[i].tMod, Version[i].summary, Version[i].signature];   }  return t;
-}
-calcETag=function(){ return md5(this.strHtmlText +this.tMod +this.tModCache +this.boOR +this.boOW +this.boSiteMap +this.boTalkExist +JSON.stringify(this.objTemplateE) +JSON.stringify(this.arrVersion) +JSON.stringify(this.matVersion)  );}
 
 
 createSubStr=function(arrSub){ // arrSub = [[name,boExist], [name,boExist] ....]   (assigned by setArrSub (in parser.js)) 
@@ -185,7 +186,7 @@ createSubImageStr=function(StrT){
 }
 
 createSaveByReplaceSQL=function(siteName, wwwSite, strName, strEditText, strHtmlText, eTag, arrSub, StrSubImage){ 
-  var tmp=createSubStr(arrSub), strSubQ=tmp[0], arrSubV=tmp[1];
+  var [strSubQ,arrSubV]=createSubStr(arrSub);
   var strSubImageQ=createSubImageStr(StrSubImage);
   var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
   Sql.push("START TRANSACTION; TRUNCATE "+tmpSubNew+"; "+strSubQ);
@@ -197,7 +198,7 @@ createSaveByReplaceSQL=function(siteName, wwwSite, strName, strEditText, strHtml
 }
 
 createSaveByAddSQL=function(wwwSite, strName, summary, signature, strEditText, strHtmlText, eTag, arrSub, StrSubImage){ 
-  var tmp=createSubStr(arrSub), strSubQ=tmp[0], arrSubV=tmp[1];
+  var [strSubQ,arrSubV]=createSubStr(arrSub);
   var strSubImageQ=createSubImageStr(StrSubImage);
   var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
   Sql.push("START TRANSACTION; TRUNCATE "+tmpSubNew+"; "+strSubQ);
@@ -209,7 +210,7 @@ createSaveByAddSQL=function(wwwSite, strName, summary, signature, strEditText, s
 }
 
 createSetNewCacheSQL=function(wwwSite, strName, rev, strHtmlText, eTag, arrSub, StrSubImage){
-  var tmp=createSubStr(arrSub), strSubQ=tmp[0], arrSubV=tmp[1];
+  var [strSubQ,arrSubV]=createSubStr(arrSub);
   var strSubImageQ=createSubImageStr(StrSubImage);
   var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
   Sql.push("START TRANSACTION;");
@@ -220,126 +221,7 @@ createSetNewCacheSQL=function(wwwSite, strName, rev, strHtmlText, eTag, arrSub, 
   var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, rev, strHtmlText, eTag]);
   return {sql:sql,Val:Val,nEndingResults:2}; 
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-createSaveByReplaceNeo=function(siteName, wwwSite, strName, strEditText, strHtmlText, eTag, arrSub, StrSubImage){ 
-  var tmp=createSubStr(arrSub), strSubQ=tmp[0], arrSubV=tmp[1];
-  var strSubImageQ=createSubImageStr(StrSubImage);
-  var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  var Page = {
-    name: strName,
-    boTalk: boTalk,
-    boTemplate: boTemplate,
-    boOR: boOR,
-    boOW: boOW,
-    boSiteMap: boSiteMap,
-    lastRev: lastRev
-  }
-  var Version = {
-    rev: rev,
-    summary: summary,
-    signature: signature,
-    boOther: boOther,
-    tMod: tMod,
-    tModCache: tModCache,
-    eTag: eTag,
-    size: size,
-    strEditText: strEditText
-  }
-
-  var ChildPlanned = {    name: name   }
-  var ImagePlanned = {    name: name   }
-
-
-
-  Sql.push("CREATE (p:Page) SET p={Page}")
-  Sql.push("CREATE (v:Version SET v={Version}")
-  Sql.push("START TRANSACTION; TRUNCATE "+tmpSubNew+"; "+strSubQ);
-  Sql.push("TRUNCATE "+tmpSubNewImage+"; "+strSubImageQ);
-  Sql.push("CALL "+strDBPrefix+"saveByReplace(?,?,?,?,?,?); COMMIT;");
-  var sql=Sql.join('\n'); 
-  var Val=array_merge(arrSubV, StrSubImage, [siteName, wwwSite, strName, strEditText, strHtmlText, eTag]);
-  return {sql:sql,Val:Val,nEndingResults:2};
-}
-/*
-  CREATE CONSTRAINT ON (n:Page) ASSERT n.name IS UNIQUE
-  CREATE CONSTRAINT ON (n:Site) ASSERT n.prefix IS UNIQUE
-  CREATE CONSTRAINT ON (n:Site) ASSERT n.www IS UNIQUE
-  CREATE CONSTRAINT ON (n:Image) ASSERT n.name IS UNIQUE
-  CREATE CONSTRAINT ON (n:Video) ASSERT n.name IS UNIQUE
-  CREATE CONSTRAINT ON (n:Setting) ASSERT n.name IS UNIQUE
-  CREATE CONSTRAINT ON (n:Redirect) ASSERT n.name IS UNIQUE
-  CREATE CONSTRAINT ON (n:RedirectDomain) ASSERT n.www IS UNIQUE
-  CREATE CONSTRAINT ON (n:ChildPlanned) ASSERT n.name IS UNIQUE
-  CREATE CONSTRAINT ON (n:ImagePlanned) ASSERT n.name IS UNIQUE
-  CREATE CONSTRAINT ON (n:Page) ASSERT exists(n.name)
-  CREATE CONSTRAINT ON (n:Site) ASSERT exists(n.prefix)
-  CREATE CONSTRAINT ON (n:Site) ASSERT exists(n.www)
-  CREATE CONSTRAINT ON (n:Image) ASSERT exists(n.name)
-  CREATE CONSTRAINT ON (n:Video) ASSERT exists(n.name)
-  CREATE CONSTRAINT ON (n:Setting) ASSERT exists(n.name)
-  CREATE CONSTRAINT ON (n:Redirect) ASSERT exists(n.name)
-  CREATE CONSTRAINT ON (n:RedirectDomain) ASSERT exists(n.www)
-  CREATE CONSTRAINT ON (n:ChildPlanned) ASSERT exists(n.name)
-  CREATE CONSTRAINT ON (n:ImagePlanned) ASSERT exists(n.name)
-  
-  var Site={
-    boDefault:boDefault
-    boTLS:boTLS,
-    prefix:siteName,
-    www:www,
-    googleAnalyticsTrackingID:googleAnalyticsTrackingID,
-    urlIcon16:urlIcon16,
-    urlIcon200:urlIcon200,
-    aPassword:aPassword,
-    vPassword:vPassword,
-    created:created
-  }
-  var Image = {
-    idImage: idImage,
-    name: imageName,
-    idFile: idFile,
-    boOther: boOther,
-    created: created,
-    eTag: eTag,
-    size: size
-  } 
-  var Thumb = {
-    idImage: idImage,
-    width: width,
-    height: height,
-    created: created,
-    eTag: eTag
-  } 
-  
-  var Video = {
-    idVideo: idVideo,
-    name: videoName,
-    idFile: idFile,
-    created: created,
-    eTag: eTag,
-    size: size
-  } 
-  var Setting = {
-    name: name,
-    value: value
-  } 
-  var Redirect = {
-    name: name,
-    url: url,
-    created: created
-  } 
-  var RedirectDomain = {
-    www: www,
-    url: url,
-    created: created
-  } 
-*/
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 echoAllAndExitObj=function(){
@@ -348,11 +230,6 @@ echoAllAndExitObj=function(){
   Out.GRet.strMessageText=Out.GRet.strMessageText.join(', ');; 
   //echo json_encode(Out);
 }
-
-
-
-
-
 
 
 
@@ -369,16 +246,16 @@ is_crawler=function() {
 
 
   // getSetting and setSetting aren't maintained or used, I just keep them around because they might become useful.
-getSetting=function*(callback,inObj){ 
+getSetting=function*(inObj){ 
   var req=this.req;
   var Ou={}
   if( count(array_diff(inObj,['lastOthersEdit','lastOthersUpload'])) ) mesEO(__LINE__,'Illegal invariable');  strV=inObj.join("', '");;
   var sth=dbh.prepare("SELECT * FROM "+settingTab+" WHERE name IN('"+strV+"')");    if(!sth.execute()) mesESqlO(sth,__LINE__);
   while(1){   tmp=sth.fetch(PDO.FETCH_NUM); if(!tmp) break; Ou[tmp[0]]=tmp[1];  }
-  callback(null,[Ou]);
+  return {err:null, result:[Ou]};
 }
 
-setSetting=function*(callback,inObj){ 
+setSetting=function*(inObj){ 
   var req=this.req, Ou={}
   var Str=['lastOthersEdit','lastOthersUpload'];
 
@@ -391,56 +268,7 @@ setSetting=function*(callback,inObj){
     if(!sth.execute([name,value,value])) mesESqlO(sth,__LINE__);
     Ou[name]=value;
   }
-  callback(null,[Ou]);
-}
-
-
-
-vLogin=function*(callback,inObj){
-  var req=this.req, sessionID=req.sessionID;
-  var GRet=this.GRet;
-  var Ou={};  
-  if(this.boVLoggedIn!=1 ){
-    if('pass' in inObj) {
-      var vPass=inObj.pass; 
-      if(vPass==vPassword){
-        var tmp=unixNow()+maxViewUnactivityTime;
-        var redisVar=sessionID+'_viewTimer';
-        var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,tmp]);
-        var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
-        this.boVLoggedIn=1; this.mes('Logged in (viewing)');
-      } else if(vPass=='')  this.mes('Password needed'); else this.mes('Wrong password');
-    }
-    else {this.mes('Password needed'); }
-  }
-  GRet.boVLoggedIn=this.boVLoggedIn;
-  callback(null, [Ou]);
-}
-
-aLogin=function*(callback,inObj){
-  var req=this.req, sessionID=req.sessionID;
-  var GRet=this.GRet;
-
-
-  var Ou={};  
-  if(this.boALoggedIn!=1 ){
-    if('pass' in inObj) {
-      var aPass=inObj.pass; 
-      if(aPass==aPassword) {
-        var tmp=unixNow()+maxAdminUnactivityTime;
-        var redisVar=sessionID+'_adminTimer';
-        var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,tmp]);
-        var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxAdminUnactivityTime]);
-        this.boVLoggedIn=1; this.boALoggedIn=1; this.mes('Logged in');
-        if(objOthersActivity) extend(objOthersActivity,objOthersActivityDefault);
-      }
-      else if(aPass=='') {this.mes('Password needed');}
-      else {this.mes('Wrong password');}
-    }
-    else {this.mes("Password needed"); }
-  } 
-  GRet.boALoggedIn=this.boALoggedIn; 
-  callback(null, [Ou]); 
+  return {err:null, result:[Ou]};
 }
 
 
@@ -511,34 +339,4 @@ StrOrderFiltImage="+JSON.stringify(StrOrderFiltImage)+";\n\
 
 regTalkNTemplateNSite=RegExp('^(talk:|template:|template_talk:|)(?:([^:]+):)?(.+)','i')
 
-configChanged=function(){
-  for(var key in Site){
-    var site=Site[key];   
-  }
-  var site=Site.mmmWikiL
-  var sql="SELECT COUNT(*) FROM "+siteTab+";";
-  var Val=[], err, results;
-  myQueryF(sql, Val, mysqlPool, function(errT, resultsT) {err=errT; results=resultsT; flow.next(); });  yield;
-  if(err){   callback(err); return; } 
-  var len=results.length;
-  var rowLast=results[len-2][0]; 
-  if('strEditText' in rowLast) rowLast.strEditText=rowLast.strEditText?rowLast.strEditText.toString():'';
-  if('strHtmlText' in rowLast) rowLast.strHtmlText=rowLast.strHtmlText?rowLast.strHtmlText.toString():'';
-  if('rev' in rowLast) rowLast.version=rowLast.rev+1;
-  if('tMod' in rowLast) rowLast.tMod=new Date(rowLast.tMod*1000);
-  if('tModCache' in rowLast) rowLast.tModCache=new Date(rowLast.tModCache*1000);
-
-  if(len>2)    this.Version=results[0];
-  if(len>3) {
-    var resT=results[1], c=resT.length;
-    var obj={}; 
-    for(var i=0;i<c;i++){ 
-      var tmpR=resT[i];
-      var tmpname=tmpR.siteName.replace(RegExp('^template:'),''); obj[tmpname]=tmpR.boOnWhenCached; 
-    }
-    this.objTemplateE=obj;
-  }
-  callback(null,rowLast);
-
-}
 
