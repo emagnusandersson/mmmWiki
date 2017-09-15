@@ -178,16 +178,16 @@ getHist=function*(flow, arg){
     
     var nCount=NaN;
     if('boCount' in prop){
-      var cqlCount=createCountQuery(arg.type, nameFeat, strNullFilterMode, strWhere, strWhereWExt);
+      var strCql=createCountQuery(arg.type, nameFeat, strNullFilterMode, strWhere, strWhereWExt);  // cqlCount
       var Val={tNow:tNow};
-      dbNeo4j.cypher({query:cqlCount, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+      var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
       if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
       var rec=records[0];   nCount=rec.nInRelaxedCond;  
     }
     
-    var cqlHist=createHistQuery(arg.type, nameFeat, strNullFilterMode, strWhere, strWhereWExt);
+    var strCql=createHistQuery(arg.type, nameFeat, strNullFilterMode, strWhere, strWhereWExt);  // cqlHist
     var Val={tNow:tNow};
-    dbNeo4j.cypher({query:cqlHist, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
     if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
     var len=records.length,   nGroupsInFeat=len,     boTrunk=len>maxGroupsInFeat,   nDisp=boTrunk?maxGroupsInFeat:len,     nWOTrunk=0;
     if(boTrunk && isNaN(nCount)) console.log('Seams '+nameFeat+'-buckets should have been counted. Got '+len+' buckets, which is more than maxGroupsInFeat: '+maxGroupsInFeat);

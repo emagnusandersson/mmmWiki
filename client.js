@@ -3087,7 +3087,7 @@ siteSetPopExtend=function($el){
   }
   $el.setUp=function(){
     if(typeof r.boTLS=='undefined') r.boTLS=0;
-    $selBoTLS.val(r.boTLS); $inpName.val(r.siteName); $inpWWW.val(r.www); $inpGog.val(r.googleAnalyticsTrackingID); $inpURLIcon16.val(r.urlIcon16); $inpURLIcon200.val(r.urlIcon200);
+    $selBoTLS.val(Number(r.boTLS)); $inpName.val(r.siteName); $inpWWW.val(r.www); $inpGog.val(r.googleAnalyticsTrackingID); $inpURLIcon16.val(r.urlIcon16); $inpURLIcon200.val(r.urlIcon200);
     $inpName.focus();  return true;
   }
   $el.openFunc=function(boUpdT,boGotData){
@@ -3273,7 +3273,7 @@ siteTabExtend=function($el){
   $el.$table=$("<table>").append($tbody); //.css({width:'100%',position:'relative'});
   $el.$divCont=$("<div>").append($el.$table).css({'margin':'1em auto','text-align':'left',display:'inline-block'});
 
-  var StrColHead=['boDefault','secure', 'idSite','siteName','www','googleAnalyticsTrackingID','urlIcon16','urlIcon200','tCreated','nPage'], BoAscDefault={boDefault:0,boTLS:0,tCreated:0,nPage:0};
+  var StrColHead=['boDefault','secure (TLS)', 'idSite','siteName','www','googleAnalyticsTrackingID','urlIcon16','urlIcon200','tCreated','nPage'], BoAscDefault={boDefault:0,boTLS:0,tCreated:0,nPage:0};
   var Label={boDefault:'Default',siteName:'siteName/prefix', gog:'gog...', tCreated:'Age', nPage:'#page'};
   var $thead=headExtend($('<thead>'),$el,StrColHead,BoAscDefault,Label);
   $thead.css({background:'white', width:'inherit'});  //,height:'calc(12px + 1.2em)'

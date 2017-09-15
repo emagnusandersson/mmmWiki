@@ -37,9 +37,9 @@ require('./lib/foundOnTheInternet/lcs.js');
 require('./lib/foundOnTheInternet/diff.js');
 require('./myDiff.js');
 //require('./store.js');
-//neo4j = require('neo4j-driver').v1;
 mongodb = require('mongodb');  MongoClient = mongodb.MongoClient;
-neo4j = require('neo4j');
+neo4j = require('neo4j-driver').v1; // Official
+//neo4j = require('neo4j'); // Thingdom
 require('./libNeo4j.js');
 
 strAppName='mmmWiki';
@@ -108,7 +108,7 @@ process.on('exit', function (){
 
 
     // Set up sessionNeo4j
-dbNeo4j = new neo4j.GraphDatabase('http://neo4j:jh10k@localhost:7474');
+//dbNeo4j = new neo4j.GraphDatabase('http://neo4j:jh10k@localhost:7474'); // Thingdom
 
 // Create a Neo4j client instance 
 /*
@@ -120,6 +120,8 @@ var client = Neo4j({
   }
 })
 */
+var driver = neo4j.driver("bolt://localhost", neo4j.auth.basic("neo4j", "jh10k"));
+sessionNeo4j = driver.session();
 
 var flow=( function*(){
 

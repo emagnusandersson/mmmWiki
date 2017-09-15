@@ -19,21 +19,6 @@ MyNeo4j=function(){
 }
 MyNeo4j.prototype.escape=function(str){  if(typeof str=='string') str=str.replace(this.regEscape,this.funEscape);  return str;  }
 
-neo4jRollbackGenerator=function*(tx,flow){
-  if(tx.state===tx.STATE_OPEN){
-    var semY=0, semCB=0; 
-    tx.rollback(function(err){ if(err)console.log(err); if(semY) flow.next(); semCB=1;  }); 
-    if(!semCB) { semY=1; yield;}
-  }
-}
- 
-neo4jCommitGenerator=function*(tx,flow){
-  if(tx.state===tx.STATE_OPEN){
-    var semY=0, semCB=0; 
-    tx.commit(function(err){ if(err)console.log(err); if(semY) flow.next(); semCB=1;  }); 
-    if(!semCB) { semY=1; yield;}
-  }
-} 
 
 
 MyError=Error;

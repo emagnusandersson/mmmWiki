@@ -211,11 +211,11 @@ ReqBE.prototype.myChMod=function*(inObj){
   
   var tmpBit; if('boOR' in inObj) tmpBit='boOR'; else if('boOW' in inObj) tmpBit='boOW'; else if('boSiteMap' in inObj) tmpBit='boSiteMap'; else {this.mesEO('No allowed bit specified'); return }
   
-  var strCqlOrg=` 
+  var strCql=` 
     MATCH (p:Page)-[hasRevision]->(r:Revision) WHERE p.idPage IN $IdPage
     SET p.`+tmpBit+`=$bit, r.tModCache=0`;
-  var err, records, Val={IdPage:File, bit:Boolean(inObj[tmpBit])};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={IdPage:File, bit:Boolean(inObj[tmpBit])};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
   this.mes('chmod');
@@ -230,11 +230,11 @@ ReqBE.prototype.myChModImage=function*(inObj){
   
   if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {var tmp='chmodImage: no files'; this.mesEO(tmp); return; }  
    
-  var strCqlOrg=` 
+  var strCql=` 
     MATCH (i:Image) WHERE i.idImage IN $idImage
     SET i.boOther=$bit`;
-  var err, records, Val={idImage:File, bit:Boolean(inObj.boOther)};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={idImage:File, bit:Boolean(inObj.boOther)};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
   this.mes('chmodImage');
@@ -251,14 +251,14 @@ ReqBE.prototype.deletePage=function*(inObj){
   
   if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {var tmp='deletePage: no files'; this.mesEO(tmp); return; }
 
-  var tx=dbNeo4j.beginTransaction();
+  var tx=sessionNeo4j.beginTransaction();
   var objArg={};      extend(objArg, {IdPage:File});
   var objT=yield* deletePageByMultIDNeo(flow, tx, objArg);
   if(objT.mess=='err') {
-    yield* neo4jRollbackGenerator(tx,flow);
+    yield* neo4jRollbackGenerator(flow, tx);
     this.mesEO('err'); return;
   }else{
-    yield* neo4jCommitGenerator(tx,flow);
+    yield* neo4jCommitGenerator(flow, tx);
   }
 
   this.mes('pages deleted');
@@ -274,17 +274,16 @@ ReqBE.prototype.deleteImage=function*(inObj){
 
   if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {var tmp='deleteImage: no files'; this.mesEO(tmp); return; }
   
-  var err;
   
     // Get IDs
-  var strCqlOrg=` 
+  var strCql=` 
     MATCH (ii:Image) WHERE ii.idImage IN $IdImage
     RETURN ii.idImage AS id
     UNION 
     MATCH (i:Image)-[h:hasThumb]->(t:ImageThumb) WHERE i.idImage IN $IdImage
     RETURN t.idThumb AS id`;
-  var records,  Val={IdImage:File}
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={IdImage:File}
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   var arrID=Array(records.length);   for(var i=0;i<records.length;i++){      arrID[i]=new mongodb.ObjectID(records[i].id);    }
   
@@ -296,22 +295,22 @@ ReqBE.prototype.deleteImage=function*(inObj){
   
   
      // Delete thumb-meta-data
-  var strCqlOrg=`
+  var strCql=`
     MATCH (i:Image) WHERE i.idImage IN $IdImage
     WITH i
     OPTIONAL MATCH (i)-[h:hasThumb]->(t:ImageThumb)
     DETACH DELETE t
     SET i.boGotData=NULL`;
-  var records,  Val={IdImage:File}
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={IdImage:File}
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
  
      // Delete orphaned Images with no data
-  var strCqlOrg=` 
+  var strCql=` 
     MATCH (iOrphan:Image) WHERE iOrphan.idImage IN $IdImage AND (NOT (:Page)-[:hasImage]->(iOrphan)) AND iOrphan.boGotData IS NULL
     DETACH DELETE iOrphan`;
   var Val={IdImage:File};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   this.mes('images deleted');   
   return {err:null, result:[Ou]};
@@ -361,14 +360,14 @@ ReqBE.prototype.pageLoad=function*(inObj) {
 
 
       // getInfoNData
-  var tx=dbNeo4j.beginTransaction();
+  var tx=sessionNeo4j.beginTransaction();
   var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:queredPage, iRev:iRev, eTag:eTagIn, requesterCacheTime:requesterCacheTime, boFront:0});
   var objT=yield* getInfoNDataNeo(flow, tx, objArg);
   if(objT.mess=='err') {
-    yield* neo4jRollbackGenerator(tx,flow);
+    yield* neo4jRollbackGenerator(flow, tx);
     this.mesEO('err'); return;
   }else{
-    yield* neo4jCommitGenerator(tx,flow);
+    yield* neo4jCommitGenerator(flow, tx);
   }
   var objDBData=objT;
   
@@ -391,14 +390,14 @@ ReqBE.prototype.pageLoad=function*(inObj) {
 
       if(mess=='serverCacheStale'){  //  && iRev+1==objDBData.arrRev.length   // if viewing old versions then serve stale cache
             // refreshRevNeo
-        var tx=dbNeo4j.beginTransaction();
+        var tx=sessionNeo4j.beginTransaction();
         var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:queredPage, iRev:iRev});
         var objT=yield* refreshRevNeo(flow, tx, objArg);
         if(objT.mess=='err') {
-          yield* neo4jRollbackGenerator(tx,flow);
+          yield* neo4jRollbackGenerator(flow, tx);
           this.mesEO('err'); return;
         }else{
-          yield* neo4jCommitGenerator(tx,flow);
+          yield* neo4jCommitGenerator(flow, tx);
         }
         var objDBData=objT;
         
@@ -427,7 +426,7 @@ ReqBE.prototype.pageCompare=function*(inObj){
   if(version==versionO) {this.mesEO('Same version'); return;}
 
 
-  var tx=dbNeo4j.beginTransaction(), err, objOut;
+  var tx=sessionNeo4j.beginTransaction(), err, objOut;
   try{
     var strCqlOrg=`
           //----- getNRev
@@ -444,16 +443,16 @@ ReqBE.prototype.pageCompare=function*(inObj){
     var objCql=splitCql(strCqlOrg);
     
     var strNameLC=this.queredPage.toLowerCase();
-    var Val={strNameLC:strNameLC, www:req.www}, err, records;
-    tx.cypher({query:objCql['getNRev'], params:Val, lean: true}, function(errT, recordsT){ err=errT, records=recordsT; flow.next(); }); yield;
+    var Val={strNameLC:strNameLC, www:req.www};
+    var strCql=objCql['getNRev'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
     if(err){throw {mess:'err', err:err}; } 
     var nRev=records[0].nRev;
     if(nRev==0) throw {mess:'noSuchPage'};
     if(version>nRev || versionO>nRev) { throw {mess:'noSuchRev', nRev:nRev}; } 
      
     
-    var Val={www:req.www, strNameLC:strNameLC, iRevO:iRevO, iRev:iRev}, err, records;
-    tx.cypher({query:objCql['getPage and revs'], params:Val, lean: true}, function(errT, recordsT){ err=errT, records=recordsT; flow.next(); }); yield;
+    var Val={www:req.www, strNameLC:strNameLC, iRevO:iRevO, iRev:iRev};
+    var strCql=objCql['getPage and revs'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
     if(err) throw {mess:'err', err:err}; 
     var objPage=records[0].p, objRevO=records[0].rO, objRev=records[0].r;
     
@@ -471,9 +470,9 @@ ReqBE.prototype.pageCompare=function*(inObj){
     objOut=e;
   }finally{
     if(objOut.mess=='err') {
-      yield* neo4jRollbackGenerator(tx,flow);
+      yield* neo4jRollbackGenerator(flow, tx);
     }else{
-      yield* neo4jCommitGenerator(tx,flow);
+      yield* neo4jCommitGenerator(flow, tx);
     }
     if(objOut.mess=='err') { return {err:err}; }
     else if(objOut.mess=='noSuchPage') { this.mesEO('Page does not exist'); return; }
@@ -502,21 +501,21 @@ ReqBE.prototype.getPreview=function*(inObj){
   var req=this.req, res=this.res;
   var Ou={}, GRet=this.GRet, flow=req.flow;
   
-  var tx=dbNeo4j.beginTransaction();
+  var tx=sessionNeo4j.beginTransaction();
     // getInfoNeo
   var objT=yield* getInfoNeo(flow, tx, {www:req.www, strName:this.queredPage});
   if(objT.mess=='err') {
-    yield* neo4jRollbackGenerator(tx,flow);
+    yield* neo4jRollbackGenerator(flow, tx);
     this.mesEO('err'); return;
   }
   var objInfo=objT;
     // parse
   var objParseOut=yield* parse(flow, tx, {www:req.www, strEditText:inObj.strEditText, boOW:objT.boOW});
   if(objT.mess=='err') {
-    yield* neo4jRollbackGenerator(tx,flow);
+    yield* neo4jRollbackGenerator(flow, tx);
     this.mesEO('err'); return;
   }else{
-    yield* neo4jCommitGenerator(tx,flow);
+    yield* neo4jCommitGenerator(flow, tx);
   }
   var arrSub=objParseOut.arrSub, StrSubImage=objParseOut.StrSubImage;
 
@@ -536,14 +535,14 @@ ReqBE.prototype.saveByReplace=function*(inObj){
 
   var strEditText=inObj.strEditText;
 
-  var tx=dbNeo4j.beginTransaction();
+  var tx=sessionNeo4j.beginTransaction();
   var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:queredPage, strEditText:strEditText, tModBrowser:this.tModBrowser, boVLoggedIn:this.boVLoggedIn});
   var objT=yield* saveByReplaceNeo(flow, tx, objArg);
   if(objT.mess=='err') {
-    yield* neo4jRollbackGenerator(tx,flow);
+    yield* neo4jRollbackGenerator(flow, tx);
     this.mesEO('err'); return;
   }else{
-    yield* neo4jCommitGenerator(tx,flow);
+    yield* neo4jCommitGenerator(flow, tx);
   }
   
   var mess=objT.mess;
@@ -577,15 +576,15 @@ ReqBE.prototype.saveByAdd=function*(inObj){
   var req=this.req, res=this.res;
   var Ou={}, GRet=this.GRet, flow=req.flow;
 
-  var tx=dbNeo4j.beginTransaction();
+  var tx=sessionNeo4j.beginTransaction();
   var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:this.queredPage, strEditText:inObj.strEditText, tModBrowser:this.tModBrowser, boVLoggedIn:this.boVLoggedIn});
   copySome(objArg,inObj,['summary', 'signature']);    
   var objT=yield* saveByAddNeo(flow, tx, objArg);
   if(objT.mess=='err') {
-    yield* neo4jRollbackGenerator(tx,flow);
+    yield* neo4jRollbackGenerator(flow, tx);
     this.mesEO('err'); return;
   }else{
-    yield* neo4jCommitGenerator(tx,flow);
+    yield* neo4jCommitGenerator(flow, tx);
   }
   var iRev=objT.iRev, objRev=objT.arrRev[iRev];
   var objPage=objT.objPage;
@@ -619,13 +618,13 @@ ReqBE.prototype.renamePage=function*(inObj){
   var Ou={};
   if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
 
-  var strCqlOrg=` 
+  var strCql=` 
     MATCH (p:Page {idPage:$idPage})
     SET p.name=$name, p.nameLC=$nameLC
     RETURN p.name AS name`;
   var strNewName=inObj.strNewName.replace(RegExp(' ','g'),'_');
-  var err, records, Val={idPage:inObj.id, name:strNewName, nameLC:strNewName.toLowerCase()};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={idPage:inObj.id, name:strNewName, nameLC:strNewName.toLowerCase()};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
   var c=records.length, boOK, mestmp; if(c==1) { boOK=1; mestmp="1 page renamed"; } else {boOK=0; mestmp=c+" pages renamed!?"; }
@@ -640,13 +639,13 @@ ReqBE.prototype.renameImage=function*(inObj){
   var Ou={};
   if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
 
-  var strCqlOrg=` 
+  var strCql=` 
     MATCH (i:Image {idImage:$idImage})
     SET i.name=$name, i.nameLC=$nameLC
     RETURN i.name AS name`;
   var strNewName=inObj.strNewName.replace(RegExp(' ','g'),'_');
-  var err, records, Val={idImage:inObj.id, name:strNewName, nameLC:strNewName.toLowerCase()};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={idImage:inObj.id, name:strNewName, nameLC:strNewName.toLowerCase()};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
   var c=records.length, boOK, mestmp; if(c==1) { boOK=1; mestmp="1 image renamed"; } else {boOK=0; mestmp=c+" images renamed!?"; }
@@ -681,11 +680,11 @@ ReqBE.prototype.getParent=function*(inObj){
   var req=this.req, res=this.res, flow=req.flow, Ou={};
   if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
 
-  var strCqlOrg=`
+  var strCql=`
     MATCH (s:Site)-[hasPage]->(p:Page)-[hc:hasChild]->(c:Page {idPage:$idPage})
     RETURN s.boTLS AS boTLS, s.www AS www, p.idPage AS idPage, p.name AS pageName`;
-  var err, records, Val={idPage:inObj.idPage};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={idPage:inObj.idPage};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
   Ou=arrObj2TabNStrCol(records);
@@ -696,11 +695,11 @@ ReqBE.prototype.getParentOfImage=function*(inObj){
   var req=this.req, res=this.res, flow=req.flow, Ou={};
   if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
 
-  var strCqlOrg=`
+  var strCql=`
     MATCH (s:Site)-[hasPage]->(p:Page)-[hi:hasImage]->(i:Image {idImage:$idImage})
     RETURN s.boTLS AS boTLS, s.www AS www, p.idPage AS idPage, p.name AS pageName`;
-  var err, records, Val={idImage:inObj.idImage};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={idImage:inObj.idImage};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
   Ou=arrObj2TabNStrCol(records);
@@ -713,19 +712,19 @@ ReqBE.prototype.getSingleParentExtraStuff=function*(inObj){
   
   if(inObj.idPage===null){
       // Get number of orphaned pages / orphaned images
-    var strCqlOrg=`
+    var strCql=`
       OPTIONAL MATCH (pOrphan:Page) WHERE (NOT (:Page)-[:hasChild]->(pOrphan)) 
       WITH COUNT(pOrphan) AS nSub
       OPTIONAL MATCH (iOrphan:Image)  WHERE (NOT (:Page)-[:hasImage]->(iOrphan))
       RETURN nSub, COUNT(iOrphan) AS nImage`;
-    var err, records, Val={};
-    dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    var Val={};
+    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
     if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
     if(records.length!=1) {  return {err:new Error('records.length!=1')}; }
     Ou=records[0];
 
   } else {  
-    var strCqlOrg=`
+    var strCql=`
       MATCH (s:Site)-[hasPage]->(p:Page {idPage:$idPage})
       OPTIONAL MATCH (p)-[hc:hasChild]->(c:Page)
       WITH s, p, COUNT(c) AS nSub
@@ -733,8 +732,8 @@ ReqBE.prototype.getSingleParentExtraStuff=function*(inObj){
       WITH s, p, nSub, COUNT(i) AS nImage
       OPTIONAL MATCH (p2:Page {nameLC:p.nameLC})
       RETURN s.boTLS AS boTLS, s.name AS siteName, s.www AS www, p.name AS pageName, p.nameLC AS nameLC, nSub, nImage, COUNT(p2) AS nSame`;
-    var err, records, Val={idPage:inObj.idPage};
-    dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    var Val={idPage:inObj.idPage};
+    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
     if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
     if(records.length!=1) {  return {err:new Error('records.length!=1')}; }
     Ou=records[0];
@@ -749,15 +748,15 @@ ReqBE.prototype.getPageList=function*(inObj) {
   var flow=req.flow;
 
   var tmp=whereArrToStr(this.Where), strWhere=tmp.strWhere, strWhereWExt=tmp.strWhereWExt;
-  var cqlList=createListQuery('page', this.strNullFilterMode, strWhere, strWhereWExt);
-  var Val={}, err, records;
-  dbNeo4j.cypher({query:cqlList, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=createListQuery('page', this.strNullFilterMode, strWhere, strWhereWExt);
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err){ this.mesEO(err); return;  }
   var Ou=arrObj2TabNStrCol(records), nFiltered=records.length;
   
-  var cqlNUnFiltered="MATCH (p:Page)-[h:hasRevision]->(r:RevisionLast), (s:Site)-[hasPage]->(p) RETURN COUNT(p) AS nUnFiltered";
-  var Val={}, err, records;
-  dbNeo4j.cypher({query:cqlNUnFiltered , params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql="MATCH (p:Page)-[h:hasRevision]->(r:RevisionLast), (s:Site)-[hasPage]->(p) RETURN COUNT(p) AS nUnFiltered";  // cqlNUnFiltered
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err){ this.mesEO(err); return;  }
   var nUnFiltered=records[0].nUnFiltered;
 
@@ -782,11 +781,11 @@ ReqBE.prototype.getPageHist=function*(inObj){
     // Fetching the names of the parents
   var len=arrTmpB.length;
   if(len){
-    var strCqlOrg=`MATCH (s:Site)-[hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE p.idPage IN $IdPage
+    var strCql=`MATCH (s:Site)-[hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE p.idPage IN $IdPage
     RETURN s.name AS siteName, p.idPage AS idPage, p.nameLC AS pageName`;
 
-    var err, records, Val={IdPage:arrTmpB};
-    dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    var Val={IdPage:arrTmpB};
+    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
     if(err){ this.mesEO(err); return;  }
     Ou.ParentName=arrObj2TabNStrCol(records);
   }
@@ -810,15 +809,15 @@ ReqBE.prototype.getImageList=function*(inObj) {
   var flow=req.flow;
 
   var tmp=whereArrToStr(this.Where), strWhere=tmp.strWhere, strWhereWExt=tmp.strWhereWExt;
-  var cqlList=createListQuery('image', this.strNullFilterMode, strWhere, strWhereWExt);
-  var Val={}, err, records;
-  dbNeo4j.cypher({query:cqlList, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=createListQuery('image', this.strNullFilterMode, strWhere, strWhereWExt);
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err){ this.mesEO(err); return;  }
   var Ou=arrObj2TabNStrCol(records), nFiltered=records.length;
 
-  var cqlNUnFiltered="MATCH (i:Image) WHERE i.boGotData RETURN COUNT(i) AS nUnFiltered";
-  var Val={}, err, records;
-  dbNeo4j.cypher({query:cqlNUnFiltered , params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql="MATCH (i:Image) WHERE i.boGotData RETURN COUNT(i) AS nUnFiltered";  //cqlNUnFiltered
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err){ this.mesEO(err); return;  }
   var nUnFiltered=records[0].nUnFiltered;
 
@@ -843,11 +842,11 @@ ReqBE.prototype.getImageHist=function*(inObj){
     // Fetching the names of the parents
   var len=arrTmpB.length;
   if(len){
-    var strCqlOrg=`MATCH (s:Site)-[hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE p.idPage IN $IdPage
+    var strCql=`MATCH (s:Site)-[hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE p.idPage IN $IdPage
     RETURN s.name AS siteName, p.idPage AS idPage, p.nameLC AS pageName`;
 
-    var err, records, Val={IdPage:arrTmpB};
-    dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    var Val={IdPage:arrTmpB};
+    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
     if(err){ this.mesEO(err); return;  }
     Ou.ParentName=arrObj2TabNStrCol(records);
   }
@@ -862,13 +861,13 @@ ReqBE.prototype.getPageInfo=function*(inObj){
   var req=this.req, res=this.res, Ou={}
   var GRet=this.GRet, flow=req.flow;
   var Ou={FileInfo:[]};
-  var strCqlOrg=`
+  var strCql=`
       // ----- start
     MATCH (s:Site)-[:hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE 
     
       // ----- end
     RETURN p.name AS pageName, p.boOR AS boOR, p.boOW AS boOW, r.tMod AS tMod, p.boOther AS boOther, r.size AS size`;
-  var objCql=splitCql(strCqlOrg);
+  var objCql=splitCql(strCql);
     
   var Val={}; 
   if('objName' in inObj) {  // objName, Ex: {siteA:['start', 'starta' ...], siteB:['start', 'starta' ...] ...} 
@@ -884,8 +883,7 @@ ReqBE.prototype.getPageInfo=function*(inObj){
     var strQ='false'; if(arrQ.length) strQ=arrQ.join(' OR ');
     var strCql=objCql['start']+strQ+objCql['end'];
     
-    var err, records;
-    dbNeo4j.cypher({query:strCql, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next(); });  yield;
+    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
     if(err) { return {err:err}; }
     Ou.FileInfo=records;
   } 
@@ -918,8 +916,7 @@ ReqBE.prototype.getImageInfo=function*(inObj){
   } 
   var Val={StrNameLC:StrNameLC}; 
   var strCql=objCql['start']+strCond+objCql['end'];
-  var err, records;
-  dbNeo4j.cypher({query:strCql, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next(); });  yield;
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err) { return {err:err}; }
   Ou.FileInfo=records;
   return {err:null, result:[Ou]};
@@ -932,11 +929,11 @@ ReqBE.prototype.redirectTabGet=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
-  var strCqlOrg=` 
+  var strCql=` 
     MATCH (s:Site)-[:hasRedirect]->(r:Redirect)
     RETURN s.name AS idSite, s.name AS siteName, s.www AS www, r.nameLC AS pageName, r.url AS url, r.tCreated AS tCreated, r.tMod AS tMod, r.nAccess AS nAccess, r.tLastAccess AS tLastAccess`;
-  var err, records, Val={};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT;  flow.next();  });   yield;
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err ) { res.out500(err); return; }
 
   var Ou=arrObj2TabNStrCol(records);
@@ -953,7 +950,7 @@ ReqBE.prototype.redirectTabSet=function*(inObj){
   var boUpd=inObj.boUpd||false;
   if(boUpd){
       // If r.nameLC or idSite changes then nAccess, tLastAccess, tCreated are set as if the Redirect was created.
-    var strCqlOrg=`MATCH (sOld:Site {name:$idSiteOld})-[relOld:hasRedirect]->(r:Redirect {nameLC:$nameLCOld}), (s:Site {name:$idSite}) 
+    var strCql=`MATCH (sOld:Site {name:$idSiteOld})-[relOld:hasRedirect]->(r:Redirect {nameLC:$nameLCOld}), (s:Site {name:$idSite}) 
       CREATE (s)-[relNew:hasRedirect]->(r) 
       SET r.nameLC=$nameLC, r.url=$url, r.tMod=$tNow, r.nAccess=coalesce($boNew*0, r.nAccess), r.tLastAccess=coalesce($boNew*$tNow, r.tLastAccess), r.tCreated=coalesce($boNew*$tNow, r.tCreated)
       DELETE relOld
@@ -962,16 +959,16 @@ ReqBE.prototype.redirectTabSet=function*(inObj){
     Val.nameLC=inObj.pageName.replace(RegExp(' ','g'),'_').toLowerCase();  Val.nameLCOld=inObj.pageNameOld.replace(RegExp(' ','g'),'_').toLowerCase();
     Val.boNew=(Val.nameLC!=Val.nameLCOld || Val.idSite!=Val.idSiteOld)?1:null;
   } else {
-    var strCqlOrg=`MATCH (s:Site {name:$idSite})
+    var strCql=`MATCH (s:Site {name:$idSite})
       CREATE (s)-[:hasRedirect]->(r:Redirect) SET r.nameLC=$nameLC, r.url=$url, r.tCreated=$tNow, r.tMod=$tNow, r.tLastAccess=$tNow, r.nAccess=0
       RETURN s.name AS idSite, s.name AS siteName, s.www AS www, r.nameLC AS pageName, r.url AS url, r.tCreated AS tCreated, r.tMod AS tMod, r.nAccess AS nAccess, r.tLastAccess AS tLastAccess`;
     var Val=copySome({}, inObj, ['idSite', 'url']); Val.nameLC=inObj.pageName.replace(RegExp(' ','g'),'_');
   }
   Val.tNow=(new Date()).toUnix();
-  var err, records; dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT;  flow.next();  });   yield;
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   
   var boOK, mestmp;
-  if(err && (typeof err=='object') && 'neo4j' in err && 'message' in err.neo4j){boOK=0; mestmp=err.neo4j.message;}
+  if(err && (typeof err=='object') && err.message){boOK=0; mestmp=err.message;}
   else if(err){ this.mesEO(err); return;  }
   else{ boOK=1; mestmp="Done";  }
   var Ou=arrObj2TabNStrCol(records);
@@ -985,10 +982,10 @@ ReqBE.prototype.redirectTabDelete=function*(inObj){
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
   if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
-  var strCqlOrg=`MATCH (s:Site)-[:hasRedirect]->(r:Redirect) WHERE s.name=$name AND r.nameLC=$nameLC DETACH DELETE r RETURN COUNT(r) AS nDelete`;
+  var strCql=`MATCH (s:Site)-[:hasRedirect]->(r:Redirect) WHERE s.name=$name AND r.nameLC=$nameLC DETACH DELETE r RETURN COUNT(r) AS nDelete`;
   var Val={name:inObj.idSite, nameLC:inObj.pageName.replace(RegExp(' ','g'),'_')};
   
-  var err, records; dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT;  flow.next();  });   yield;
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
 
   var c=records[0].nDelete, boOK, mestmp; 
   if(c==1) {boOK=1; mestmp="Entry deleted"; } else {boOK=1; mestmp=c+ " entries deleted!?"; }
@@ -1002,8 +999,9 @@ ReqBE.prototype.redirectTabResetNAccess=function*(inObj){
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
   if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
-  var strCqlOrg=`MATCH (r:Redirect) SET r.nAccess=0`;
-  var Val={}, err, records; dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT;  flow.next();  });   yield;
+  var strCql=`MATCH (r:Redirect) SET r.nAccess=0`;
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
 
   var boOK=0, mestmp;
   if(err) {  this.mesEO(err); return;  } else{  boOK=1; mestmp="Done";  }
@@ -1023,13 +1021,13 @@ ReqBE.prototype.siteTabGet=function*(inObj){
   var Ou={};
   if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
   
-  var strCqlOrg=`
+  var strCql=`
     MATCH (s:Site)
     OPTIONAL MATCH (s)-[:hasPage]->(p:Page)-[:hasRevision]->(:Revision)
     RETURN s.boDefault AS boDefault, s.boTLS AS boTLS, s.name AS idSite, s.name AS siteName, s.www AS www, s.googleAnalyticsTrackingID AS googleAnalyticsTrackingID, s.urlIcon16 AS urlIcon16, s.urlIcon200 AS urlIcon200, s.tCreated AS tCreated, COUNT(p) AS nPage`;
 
-  var err, records, Val={};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next(); });  yield;
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err) { return {err:err}; }
 
   var Ou=arrObj2TabNStrCol(records);
@@ -1057,12 +1055,13 @@ ReqBE.prototype.siteTabSet=function*(inObj){
     var strNameLC=inObj.siteName.toLowerCase(), strNameLCNew=strNameLC;
   }
 
-  var err, records, Val={nameLC: strNameLC, nameLCNew: strNameLCNew};  copySome(Val, inObj, ['www', 'googleAnalyticsTrackingID', 'urlIcon16', 'urlIcon200']); Val.boTLS=Boolean(inObj.boTLS);
-  dbNeo4j.cypher({query:strCql, params:Val, raw: true}, function(errT, recordsT){  //, lean: true
-     err=errT; records=recordsT; flow.next(); });  yield;
+  var Val={nameLC: strNameLC, nameLCNew: strNameLCNew};  copySome(Val, inObj, ['www', 'googleAnalyticsTrackingID', 'urlIcon16', 'urlIcon200']); Val.boTLS=Boolean(inObj.boTLS);
+  //dbNeo4j.cypher({query:strCql, params:Val, raw: true}, function(errT, recordsT){  //, lean: true
+     //err=errT; records=recordsT; flow.next(); });  yield;
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
 
   var boOK, mestmp;
-  if(err && (typeof err=='object') && 'neo4j' in err && 'message' in err.neo4j){boOK=0; mestmp=err.neo4j.message;}
+  if(err && (typeof err=='object') && err.message){boOK=0; mestmp=err.message;}
   else if(err){ this.mesEO(err); return;  }
   else{ boOK=1; mestmp="Done";  }
   
@@ -1076,10 +1075,10 @@ ReqBE.prototype.siteTabDelete=function*(inObj){
   var Ou={};
   if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
   
-  var strCqlOrg=`MATCH (s:Site {name:$nameLC}) DETACH DELETE s RETURN COUNT(s) AS nDelete`;
+  var strCql=`MATCH (s:Site {name:$nameLC}) DETACH DELETE s RETURN COUNT(s) AS nDelete`;
 
-  var err, records, Val={nameLC:inObj.siteName.toLowerCase()};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next(); });  yield;
+  var Val={nameLC:inObj.siteName.toLowerCase()};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err) { return {err:err}; }
   
   var c=records[0].nDelete, boOK, mestmp; 
@@ -1094,24 +1093,24 @@ ReqBE.prototype.siteTabSetDefault=function*(inObj){
   var Ou={};
   if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
 
-  var tx=dbNeo4j.beginTransaction(), err, records;
+  var tx=sessionNeo4j.beginTransaction();
   var Val={nameLC:inObj.idSite.toLowerCase()};
   try{
-    var strCqlOrg=`MATCH (s:Site) SET s.boDefault=null`;
-    tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next(); });  yield;
+    var strCql=`MATCH (s:Site) SET s.boDefault=null`;
+    var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
     if(err) { throw {mess:'err', err:err}; }
     
-    var strCqlOrg=`MATCH (s:Site {name:$nameLC}) SET s.boDefault=true`;
-    tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next(); });  yield;
+    var strCql=`MATCH (s:Site {name:$nameLC}) SET s.boDefault=true`;
+    var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
     if(err) { throw {mess:'err', err:err}; }
     var objOut={mess:'OK', err:null};
   } catch(e){
     var objOut=e;
   }finally{
     if(objOut.mess=='err') {
-      yield* neo4jRollbackGenerator(tx,flow);
+      yield* neo4jRollbackGenerator(flow, tx);
     }else{
-      yield* neo4jCommitGenerator(tx,flow);
+      yield* neo4jCommitGenerator(flow, tx);
     }
     if(objOut.mess=='err') { return objOut; }
 
@@ -1208,14 +1207,14 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data){
     console.time('dbOperations');
     
         // saveWhenUploading
-    var tx=dbNeo4j.beginTransaction();
+    var tx=sessionNeo4j.beginTransaction();
     var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {fileName:fileName, strEditText:strEditText});
     var objT=yield* saveWhenUploadingNeo(flow, tx, objArg);
     if(objT.mess=='err') {
-      yield* neo4jRollbackGenerator(tx,flow);
+      yield* neo4jRollbackGenerator(flow, tx);
       this.mesEO('err'); return;
     }else{
-      yield* neo4jCommitGenerator(tx,flow);
+      yield* neo4jCommitGenerator(flow, tx);
     }
 
     var mess=objT.mess;
@@ -1231,15 +1230,15 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data){
     if(err){this.mesEO(err);  return; }
     var width=value.width, height=value.height;
     
-    var tx=dbNeo4j.beginTransaction();
+    var tx=sessionNeo4j.beginTransaction();
     
     var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:fileName, data:data, width:width, height:height, boOther:false});
     var objT=yield* storeImageNeo(flow, tx, objArg);
     if(objT.mess=='err') {
-      yield* neo4jRollbackGenerator(tx,flow);
+      yield* neo4jRollbackGenerator(flow, tx);
       this.mesEO('err'); return;
     }else{
-      yield* neo4jCommitGenerator(tx,flow);
+      yield* neo4jCommitGenerator(flow, tx);
     }
   }else if(regVid.test(type)){ 
     var eTag=md5(data);
@@ -1295,15 +1294,15 @@ ReqBE.prototype.uploadUser=function*(inObj){
     
  
       // Call storeImageNeo 
-    var tx=dbNeo4j.beginTransaction();
+    var tx=sessionNeo4j.beginTransaction();
     
     var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:fileName, data:data, width:width, height:height, boOther:true});
     var objT=yield* storeImageNeo(flow, tx, objArg);
     if(objT.mess=='err') {
-      yield* neo4jRollbackGenerator(tx,flow);
+      yield* neo4jRollbackGenerator(flow, tx);
       this.mesEO('err'); return;
     }else{
-      yield* neo4jCommitGenerator(tx,flow);
+      yield* neo4jCommitGenerator(flow, tx);
     }
     
     

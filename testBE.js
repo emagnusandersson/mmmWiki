@@ -3,7 +3,7 @@ http = require("http");
 util =  require('util');
 crypto = require('crypto');
 //neo4j = require('neo4j-driver').v1;
-neo4j = require('neo4j');
+//neo4j = require('neo4j');
 mongodb = require('mongodb');  MongoClient = mongodb.MongoClient;
 gm =  require('gm').subClass({ imageMagick: true });
 path = require("path");
@@ -36,7 +36,9 @@ process.on('exit', function (){
 //var driverNeo4j = neo4j.driver("bolt://localhost", neo4j.auth.basic("neo4j", "jh10k"));
 //sessionNeo4j = driverNeo4j.session();
 
-dbNeo4j = new neo4j.GraphDatabase('http://neo4j:jh10k@localhost:7474');
+//dbNeo4j = new neo4j.GraphDatabase('http://neo4j:jh10k@localhost:7474');
+var driver = neo4j.driver("bolt://localhost", neo4j.auth.basic("neo4j", "jh10k"));
+sessionNeo4j = driver.session();
 
 // node --inspect --debug-brk testNeo4j.js --gengetInfoNDataNeo
 // node --inspect --debug-brk testNeo4j.js --gensaveByReplaceNeo --dataabc,link:starta,link:startd

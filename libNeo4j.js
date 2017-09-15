@@ -36,6 +36,89 @@ splitCql=function(text){
   return objCql;
 }
 
+neo4jRollbackGenerator=function*(flow, tx){
+  var err=null;
+  if(tx.isOpen()){
+    var semY=0, semCB=0; 
+    tx.rollback().subscribe({
+      onCompleted: function () {
+        flow.next();
+      },
+      onError: function (error) {
+        err=error; if(semY) flow.next(); semCB=1;
+      }
+    });
+    if(!semCB) { semY=1; yield;}
+  }
+  return {err:err}
+}
+ 
+neo4jCommitGenerator=function*(flow, tx){
+  var err=null;
+  if(tx.isOpen()){
+    var semY=0, semCB=0; 
+    tx.commit().subscribe({
+      onCompleted: function () {
+        flow.next();
+      },
+      onError: function (error) {
+        err=error; if(semY) flow.next(); semCB=1;
+      }
+    });
+    if(!semCB) { semY=1; yield;}
+  }
+  return {err:err}
+}
+
+neo4jTxRun=function*(flow, tx, strCql, Val, boRaw=false){
+  var err=null, records=[];
+  tx.run(strCql, Val).subscribe({
+    onNext: function (record) {
+      if(!boRaw) {
+        var recordA=record.toObject();
+        for(var k in record._fieldLookup){
+          if(recordA[k] instanceof neo4j.types.Node) {var tmpNode=recordA[k].properties; neo4jConvertIntProp(tmpNode);  recordA[k]=tmpNode;}
+          else if(neo4j.isInt(recordA[k])) recordA[k]=neo4jConvertInt(recordA[k]);
+        };
+      } else var recordA=record;
+      records.push(recordA);
+    },
+    onCompleted: function() { 
+      //session.close(); 
+      flow.next();
+    },
+    onError: function (error) {
+      err=error; flow.next();
+    }
+  });
+  yield;
+  return {err:err, records:records};
+}
+
+neo4jRun=function*(flow, session, strCql, Val, boRaw=false){
+  var err=null, records=[];
+  session.run(strCql, Val).subscribe({
+    onNext: function (record) {
+      if(!boRaw) {
+        var recordA=record.toObject();
+        for(var k in record._fieldLookup){
+          if(recordA[k] instanceof neo4j.types.Node) {var tmpNode=recordA[k].properties; neo4jConvertIntProp(tmpNode);  recordA[k]=tmpNode;}
+          else if(neo4j.isInt(recordA[k])) recordA[k]=neo4jConvertInt(recordA[k]);
+        };
+      } else var recordA=record;
+      records.push(recordA);
+    },
+    onCompleted: function() { 
+      //session.close(); 
+      flow.next();
+    },
+    onError: function (error) {
+      err=error; flow.next();
+    }
+  });
+  yield;
+  return {err:err, records:records};
+}
 
   //CREATE CONSTRAINT ON (p:Page) ASSERT p.idPage IS UNIQUE
 
@@ -43,20 +126,20 @@ setUpNeo=function*(flow, objArg){
   var www=objArg.www, boTLS=objArg.boTLS, strSiteName=objArg.strSiteName;
   boTLS=Boolean(boTLS);
   var Ou={};
-  var err, records, Val={};
-  var strCqlOrg=`CREATE CONSTRAINT ON (s:Site) ASSERT s.name IS UNIQUE`;
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={};
+  var strCql=`CREATE CONSTRAINT ON (s:Site) ASSERT s.name IS UNIQUE`;
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
-  var strCqlOrg=`CREATE CONSTRAINT ON (s:Site) ASSERT s.www IS UNIQUE`;
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=`CREATE CONSTRAINT ON (s:Site) ASSERT s.www IS UNIQUE`;
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
-  var strCqlOrg=`
+  var strCql=`
     MERGE (sd:Site {boDefault:true}) ON CREATE SET sd+={ name:coalesce($strSiteName, myMisc.myrandstringFunc(7)), www:$www, boTLS:$boTLS, googleAnalyticsTrackingID:"", urlIcon16:"", urlIcon200:"", aPassword:$aPassword, vPassword:"", boDefault:true }
     RETURN sd`;
-  var err, records, Val={www:www, boTLS:boTLS, aPassword:"", vPassword:"", strSiteName:strSiteName?strSiteName:null};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={www:www, boTLS:boTLS, aPassword:"", vPassword:"", strSiteName:strSiteName?strSiteName:null};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
   Ou.mess='OK';  return Ou;
@@ -68,41 +151,41 @@ deletePageNeo=function*(flow, tx, objArg){
   var Ou={};
   
   var strNameLC=strName.toLowerCase(); 
-  var err, records, Val={www:www, strNameLC:strNameLC};
+  var Val={www:www, strNameLC:strNameLC};
   
       // Delete Revisions
-  var strCqlOrg=`
+  var strCql=`
     MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })-[h:hasRevision]->(r:Revision)
     DETACH DELETE r`;
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
       // Delete Child links
-  var strCqlOrg=`
+  var strCql=`
     MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })-[hc:hasChild]->(c:Page)
     DELETE hc`;
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
       // Delete orphan stubs
-  var strCqlOrg=`
+  var strCql=`
     MATCH (cOrphan:Page) WHERE (NOT (:Page)-[:hasChild]->(cOrphan)) AND (NOT (cOrphan)-[:hasRevision]->(:Revision))
     DETACH DELETE cOrphan`;
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
       // Delete Image links
-  var strCqlOrg=`
+  var strCql=`
     MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })-[hc:hasImage]->(i:Image)
     DELETE hc`;
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
        // Delete empty orphan images
-  var strCqlOrg=` 
+  var strCql=` 
     MATCH (iOrphan:Image) WHERE (NOT (:Page)-[:hasImage]->(iOrphan)) AND iOrphan.boGotData IS NULL
     DETACH DELETE iOrphan`;
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
   Ou.mess='OK';  return Ou;
@@ -111,42 +194,42 @@ deletePageNeo=function*(flow, tx, objArg){
 
 
 deletePageByMultIDNeo=function*(flow, tx, objArg){
-  var Ou={}, err, records,  Val={IdPage:objArg.IdPage};
+  var Ou={}, Val={IdPage:objArg.IdPage};
   
       // Delete Revisions
-  var strCqlOrg=` 
+  var strCql=` 
     MATCH (p:Page)-[hasRevision]->(r:Revision) WHERE p.idPage IN $IdPage
     DETACH DELETE r`;
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
       // Delete Child links
-  var strCqlOrg=` 
+  var strCql=` 
     MATCH (p:Page)-[hc:hasChild]->(c:Page) WHERE p.idPage IN $IdPage
     DELETE hc`;
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
       // Delete orphan stubs
-  var strCqlOrg=`
+  var strCql=`
     MATCH (cOrphan:Page) WHERE (NOT (:Page)-[:hasChild]->(cOrphan)) AND (NOT (cOrphan)-[:hasRevision]->(:Revision))
     DETACH DELETE cOrphan`;
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
 
       // Delete Image links
-  var strCqlOrg=`
+  var strCql=`
     MATCH (p:Page)-[hc:hasImage]->(i:Image) WHERE p.idPage IN $IdPage
     DELETE hc`;
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
     
      // Delete empty orphan images
-  var strCqlOrg=` 
+  var strCql=` 
     MATCH (iOrphan:Image) WHERE (NOT (:Page)-[:hasImage]->(iOrphan)) AND iOrphan.boGotData IS NULL
     DETACH DELETE iOrphan`;
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
   Ou.mess='OK';  return Ou;
@@ -155,7 +238,7 @@ deletePageByMultIDNeo=function*(flow, tx, objArg){
 
 
 childrenCreateNRemove=function*(flow, tx, Val, StrNewLink){
-  var err, records, Ou={};
+  var Ou={};
   var strCqlOrg=`
       //----- Get Old Links
     MATCH (s:Site {name:$strSiteName})-[:hasPage]->(:Page { nameLC:$strNameLC })-[h:hasChild]->(c:Page)
@@ -185,7 +268,7 @@ childrenCreateNRemove=function*(flow, tx, Val, StrNewLink){
   var objCql=splitCql(strCqlOrg);
 
   
-  tx.cypher({query:objCql['Get Old Links'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['Get Old Links'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   var StrOldLink=Array(records.length);  for(var i=0;i<records.length;i++){  StrOldLink[i]=records[i].nameLC;   }
   
@@ -203,21 +286,21 @@ childrenCreateNRemove=function*(flow, tx, Val, StrNewLink){
     StrTmp.unshift('MATCH (s:Site {name:$strSiteName}) WITH s');
     StrCql.push(StrTmp.join('\n'));
     var strCql=StrCql.join('\n'); Val=extend(Val,StrToCreateObj);
-    tx.cypher({query:strCql, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
     if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   }
 
   extend(Val, {StrToCreate:StrToCreate, StrToRemove:StrToRemove});
-  tx.cypher({query:objCql['Create relations to new children'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['Create relations to new children'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
-  tx.cypher({query:objCql['SetStaleParents'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['SetStaleParents'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
-  tx.cypher({query:objCql['Remove relations to old children'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['Remove relations to old children'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
-  tx.cypher({query:objCql['RemoveOrphanStubs'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['RemoveOrphanStubs'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   Ou.mess='OK'; return Ou;
 }
@@ -248,7 +331,7 @@ imageLinksCreateNRemove=function*(flow, tx, Val, StrSubImage){
   var objCql=splitCql(strCqlOrg);
 
   
-  tx.cypher({query:objCql['Get Old Images'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['Get Old Images'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   var StrOldLink=Array(records.length);  for(var i=0;i<records.length;i++){  StrOldLink[i]=records[i].nameLC;   }
   
@@ -267,18 +350,18 @@ imageLinksCreateNRemove=function*(flow, tx, Val, StrSubImage){
     //var StrTmp=Array(StrToCreate.length); for(var i=0;i<StrToCreate.length;i++){ StrTmp[i]="MERGE (i"+i+":Image { nameLC:'"+StrToCreate[i]+"' }) ON CREATE SET i"+i+".idImage=myMisc.myrandstringHexFunc(24)"; }
     StrCql.push(StrTmp.join('\n'));
     var strCql=StrCql.join('\n');  Val=extend(Val,StrToCreateObj);
-    tx.cypher({query:strCql, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
     if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   }
 
   extend(Val, {StrToCreate:StrToCreate, StrToRemove:StrToRemove});
-  tx.cypher({query:objCql['Create relations to new images'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['Create relations to new images'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
-  tx.cypher({query:objCql['Remove relations to old images'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['Remove relations to old images'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
-  tx.cypher({query:objCql['RemoveOrphanStubs'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['RemoveOrphanStubs'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   Ou.mess='OK'; return Ou;
 }
@@ -319,10 +402,10 @@ saveWhenUploadingNeo=function*(flow, tx, objArg){
 
   var www, Val={siteName:siteName, www:www, boTLS:boTLS};  //=randomHash().substr(0,7)    , www:www
   if(siteName.length){
-    tx.cypher({query:objCql['Merge Site, siteName'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    var strCql=objCql['Merge Site, siteName'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
     if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   }else{
-    tx.cypher({query:objCql['Match Site, default'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    var strCql=objCql['Match Site, default'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
     if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   }
   var site=records[0].s, strSiteName=site.name, www=site.www;
@@ -346,7 +429,7 @@ saveWhenUploadingNeo=function*(flow, tx, objArg){
   var strNameLC=strName.toLowerCase();
   var size=strEditText.length;
   var Val={www:www, strNameLC:strNameLC, strName:strName, strEditText:strEditText, size:size, hash:md5(strEditText), tNow:tNow};
-  tx.cypher({query:objCql['Merge revision 0 and Delete others'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['Merge revision 0 and Delete others'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
 
@@ -418,7 +501,7 @@ saveByReplaceNeo=function*(flow, tx, objArg){
   var strNameLC=strName.toLowerCase();
   var size=strEditText.length;
   var Val={strSiteName:strSiteName, strNameLC:strNameLC, strName:strName, strEditText:strEditText, strHtmlText:strHtmlText, size:size, hash:md5(strEditText), tNow:tNow};
-  tx.cypher({query:objCql['Merge revision 0 and Delete others'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['Merge revision 0 and Delete others'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
 
@@ -484,12 +567,12 @@ saveByAddNeo=function*(flow, tx, objArg){
 
   var strNameLC=strName.toLowerCase();
   var Val={strSiteName:strSiteName, strNameLC:strNameLC};
-  tx.cypher({query:objCql['Remove RevisionLast'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['Remove RevisionLast'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   
   var Val={strSiteName:strSiteName, strNameLC:strNameLC, iRev:Ou.iRev, strHtmlText:strHtmlText, size:strEditText.length, hash:md5(strEditText), tNow:tNow};
   copySome(Val, objArg, ['strEditText', 'signature', 'summary']);
-  tx.cypher({query:objCql['Create Revision'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['Create Revision'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
 
@@ -539,7 +622,7 @@ refreshRevNeo=function*(flow, tx, objArg){
  
   var strNameLC=strName.toLowerCase();
   var Val={strNameLC:strNameLC, www:objArg.www, iRev:iRev};
-  tx.cypher({query:objCql['Get Page meta and rev data'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['Get Page meta and rev data'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   extend(Ou, {boOR:true, boOW:true, boSiteMap:true, tMod:0});
   var rec=records[0];   for(var key in rec) {  if(rec[key]!==null) Ou[key]=rec[key]; }
@@ -558,7 +641,7 @@ refreshRevNeo=function*(flow, tx, objArg){
   var size=Ou.strEditText.length, nChild=arrSub.length, nImage=StrSubImage.length;
   var tmp=testIfTalkOrTemplate(strName), boTalk=tmp.boTalk, boTemplate=tmp.boTemplate;
   var Val={strSiteName:strSiteName, strNameLC:strNameLC, strName:strName, iRev:iRev, tNow:tNow, nChild:nChild, nImage:nImage, strHtmlText:strHtmlText, size:size, hash:md5(Ou.strEditText)};
-  tx.cypher({query:objCql['Set New Cache'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['Set New Cache'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   Ou.objPage=records[0].p;
 
@@ -586,20 +669,20 @@ refreshRevNeo=function*(flow, tx, objArg){
 
 storeImageNeo=function*(flow, tx, objArg){
   var strName=objArg.strName, data=objArg.data, width=objArg.width, height=objArg.height, boOther=objArg.boOther;
-  var err, Ou={};
+  var Ou={};
   
   var Match=RegExp('\\.([a-zA-Z0-9]+)$','i').exec(strName);
   if(!Match){ extend(Ou, {mess:'err', err:new Error('image has no extension')}); return Ou; }
   var extension=Match[1];
   
-  var strCqlOrg=` 
+  var strCql=` 
     MERGE (i:Image {nameLC:$strNameLC})
     SET i.idImage=coalesce(i.idImage, myMisc.myrandstringHexFunc(24)), i.tCreated=coalesce(i.tCreated, $tNow), i.tMod=$tNow, i.size=$size, i.hash=$hash, i.name=$strName, i.width=$width, i.height=$height, i.widthSkipThumb=$width, i.boGotData=TRUE, i.nAccess=coalesce(i.nAccess, 0), i.boOther=$boOther, i.extension=$extension
     RETURN i`;
   
   var Val=copySome({},objArg, ['strName', 'width', 'height', 'boOther']);
-  var records,  Val=extend(Val, {strNameLC:strName.toLowerCase(), tNow:unixNow(), size:data.length, hash:md5(data), extension:extension});
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val=extend(Val, {strNameLC:strName.toLowerCase(), tNow:unixNow(), size:data.length, hash:md5(data), extension:extension});
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   var objImg=records[0].i;
 
@@ -616,13 +699,13 @@ storeImageNeo=function*(flow, tx, objArg){
 getInfoNeo=function*(flow, tx, objArg){
   var Ou={};
   
-  var strCqlOrg=`
+  var strCql=`
     OPTIONAL MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })-[h:hasRevision]->(r:RevisionLast)
     RETURN p.boOR AS boOR, p.boOW AS boOW, r.tMod AS tMod`;
    
   var strNameLC=objArg.strName.toLowerCase();
-  var err, records, Val={strNameLC:strNameLC, www:objArg.www};
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={strNameLC:strNameLC, www:objArg.www};
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
 
   if(records.length){
@@ -638,7 +721,7 @@ getInfoNeo=function*(flow, tx, objArg){
 getInfoNDataNeo=function*(flow, tx, objArg){
   var boTLS=objArg.boTLS, www=objArg.www, strName=objArg.strName, iRev=objArg.iRev, tReqCache=objArg.requesterCacheTime/1000, boFront=objArg.boFront;
   boTLS=Boolean(boTLS);
-  var err, records, Ou={objTemplateE:{}, boTalkExist:0};
+  var Ou={objTemplateE:{}, boTalkExist:0};
   
   var strCqlOrg=`
       //----- Check if RedirectDomain
@@ -672,14 +755,14 @@ getInfoNDataNeo=function*(flow, tx, objArg){
    
   var strNameLC=strName.toLowerCase();
   var Val={www:www};
-  tx.cypher({query:objCql['Check if RedirectDomain'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['Check if RedirectDomain'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   if(records[0]) {  extend(Ou, {mess:'redirectDomain', urlRedirect:records[0].url}); return Ou; }
 
 
   var oTmp=calcTalkName(strName), strTalkName=oTmp.strTalkName, strTalkNameLC=strTalkName.toLowerCase();
   var Val={www:www, strNameLC:strNameLC, boTLS:boTLS};
-  tx.cypher({query:objCql['MATCH siteDefault, MERGE site and check Redirect'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['MATCH siteDefault, MERGE site and check Redirect'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   if(records.length==0) { extend(Ou, {mess:'noDefaultSite'}); return Ou; }
   var rec=records[0], site=rec.s,  urlRedirect=rec.url;  Ou.siteDefault=rec.sd;
@@ -692,7 +775,7 @@ getInfoNDataNeo=function*(flow, tx, objArg){
   //copySome(Ou,site,['googleAnalyticsTrackingID', 'urlIcon16', 'urlIcon200', 'aPassword', 'vPassword']);
 
   var Val={strNameLC:strNameLC, strSiteName:strSiteName};
-  tx.cypher({query:objCql['getPage and getNRev'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['getPage and getNRev'], {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   var nRev=records[0].nRev, objPage=records[0].p;
 
@@ -728,7 +811,7 @@ getInfoNDataNeo=function*(flow, tx, objArg){
   
   
   var Val={strNameLC:strNameLC, strSiteName:strSiteName};
-  tx.cypher({query:objCql['Get templates'], params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=objCql['Get templates'],{err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   for(var i=0;i<records.length;i++){
     var tmp=records[i].name.substr(9); Ou.objTemplateE[tmp]=1;
@@ -743,13 +826,13 @@ getBoTalkExistNeo=function*(flow, tx, objArg){
   var www=objArg.www, strName=objArg.strName;
   var Ou={};
 
-  var strCqlOrg=`
+  var strCql=`
     MATCH (s:Site { www:$www })-[:hasPage]->(t:Page { nameLC:$strTalkNameLC })-[h:hasRevision]->(r:RevisionLast)
     RETURN 1 AS boTalkExist`;
 
   var oTmp=calcTalkName(strName), strTalkName=oTmp.strTalkName, strTalkNameLC=strTalkName.toLowerCase();
-  var err, records, Val={www:www, strTalkNameLC:strTalkNameLC};
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={www:www, strTalkNameLC:strTalkNameLC};
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   Ou.boTalkExist=0;
   if(records.length) Ou.boTalkExist=1; 
@@ -759,14 +842,14 @@ getBoTalkExistNeo=function*(flow, tx, objArg){
 
 getRevisionTableNeo=function*(flow, tx, objArg){
   var Ou={};
-  var strCqlOrg=`
+  var strCql=`
     OPTIONAL MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })-[h:hasRevision]->(r:Revision)
     RETURN r ORDER BY r.iRev`;
 
 
   var strNameLC=objArg.strName.toLowerCase();
-  var err, records, Val={strNameLC:strNameLC, www:objArg.www};
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={strNameLC:strNameLC, www:objArg.www};
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   var arrRev=[];
   for(var i=0;i<records.length;i++){
@@ -785,7 +868,7 @@ mergePageNeo=function*(flow, tx, objArg){
 
     // , p.boOR=$boAccDefault, p.boOW=$boAccDefault, p.boSiteMap=$boAccDefault    //p.lastRev=0,
     // , p.tMod=0 ,  p.tMod=$tNow
-  var strCqlOrg=`
+  var strCql=`
       //----- setPageNCreateIfNecessary
     MATCH (s:Site { www:$www })
     WITH s
@@ -796,9 +879,9 @@ mergePageNeo=function*(flow, tx, objArg){
 
   var strNameLC=strName.toLowerCase();
   var tmp=testIfTalkOrTemplate(strName), boTalk=tmp.boTalk, boTemplate=tmp.boTemplate;
-  var err, records, Val=copySome({}, objArg, ['www', 'strName', 'tNow', 'boAccDefault']);   Val.boAccDefault=Boolean(Val.boAccDefault);
+  var Val=copySome({}, objArg, ['www', 'strName', 'tNow', 'boAccDefault']);   Val.boAccDefault=Boolean(Val.boAccDefault);
   extend(Val, {strNameLC:strNameLC, boTalk:boTalk, boTemplate:boTemplate, nChild:objArg.nChild, nImage:objArg.nImage});
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   Ou.objPage=records[0].p;
   
@@ -809,16 +892,16 @@ mergeETagNeo=function*(flow, tx, objArg){
   var strName=objArg.strName;
   var Ou={};
 
-  var strCqlOrg=`
+  var strCql=`
     MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })
     WITH p, p.hash=$hash AS boSame
     SET p.hash=$hash
     RETURN boSame`;
 
   var strNameLC=strName.toLowerCase();
-  var err, records, Val={strNameLC:strNameLC, www:objArg.www, hash:objArg.hash};
+  var Val={strNameLC:strNameLC, www:objArg.www, hash:objArg.hash};
   extend(Val, {strNameLC:strNameLC, boTalk:boTalk, boTemplate:boTemplate, nChild:objArg.nChild, nImage:objArg.nImage});
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   Ou.boSame=records[0].boSame;
 
@@ -829,15 +912,15 @@ mergeETagRevNeo=function*(flow, tx, objArg){
   var strName=objArg.strName;
   var Ou={};
 
-  var strCqlOrg=`
+  var strCql=`
     MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })-[h:hasRevision]->(r:Revision {iRev:$iRev})
     WITH r, r.hashPageLoad=$hash AS boSame
     SET r.hash=$hash
     RETURN boSame`;
 
   var strNameLC=strName.toLowerCase();
-  var err, records, Val={strNameLC:strNameLC, www:objArg.www, iRev:objArg.iRev, hash:objArg.hash};
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={strNameLC:strNameLC, www:objArg.www, iRev:objArg.iRev, hash:objArg.hash};
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   Ou.boSame=records[0].boSame;
 
@@ -851,7 +934,7 @@ getLastVersionMeta=function*(flow, tx, objArg){
   var strName=objArg.strName;
   var Ou={};
 
-  var strCqlOrg=`
+  var strCql=`
       //----- Get last version meta
     MATCH (s:Site { www:$www })
     WITH s
@@ -861,8 +944,8 @@ getLastVersionMeta=function*(flow, tx, objArg){
     RETURN p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, r.tMod AS tMod, r.iRev AS iRev, s.name AS strSiteName`;
  
   var strNameLC=strName.toLowerCase();
-  var err, records, Val={strNameLC:strNameLC, www:objArg.www};
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={strNameLC:strNameLC, www:objArg.www};
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   var rec=records[0];
   extend(Ou, {boOR:true, boOW:true, boSiteMap:true, tMod:0, iRev:null});
@@ -911,17 +994,16 @@ getTemplateDataNeo=function*(flow, tx, objArg){
   var www=objArg.www, StrTemplate=objArg.StrTemplate;
   var Ou={};
 
-  var strCqlOrg=`
+  var strCql=`
     //----- Get strEditText
   MATCH (s:Site { www:$www })-[:hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE p.nameLC IN $StrTemplate
   RETURN p.name AS name, r.strEditText AS strEditText`;
-  var objCql=splitCql(strCqlOrg);
   
   Ou.objTemplateE={}; // Ou.objTemplateE (E for existance) looks like {XXX:1, YYY:0 ...} // Although only enties with a "1" are included 
   for(var i=0;i<StrTemplate.length;i++){  var tmp=StrTemplate[i], tmpLC=tmp.toLowerCase();  StrTemplate[i]='template:'+tmpLC; }
   
-  var err, records, Val={www:www, StrTemplate:StrTemplate};
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={www:www, StrTemplate:StrTemplate};
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   Ou.objTemplateText={};
   for(var i=0;i<records.length;i++){
@@ -936,14 +1018,14 @@ getExistingSubNeo=function*(flow, tx, objArg){
   var www=objArg.www, StrSub=objArg.StrSub;
   var Ou={};
 
-  var strCqlOrg=`
+  var strCql=`
   MATCH (s:Site { www:$www })-[:hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE p.nameLC IN $StrSubLC
   RETURN p.name AS name`;
 
   var StrSubLC=Array(StrSub.length); for(var i=0;i<StrSub.length;i++){ StrSubLC[i]=StrSub[i].toLowerCase(); }
 
-  var err, records, Val={www:www, StrSubLC:StrSubLC};
-  tx.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={www:www, StrSubLC:StrSubLC};
+  var {err, records}= yield* neo4jTxRun(flow, tx, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   Ou.objExistingSub={};
   for(var i=0;i<records.length;i++){

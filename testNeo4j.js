@@ -2,9 +2,9 @@
 http = require("http");
 util =  require('util');
 crypto = require('crypto');
-//neo4j = require('neo4j-driver').v1;
 mongodb = require('mongodb');  MongoClient = mongodb.MongoClient;
-neo4j = require('neo4j');
+neo4j = require('neo4j-driver').v1;
+//neo4j = require('neo4j');
 path = require("path");
 fs = require("fs");
 extend=util._extend;
@@ -24,7 +24,9 @@ process.on('exit', function (){
   console.log('Goodbye!');
 });
 
-dbNeo4j = new neo4j.GraphDatabase('http://neo4j:jh10k@localhost:7474');
+//dbNeo4j = new neo4j.GraphDatabase('http://neo4j:jh10k@localhost:7474');
+var driver = neo4j.driver("bolt://localhost", neo4j.auth.basic("neo4j", "jh10k"));
+sessionNeo4j = driver.session();
 
 // node --inspect --debug-brk testNeo4j.js --gengetInfoNDataNeo
 // node --inspect --debug-brk testNeo4j.js --gensaveByReplaceNeo --dataabc,link:starta,link:startd
@@ -82,7 +84,7 @@ generatorWrap=function*(){
   if(err) {console.log(err); return; }
   
   if(boStartTX){
-    var tx=dbNeo4j.beginTransaction();
+    var tx=sessionNeo4j.beginTransaction();
     
     if(strGenerator=='deletePageNeo'){  var objT=yield* app[strGenerator](flow, tx, objArg);
     }else if(strGenerator=='deletePageByMultIDNeo'){ extend(objArg,{IdPage:['Z91YJJD0bSx9r0QA','So9yR8W2iy2hHgAO']});   var objT=yield* app[strGenerator](flow, tx, objArg);
@@ -104,9 +106,9 @@ generatorWrap=function*(){
     }else if(strGenerator=='saveWhenUploadingImageNeo'){   extend(objArg,{strName:'abc.jpg', data:'aabbcc'});  var objT=yield* app[strGenerator](flow, tx, objArg);
     }
     if(objT.mess=='err') {
-      yield* neo4jRollbackGenerator(tx,flow);
+      yield* neo4jRollbackGenerator(flow, tx);
     }else{
-      yield* neo4jCommitGenerator(tx,flow);
+      yield* neo4jCommitGenerator(flow, tx);
     }
   }else{
     

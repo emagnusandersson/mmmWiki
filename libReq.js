@@ -41,11 +41,11 @@ app.reqBU=function*(strArg) {
 
   var zipfile = new NodeZip();
   if(type=='page'){ 
-    var strCqlOrg=`
+    var strCql=`
       MATCH (s:Site)-[:hasPage]->(p:Page)-[h:hasRevision]->(r:Revision {iRev:0}) `+strWhere+`
       RETURN s.boDefault AS boDefault, s.name AS siteName, p.name AS strName, r.strEditText AS strEditText, r.tMod AS tMod, r.hash AS hash`;
-    var Val={arrName:arrName}, records, err;
-    dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){  err=errT; records=recordsT; flow.next();  });   yield;
+    var Val={arrName:arrName};
+    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
     if(err){console.log('err'); res.out500(err);   return; } 
     var File=records;
     
@@ -58,9 +58,9 @@ app.reqBU=function*(strArg) {
       zipfile.file(strNameTmp, file.strEditText, objArg);
     } 
   } else if(type=='image'){ 
-    var strCqlOrg=`MATCH (i:Image) `+strWhereWExt+` i.boGotData RETURN i.idImage AS id, i.name AS strName, i.tMod AS tMod, i.hash AS hash`;
-    var Val={arrName:arrName}, records, err;
-    dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    var strCql=`MATCH (i:Image) `+strWhereWExt+` i.boGotData RETURN i.idImage AS id, i.name AS strName, i.tMod AS tMod, i.hash AS hash`;
+    var Val={arrName:arrName};
+    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
     if(err){console.log('err'); res.out500(err);   return; } 
     var File=records;
    
@@ -83,13 +83,13 @@ app.reqBU=function*(strArg) {
       var data=doc[objDocIdToInd[file.id]].data.buffer;
       zipfile.file(file.strName, data, objArg);
     } 
-  } else if(type=='video'){ var strCqlOrg=``;
+  } else if(type=='video'){ var strCql=``;
   } else { res.out500('Error backing up, no such type'); return; }
   
     // Get wwwCommon. Create filename.
-  var strCqlOrg=`MATCH (s:Site {boDefault:true})  RETURN s.www AS wwwCommon`; 
-  var Val={}, records, err;
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=`MATCH (s:Site {boDefault:true})  RETURN s.www AS wwwCommon`; 
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err){console.log('err'); res.out500(err);   return; } 
   var wwwCommon=records[0].wwwCommon;
   var outFileName=calcBUFileName(wwwCommon,type,'zip');
@@ -130,9 +130,9 @@ app.reqBUMeta=function*(strArg) {
 
 
     // Site
-  var strCqlOrg=`MATCH (s:Site) RETURN s`;
-  var Val={}, records, err;
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){  err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=`MATCH (s:Site) RETURN s`;
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err){console.log('err'); res.out500(err);   return; } 
   
   var StrFile=['"boDefault","boTLS","urlIcon16","urlIcon200","googleAnalyticsTrackingID","aPassword","vPassword","name","www"'];
@@ -144,11 +144,11 @@ app.reqBUMeta=function*(strArg) {
   
   
     // Page
-  var strCqlOrg=`
+  var strCql=`
     MATCH (s:Site)-[:hasPage]->(p:Page)-[h:hasRevision]->(r:Revision {iRev:0})
     RETURN p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, p.tCreated AS tCreated, r.tMod AS tMod, p.tLastAccess AS tLastAccess, p.nAccess AS nAccess, s.name AS siteName, p.name AS strName`;
-  var Val={}, records, err;
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){  err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err){console.log('err'); res.out500(err);   return; } 
   
   var StrFile=['"boOR","boOW","boSiteMap","tCreated","tMod","tLastAccess","nAccess","siteName","strName"'];
@@ -160,11 +160,11 @@ app.reqBUMeta=function*(strArg) {
   
   
     // Image
-  var strCqlOrg=`
+  var strCql=`
     MATCH (i:Image) WHERE i.boGotData
     RETURN i.boOther AS boOther, i.tCreated AS tCreated, i.tMod AS tMod, i.tLastAccess AS tLastAccess, i.nAccess AS nAccess, i.name AS imageName`;
-  var Val={}, records, err;
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){  err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err){console.log('err'); res.out500(err);   return; } 
 
   var StrFile=['"boOther","tCreated","tMod","tLastAccess","nAccess","imageName"'];
@@ -176,11 +176,11 @@ app.reqBUMeta=function*(strArg) {
   
   
     // Redirect
-  var strCqlOrg=`
+  var strCql=`
     MATCH (s:Site)-[:hasRedirect]->(r:Redirect)
     RETURN r.tCreated AS tCreated, r.tMod AS tMod, r.tLastAccess AS tLastAccess, r.nAccess AS nAccess, s.name AS siteName, r.nameLC AS nameLC, r.url AS url`;
-  var Val={}, records, err;
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){  err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err){console.log('err'); res.out500(err);   return; }
   
   var StrFile=['"tCreated","tMod","tLastAccess","nAccess","name","nameLC","url"'];
@@ -192,9 +192,9 @@ app.reqBUMeta=function*(strArg) {
     
 
     // Get wwwCommon. Create filename.
-  var strCqlOrg=`MATCH (s:Site {boDefault:true})  RETURN s.www AS wwwCommon`; 
-  var Val={}, records, err;
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=`MATCH (s:Site {boDefault:true})  RETURN s.www AS wwwCommon`; 
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err){console.log('err'); res.out500(err);   return; } 
   var wwwCommon=records[0].wwwCommon;
   var outFileName=calcBUFileName(wwwCommon,'meta','zip');
@@ -249,17 +249,17 @@ app.reqBUMetaSQL=function*() {
 
 
     // Site
-  var strCqlOrg=`MATCH (s:Site) RETURN s`;
-  var Val={}, records, err;
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){  err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=`MATCH (s:Site) RETURN s`;
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err){console.log('err'); res.out500(err);   return; } 
   
     // Page
-  var strCqlOrg=`
+  var strCql=`
     MATCH (s:Site)-[:hasPage]->(p:Page)-[h:hasRevision]->(r:Revision {iRev:0})
     RETURN p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, p.tCreated AS tCreated, r.tMod AS tMod, p.tLastAccess AS tLastAccess, p.nAccess AS nAccess, s.name AS siteName, p.name AS strName`;
-  var Val={}, records, err;
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){  err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err){console.log('err'); res.out500(err);   return; } 
   
   var SqlB=[];
@@ -272,11 +272,11 @@ app.reqBUMetaSQL=function*() {
   SqlB.push("");
   
     // Image
-  var strCqlOrg=`
+  var strCql=`
     MATCH (i:Image) WHERE i.boGotData
     RETURN i.boOther AS boOther, i.tCreated AS tCreated, i.tMod AS tMod, i.tLastAccess AS tLastAccess, i.nAccess AS nAccess, i.name AS imageName`;
-  var Val={}, records, err;
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){  err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err){console.log('err'); res.out500(err);   return; } 
   
   for(var k=0;k<records.length;k++){
@@ -287,11 +287,11 @@ app.reqBUMetaSQL=function*() {
   }
   
     // Redirect
-  var strCqlOrg=`
+  var strCql=`
     MATCH (s:Site)-[:hasRedirect]->(r:Redirect)
     RETURN r.tCreated AS tCreated, r.tMod AS tMod, r.tLastAccess AS tLastAccess, r.nAccess AS nAccess, s.name AS siteName, r.nameLC AS nameLC, r.url AS url`;
-  var Val={}, records, err;
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){  err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err){console.log('err'); res.out500(err);   return; }
 
   for(var k=0;k<records.length;k++){
@@ -305,9 +305,9 @@ app.reqBUMetaSQL=function*() {
   var sql=SqlB.join("\n");
  
     // Get wwwCommon. Create filename.
-  var strCqlOrg=`MATCH (s:Site {boDefault:true})  RETURN s.www AS wwwCommon`; 
-  var Val={}, records, err;
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var strCql=`MATCH (s:Site {boDefault:true})  RETURN s.www AS wwwCommon`; 
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err){console.log('err'); res.out500(err);   return; } 
   var wwwCommon=records[0].wwwCommon;
 
@@ -361,14 +361,14 @@ app.reqIndex=function*() {
 
   
        // getInfoNData
-  var tx=dbNeo4j.beginTransaction();
+  var tx=sessionNeo4j.beginTransaction();
   var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:queredPage, iRev:iRev, eTag:eTagIn, requesterCacheTime:requesterCacheTime, boFront:1});
   var objT=yield* getInfoNDataNeo(flow, tx, objArg);
   if(objT.mess=='err') {
-    yield* neo4jRollbackGenerator(tx,flow);
+    yield* neo4jRollbackGenerator(flow, tx);
     res.out500('err');  return; //this.mesEO('err'); return {err:'exited'};
   }else{
-    yield* neo4jCommitGenerator(tx,flow);
+    yield* neo4jCommitGenerator(flow, tx);
   }
   var objDBData=objT;
   var objRev;
@@ -423,14 +423,14 @@ app.reqIndex=function*() {
 
       if(mess=='serverCacheStale'){       
             // refreshRevNeo
-        var tx=dbNeo4j.beginTransaction();
+        var tx=sessionNeo4j.beginTransaction();
         var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:queredPage, iRev:iRev});
         var objT=yield* refreshRevNeo(flow, tx, objArg);
         if(objT.mess=='err') {
-          yield* neo4jRollbackGenerator(tx,flow);
+          yield* neo4jRollbackGenerator(flow, tx);
           res.out500('err');  return; //this.mesEO('err'); return {err:'exited'};
         }else{
-          yield* neo4jCommitGenerator(tx,flow);
+          yield* neo4jCommitGenerator(flow, tx);
         }
         var objDBData=objT;
         var objPage=objDBData.objPage;
@@ -655,12 +655,12 @@ app.reqMediaImage=function*(){
     
  
     // Get image-meta 
-  var strCqlOrg=` 
+  var strCql=` 
     MATCH (i:Image {nameLC:$strNameLC})
     SET i.nAccess=i.nAccess+1
     RETURN i`;
-  var err, records, Val={strNameLC:nameAsReq.toLowerCase()};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT;  flow.next();  });  yield;
+  var Val={strNameLC:nameAsReq.toLowerCase()};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err ) { res.out500(err); return; }
   if(records.length==0) {res.out404('Not Found');  return;}
   var objImg=records[0].i, idImage=objImg.idImage;
@@ -700,13 +700,13 @@ app.reqMediaImageThumb=function*(){
 
  
     // Get image-meta 
-  var strCqlOrg=` 
+  var strCql=` 
     MATCH (i:Image {nameLC:$strNameLC})
     SET i.nAccess=i.nAccess+1
     RETURN i`;
   var nameOrgAsReqLC=nameOrgAsReq.toLowerCase();
-  var err, records, Val={strNameLC:nameOrgAsReqLC};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT;  flow.next();  });  yield;
+  var Val={strNameLC:nameOrgAsReqLC};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err ) { res.out500(err); return; }
   if(records.length==0) {res.out404('Not Found');  return;}
   var objImgOrg=records[0].i, idImageOrg=objImgOrg.idImage;
@@ -730,11 +730,11 @@ app.reqMediaImageThumb=function*(){
   
 
     // Get thumb-meta
-  var strCqlOrg=` 
+  var strCql=` 
     MATCH (i:Image {nameLC:$strNameLC})-[h:hasThumb]->(t:ImageThumb {width:$width})
     RETURN t`;
-  var err, records, Val={strNameLC:nameOrgAsReqLC, width:intReqSize};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT;  flow.next();  });   yield;
+  var Val={strNameLC:nameOrgAsReqLC, width:intReqSize};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err ) { res.out500(err); return; }
   var thumbTime=false, idThumb, hashThumb;   if(records.length) {var tmp=records[0].t; thumbTime=new Date(tmp.tMod*1000); idThumb=tmp.idThumb; hashThumb=tmp.hash;  }
 
@@ -811,17 +811,17 @@ app.reqMediaImageThumb=function*(){
   if(strDataThumb.length>strDataOrg.length/2) {
     var widthSkipThumbNew=Math.min(objImgOrg.widthSkipThumb, width); strDataThumb=''; 
     
-    var strCqlOrg=` 
+    var strCql=` 
       MATCH (i:Image {idImage:$idImage})
       SET i.widthSkipThumb=$widthSkipThumbNew`;
-    var records, Val={idImage:idImageOrg, widthSkipThumbNew:widthSkipThumbNew}
-    dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+    var Val={idImage:idImageOrg, widthSkipThumbNew:widthSkipThumbNew}
+    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
     if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
     res.out301Loc(nameCanonical); return; 
   }  
 
     // Store the thumb
-  var strCqlOrg=` 
+  var strCql=` 
     MATCH (i:Image {idImage:$idImage})
     MERGE (i)-[h:hasThumb]->(t:ImageThumb {width:$width})
     ON CREATE SET t+={ idThumb:myMisc.myrandstringHexFunc(24), nAccess:0}
@@ -829,8 +829,8 @@ app.reqMediaImageThumb=function*(){
     RETURN t`;
   
   var tNow=unixNow(), thumbTime=new Date(tNow*1000), hashThumb=md5(strDataThumb);
-  var records,  Val={idImage:idImageOrg, width:wNew, height:hNew, tNow:tNow, size:strDataThumb.length, hash:hashThumb }
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT; flow.next();  });   yield;
+  var Val={idImage:idImageOrg, width:wNew, height:hNew, tNow:tNow, size:strDataThumb.length, hash:hashThumb }
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
   var objImgThumb=records[0].t;
   
@@ -934,11 +934,11 @@ app.reqSiteMap=function*() {
 
   //xmlns:image="http://www.google.com/schemas/sitemap-image/1.1
 
-  var strCqlOrg=` 
+  var strCql=` 
     MATCH (s:Site {www:$www})-[:hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE NOT p.boTemplate AND p.boOR AND p.boSiteMap
     RETURN s.boTLS AS boTLS, p.name AS pageName, p.boOR AS boOR, p.boOW AS boOW, r.tMod AS tMod`;
-  var err, records, Val={www:www};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT;  flow.next();  });   yield;
+  var Val={www:www};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err ) { res.out500(err); return; }
 
   var Str=[];
@@ -1001,19 +1001,19 @@ app.reqMonitor=function*(){
 
   if(!objOthersActivity){  //  && boPageBUNeeded===null && boImageBUNeeded===null
     
-    var strCqlOrg=` 
+    var strCql=` 
       MATCH (s:Site)-[:hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE p.boOther
       RETURN s.name AS siteName, p.name AS pageName`;
-    var err, records, Val={};
-    dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT;  flow.next();  });   yield;
+    var Val={};
+    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
     if(err ) { res.out500(err); return; }
 
     var nEdit=records.length, pageName=nEdit==1?records[0].siteName+':'+records[0].pageName:nEdit;
 
-    var strCqlOrg=` 
+    var strCql=` 
       MATCH (i:Image) WHERE i.boGotData AND i.boOther RETURN i.name AS imageName`;
-    var err, records, Val={};
-    dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT;  flow.next();  });   yield;
+    var Val={};
+    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
     if(err ) { res.out500(err); return; }
 
     var nImage=records.length, imageName=nImage==1?records[0].imageName:nImage;
@@ -1041,15 +1041,15 @@ app.reqStat=function*(){
   var req=this.req, res=this.res;
   var sessionID=req.sessionID, flow=req.flow;
 
-  var strCqlOrg=`MATCH (i:Image) WHERE i.boGotData RETURN i.name AS imageName, i.idImage AS idImage`;
-  var err, records, Val={};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT;  flow.next();  });   yield;
+  var strCql=`MATCH (i:Image) WHERE i.boGotData RETURN i.name AS imageName, i.idImage AS idImage`;
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err ) { res.out500(err); return; };
   var nImage=records.length, arrImage=records;
 
-  var strCqlOrg=`MATCH (i:Image)-[h:hasThumb]->(t:ImageThumb) RETURN i.name AS imageName, t.idThumb AS idThumb, t.width AS width, t.height AS height`;
-  var err, records, Val={};
-  dbNeo4j.cypher({query:strCqlOrg, params:Val, lean: true}, function(errT, recordsT){ err=errT; records=recordsT;  flow.next();  });   yield;
+  var strCql=`MATCH (i:Image)-[h:hasThumb]->(t:ImageThumb) RETURN i.name AS imageName, t.idThumb AS idThumb, t.width AS width, t.height AS height`;
+  var Val={};
+  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
   if(err ) { res.out500(err); return; }
   var nThumb=records.length, arrThumb=records;
   
