@@ -303,8 +303,7 @@ app.reqIndex=function*() {
   var boEmptySiteTab=0;
 
     // getInfoNData
-  var objT=yield* getInfoNData.call(this); if(objT.mess=='err') { res.out500(objT.err); return;   }
-  var rowA=objT.row;
+  var {err,row:rowA}=yield* getInfoNData.call(this); if(err) { res.out500(err); return;   }
   
   var mess=rowA.mess; 
   if(mess=='boEmptySiteTab'){
@@ -367,7 +366,7 @@ app.reqIndex=function*() {
 
     if(!boValidServerCache){
         // parse
-      var objT=yield* parse.call(this); if(objT.mess=='err') { res.out500(err); return; }
+      var {err}=yield* parse.call(this); { res.out500(err); return; }
 
           // setNewCacheSQL
       var {sql, Val, nEndingResults}=createSetNewCacheSQL(req.wwwSite, this.queredPage, this.rev, this.strHtmlText, this.eTag, this.arrSub, this.StrSubImage); 

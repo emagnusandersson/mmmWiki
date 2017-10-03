@@ -71,7 +71,6 @@ makeMatVersion=function(Version){
 
 parse=function*() { // Should be seen as a method  (assigns things to this)
   var req=this.req, flow=req.flow;
-  var Ou={};
   var mPa=new Parser(this.strEditText, this.boOW==0);
   mPa.text=this.strEditText;
   mPa.preParse();
@@ -83,7 +82,7 @@ parse=function*() { // Should be seen as a method  (assigns things to this)
     var strQ=array_fill(len,'?').join(', ');
     var sql="SELECT pageName, data FROM "+pageLastView+" p JOIN "+fileTab+" f WHERE f.idFile=p.idFile AND www=? AND pageName IN ("+strQ+")";
     var Val=[this.req.wwwSite].concat(this.StrTemplate);
-    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);   if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
+    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return {err:err}; 
      
     for(var i=0;i<results.length;i++){ var tmpR=results[i]; objTemplate[tmpR.pageName]=tmpR.data; }
   }
@@ -101,7 +100,7 @@ parse=function*() { // Should be seen as a method  (assigns things to this)
     var strQ=array_fill(len,'?').join(', ');
     var sql="SELECT pageName FROM "+pageLastView+" WHERE pageName IN ("+strQ+") AND www=?";
     var Val=this.StrSub.concat(this.req.wwwSite);
-    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
+    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return {err:err}; 
     
     for(var i=0;i<results.length;i++){ var tmpR=results[i]; objExistingSub[tmpR.pageName]=1; }
   }
@@ -111,15 +110,14 @@ parse=function*() { // Should be seen as a method  (assigns things to this)
   this.strHtmlText=mPa.text;  this.arrSub=mPa.arrSub; this.eTag=calcETag.call(this);
 
   //callback(null,0);
-  extend(Ou, {mess:'OK'}); return Ou;
+  return {err:null};
 }
 
 getInfoNData=function*() {
   var req=this.req, flow=req.flow;
-  var Ou={};
   var sql="CALL "+strDBPrefix+"getInfoNData(?, ?, ?, ?, ?, ?, ?);"; 
   var Val=[this.boFront, req.boTLS, req.wwwSite, this.queredPage, this.rev, this.eTagIn, this.requesterCacheTime/1000];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return {err:err};
   var len=results.length, iRowLast=len-2; 
   var rowLast=results[iRowLast][0]; 
   //if('strEditText' in rowLast) rowLast.strEditText=rowLast.strEditText?rowLast.strEditText.toString():'';
@@ -153,7 +151,7 @@ getInfoNData=function*() {
   }
 
   //callback(null,rowLast);
-  extend(Ou, {mess:'OK', row:rowLast}); return Ou;  
+  return {err:null, row:rowLast};  
 }
 
 

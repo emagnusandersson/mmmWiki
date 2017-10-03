@@ -1661,6 +1661,7 @@ pageListExtend=function($el){
 
 //strCamera="📷";  strLink="🔗";
 
+// thumbs up 👍, thumbs down 👎, Speech ballon 💬
 renamePopExtend=function($el){
 "use strict"
   $el.toString=function(){return 'renamePop';}

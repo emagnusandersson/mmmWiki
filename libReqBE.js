@@ -7,6 +7,56 @@ var ReqBE=app.ReqBE=function(req, res){
   this.req=req; this.res=res; this.Str=[];
 }
 
+
+
+  // Method "mesO" and "mesEO" are only called from "go". Method "mes" can be called from any method.
+ReqBE.prototype.mes=function(str){ this.Str.push(str); }
+ReqBE.prototype.mesO=function(e){
+    // Prepare an error-message for the browser.
+  var strEBrowser;
+  if(typeof e=='string'){strEBrowser=e; }
+  else if(typeof e=='object'){
+    if(e instanceof Error) {strEBrowser='message: ' + e.message; }
+    else { strEBrowser=e.toString(); }
+  }
+  
+    // Write message (and other data) to browser
+  this.Str.push(strEBrowser);
+  this.GRet.strMessageText=this.Str.join(', '); 
+  
+    // mmmWiki specific
+  var GRet=this.GRet;    if('tMod' in GRet) GRet.tMod=GRet.tMod.toUnix();    if('tModCache' in GRet) GRet.tModCache=GRet.tModCache.toUnix();
+  
+  this.res.end(JSON.stringify(this.Out));
+}
+ReqBE.prototype.mesEO=function(e){
+    // Prepare an error-message for the browser and one for the error log.
+  var StrELog=[], strEBrowser;
+  if(typeof e=='string'){strEBrowser=e; StrELog.push(e);}
+  else if(typeof e=='object'){
+    if('syscal' in e) StrELog.push('syscal: '+e.syscal);
+    if(e instanceof Error) {strEBrowser='name: '+e.name+', code: '+e.code+', message: ' + e.message; StrELog.push(strEBrowser); }
+    else { strEBrowser=e.toString(); StrELog.push(strEBrowser); }
+  }
+    
+  var strELog=StrELog.join('\n'); console.error(strELog);  // Write message to the error log
+  if(e instanceof Error) { console.error(e.stack);}   // Write stack to error log
+  
+    // Write message (and other data) to browser
+  this.Str.push(strEBrowser);
+  this.GRet.strMessageText=this.Str.join(', ');
+  
+    // mmmWiki specific
+  var GRet=this.GRet;    if('tMod' in GRet) GRet.tMod=GRet.tMod.toUnix();    if('tModCache' in GRet) GRet.tModCache=GRet.tModCache.toUnix();
+  
+  this.res.writeHead(500, {"Content-Type": "text/plain"}); 
+  this.res.end(JSON.stringify(this.Out));
+}
+
+
+
+
+
 ReqBE.prototype.go=function*(){
   var req=this.req, res=this.res;
   var flow=req.flow;
@@ -39,7 +89,7 @@ ReqBE.prototype.go=function*(){
     var objUrl=url.parse(req.url), qs=objUrl.query||''; jsonInput=urldecode(qs);
   }
   
-  try{ var beArr=JSON.parse(jsonInput); }catch(e){ console.log(e); res.out500('Error in JSON.parse, '+e); return; }
+  try{ var beArr=JSON.parse(jsonInput); }catch(e){ this.mesEO(e);  return; }
  
  
   var redisVar=req.sessionID+'_Main', strTmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,1]);   var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
@@ -89,9 +139,9 @@ ReqBE.prototype.go=function*(){
     // cecking/set CSRF-code
   var redisVar=req.sessionID+'_'+this.queredPage+'_CSRF', CSRFCode;
   if(boCheckCSRF){
-    if(!CSRFIn){ var tmp='CSRFCode not set (try reload page)', error=new MyError(tmp); this.mesO(tmp); return;}
+    if(!CSRFIn){ this.mesO('CSRFCode not set (try reload page)'); return;}
     var tmp=yield* wrapRedisSendCommand.call(req, 'get',[redisVar]);
-    if(CSRFIn!==tmp){ var tmp='CSRFCode err (try reload page)', error=new MyError(tmp); this.mesO(tmp); return;}
+    if(CSRFIn!==tmp){ this.mesO('CSRFCode err (try reload page)'); return;}
   }
   if(boSetNewCSRF) {
     var CSRFCode=randomHash();
@@ -110,14 +160,28 @@ ReqBE.prototype.go=function*(){
   }
   //var tmp=randomHash(); console.log(tmp); res.setHeader("Set-Cookie", "myCookieUpdatedOn304Test="+tmp);  //getCookie('myCookieUpdatedOn304Test')
 
+  //for(var k=0; k<Func.length; k++){
+    //var [func,inObj]=Func[k];
+    //var objT=yield* func.call(this, inObj);
+    //if(typeof objT=='undefined' || objT.err || objT instanceof(Error)) {
+      //if(!res.finished) { res.out500(objT.err); } return; 
+    //}else{
+      //this.Out.dataArr.push(objT.result);
+    //}
+  //}
+  //this.mesO();
+  
   for(var k=0; k<Func.length; k++){
-    var [func,inObj]=Func[k];
-    var objT=yield* func.call(this, inObj);
-    if(typeof objT=='undefined' || objT.err || objT instanceof(Error)) {
-      if(!res.finished) { res.out500(objT.err); } return; 
-    }else{
-      this.Out.dataArr.push(objT.result);
+    var [func,inObj]=Func[k],   objT=yield* func.call(this, inObj);
+    var err=null; 
+    //if(typeof objT=='undefined') err='unknown error'; else if(objT instanceof(Error)) err=objT; else if('err' in objT) err=objT.err; else err=objT;
+    if(typeof objT=='object') {    if('err' in objT) err=objT.err; else err=objT;    }    else if(typeof objT=='undefined') err='Error when calling BE-fun: '+k;    else err=objT;
+    
+    if(res.finished) return;
+    else if(err){
+      if(typeof err=='object' && err.name=='ErrorClient') this.mesO(err); else this.mesEO(err);     return;
     }
+    else this.Out.dataArr.push(objT.result);
   }
   this.mesO();
 }
@@ -170,40 +234,13 @@ ReqBE.prototype.aLogin=function*(inObj){
 
 
 
-ReqBE.prototype.mes=function(str){ this.Str.push(str); }
-ReqBE.prototype.mesO=function(str){
-  var GRet=this.GRet;
-  if(str) this.Str.push(str);
-  GRet.strMessageText=this.Str.join(', '); 
-  if('tMod' in GRet) GRet.tMod=GRet.tMod.toUnix();
-  if('tModCache' in GRet) GRet.tModCache=GRet.tModCache.toUnix();
-  this.res.end(JSON.stringify(this.Out));
-}
-ReqBE.prototype.mesEO=function(errIn){
-  var GRet=this.GRet;
-  var boString=typeof errIn=='string';
-  var err=errIn; 
-  if(boString) { this.Str.push('E: '+errIn); err=new MyError(errIn); } 
-  else{  var tmp=err.syscal||''; this.Str.push('E: '+tmp+' '+err.code);  }
-  console.log(err.stack);
-  //var error=new MyError(err); console.log(error.stack);
-  GRet.strMessageText=this.Str.join(', ');
-  if('tMod' in GRet) GRet.tMod=GRet.tMod.toUnix();
-  if('tModCache' in GRet) GRet.tModCache=GRet.tModCache.toUnix();
-
-  this.res.writeHead(500, {"Content-Type": "text/plain"}); 
-  this.res.end(JSON.stringify(this.Out));
-}
-
-
-
 ReqBE.prototype.myChMod=function*(inObj){   
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) {this.mesO('not logged in (as Administrator)'); return;}
+  if(!this.boALoggedIn) {return new ErrorClient('not logged in (as Administrator)'); }
   
-  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {var tmp='chmod: no files'; this.mesEO(tmp); return; }   
+  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else { return new ErrorClient('chmod: no files'); }   
   var strQ=array_fill(File.length, "?").join(', ');
   var tmpBit; if('boOR' in inObj) tmpBit='boOR'; else if('boOW' in inObj) tmpBit='boOW'; else if('boSiteMap' in inObj) tmpBit='boSiteMap'; 
   var Sql=[],Val=[inObj[tmpBit]];
@@ -213,7 +250,7 @@ ReqBE.prototype.myChMod=function*(inObj){
   array_mergeM(Sql, array_fill(File.length, "CALL "+strDBPrefix+"markStale(?);"));
   array_mergeM(Val,File); 
   var sql=Sql.join('\n');
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   this.mes('chmod');
   GRet[tmpBit]=inObj[tmpBit]; // Sending boOW/boSiteMap  back will trigger closing/opening of the save/preview buttons
   return {err:null, result:[Ou]};
@@ -222,16 +259,16 @@ ReqBE.prototype.myChModImage=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) {this.mesO('not logged in (as Administrator)'); return;}
+  if(!this.boALoggedIn) {return new ErrorClient('not logged in (as Administrator)');}
   
-  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {var tmp='chmodImage: no files'; this.mesEO(tmp); return; }   
+  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {  return new ErrorClient('chmodImage: no files'); }   
   var strQ=array_fill(File.length, "?").join(', ');
   var Sql=[], Val=[inObj.boOther];
   Sql.push("UPDATE "+imageTab+" SET boOther=? WHERE idImage IN ("+strQ+");");
   array_mergeM(Val,File);
   
   var sql=Sql.join('\n');
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   this.mes('chmodImage');
   GRet.boOther=inObj.boOther; // Sending boOther  back will trigger closing/opening of the save/preview buttons
   return {err:null, result:[Ou]};
@@ -241,12 +278,12 @@ ReqBE.prototype.deletePage=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) {this.mesO('not logged in (as Administrator)'); return;}
+  if(!this.boALoggedIn) {return new ErrorClient('not logged in (as Administrator)');}
   
-  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {var tmp='deletePage: no files'; this.mesEO(tmp); return; }
+  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else { return new ErrorClient('deletePage: no files'); }
   var sql=array_fill(File.length, "CALL "+strDBPrefix+"deletePageID(?);").join('\n'); 
   var Val=File;
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   this.mes('pages deleted');
   return {err:null, result:[Ou]};
 }
@@ -255,12 +292,12 @@ ReqBE.prototype.deleteImage=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) {this.mesO('not logged in (as Administrator)'); return;}
+  if(!this.boALoggedIn) {return new ErrorClient('not logged in (as Administrator)'); }
 
-  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {var tmp='deleteImage: no files'; this.mesEO(tmp); return; }
+  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else { return new ErrorClient('deleteImage: no files'); }
   var sql=array_fill(File.length, "CALL "+strDBPrefix+"deleteImage(?);").join('\n');
   var Val=File;
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; } 
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err; 
   this.mes('images deleted');   
   return {err:null, result:[Ou]};
   
@@ -312,13 +349,12 @@ ReqBE.prototype.pageLoad=function*(inObj) {
 
 
     // getInfoNData
-  var objT=yield* getInfoNData.call(this); if(objT.mess=='err') { return objT;  }
-  var rowA=objT.row;
+  var {err,row:rowA}=yield* getInfoNData.call(this); if(err) return err;
 
   var mess=rowA.mess;
-  if(mess=='IwwwNotFound'){ res.out404('No wiki there'); return;   }
+  if(mess=='IwwwNotFound'){ res.out404('No wiki there'); return;  }
   else if(mess=='304') { res.out304(); return; }
-  else if(mess=='noSuchRev') {res.out500(mess); return; }
+  else if(mess=='noSuchRev') {return new ErrorClient(mess); }
   else if(mess=='noSuchPage'){ res.out404(); return;   }
   else if(mess=='serverCacheStale' || mess=='serverCacheOK'){
     copySome(this,rowA,['idPage', 'rev', 'version', 'eTag', 'boOR', 'boOW', 'boSiteMap', 'talkPage', 'boTalkExist', 'tMod', 'tModCache', 'strEditText']);
@@ -337,11 +373,11 @@ ReqBE.prototype.pageLoad=function*(inObj) {
     if(!boValidServerCache){
 
         // parse
-      var objT=yield* parse.call(this); if(objT.mess=='err') return objT;
+      var {err}=yield* parse.call(this); if(err) return err;
 
           // setNewCacheSQL
       var {sql, Val, nEndingResults}=createSetNewCacheSQL(req.wwwSite, queredPage, this.rev, this.strHtmlText, this.eTag, this.arrSub, this.StrSubImage);
-      var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+      var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
       var iRowLast=results.length-nEndingResults-1;
       var mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
 
@@ -349,7 +385,7 @@ ReqBE.prototype.pageLoad=function*(inObj) {
       this.strHtmlText=rowA.strHtmlText;
     }
   }
-  else { res.out500('mess='+mess); return; }
+  else { return new ErrorClient(mess); }
   //'redir', 'noSuchPage', 'redirCase', 'private', '304', 'serverCacheStale', 'serverCacheOK'
   //this.myAsyncPageLoad.Func.push(         thisChangedWArg(this.pageLoadC, this)        ); 
   //this.pageLoadC.call(this);
@@ -365,31 +401,29 @@ ReqBE.prototype.pageCompare=function*(inObj){
   var Ou={};
   this.versionOld=arr_min(inObj.arrVersionCompared);  this.version=arr_max(inObj.arrVersionCompared); 
   this.versionOld=Math.max(1,this.versionOld);  this.version=Math.max(1,this.version);
-  if(this.version==this.versionOld) {this.mesO('Same version'); return;}
+  if(this.version==this.versionOld) {return new ErrorClient('Same version'); }
   this.eTagIn=''; this.requesterCacheTime=0;
   this.rev=this.versionOld-1;
 
   this.boFront=0; this.eTagIn=''; this.requesterCacheTime=0;
 
       // getInfoNData Old
-  var objT=yield* getInfoNData.call(this); if(objT.mess=='err') { return objT; }
-  var rowA=objT.row;
+  var {err,row:rowA}=yield* getInfoNData.call(this); if(err) return err;
   
   var nVersion=this.Version.length; 
-  if(nVersion==0){this.mesO('Page does not exist'); return;} 
-  if(!rowA.boOR && !this.boVLoggedIn){this.mesO('Not logged in'); return;}
+  if(nVersion==0){return new ErrorClient('Page does not exist'); } 
+  if(!rowA.boOR && !this.boVLoggedIn){return new ErrorClient('Not logged in'); }
 
   this.strEditTextOld=rowA.strEditText;
 
       // getInfoNData 
   this.rev=this.version-1;
-  var objT=yield* getInfoNData.call(this); if(objT.mess=='err') { return objT;  }
-  var rowA=objT.row;
+  var {err,row:rowA}=yield* getInfoNData.call(this); if(err) return err;
   
   copySome(this,rowA,['idPage', 'rev', 'version', 'eTag', 'boOR', 'boOW', 'boSiteMap', 'boTalkExist', 'tMod', 'tModCache', 'strEditText']);
   
     // parse
-  var objT=yield* parse.call(this); if(objT.mess=='err') return objT;
+  var {err}=yield* parse.call(this); if(err) return err;
 
   this.strEditText=rowA.strEditText;
   this.strHtmlText=rowA.strHtmlText;
@@ -418,7 +452,7 @@ ReqBE.prototype.getPreview=function*(inObj){
   this.boOW==1;
 
     // parse
-  var objT=yield* parse.call(this); if(objT.mess=='err') return objT;
+  var {err}=yield* parse.call(this); if(err) return err;
 
   this.mes('Preview');
   GRet.strHtmlText=this.strHtmlText;
@@ -441,9 +475,9 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   if(rowA.mess=='IwwwNotFound'){ res.out404('No wiki there'); return;   }
   else if(rowA.mess=='pageExist'){
     copySome(this,rowA,['boOR', 'boOW', 'boSiteMap', 'tMod', 'tModCache']);
-    if(!this.boOR && !this.boVLoggedIn) {this.mesO('Not logged in'); return;}
-    if(!this.boALoggedIn) {this.mesO('Not logged in as admin'); return;} 
-    if(this.tModBrowser<this.tMod) { this.mesO("tModBrowser (from your action) ("+this.tModBrowser+") < tMod db ("+this.tMod+"), "+messPreventBecauseOfNewerVersions); return; }
+    if(!this.boOR && !this.boVLoggedIn) {return new ErrorClient('Not logged in'); }
+    if(!this.boALoggedIn) {return new ErrorClient('Not logged in as admin'); } 
+    if(this.tModBrowser<this.tMod) { return new ErrorClient("tModBrowser (from your action) ("+this.tModBrowser+") < tMod db ("+this.tMod+"), "+messPreventBecauseOfNewerVersions);  }
   }else if(rowA.mess=='noSuchPage'){
     extend(this,{boOW:1,boOR:1,boSiteMap:1});  
   }
@@ -451,19 +485,17 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   extend(this,{strEditText:inObj.newcontent});
 
     // parse
-  var objT=yield* parse.call(this); if(objT.mess=='err') return objT;
+  var {err}=yield* parse.call(this); if(err) return err;
   
       // saveByReplace
   var {sql, Val, nEndingResults}=createSaveByReplaceSQL('', req.wwwSite, this.queredPage, this.strEditText, this.strHtmlText, this.eTag, this.arrSub, this.StrSubImage); 
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   var iRowLast=results.length-nEndingResults-1;
   var mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
   
       // getInfoNData
   this.boFront=0; this.rev=0; this.eTagIn='', this.requesterCacheTime=0;
-  
-  var objT=yield* getInfoNData.call(this); if(objT.mess=='err') { return objT;  }
-  var rowA=objT.row;
+  var {err,row:rowA}=yield* getInfoNData.call(this); if(err) return err;
   
   if(this.strEditText.length>0){
     copySome(this, rowA, ['idPage', 'rev', 'version', 'eTag', 'boOR', 'boOW', 'boSiteMap', 'boTalkExist', 'tMod', 'tModCache', 'strEditText']);
@@ -494,29 +526,27 @@ ReqBE.prototype.saveByAdd=function*(inObj){
   if(rowA.mess=='IwwwNotFound'){ res.out404('No wiki there'); return;   }
   else if(rowA.mess=='pageExist'){
     copySome(this,rowA,['boOR', 'boOW', 'boSiteMap', 'tMod', 'tModCache']);
-    if(!this.boOR && !this.boVLoggedIn) {this.mesO('Not logged in'); return;}
-    if(this.tModBrowser<this.tMod) { this.mesO("tModBrowser (from your action) ("+this.tModBrowser+") < tMod db ("+this.tMod+"), "+messPreventBecauseOfNewerVersions); return; }
+    if(!this.boOR && !this.boVLoggedIn) {return new ErrorClient('Not logged in'); }
+    if(this.tModBrowser<this.tMod) { return new ErrorClient("tModBrowser (from your action) ("+this.tModBrowser+") < tMod db ("+this.tMod+"), "+messPreventBecauseOfNewerVersions);  }
   }else if(rowA.mess=='noSuchPage'){
     extend(this,{boOW:1,boOR:1,boSiteMap:1});  
   }
- if(this.boOW==0) {this.mesO('Not authorized'); return;} 
+ if(this.boOW==0) {return new ErrorClient('Not authorized'); } 
   copySome(this,inObj,['summary', 'signature']);    this.strEditText=inObj.newcontent;
     
     // parse
-  var objT=yield* parse.call(this); if(objT.mess=='err') return objT;
+  var {err}=yield* parse.call(this); if(err) return err;
 
       // saveByAddSQL
   var {sql, Val, nEndingResults}=createSaveByAddSQL(req.wwwSite, this.queredPage, this.summary, this.signature, this.strEditText, this.strHtmlText, this.eTag, this.arrSub, this.StrSubImage);
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   var iRowLast=results.length-nEndingResults-1;
   var mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
   
 
       // getInfoNData
   this.boFront=0; this.rev=-1; this.eTagIn=''; this.requesterCacheTime=0;
-  
-  var objT=yield* getInfoNData.call(this); if(objT.mess=='err') { return objT;  }
-  var rowA=objT.row;
+  var {err,row:rowA}=yield* getInfoNData.call(this); if(err) return err;
 
   copySome(this,rowA,['idPage', 'rev', 'version', 'eTag', 'boOR', 'boOW', 'boSiteMap', 'boTalkExist', 'tMod', 'tModCache', 'strEditText']);
   //this.matVersion=makeMatVersion.call(this);
@@ -536,11 +566,11 @@ ReqBE.prototype.renamePage=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  if(!this.boALoggedIn) { return new ErrorClient('Not logged in as admin');  }
   var sql="UPDATE "+pageTab+" SET pageName=? WHERE idPage=?";
   var strNewName=inObj.strNewName.replace(RegExp(' ','g'),'_');
   var Val=[strNewName, inObj.id];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   var c=results.affectedRows, boOK, mestmp; 
   if(c==1) { boOK=1; mestmp="1 page renamed"; } else {boOK=0; mestmp=c+" pages renamed!?"; }
   this.mes(mestmp);
@@ -552,10 +582,10 @@ ReqBE.prototype.renameImage=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  if(!this.boALoggedIn) { return new ErrorClient('Not logged in as admin');  }
   var sql="UPDATE "+imageTab+" SET imageName=? WHERE idImage=?";
   var Val=[inObj.strNewName, inObj.id];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   var c=results.affectedRows, boOK, mestmp; 
   if(c==1) { boOK=1; mestmp="1 image renamed"; } else {boOK=0; mestmp=c+" images renamed!?"; }
   this.mes(mestmp);
@@ -587,7 +617,7 @@ ReqBE.prototype.getParent=function*(inObj){
   //var Ou={}, sql="SELECT p.pageName FROM "+pageTab+" p JOIN "+subTab+" s ON s.idPage=p.idPage WHERE s.pageName=?;",   Val=[inObj.pageName];
   var Ou={}, sql="SELECT p.boTLS, p.www, p.idPage, p.pageName FROM "+pageWWWView+" p JOIN "+subTab+" s ON s.idPage=p.idPage JOIN "+pageTab+" c ON s.pageName=c.pageName WHERE c.idPage=?;",   Val=[inObj.idPage];
   var flow=req.flow
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   Ou=arrObj2TabNStrCol(results);
   return {err:null, result:[Ou]};
 }
@@ -597,7 +627,7 @@ ReqBE.prototype.getParentOfImage=function*(inObj){
   //var Ou={}, sql="SELECT p.pageName FROM "+pageTab+" p JOIN "+subImageTab+" s ON s.idPage=p.idPage WHERE s.imageName=?;",   Val=[inObj.imageName];
   var Ou={}, sql="SELECT p.boTLS, p.www, p.idPage, p.pageName FROM "+pageWWWView+" p JOIN "+subImageTab+" s ON s.idPage=p.idPage JOIN "+imageTab+" c ON s.imageName=c.imageName  WHERE c.idImage=?;",   Val=[inObj.idImage];
   var flow=req.flow;
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   Ou=arrObj2TabNStrCol(results);
   return {err:null, result:[Ou]};
 }
@@ -618,7 +648,7 @@ ReqBE.prototype.getSingleParentExtraStuff=function*(inObj){
     Val.push(inObj.idPage, inObj.idPage, inObj.idPage, inObj.idPage);
   }  
   var sql=Sql.join('\n');
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   Ou.nSub=results[0][0].nSub;
   Ou.nImage=results[1][0].nImage;
   if(inObj.idPage!==null) { extend(Ou, results[2][0]); extend(Ou, results[3][0]); }
@@ -644,7 +674,7 @@ ReqBE.prototype.getPageList=function*(inObj) {
   Sql.push("SELECT FOUND_ROWS() AS n;"); // nFound
   Sql.push("SELECT count(idPage) AS n FROM "+pageTab+";"); // nUnFiltered
   var sql=Sql.join('\n'),   Val=[]; 
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   var Ou=arrObj2TabNStrCol(results[0]);
   Ou.NFilt=[results[1][0].n, results[2][0].n];
   return {err:null, result:[Ou]};
@@ -657,7 +687,7 @@ ReqBE.prototype.getPageHist=function*(inObj){
   var arg={strTableRef:strTableRefPageHist, Ou:Ou, WhereExtra:[], Prop:PropPage, StrOrderFilt:StrOrderFiltPage};  
   copySome(arg, this, ['Where']); arg.strDBPrefix=strDBPrefix;
   
-  var {err, Hist}=yield* getHist(flow, mysqlPool, arg); if(err) {  this.mesEO(err); return; };  Ou.Hist=Hist;
+  var {err, Hist}=yield* getHist(flow, mysqlPool, arg); if(err) return err;  Ou.Hist=Hist;
 
     // Removing null parent
   var iColParent=KeyColPageFlip.parent, arrTmpA=Ou.Hist[iColParent], arrTmpB=[];
@@ -667,7 +697,7 @@ ReqBE.prototype.getPageHist=function*(inObj){
   var len=arrTmpB.length;
   if(len){
     var sql="SELECT idPage, boTLS, www, siteName, pageName FROM "+pageWWWView+" WHERE idPage IN ("+arrTmpB.join(', ')+")",  Val=[];
-    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
     Ou.ParentName=arrObj2TabNStrCol(results);
   }
 
@@ -697,7 +727,7 @@ ReqBE.prototype.getImageList=function*(inObj) {
   Sql.push("SELECT FOUND_ROWS() AS n;"); // nFound
   Sql.push("SELECT count(idImage) AS n FROM "+imageTab+";"); // nUnFiltered
   var sql=Sql.join('\n'),   Val=[]; 
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   var Ou=arrObj2TabNStrCol(results[0]);
   Ou.NFilt=[results[1][0].n, results[2][0].n];
   return {err:null, result:[Ou]};
@@ -710,7 +740,7 @@ ReqBE.prototype.getImageHist=function*(inObj){
   var arg={strTableRef:strTableRefImageHist, Ou:Ou, WhereExtra:[], Prop:PropImage, StrOrderFilt:StrOrderFiltImage};  
   copySome(arg, this, ['Where']); arg.strDBPrefix=strDBPrefix;  arg.pool=mysqlPool;
   
-  var {err, Hist}=yield* getHist(flow, mysqlPool, arg); if(err) {  this.mesEO(err); return; };
+  var {err, Hist}=yield* getHist(flow, mysqlPool, arg); if(err) return err;
   Ou.Hist=Hist;
 
   var iColParent=KeyColImageFlip.parent, arrTmpA=Ou.Hist[iColParent], arrTmpB=[];
@@ -720,7 +750,7 @@ ReqBE.prototype.getImageHist=function*(inObj){
   var len=arrTmpB.length;
   if(len){
     var sql="SELECT idPage, boTLS, www, siteName, pageName FROM "+pageWWWView+" WHERE idPage IN ("+arrTmpB.join(', ')+")",  Val=[];
-    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
     Ou.ParentName=arrObj2TabNStrCol(results);
   }
 
@@ -747,7 +777,7 @@ ReqBE.prototype.getPageInfo=function*(inObj){
     var strQ='false'; if(arrQ.length) strQ=arrQ.join(' OR ');
     sql+=" WHERE "+strQ;
   }
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   Ou.FileInfo=results;
   return {err:null, result:[Ou]};
 }
@@ -769,7 +799,7 @@ ReqBE.prototype.getImageInfo=function*(inObj){
   var strLim=''; if(boLimited){ strLim=" WHERE "+tmpQ; }
   sql+=strLim;
   var Val=arrName;
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   Ou.FileInfo=results;
   return {err:null, result:[Ou]};
 }
@@ -780,11 +810,11 @@ ReqBE.prototype.getImageInfo=function*(inObj){
 ReqBE.prototype.redirectTabGet=function*(inObj){ 
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
-  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  if(!this.boALoggedIn) { return new ErrorClient('Not logged in as admin');  }
   var sql="SELECT idSite, siteName, www, pageName, url, UNIX_TIMESTAMP(created) AS created, nAccess, UNIX_TIMESTAMP(tLastAccess) AS tLastAccess FROM "+redirectWWWView+";";
   //var sql="SELECT idSite, pageName, url, UNIX_TIMESTAMP(created) AS created FROM "+redirectTab+";";
   var Val=[];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   var Ou=arrObj2TabNStrCol(results);
   this.mes("Got "+results.length+" entries"); 
   extend(Ou, {boOK:1,nEntry:results.length});
@@ -795,7 +825,7 @@ ReqBE.prototype.redirectTabSet=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  if(!this.boALoggedIn) { return new ErrorClient('Not logged in as admin');  }
   var boUpd=inObj.boUpd||false;
   if(boUpd){
     //var sql="UPDATE "+redirectTab+" SET url=?, created=now() WHERE idSite=? AND pageName=?;";
@@ -809,7 +839,7 @@ ReqBE.prototype.redirectTabSet=function*(inObj){
   var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);   
   var boOK=1, mestmp="Done";
   if(err && (typeof err=='object') && err.code=='ER_DUP_ENTRY'){boOK=0; mestmp='dup key';}
-  else if(err){ this.mesEO(err); return;  }
+  else if(err) return err;
   
   this.mes(mestmp);
   extend(Ou, {boOK:boOK});
@@ -819,10 +849,10 @@ ReqBE.prototype.redirectTabDelete=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  if(!this.boALoggedIn) { return new ErrorClient('Not logged in as admin');  }
   var sql="DELETE FROM "+redirectTab+" WHERE idSite=? AND pageName=?";
   var Val=[inObj.idSite, inObj.pageName];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   var c=results.affectedRows, boOK, mestmp; 
   if(c==1) {boOK=1; mestmp="Entry deleted"; } else {boOK=1; mestmp=c+ " entries deleted!?"; }
   this.mes(mestmp);
@@ -834,10 +864,10 @@ ReqBE.prototype.redirectTabResetNAccess=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  if(!this.boALoggedIn) { return new ErrorClient('Not logged in as admin');  }
   var sql="UPDATE "+redirectTab+" SET nAccess=0;"; 
   var Val=[];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   var boOK=1, mestmp="Done"; 
   this.mes(mestmp);
   extend(Ou, {boOK:boOK});
@@ -852,11 +882,11 @@ ReqBE.prototype.siteTabGet=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  if(!this.boALoggedIn) { return new ErrorClient('Not logged in as admin');  }
   //var sql="SELECT idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, UNIX_TIMESTAMP(created) AS created FROM "+siteTab+";";
   var sql="SELECT boDefault, boTLS, st.idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, UNIX_TIMESTAMP(st.created) AS created, SUM(p.idSite IS NOT NULL) AS nPage FROM "+siteTab+" st LEFT JOIN "+pageTab+" p ON st.idSite=p.idSite GROUP BY idSite;"
   var Val=[];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   var Ou=arrObj2TabNStrCol(results);
   this.mes("Got "+results.length+" entries");
   Ou.boOK=1;
@@ -867,7 +897,7 @@ ReqBE.prototype.siteTabSet=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  if(!this.boALoggedIn) { return new ErrorClient('Not logged in as admin');  }
   var boUpd=inObj.boUpd||false;
 
   if(boUpd){
@@ -881,9 +911,7 @@ ReqBE.prototype.siteTabSet=function*(inObj){
   var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);
   var boOK, mestmp, idSite=inObj.idSite;
   if(err && (typeof err=='object') && err.code=='ER_DUP_ENTRY'){boOK=0; mestmp='dup key';}
-  else if(err){
-    this.mesEO(err); return;
-  }
+  else if(err) return err;
   else{
     boOK=1; mestmp="Done";
     if(boUpd){}
@@ -897,10 +925,10 @@ ReqBE.prototype.siteTabDelete=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  if(!this.boALoggedIn) { return new ErrorClient('Not logged in as admin');  }
   var sql="DELETE FROM "+siteTab+" WHERE siteName=?";
   var Val=[inObj.siteName];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   var c=results.affectedRows, boOK, mestmp; 
   if(c==1) {boOK=1; mestmp="Entry deleted"; } else {boOK=1; mestmp=c+ " entries deleted!?"; }
   this.mes(mestmp);
@@ -911,14 +939,14 @@ ReqBE.prototype.siteTabSetDefault=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  if(!this.boALoggedIn) { return new ErrorClient('Not logged in as admin');  }
   var Sql=[];
   Sql.push("START TRANSACTION;");
   Sql.push("UPDATE "+siteTab+" SET boDefault=0;");
   Sql.push("UPDATE "+siteTab+" SET boDefault=1 WHERE idSite=?;");
   Sql.push("COMMIT;");
   var sql=Sql.join('\n'),    Val=[inObj.idSite];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   this.mes("OK");
   return {err:null, result:[Ou]}; 
 }
@@ -930,11 +958,10 @@ ReqBE.prototype.siteTabSetDefault=function*(inObj){
 ReqBE.prototype.uploadAdminServ=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
-  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  if(!this.boALoggedIn) { return new ErrorClient('Not logged in as admin');  }
   var strFileToLoadFolder=path.join(__dirname, '..', 'mmmWikiData', 'FileToLoad'); 
   var err, files;
-  fs.readdir(strFileToLoadFolder, function(errT, filesT){ err=errT; files=filesT; flow.next(); }); yield;
-  if(err ) { console.log(err); res.out500(err); }
+  fs.readdir(strFileToLoadFolder, function(errT, filesT){ err=errT; files=filesT; flow.next(); }); yield;  if(err) return err;
 
   this.File=Array(files.length);
   for(var i=0;i<files.length;i++){
@@ -952,7 +979,7 @@ ReqBE.prototype.uploadAdmin=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { this.mesO('Not logged in as admin'); return; }
+  if(!this.boALoggedIn) { return new ErrorClient('Not logged in as admin');  }
   var regBoTalk=RegExp('(template_)?talk:');
   var FileOrg=this.File;
   var n=FileOrg.length;
@@ -961,8 +988,7 @@ ReqBE.prototype.uploadAdmin=function*(inObj){
   for(var i=0;i<FileOrg.length;i++){
     var fileOrg=FileOrg[i], tmpname=fileOrg.path;
     var err, buf;
-    fs.readFile(tmpname, function(errT, bufT) { err=errT; buf=bufT;  flow.next();  }); yield;
-    if(err){ boDoExit=1; res.out500(err); return; }
+    fs.readFile(tmpname, function(errT, bufT) { err=errT; buf=bufT;  flow.next();  }); yield;  if(err) return err;
     var dataOrg=buf; 
     if(fileOrg.type=='application/zip' || fileOrg.type=='application/x-zip-compressed'){
        
@@ -1010,14 +1036,14 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data){
     extend(this,{strEditText:data.toString(), boOW:1, boOR:1, boSiteMap:1});
 
       // parse
-    var objT=yield* parse.call(this); if(objT.mess=='err') return objT;
+    var {err}=yield* parse.call(this); if(err) return err;
 
           // saveByReplace
     var {sql, Val, nEndingResults}=createSaveByReplaceSQL(siteName, '', pageName, this.strEditText, this.strHtmlText, '', this.arrSub, this.StrSubImage);
     console.log(this.strEditText.length+', '+this.strHtmlText.length+', nSub:'+this.arrSub.length+', nsubImage:'+this.StrSubImage.length);
     console.time('dbOperations');
     sql="SET autocommit=0;"+sql;  // +"SET autocommit=1;";
-    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
     var iRowLast=results.length-nEndingResults-1;
     var mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
  
@@ -1028,12 +1054,12 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data){
     //var dim=imageSize(data);  console.log(fileName+', w/h: '+dim.width+' / '+dim.height);
     var sql="CALL "+strDBPrefix+"storeImage(?,?,?,?,@boOK)";
     var Val=[fileName,0,data,eTag];
-    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   }else if(regVid.test(type)){ 
     var eTag=md5(data);
     var sql="CALL "+strDBPrefix+"storeVideo(?,?,?)";
     var Val=[fileName,data,eTag];
-    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   }
   else{ this.mes("Unrecognized file type: "+type); return {err:null, result:[Ou]}; }
 
@@ -1058,31 +1084,32 @@ ReqBE.prototype.uploadUser=function*(inObj){
   var Match=RegExp('\\.(\\w{1,3})$').exec(fileName); 
   if(!Match){ Ou.strMessage="The file name should be in the form xxxx.xxx"; return {err:null, result:[Ou]}; }
   var type=Match[1].toLowerCase(), err, buf;
-  fs.readFile(tmpname, function(errT, bufT) { err=errT; buf=bufT; flow.next(); });  yield;
-  if(err){  this.mesEO(err); return; }
+  fs.readFile(tmpname, function(errT, bufT) { err=errT; buf=bufT; flow.next(); });  yield;  if(err) return err;
   var data=buf;
   if(data.length==0){ this.mes("data.length==0"); return {err:null, result:[Ou]}; }
 
   if(regImg.test(type)){
-          // autoOrient
-    var myCollector=concat(function(buf){      data=buf;  flow.next();     }), boDoExit=0; 
-    var streamImg=gm(data).autoOrient().stream(function streamOut(err, stdout, stderr) {
-      if(err){ boDoExit=1; self.mesEO(err); return; } 
+      // autoOrient
+    var semY=0, semCB=0, err;
+    var myCollector=concat(function(buf){  data=buf;  if(semY) flow.next(); semCB=1;  }); 
+    var streamImg=gm(data).autoOrient().stream(function streamOut(errT, stdout, stderr) {
+      err=errT; if(err){ if(semY) flow.next(); semCB=1; return; } 
       stdout.pipe(myCollector); 
     });
-    yield;
-    if(boDoExit==1) { return; }  
+    if(!semCB) { semY=1; yield;}
+    if(err) return err;
+
 
     var eTag=md5(data);
     //var dim=imageSize(data);  console.log(fileName+', w/h: '+dim.width+' / '+dim.height);
     var sql="CALL "+strDBPrefix+"storeImage(?,?,?,?,@boOK)";
     var Val=[fileName,1,data,eTag];
-    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   }else if(regVid.test(type)){ 
     var eTag=md5(data);
     var sql="CALL "+strDBPrefix+"storeVideo(?,?,?)";
     var Val=[fileName,data,eTag];
-    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  this.mesEO(err); return; }
+    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return err;
   }
   else{ Ou.strMessage="Unrecognized file type: "+type; return {err:null, result:[Ou]}; }
 

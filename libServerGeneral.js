@@ -53,6 +53,14 @@ MyNeo4j=function(){
 MyNeo4j.prototype.escape=function(str){  return str.replace(this.regEscape,this.funEscape);    }
 
 
+
+ErrorClient=class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ErrorClient';
+  }
+}
+
 MyError=Error;
 //MyError=function(){ debugger;}
 
@@ -69,7 +77,11 @@ tmp.out301Loc=function(url){  this.writeHead(301, {Location: '/'+url});  this.en
 tmp.out403=function(){ this.outCode(403, "403 Forbidden\n");  }
 tmp.out304=function(){  this.outCode(304);   }
 tmp.out404=function(str){ str=str||"404 Not Found\n"; this.outCode(404, str);    }
-tmp.out500=function(err){ var errN=(err instanceof Error)?err:(new MyError(err)); console.log(errN.stack); this.writeHead(500, {"Content-Type": "text/plain"});  this.end(err+ "\n");   }
+//tmp.out500=function(err){ var errN=(err instanceof Error)?err:(new MyError(err)); console.log(errN.stack); this.writeHead(500, {"Content-Type": "text/plain"});  this.end(err+ "\n");   }
+tmp.out500=function(e){
+  if(e instanceof Error) {var mess=e.name + ': ' + e.message; console.error(e.stack);} else {var mess=e; console.error(mess);} 
+  this.writeHead(500, {"Content-Type": "text/plain"});  this.end(mess+ "\n");
+}
 tmp.out501=function(){ this.outCode(501, "Not implemented\n");   }
 
 
