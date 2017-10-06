@@ -1376,20 +1376,18 @@ pageListExtend=function($el){
       $r.attr({idPage:File[i].idPage});
       var f=File[i];      
       var nParent=File[i].nParent, $buttonTmp=$r.children('span[name=nParent]').data('valSort',nParent).children('button');
-        var boUseAlt=$pageFilterDiv.Filt.checkIfSingleParent();
-        var nParentTmp, strTitleA, strTitleB;
-        if(!boUseAlt) {
-          nParentTmp=nParent; strTitleA='Parents: '
-          strTitleB='('+nParentTmp+')'; if(nParentTmp==1) strTitleB=File[i].nameParent;
-        }else{          
-          nParentTmp=nParent-1; strTitleA='Alt parents: ';
-          strTitleB='('+nParentTmp+')';
+        var boSingle=$pageFilterDiv.Filt.checkIfSingleParent();
+        var strTitle;
+        if(boSingle) {
+          strTitle=nParent+' parents';
+        }else{
+          strTitle=nParent+' parents'; if(nParent==1) strTitle=File[i].nameParent; else if(!nParent) strTitle='orphan';
         }
-        var strTitle=strTitleA+strTitleB;   $buttonTmp.prop('title',strTitle);
-        var boHide=boUseAlt && nParentTmp<1; 
+        $buttonTmp.prop('title',strTitle);
+        var boHide=boSingle && nParent<=1; 
         $buttonTmp.visibilityToggle(!boHide);
         //$buttonTmp.prop("disabled",boHide).css({opacity:boHide?0.5:''});
-        $buttonTmp.children('span:eq(0)').html(nParentTmp); 
+        $buttonTmp.children('span:eq(0)').html(nParent); 
       $r.children('span[name=cb]').data('valSort',0).children('input').prop({'checked':false}); 
       var tmp=File[i].boOR; $r.children('span[name=boOR]').data('valSort',tmp).css({visibility:tmp==1?'':'hidden'}); 
       var tmp=File[i].boOW; $r.children('span[name=boOW]').data('valSort',tmp).css({visibility:tmp==1?'':'hidden'}); 
@@ -1624,7 +1622,7 @@ pageListExtend=function($el){
   var File=[]; $el.nRowVisible=0;
 
   //var $buttonBack=$('<button>').append('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(doHistBack);
-  var $spanTmp=$('<span>').append('◄◄').css({'font-size':'0.7em'});
+  var $spanTmp=$('<span>').append(strFastBackSymbol).css({'font-size':'0.7em'});
   var $buttonFastBack=$('<button>').append($spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){history.fastBack($adminMoreDiv);});
   //var $spanLabel=$('<span>').append('Pages').css({'float':'right',margin:'0.2em 0 0 0'});  
   var $buttPI=$('<button>').click(function(){  
@@ -1955,19 +1953,16 @@ imageListExtend=function($el){
       var nParent=File[i].nParent;
       var $buttonTmp=$r.children('span[name=nParent]').data('valSort',nParent).children('button');
       var $buttonITmp=$r.children('span[name=nParentI]').data('valSort',nParent).children('button');
-        var boUseAlt=$imageFilterDiv.Filt.checkIfSingleParent();
-        var nParentTmp, strTitleA, strTitleB;
-        if(!boUseAlt) {
-          nParentTmp=nParent; strTitleA='Parents: '
-          strTitleB='('+nParentTmp+')'; if(nParentTmp==1) strTitleB=File[i].nameParent;
-        }else{          
-          nParentTmp=nParent-1; strTitleA='Alt parents: ';
-          strTitleB='('+nParentTmp+')';
+        var boSingle=$imageFilterDiv.Filt.checkIfSingleParent();
+        var strTitle;
+        if(boSingle) {
+          strTitle=nParent+' parents';
+        }else{
+          strTitle=nParent+' parents'; if(nParent==1) strTitle=File[i].nameParent; else if(!nParent) strTitle='orphan';
         }
-        var strTitle=strTitleA+strTitleB;     
-        var boHide=boUseAlt && nParentTmp<1; 
-        $buttonTmp.prop('title',strTitle);   $buttonTmp.children('span:eq(0)').html(nParentTmp);   $buttonTmp.visibilityToggle(!boHide);
-        $buttonITmp.prop('title',strTitle);  $buttonITmp.children('span:eq(0)').html(nParentTmp);  $buttonITmp.visibilityToggle(!boHide);
+        var boHide=boSingle && nParent<=1; 
+        $buttonTmp.prop('title',strTitle);   $buttonTmp.children('span:eq(0)').html(nParent);   $buttonTmp.visibilityToggle(!boHide);
+        $buttonITmp.prop('title',strTitle);  $buttonITmp.children('span:eq(0)').html(nParent);  $buttonITmp.visibilityToggle(!boHide);
         
       $r.children('span[name=cb]').data('valSort',0).children('input').prop({'checked':false});
       var tmp=File[i].imageName; $r.children('span[name=image]').data('valSort',tmp).children('img').prop({src:'50apx-'+tmp});
@@ -2177,7 +2172,7 @@ imageListExtend=function($el){
   var File=[]; $el.nRowVisible=0;
 
   //var $buttonBack=$('<button>').append('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(doHistBack);
-  var $spanTmp=$('<span>').append('◄◄').css({'font-size':'0.7em'});
+  var $spanTmp=$('<span>').append(strFastBackSymbol).css({'font-size':'0.7em'});
   var $buttonFastBack=$('<button>').append($spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){history.fastBack($adminMoreDiv);});
   //var $spanLabel=$('<span>').append('Images').css({'float':'right',margin:'0.2em 0 0 0'}); 
   var $buttPI=$('<button>').click(function(){  //.append($tmpImg)
@@ -2951,22 +2946,26 @@ redirectDeletePopExtend=function($el){
   return $el; 
 }
 
+regHttp=/^https?:\/\//;
 redirectTabExtend=function($el){
 "use strict"
   $el.toString=function(){return 'redirectTab';}
   var funcTTimeTmp=function(t){ var arrT=getSuitableTimeUnit(unixNow()-t);  $(this).text(Math.round(arrT[0])+arrT[1]);  }
+  var funcLinkTmp=function(url, r){  var rS=$el.indexSiteTabById[r.idSite], urlLink=url; if(!regHttp.test(url)) urlLink='http'+(rS.boTLS?'s':'')+'://'+rS.www+'/'+url; $(this).children('a').prop({href:urlLink}).html(url);  }
   var TDProt={
+    url:{ mySetVal:funcLinkTmp },
     created:{ mySetVal:funcTTimeTmp },
     tLastAccess:{ mySetVal:funcTTimeTmp }
   }
   var TDConstructors={
+    url:function(){ var $a=$('<a>').prop({target:"_blank"}),$el=$('<td>').append($a);  $.extend($el[0],TDProt.url);  return $el;  },
     created:function(){ var $el=$('<td>');  $.extend($el[0],TDProt.created);  return $el;  },
     tLastAccess:function(){ var $el=$('<td>');  $.extend($el[0],TDProt.tLastAccess);  return $el;  }
   }
   $el.myAdd=function(r){
     var $Td=$([]);  for(var i=0;i<StrCol.length;i++) { 
       var name=StrCol[i], val=r[name], $td; if(name in TDConstructors) {$td=new TDConstructors[name](); }   else $td=$('<td>');   $Td.push($td.attr('name',name));
-      if('mySetVal' in $td[0]) { $td[0].mySetVal(val);}   else $td.append(val);
+      if('mySetVal' in $td[0]) { $td[0].mySetVal(val, r);}   else $td.append(val);
       if('mySetSortVal' in $td[0]) { $td[0].mySetSortVal(val);}   else $td.data('valSort',val);
     }
     var $buttEdit=$('<button>').attr('name','buttonEdit').append('Edit').click(function(){
@@ -3007,6 +3006,7 @@ redirectTabExtend=function($el){
       var r={}; for(var j=0;j<StrCol.length;j++){ r[StrCol[j]]=$el.siteTab[i][j];}
       $el.siteTab[i]=r;
       $el.indexSiteTabById[r.idSite]=r;
+      //$el.indexSiteTabByName[r.siteName]=r;
       if(r.boDefault) $el.idSiteDefault=r.idSite;
     }
   }
@@ -3440,6 +3440,9 @@ setUp1=function(){
     }
   } 
 
+  if(boIOS  || boIE) strBackSymbol='◄'; else strBackSymbol='◀';
+  strFastBackSymbol=strBackSymbol+strBackSymbol;
+  
   //boHistPushOK='pushState' in history && 'state' in history;
   boHistPushOK='pushState' in history;
   if(!boHistPushOK) { console.log('This browser does not support history'); return;}

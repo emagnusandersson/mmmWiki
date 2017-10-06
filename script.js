@@ -123,16 +123,12 @@ var flow=( function*(){
 
   var strConfig;
   if(boHeroku){ 
-    if(!process.env.jsConfig) { console.log('jsConfig-environment-variable is not set'); process.exit(1);}
+    if(!process.env.jsConfig) { console.error('jsConfig-environment-variable is not set'); process.exit(1);}
     strConfig=process.env.jsConfig||'';
   }
   else{
-    fs.readFile('./config.js', function(errT, bufT) { //, this.encRead
-      if(errT){  console.log(errT); }
-      strConfig=bufT.toString();
-      flow.next();
-    });
-    yield;
+    var err, buf; fs.readFile('./config.js', function(errT, bufT) { err=errT;  buf=bufT;  flow.next();  });  yield;     if(err) {console.error(err); return;}
+    strConfig=buf.toString();
     //require('./config.js');    //require('./config.example.js');
   } 
   
@@ -199,7 +195,7 @@ var flow=( function*(){
       if(StrFile.indexOf(filename)!=-1){
         console.log(filename+' changed: '+ev);
         var flowWatch=( function*(){ 
-          var err=yield* readFileToCache.call({flow:flowWatch}, filename); if(err) console.log(err.message);
+          var err=yield* readFileToCache.call({flow:flowWatch}, filename); if(err) console.error(err);
         })(); flowWatch.next();
       }
     });
@@ -209,7 +205,7 @@ var flow=( function*(){
       if(StrFile.indexOf(filename)!=-1){
         console.log(filename+' changed: '+ev);
         var flowWatch=( function*(){ 
-          var err=yield* readFileToCache.call({flow:flowWatch}, 'stylesheets/'+filename); if(err) console.log(err.message);
+          var err=yield* readFileToCache.call({flow:flowWatch}, 'stylesheets/'+filename); if(err) console.error(err);
         })(); flowWatch.next();
       }
     });
@@ -218,7 +214,7 @@ var flow=( function*(){
   CacheUri=new CacheUriT();
   for(var i=0;i<StrFilePreCache.length;i++) {
     var filename=StrFilePreCache[i];
-    var err=yield* readFileToCache.call({flow:flow}, filename); if(err) {  console.log(err.message);  return;}
+    var err=yield* readFileToCache.call({flow:flow}, filename); if(err) {  console.error(err);  return;}
   }
   yield* writeCacheDynamicJS.call({flow:flow});
   
@@ -244,7 +240,7 @@ var flow=( function*(){
         err=errT; intCount=intCountT; if(semY) { req.flow.next(); } semCB=1;
       });
       if(!semCB) { semY=1; yield;}
-      if(err) {console.log(err); return;}
+      if(err) {console.error(err); return;}
       if(intCount>intDDOSMax) {res.outCode(429,"Too Many Requests ("+intCount+"), wait "+tDDOSBan+"s\n"); return; }
 
 

@@ -68,7 +68,7 @@ app.reqBU=function*(strArg) {
 
   //var dateTrash=new Date();
   var Val=arrName;
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) {  res.out500(err); return; }
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) {  res.out500(err); return; }
   
   var File=results[0]; //console.log('len:'+ File.length);
   var zipfile = new NodeZip();
@@ -91,7 +91,7 @@ app.reqBU=function*(strArg) {
     var leafDataDir='mmmWikiData';
     var fsPage=path.join(__dirname, '..', leafDataDir, outFileName); 
     var err;  fs.writeFile(fsPage, outdata, 'binary', function(errT){ err=errT;  flow.next();  });   yield;
-    if(err ) { console.log(err); res.out500(err); }
+    if(err) { console.log(err); res.out500(err); }
     res.out200('OK');
   }else{    
     var objHead={"Content-Type": 'application/zip', "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
@@ -123,7 +123,7 @@ app.reqBUMeta=function*(strArg) {
   Sql.push("SELECT www AS wwwCommon FROM "+siteTab+" WHERE boDefault=1;");
   var sql=Sql.join('\n');
   var Val=[];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) {  res.out500(err); return; }
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) {  res.out500(err); return; }
   
   //var matPage=results[0], matImage=results[1], matVideo=results[2], matRedirect=results[3], matWWWCommon=results[4];
   var matSite=results[0], matPage=results[1], matImage=results[2], matVideo=results[3], matRedirect=results[4], matWWWCommon=results[5];
@@ -182,7 +182,7 @@ app.reqBUMeta=function*(strArg) {
     var leafDataDir='mmmWikiData';
     var fsPage=path.join(__dirname, '..', leafDataDir, outFileName); 
     var err;  fs.writeFile(fsPage, outdata, 'binary', function(errT){ err=errT;  flow.next();  });   yield;
-    if(err ) { console.log(err); res.out500(err); }
+    if(err) { console.log(err); res.out500(err); }
     res.out200('OK');
   }else{    
     var objHead={"Content-Type": 'application/zip', "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
@@ -209,7 +209,7 @@ app.reqBUMetaSQL=function*() {
   Sql.push("SELECT www AS wwwCommon FROM "+siteTab+" WHERE boDefault=1;");
   var sql=Sql.join('\n');
   var Val=[];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
 
   var matPage=results[0], matImage=results[1], matVideo=results[2], matRedirect=results[3], matWWWCommon=results[4];
 
@@ -303,7 +303,7 @@ app.reqIndex=function*() {
   var boEmptySiteTab=0;
 
     // getInfoNData
-  var {err,row:rowA}=yield* getInfoNData.call(this); if(err) { res.out500(err); return;   }
+  var [err,rowA]=yield* getInfoNData.call(this); if(err) { res.out500(err); return;   }
   
   var mess=rowA.mess; 
   if(mess=='boEmptySiteTab'){
@@ -366,11 +366,11 @@ app.reqIndex=function*() {
 
     if(!boValidServerCache){
         // parse
-      var {err}=yield* parse.call(this); { res.out500(err); return; }
+      var [err]=yield* parse.call(this); if(err) { res.out500(err); return; }
 
           // setNewCacheSQL
       var {sql, Val, nEndingResults}=createSetNewCacheSQL(req.wwwSite, this.queredPage, this.rev, this.strHtmlText, this.eTag, this.arrSub, this.StrSubImage); 
-      var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) {  res.out500(err); return; }
+      var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) {  res.out500(err); return; }
       var iRowLast=results.length-nEndingResults-1;
       var mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
       
@@ -622,7 +622,7 @@ app.reqMediaImage=function*(){
     // Get info from imageTab
   var sql="SELECT idImage, UNIX_TIMESTAMP(created) AS created, idFile, eTag, imageName FROM "+imageTab+" WHERE imageName=?";
   var Val=[nameOrg];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
   var c=results.length;    if(c==0) {res.out404('Not Found'); return;}
   //var tmp=results[0];
   //var idImage=tmp.idImage, orgTime=new Date(tmp.created*1000), idFileOrg=tmp.idFile, eTagOrg=tmp.eTag, nameCanonical=tmp.imageName;
@@ -652,7 +652,7 @@ app.reqMediaImage=function*(){
 
   var sql="SELECT data FROM "+fileTab+" WHERE idFile=?";
   var Val=[idFileOrg];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
   var c=results.length;    if(c!=1) {res.out500('c!=1');return;}
   var {data}=results[0];
   var eTagOrg=md5(data);  res.setHeader('Last-Modified', maxModTime.toUTCString());    res.setHeader('ETag', eTagOrg); res.setHeader('Content-Length',data.length);
@@ -674,7 +674,7 @@ app.reqMediaImageThumb=function*(){
   else{ strDim="(width=? OR height=?)"; arrDim=[wMax,hMax]; }
   var sql="SELECT UNIX_TIMESTAMP(created) AS created, idFile,eTag FROM "+thumbTab+" WHERE idImage=? AND "+strDim;
   var Val=array_merge([idImage],arrDim);
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
   var c=results.length;
   var tmp=results[0];
   var thumbTime=false, idFileThumb, eTagThumb; if(c){ thumbTime=new Date(tmp.created*1000); idFileThumb=tmp.idFile; eTagThumb=tmp.eTag;  }
@@ -690,7 +690,7 @@ app.reqMediaImageThumb=function*(){
   if(thumbTime!==false && thumbTime>=maxModTime) {  
     var sql="SELECT data FROM "+fileTab+" WHERE idFile=?";
     var Val=[idFileThumb];
-    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
     var c=results.length;    if(c!=1) {res.out500('c!=1');return;}
     var {data}=results[0];
     
@@ -714,7 +714,7 @@ app.reqMediaImageThumb=function*(){
     // Fetch original data from db
   var sql="SELECT data FROM "+fileTab+" WHERE idFile=?";
   var Val=[idFileOrg];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
   var c=results.length;    if(c!=1) {res.out500('c!=1');return;}
   var {data:strDataOrg}=results[0];
        
@@ -775,7 +775,7 @@ app.reqMediaImageThumb=function*(){
   var Val=[idImage,wNew,hNew,strDataThumb,eTagThumb];
   Sql.push("SELECT @created;");
   var sql=Sql.join('\n');
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
   var thumbTime=new Date(results[1]['@created']);
   if(bo301ToOrg) { res.out301Loc(nameCanonical); return; }
 
@@ -809,7 +809,7 @@ app.reqMediaVideo=function*(){
     // Get info from videoTab
   var sql="SELECT idVideo, UNIX_TIMESTAMP(created) AS created, idFile, eTag, size, name FROM "+videoTab+" WHERE name=?";
   var Val=[nameOrg];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
   var c=results.length; if(c==0) {res.out404('Not Found'); return;}
   //var tmp=results[0];
   //var idVideo=tmp.idVideo, orgTime=new Date(tmp.created*1000), idFileOrg=tmp.idFile, eTagOrg=tmp.eTag, total=tmp.size, nameCanonical=tmp.name;
@@ -838,7 +838,7 @@ app.reqMediaVideo=function*(){
   //var sql="SELECT data FROM "+fileTab+" WHERE idFile=?";
   var sql="SELECT substr(data, "+(start+1)+", "+chunksize+") AS data FROM "+fileTab+" WHERE idFile=?";
   var Val=[idFileOrg];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
   var c=results.length; if(c==0) {res.out404('Not Found');  return;}
   var c=results.length; if(c!=1) {res.out500('c!=1'); return;}
   var {data:buf}=results[0];
@@ -877,7 +877,7 @@ app.reqSiteMap=function*() {
   //var sql="SELECT pageName, boOR, boOW, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther FROM "+pageLastView+" WHERE !(pageName REGEXP '^template:.*') AND boOR=1 AND boSiteMap=1";
   var sql="SELECT boTLS, pageName, boOR, boOW, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther FROM "+pageLastView+" WHERE www=? AND !(pageName REGEXP '^template:.*') AND boOR=1 AND boSiteMap=1";
   var Val=[wwwSite];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
   var Str=[];
   Str.push('<?xml version="1.0" encoding="UTF-8"?>');
   Str.push('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
@@ -913,7 +913,7 @@ app.reqRobots=function*() {
   //var sql="SELECT pageName, boOR, boOW, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther FROM "+pageLastView+" WHERE !(pageName REGEXP '^template:.*') AND boOR=1 AND boSiteMap=1";
   var sql="SELECT boTLS, pageName, boOR, boOW, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther FROM "+pageLastView+" WHERE www=? AND !(pageName REGEXP '^template:.*') AND boOR=1 AND boSiteMap=1"; 
   var Val=[req.wwwSite];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
   var Str=[];
   Str.push("User-agent: Google"); 
   Str.push("Disallow: /");
@@ -948,7 +948,7 @@ app.reqMonitor=function*(){
 
 
     var sql=Sql.join('\n'), Val=[];
-    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
 
     var resP=results[0], nEdit=results[1][0].n, pageName=nEdit==1?resP[0].siteName+':'+resP[0].pageName:nEdit;
     var resI=results[2], nImage=results[3][0].n, imageName=nImage==1?resI[0].imageName:nImage;
@@ -993,7 +993,7 @@ app.reqStat=function*(){
    LEFT JOIN "+videoTab+" vid ON f.idFile=vid.idFile");
 
   var sql=Sql.join('\n'), Val=[];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
     
   var nVersion=results[0][0].n, nImage=results[1][0].n, nThumb=results[2][0].n, nVideo=results[3][0].n, nFile=results[4][0].n, resT=results[5];
 
@@ -1176,6 +1176,7 @@ app.SetupSql.prototype.createTable=function(boDropOnly){
   #FOREIGN KEY (idPage, idSite) REFERENCES "+pageTab+"(idPage, idSite) ON DELETE CASCADE \n\
   FOREIGN KEY (idPage) REFERENCES "+pageTab+"(idPage) ON DELETE CASCADE \n\
   ) ENGINE="+engine+" COLLATE "+collate+""); 
+
 
   // subTab used for: get info about parent, getting nSub of page, storing old data for nParentTab, get templateExistanceArray, get histograms for parents
   // Why is subTab (parent-child-links) needed: 
@@ -1598,6 +1599,27 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
         END LOOP;
         CLOSE cursor_i;
       END;
+    END`);
+ 
+
+  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"calcNParent");
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`calcNParent()
+    proc_label:BEGIN 
+    START TRANSACTION;
+    #SELECT idSite, pageName, COUNT(idPage IS NOT NULL) AS nParent FROM "+subTab+" GROUP BY idSite, pageName;
+TRUNCATE `+nParentTab+`;
+INSERT INTO `+nParentTab+` SELECT idSite, pageName, COUNT(idPage IS NOT NULL) AS nParent FROM `+subTab+` GROUP BY idSite, pageName;
+    COMMIT;
+    END`);
+    
+  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"calcNParentI");
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`calcNParentI()
+    proc_label:BEGIN 
+    START TRANSACTION;
+    #SELECT idSite, pageName, COUNT(idPage IS NOT NULL) AS nParent FROM "+subTab+" GROUP BY idSite, pageName;
+TRUNCATE `+nParentITab+`;
+INSERT INTO `+nParentITab+` SELECT imageName, COUNT(idPage IS NOT NULL) AS nParent FROM `+subImageTab+` GROUP BY imageName;
+    COMMIT;
     END`);
  
     
@@ -2183,7 +2205,7 @@ app.SetupSql.prototype.doQuery=function*(strCreateSql, flow){
   
   var SqlA=this[strMeth](boDropOnly); 
   var strDelim=';', sql=SqlA.join(strDelim+'\n')+strDelim, Val=[];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);
   var tmp=createMessTextOfMultQuery(SqlA, err, results);  console.log(tmp);
   if(err){ debugger;  return; }
   

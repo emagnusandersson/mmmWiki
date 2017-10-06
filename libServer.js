@@ -82,7 +82,7 @@ parse=function*() { // Should be seen as a method  (assigns things to this)
     var strQ=array_fill(len,'?').join(', ');
     var sql="SELECT pageName, data FROM "+pageLastView+" p JOIN "+fileTab+" f WHERE f.idFile=p.idFile AND www=? AND pageName IN ("+strQ+")";
     var Val=[this.req.wwwSite].concat(this.StrTemplate);
-    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return {err:err}; 
+    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return [err]; 
      
     for(var i=0;i<results.length;i++){ var tmpR=results[i]; objTemplate[tmpR.pageName]=tmpR.data; }
   }
@@ -100,7 +100,7 @@ parse=function*() { // Should be seen as a method  (assigns things to this)
     var strQ=array_fill(len,'?').join(', ');
     var sql="SELECT pageName FROM "+pageLastView+" WHERE pageName IN ("+strQ+") AND www=?";
     var Val=this.StrSub.concat(this.req.wwwSite);
-    var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return {err:err}; 
+    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return [err]; 
     
     for(var i=0;i<results.length;i++){ var tmpR=results[i]; objExistingSub[tmpR.pageName]=1; }
   }
@@ -110,14 +110,14 @@ parse=function*() { // Should be seen as a method  (assigns things to this)
   this.strHtmlText=mPa.text;  this.arrSub=mPa.arrSub; this.eTag=calcETag.call(this);
 
   //callback(null,0);
-  return {err:null};
+  return [null];
 }
 
 getInfoNData=function*() {
   var req=this.req, flow=req.flow;
   var sql="CALL "+strDBPrefix+"getInfoNData(?, ?, ?, ?, ?, ?, ?);"; 
   var Val=[this.boFront, req.boTLS, req.wwwSite, this.queredPage, this.rev, this.eTagIn, this.requesterCacheTime/1000];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return {err:err};
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return [err];
   var len=results.length, iRowLast=len-2; 
   var rowLast=results[iRowLast][0]; 
   //if('strEditText' in rowLast) rowLast.strEditText=rowLast.strEditText?rowLast.strEditText.toString():'';
@@ -151,7 +151,7 @@ getInfoNData=function*() {
   }
 
   //callback(null,rowLast);
-  return {err:null, row:rowLast};  
+  return [null, rowLast];  
 }
 
 
@@ -159,7 +159,7 @@ getInfo=function*() {
   var Ou={};
   var req=this.req, flow=req.flow;
   var sql="CALL "+strDBPrefix+"getInfo(?,?);", Val=[req.wwwSite, this.queredPage];
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return [err];
   var rowLast;
   if(results[0].length==0) { rowLast={mess:'noSuchPage'}; }
   else {
@@ -168,7 +168,7 @@ getInfo=function*() {
     rowLast.tModCache=new Date(rowLast.tModCache*1000);
   }
   //callback(null,rowLast);
-  extend(Ou, {mess:'OK', row:rowLast}); return Ou; 
+  return [null, rowLast]; 
 }
 
 
@@ -242,7 +242,7 @@ is_crawler=function() {
 
 
 
-
+/*
   // getSetting and setSetting aren't maintained or used, I just keep them around because they might become useful.
 getSetting=function*(inObj){ 
   var req=this.req;
@@ -250,7 +250,7 @@ getSetting=function*(inObj){
   if( count(array_diff(inObj,['lastOthersEdit','lastOthersUpload'])) ) mesEO(__LINE__,'Illegal invariable');  strV=inObj.join("', '");;
   var sth=dbh.prepare("SELECT * FROM "+settingTab+" WHERE name IN('"+strV+"')");    if(!sth.execute()) mesESqlO(sth,__LINE__);
   while(1){   tmp=sth.fetch(PDO.FETCH_NUM); if(!tmp) break; Ou[tmp[0]]=tmp[1];  }
-  return {err:null, result:[Ou]};
+  return [null, [Ou]];
 }
 
 setSetting=function*(inObj){ 
@@ -266,9 +266,9 @@ setSetting=function*(inObj){
     if(!sth.execute([name,value,value])) mesESqlO(sth,__LINE__);
     Ou[name]=value;
   }
-  return {err:null, result:[Ou]};
+  return [null, [Ou]];
 }
-
+*/
 
 
 

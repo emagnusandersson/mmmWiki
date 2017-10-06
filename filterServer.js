@@ -70,7 +70,6 @@ setUpCond=function(KeySel, StrOrderFilt, Prop, inObj){
 getHist=function*(flow, mysqlPool, arg){
   var Sql=[], TypeNInd=[], nFilt=arg.StrOrderFilt.length;
   var WhereWExtra=array_mergeM(arg.Where,arg.WhereExtra);
-  var Ou={err:null};
   for(var i=0;i<arg.StrOrderFilt.length;i++){
     var name=arg.StrOrderFilt[i];
     var pre; if('pre' in arg.Prop[name]) pre=arg.Prop[name].pre; else pre=preDefault;
@@ -113,7 +112,7 @@ getHist=function*(flow, mysqlPool, arg){
   }
   var sql=Sql.join('\n'), Val=[]; //set GLOBAL max_heap_table_size=128*1024*1024, GLOBAL tmp_table_size=128*1024*1024
 //debugger
-  var {err, results}=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) { extend(Ou, {err:err}); return Ou; }
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return [err];
   var NInRelaxedCond=[], Hist=[];
   for(var i=0;i<results.length;i++){
     var [kind,ii]=TypeNInd[i]; 
@@ -133,7 +132,7 @@ getHist=function*(flow, mysqlPool, arg){
       Hist[ii].push(boTrunk);  // The last item marks if the second-last-item is a trunk (remainder)
     }
   }
-  extend(Ou, {Hist:Hist});  return Ou;
+  return [null,Hist];
 
 }
 

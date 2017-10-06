@@ -22,9 +22,9 @@ myQueryGen=function*(flow, sql, Val, pool){
         console.log('err.code: '+err.code);
         if(err.code=='PROTOCOL_CONNECTION_LOST' || err.code=='ECONNREFUSED' || err.code=='ECONNRESET'){
           setTimeout(function(){ flow.next();}, 2000); yield;  continue;
-        } else { console.log('Can\'t handle: err.code: '+err.code); return {err:err}; }
+        } else { console.log('Can\'t handle: err.code: '+err.code); return [err]; }
       }
-      else { console.log('No \'code\' in err'); return {err:err}; }
+      else { console.log('No \'code\' in err'); return [err]; }
     }
   
     connection.query(sql, Val, function(errT, resultsT, fieldsT) { err=errT; results=resultsT; fields=fieldsT; flow.next();}); yield;
@@ -41,7 +41,7 @@ myQueryGen=function*(flow, sql, Val, pool){
     }
     else {break;}
   }
-  return {err:err, results:results, fields:fields};
+  return [err, results, fields];
   
 }
 
