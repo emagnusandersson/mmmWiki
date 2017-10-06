@@ -28,7 +28,7 @@ imageSize = require('image-size');
 NodeZip=require('node-zip');
 //redis = require("then-redis");
 redis = require("redis");
-captchapng = require('captchapng');
+//captchapng = require('captchapng');
 //Neo4j = require('neo4j-transactions');
 require('./lib.js');
 require('./libServerGeneral.js');
@@ -41,6 +41,7 @@ mongodb = require('mongodb');  MongoClient = mongodb.MongoClient;
 neo4j = require('neo4j-driver').v1; // Official
 //neo4j = require('neo4j'); // Thingdom
 require('./libNeo4j.js');
+var argv = require('minimist')(process.argv.slice(2));
 
 strAppName='mmmWiki';
 app=(typeof window==='undefined')?global:window;
@@ -52,38 +53,20 @@ boAF=strInfrastructure=='af';
 boLocal=strInfrastructure=='local'; 
 boDO=strInfrastructure=='do'; 
 
-var objSiteDefaultSetup={www:'', boTLS:0, strSiteName:'default'};
-interpretArgv=function(){
-  var myArg=process.argv.slice(2);
-  for(var i=0;i<myArg.length;i++){
-    var Match=RegExp("^(-{1,2})(.*)$").exec(myArg[i]);
-    if(Match[1]=='-') {
-      var argCur=Match[2][0];
-      if(argCur=='p') port=Match[2].substr(1);
-      else if(argCur=='h') helpTextExit();
-    }else if(Match[1]=='--') {
-      var argCur=Match[2], tmpA='createSiteDefault';
-      if(argCur.slice(0,tmpA.length)==tmpA) objSiteDefaultSetup.www=Match[2].substr(tmpA.length);
-      var StrArg=['boTLS', 'strSiteName'];
-      for(var j=0;j<StrArg.length;j++){
-        var tmpA=StrArg[j];
-        if(argCur.slice(0,tmpA.length)==tmpA) objSiteDefaultSetup[tmpA]=Match[2].substr(tmpA.length);
-      }
-      if(argCur=='help') helpTextExit();
-    }
-  }
-}
+
 
 helpTextExit=function(){
   var arr=[];
   arr.push('USAGE script [OPTION]...');
-  arr.push('\t-h, --help\t\tDisplay this text');
-  arr.push('\t-p[PORT]\t\tPort number (default: 5000)');
-  arr.push('\t--createSiteDefault[DOMAIN]. The domain of the default site');
-  arr.push('\tIf --createSiteDefault then the following options can also be set for the default site');
-  arr.push('\t\t--vPassword[VPASSWORD]: VPASSWORD=administrator (view) password (for reading). Default:123.');
-  arr.push('\t\t--aPassword[APASSWORD]: APASSWORD=administrator password for writing etc. Default:123');
-  arr.push('\t\t--boTLS[BOTLS]: If tls is going to be used. Default:0 (false)');
+  arr.push('  -h, --help                          Display this text');
+  arr.push('  -p, --port [PORT]                   Port number (default: 5000)');
+  arr.push('  -c, --createSiteDefault [DOMAIN]    Create a default site with the domain name DOMAIN');
+  arr.push('');
+  arr.push('  If --createSiteDefault is set then the following options can also be used:');
+  //arr.push('  --vPassword[VPASSWORD]: VPASSWORD=administrator (view) password (for reading). Default:123.');
+  //arr.push('  --aPassword[APASSWORD]: APASSWORD=administrator password for writing etc. Default:123');
+  arr.push('  --strSiteName [strSiteName]         Name of the created site (default:"default")');
+  arr.push('  --boTLS [BOTLS]                     If TLS is going to be used on the created site (default:false)');
 
   console.log(arr.join('\n'));
   process.exit(0);
@@ -105,6 +88,8 @@ if(  (urlRedis=process.env.REDISTOGO_URL)  || (urlRedis=process.env.REDISCLOUD_U
 process.on('exit', function (){
   console.log('Goodbye!');
 });
+
+
 
 
     // Set up sessionNeo4j
@@ -133,21 +118,20 @@ var flow=( function*(){
   maxAdminUnactivityTime=5*60;  
   intDDOSMax=100; tDDOSBan=5; 
   strSalt='abcdef';
-  interpretArgv();
-
+  strBTC="";
+  ppStoredButt="";
+  
+  port=argv.p||argv.port||5000;
+  if(argv.h || argv.help) {helpTextExit(); return;}
 
   var strConfig;
   if(boHeroku){ 
-    if(!process.env.jsConfig) { console.log('jsConfig-environment-variable is not set'); process.exit(1);}
+    if(!process.env.jsConfig) { console.error(new Error('jsConfig-environment-variable is not set')); return;}  //process.exit(1);
     strConfig=process.env.jsConfig||'';
   }
   else{
-    fs.readFile('./config.js', function(errT, bufT) { //, this.encRead
-      if(errT){  console.log(errT); }
-      strConfig=bufT.toString();
-      flow.next();
-    });
-    yield;
+    var err, buf; fs.readFile('./config.js', function(errT, bufT) { err=errT;  buf=bufT;  flow.next();  });  yield;     if(err) {console.error(err); return;}
+    strConfig=buf.toString();
     //require('./config.js');    //require('./config.example.js');
   } 
   
@@ -170,37 +154,31 @@ var flow=( function*(){
   require('./parserTable.js'); 
 
 
-
-  var urlMongo = 'mongodb://localhost:27017/myproject';
-  dbMongo=null;
-  var err;
-  MongoClient.connect(urlMongo, function(errT, dbT) {
-    err=errT; dbMongo=dbT;
-    flow.next();
-  });
-  yield;
-  if(err) {console.log(err); return; }
+  var urlMongo = 'mongodb://localhost:27017';
+  var dbMongoParent=null;
+  var err;  MongoClient.connect(urlMongo, function(errT, dbT) { err=errT; dbMongoParent=dbT; flow.next(); }); yield;   if(err) {console.error(err); return; }
+  dbMongo = dbMongoParent.db('myproject');
   
   //setUpMysqlPool();
 
-  filterQueries=new FilterQueries();  var objT=yield* filterQueries.readQueryFile(flow);  if(objT.err) console.log(objT.err);
+  filterQueries=new FilterQueries();  var [err]=yield* filterQueries.readQueryFile(flow);  if(err) {console.error(err); return; }
   myNeo4j=new MyNeo4j();
   
   SiteName=[strAppName]; // To make the code analog to my other programs :-)
 
-    // Do db-query if --sqlXXXX was set in the argument
-  if(objSiteDefaultSetup.www){
+    // Do db-query if --createSiteDefault was set in the arguments
+  if(argv.createSiteDefault || argv.c){
+    var www=argv.c || argv.createSiteDefault;
+    if(typeof www!='string') {console.log( "c or createSiteDefault should be followed with the domain name you want to create."); process.exit(-1); return; }
     var tTmp=new Date().getTime();
-    //var objSetupSql=new SetupSql(); yield* objSetupSql.doQuery(strCreateCql,flow);
-
-    var objT=yield* app.setUpNeo(flow, objSiteDefaultSetup);
-    if(objT.mess=='err') { console.log(objT.err); return; }
+    var o={boTLS:argv.boTLS||false, www:www||'localhost', strSiteName:argv.strSiteName||'default'};
+    var [err]=yield* app.setUpNeo(flow, o);  if(err) {console.error(err); process.exit(-1); return; }
   
     console.log('Time elapsed: '+(new Date().getTime()-tTmp)/1000+' s'); 
     process.exit(0);
   }
 
-  bootTime=new Date();  strBootTime=bootTime.toISOStringMy();
+  tIndexMod=new Date(); tIndexMod.setMilliseconds(0);
 
   ETagUri={}; CacheUri={};
 
@@ -228,7 +206,7 @@ var flow=( function*(){
       if(StrFile.indexOf(filename)!=-1){
         console.log(filename+' changed: '+ev);
         var flowWatch=( function*(){ 
-          var err=yield* readFileToCache.call({flow:flowWatch}, filename); if(err) console.log(err.message);
+          var [err]=yield* readFileToCache.call({flow:flowWatch}, filename); if(err) {console.error(err); return; }
         })(); flowWatch.next();
       }
     });
@@ -238,7 +216,7 @@ var flow=( function*(){
       if(StrFile.indexOf(filename)!=-1){
         console.log(filename+' changed: '+ev);
         var flowWatch=( function*(){ 
-          var err=yield* readFileToCache.call({flow:flowWatch}, 'stylesheets/'+filename); if(err) console.log(err.message);
+          var [err]=yield* readFileToCache.call({flow:flowWatch}, 'stylesheets/'+filename); if(err) {console.error(err); return; }
         })(); flowWatch.next();
       }
     });
@@ -247,15 +225,16 @@ var flow=( function*(){
   CacheUri=new CacheUriT();
   for(var i=0;i<StrFilePreCache.length;i++) {
     var filename=StrFilePreCache[i];
-    var err=yield* readFileToCache.call({flow:flow}, filename); if(err) {  console.log(err.message);  return;}
+    var [err]=yield* readFileToCache.call({flow:flow}, filename); if(err) {  console.error(err.message);  return;}
   }
-  yield* writeCacheDynamicJS.call({flow:flow});
+  var [err]=yield* writeCacheDynamicJS.call({flow:flow});   if(err) {  console.error(err.message);  return;}
   
 
   handler=function(req, res){
     req.flow=(function*(){
       if(typeof isRedirAppropriate!='undefined'){ 
-        var tmpUrl=isRedirAppropriate(req); if(tmpUrl) { res.out301(tmpUrl); return; }
+        //var tmpUrl=isRedirAppropriate(req); if(tmpUrl) { res.out301(tmpUrl); return; }
+        var tmpUrl=isRedirAppropriate(req); if(tmpUrl) { res.out200('The domain name has changed, use: '+tmpUrl+' instead'); return; }
       }
     
       var cookies = parseCookies(req);
@@ -263,8 +242,7 @@ var flow=( function*(){
 
 
       var ipClient=getIP(req);
-      var redisVarSession=sessionID+'_Main';
-      var redisVarCounter=sessionID+'_Counter', redisVarCounterIP=ipClient+'_Counter'; 
+      var redisVarSession=sessionID+'_Main', redisVarCounter=sessionID+'_Counter', redisVarCounterIP=ipClient+'_Counter'; 
 
 
         // get intCount
@@ -273,7 +251,7 @@ var flow=( function*(){
         err=errT; intCount=intCountT; if(semY) { req.flow.next(); } semCB=1;
       });
       if(!semCB) { semY=1; yield;}
-      if(err) {console.log(err); return;}
+      if(err) {console.error(err); return;}
       if(intCount>intDDOSMax) {res.outCode(429,"Too Many Requests ("+intCount+"), wait "+tDDOSBan+"s\n"); return; }
 
 
@@ -316,31 +294,26 @@ var flow=( function*(){
       extend(req,{www:www, sessionID:sessionID, objUrl:objUrl, boTLS:boTLS, strSchemeLong:strSchemeLong, pathName:pathName})
 
       var objReqRes={req:req, res:res};
-      if(pathName.substr(0,5)=='/sql/'){              }
-      else {
-        if(levelMaintenance){res.outCode(503, "Down for maintenance, try again in a little while."); return;}
-        if(pathName=='/'+leafBE){ var reqBE=new ReqBE(req, res);  yield* reqBE.go();    }
-        else if(pathName.indexOf('/image/')==0){  yield* reqImage.call(objReqRes);   } //RegExp('^/image/').test(pathName)
-        else if(pathName=='/captcha.png'){    yield* reqCaptcha.call(objReqRes);    }
-        else if(regexpLib.test(pathName) || regexpLooseJS.test(pathName) || regexpPakoJS.test(pathName) || pathName=='/conversion.html'){    yield* reqStatic.call(objReqRes);   }
-        else if(regexpImage.test(pathName)){  yield* reqMediaImage.call(objReqRes);   }
-        else if(regexpVideo.test(pathName)){   yield* reqMediaVideo.call(objReqRes);   }
-        else if(pathName=='/monitor.html'){   yield* reqMonitor.call(objReqRes);  }
-        else if(pathName.toLowerCase()=='/sitemap.xml'){  yield* reqSiteMap.call(objReqRes);  }
-        else if(pathName=='/robots.txt'){  yield* reqRobots.call(objReqRes);  }
-        else if(pathName=='/stat.html'){     yield* reqStat.call(objReqRes);  }
-        else if(pathName=='/BUMetaSQL'){    yield* reqBUMetaSQL.call(objReqRes,pathName);    }
-        else if(pathName.substr(0,7)=='/BUMeta'){    yield* reqBUMeta.call(objReqRes,pathName.substr(7));    }
-        else if(pathName.substr(0,3)=='/BU'){    yield* reqBU.call(objReqRes,pathName.substr(3));    }
-        else if(pathName=='/debug'){    debugger;  res.end();}
-        else if(pathName=='/mini'){
-          var tserver=(new Date()).valueOf();  
-          res.end('<script>tserver='+tserver+";tclient=(new Date()).valueOf(); console.log('tserver: '+tserver/1000);console.log('tclient: '+tclient/1000);console.log('tdiff: '+(tclient-tserver)/1000);</script>");
-        }
-        else if(pathName=='/timeZoneTest'){var dateTrash=new Date();  res.end(''+dateTrash.getTimezoneOffset());}
-        else if(pathName=='/'+googleSiteVerification) res.end('google-site-verification: '+googleSiteVerification);
-        else { yield* reqIndex.call(objReqRes);   }
-      }
+
+      if(levelMaintenance){res.outCode(503, "Down for maintenance, try again in a little while."); return;}
+      if(pathName=='/'+leafBE){ var reqBE=new ReqBE(req, res);  yield* reqBE.go();    }
+      else if(pathName.indexOf('/image/')==0){  yield* reqImage.call(objReqRes);   } //RegExp('^/image/').test(pathName)
+      //else if(pathName=='/captcha.png'){    yield* reqCaptcha.call(objReqRes);    }
+      else if(regexpLib.test(pathName) || regexpLooseJS.test(pathName) || regexpPakoJS.test(pathName) || pathName=='/conversion.html'){    yield* reqStatic.call(objReqRes);   }
+      else if(regexpImage.test(pathName)){  yield* reqMediaImage.call(objReqRes);   }
+      else if(regexpVideo.test(pathName)){   yield* reqMediaVideo.call(objReqRes);   }
+      else if(pathName=='/monitor.html'){   yield* reqMonitor.call(objReqRes);  }
+      else if(pathName.toLowerCase()=='/sitemap.xml'){  yield* reqSiteMap.call(objReqRes);  }
+      else if(pathName=='/robots.txt'){  yield* reqRobots.call(objReqRes);  }
+      else if(pathName=='/stat.html'){     yield* reqStat.call(objReqRes);  }
+      else if(pathName=='/BUMetaSQL'){    yield* reqBUMetaSQL.call(objReqRes,pathName);    }
+      else if(pathName.substr(0,7)=='/BUMeta'){    yield* reqBUMeta.call(objReqRes,pathName.substr(7));    }
+      else if(pathName.substr(0,3)=='/BU'){    yield* reqBU.call(objReqRes,pathName.substr(3));    }
+      else if(pathName=='/debug'){    debugger;  res.end();}
+      else if(pathName=='/timeZoneTest'){var dateTrash=new Date();  res.end(''+dateTrash.getTimezoneOffset());}
+      else if(pathName=='/'+googleSiteVerification) res.end('google-site-verification: '+googleSiteVerification);
+      else { yield* reqIndex.call(objReqRes);   }
+      
     })(); req.flow.next();
   }
 

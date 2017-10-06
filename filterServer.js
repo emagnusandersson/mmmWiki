@@ -3,11 +3,12 @@
 
 FilterQueries=app.SelectFilter=function(){
   this.regWhereWExt=new RegExp('\\$whereWExt', 'g'); this.regWhere=new RegExp('\\$where', 'g'); this.regColumn=new RegExp('\\$column', 'g'); this.regBucket=new RegExp('\\$bucket', 'g');
+  this.regReturn=new RegExp('\\$return', 'g');
 }
 FilterQueries.prototype.readQueryFile=function*(flow){
-  var Ou={}, buf;
-  fs.readFile('./mmmWiki_filterqueries.cyp', function(errT, bufT) {  Ou.err=errT; buf=bufT;  flow.next(); });   yield;
-  if(!Ou.err){    var strCqlOrg=buf.toString(); this.objCqlFilter=splitCql(strCqlOrg);    }
+  var err, buf;
+  fs.readFile('./mmmWiki_filterqueries.cyp', function(errT, bufT) {  err=errT; buf=bufT;  flow.next(); });   yield;  if(err) return [err];
+  var strCqlOrg=buf.toString(); this.objCqlFilter=splitCql(strCqlOrg);    
     
   var arrType=['page', 'image'], arrNullFilterMode=['null', 'nullRemoved', 'all'];
   for(var i=0;i<arrType.length;i++){
@@ -16,23 +17,33 @@ FilterQueries.prototype.readQueryFile=function*(flow){
       var strNullFilterMode=arrNullFilterMode[j];
       
         // Insert $column
-      var tmpKeyOrg='List.'+type+'.'+strNullFilterMode;     this.objCqlFilter[tmpKeyOrg]=this.objCqlFilter[tmpKeyOrg].replace(this.regColumn, cqlColumn);
+      var keyCql='List.'+type+'.'+strNullFilterMode;     this.objCqlFilter[keyCql]=this.objCqlFilter[keyCql].replace(this.regColumn, cqlColumn);
       
-        // Insert $bucket
+ 
       var StrOrderFilt=type=='page'?StrOrderFiltPage:StrOrderFiltImage;
       var Prop=type=='page'?PropPage:PropImage;
       for(var k=0;k<StrOrderFilt.length;k++){
         var nameFeat=StrOrderFilt[k], prop=Prop[nameFeat], feat=prop.feat;
+        var keyCql='Hist.'+type+'.'+nameFeat+'.'+strNullFilterMode;
+        
+          // Insert $return
+        var keyRet='Hist.'+type+'.'+nameFeat+'.return';
+        if(keyRet in this.objCqlFilter)  
+          this.objCqlFilter[keyCql]=this.objCqlFilter[keyCql].replace(this.regReturn, this.objCqlFilter[keyRet]);
+          
+          // Insert $bucket
         if('min' in feat){
           var cqlBucket=JSON.stringify(feat.min);
-          var tmpKeyOrg='Hist.'+type+'.'+nameFeat+'.'+strNullFilterMode;    this.objCqlFilter[tmpKeyOrg]=this.objCqlFilter[tmpKeyOrg].replace(this.regBucket, cqlBucket);      
+          this.objCqlFilter[keyCql]=this.objCqlFilter[keyCql].replace(this.regBucket, cqlBucket);      
         }
+        
+       
       }
     }
   }
   
 
-  return Ou;
+  return [null];
 }
 
 
@@ -49,7 +60,6 @@ filtClear=function(StrOrderFilt, Prop, Filt){
 setUpArrWhereETC=function(StrOrderFilt, Prop, inObj){  // KeySel seam to something one can remove
 "use strict"
   var Filt=inObj.Filt,   Where=[], boFoundNull=0, strFeatWNull;
-  var Ou={err:false}
   var strNullFilterMode='all';
   for(var i=0;i<StrOrderFilt.length;i++){
     if(Filt[i].length==0) continue;
@@ -72,7 +82,7 @@ setUpArrWhereETC=function(StrOrderFilt, Prop, inObj){  // KeySel seam to somethi
       if(prop.boFeatWNull) {
         if(lenSpec){  
           var iNull=arrSpec.indexOf(null), boNullInSpec=iNull!=-1; if(boNullInSpec) mySplice1(arrSpec,iNull);
-          if(boFoundNull) {Ou.err="Can't have filter for both "+strFeatWNull+" and "+nameFeat; return Ou;}
+          if(boFoundNull) { return [new ErrorClient("Can't have filter for both "+strFeatWNull+" and "+nameFeat)];}
 
           // WhiteListing:
           // boNullInSpec\lenSpec  1    >1
@@ -85,11 +95,11 @@ setUpArrWhereETC=function(StrOrderFilt, Prop, inObj){  // KeySel seam to somethi
 
           if(boWhite){ // If whitelisting then null must either alone OR must not be in the list.
             if(boNullInSpec) {
-              if(lenSpec>1) {Ou.err="Null must be alone when whitelisting on the "+nameFeat+" feature. (lenSpec:"+lenSpec+")"; debugger; return Ou;}
+              if(lenSpec>1) {debugger;  return [new ErrorClient("Null must be alone when whitelisting on the "+nameFeat+" feature. (lenSpec:"+lenSpec+")")];  }
               strNullFilterMode='null'; boFilterByQuery=1; 
             }else{ strNullFilterMode='nullRemoved'; }
           }else{ // If blacklisting then null must be in the list
-            if(boNullInSpec){strNullFilterMode='nullRemoved';} else {Ou.err="Null must be in the list when backlisting on the "+nameFeat+" feature."; debugger; return Ou;}
+            if(boNullInSpec){strNullFilterMode='nullRemoved';} else {debugger;  return [new ErrorClient("Null must be in the list when backlisting on the "+nameFeat+" feature.")];}
           }
           boFoundNull=1; strFeatWNull=nameFeat;
           //extend(objFeatWNull,{entry:arrSpec[0]}); 
@@ -122,12 +132,12 @@ setUpArrWhereETC=function(StrOrderFilt, Prop, inObj){  // KeySel seam to somethi
     Where.push(arrCondFeat.join(' AND '));
   }
   //if(objFeatWNull.boFound) {  if(objFeatWNull.entry===null) { strNullFilterMode='null';} else { strNullFilterMode='nullRemoved';}    }
-  extend(Ou, {Where:Where, strNullFilterMode:strNullFilterMode}); return Ou;
+  return [null,{Where:Where, strNullFilterMode:strNullFilterMode}];
 }
 
 whereArrToStr=function(Where){
   var WhereTmp=array_filter(Where), strWhere='', strWhereWExt='WHERE '; if(WhereTmp.length) { var strTmp=WhereTmp.join(' AND '); strWhere='WHERE '+strTmp; strWhereWExt='WHERE '+strTmp+' AND' };
-  return {strWhere:strWhere, strWhereWExt:strWhereWExt};
+  return [strWhere, strWhereWExt];
 }
 
 createListQuery=function(type, strNullFilterMode, strWhere, strWhereWExt){
@@ -162,7 +172,7 @@ createHistQuery=function(type, nameFeat, strNullFilterMode, strWhere, strWhereWE
 
 
 getHist=function*(flow, arg){
-  var Ou={Hist:[]};
+  var Hist=[];
   var StrOrderFilt=arg.StrOrderFilt, nFilt=arg.StrOrderFilt.length;
   var objCqlFilter=filterQueries.objCqlFilter;
   var Where=arg.where, strNullFilterMode=arg.strNullFilterMode;
@@ -174,37 +184,35 @@ getHist=function*(flow, arg){
     
     var WhereTmp=[].concat(WhereWExtra); WhereTmp.splice(i,1);
     
-    var tmp=whereArrToStr(WhereTmp), strWhere=tmp.strWhere, strWhereWExt=tmp.strWhereWExt;
+    var [strWhere, strWhereWExt]=whereArrToStr(WhereTmp);
     
     var nCount=NaN;
     if('boCount' in prop){
       var strCql=createCountQuery(arg.type, nameFeat, strNullFilterMode, strWhere, strWhereWExt);  // cqlCount
       var Val={tNow:tNow};
-      var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-      if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+      var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err) return [err];
       var rec=records[0];   nCount=rec.nInRelaxedCond;  
     }
     
     var strCql=createHistQuery(arg.type, nameFeat, strNullFilterMode, strWhere, strWhereWExt);  // cqlHist
     var Val={tNow:tNow};
-    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-    if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+    var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);;  if(err) return [err];
     var len=records.length,   nGroupsInFeat=len,     boTrunk=len>maxGroupsInFeat,   nDisp=boTrunk?maxGroupsInFeat:len,     nWOTrunk=0;
     if(boTrunk && isNaN(nCount)) console.log('Seams '+nameFeat+'-buckets should have been counted. Got '+len+' buckets, which is more than maxGroupsInFeat: '+maxGroupsInFeat);
-    Ou.Hist[i]=[];
+    Hist[i]=[];
     for(var j=0;j<nDisp;j++){
       var tmpRObj=records[j], tmpR, bucket=tmpRObj.bucket, val=Number(tmpRObj.nBucket); 
       if(kind=='BF') tmpR=[Number(bucket), val]; 
       else if(kind[0]=='B') tmpR=[bucket, val];   
       else tmpR=[Number(bucket), val];
       nWOTrunk+=val;
-      Ou.Hist[i].push(tmpR);
+      Hist[i].push(tmpR);
     }
-    if(boTrunk){Ou.Hist[i].push(['',nCount-nWOTrunk]); } // (if boTrunk) the second-last-item is the trunk (remainder)
-    Ou.Hist[i].push(boTrunk);  // The last item marks if the second-last-item is a trunk (remainder)
+    if(boTrunk){Hist[i].push(['',nCount-nWOTrunk]); } // (if boTrunk) the second-last-item is the trunk (remainder)
+    Hist[i].push(boTrunk);  // The last item marks if the second-last-item is a trunk (remainder)
     
   }
-  return Ou;
+  return [null,Hist];
 }
 
 

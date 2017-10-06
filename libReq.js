@@ -45,8 +45,7 @@ app.reqBU=function*(strArg) {
       MATCH (s:Site)-[:hasPage]->(p:Page)-[h:hasRevision]->(r:Revision {iRev:0}) `+strWhere+`
       RETURN s.boDefault AS boDefault, s.name AS siteName, p.name AS strName, r.strEditText AS strEditText, r.tMod AS tMod, r.hash AS hash`;
     var Val={arrName:arrName};
-    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-    if(err){console.log('err'); res.out500(err);   return; } 
+    var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err){ res.out500(err);   return; } 
     var File=records;
     
     for(var i=0;i<File.length;i++) { 
@@ -60,8 +59,7 @@ app.reqBU=function*(strArg) {
   } else if(type=='image'){ 
     var strCql=`MATCH (i:Image) `+strWhereWExt+` i.boGotData RETURN i.idImage AS id, i.name AS strName, i.tMod AS tMod, i.hash AS hash`;
     var Val={arrName:arrName};
-    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-    if(err){console.log('err'); res.out500(err);   return; } 
+    var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err){ res.out500(err);   return; } 
     var File=records;
    
       // Get mongo data
@@ -71,7 +69,7 @@ app.reqBU=function*(strArg) {
     var collection = dbMongo.collection('documents'), objDoc={_id:{ "$in": arrID}};
     var err, doc;   collection.find( objDoc ).toArray(function(errT, docT) { err=errT; doc=docT;  flow.next();  });   yield;
     //var semY=0, semCB=0; collection.find( objDoc ).toArray(function(errT, docT) { err=errT; doc=docT;  if(semY) flow.next(); semCB=1;  });   if(!semCB) { semY=1; yield;}
-    if(err ) { res.out500(err); return; }
+    if(err) { res.out500(err); return; }
     var objDocIdToInd={}; for(var i=0;i<doc.length;i++){objDocIdToInd[doc[i]._id.id.toString('hex')]=i; }
     
     for(var i=0;i<File.length;i++) { 
@@ -89,22 +87,21 @@ app.reqBU=function*(strArg) {
     // Get wwwCommon. Create filename.
   var strCql=`MATCH (s:Site {boDefault:true})  RETURN s.www AS wwwCommon`; 
   var Val={};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err){console.log('err'); res.out500(err);   return; } 
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err){ res.out500(err);   return; } 
   var wwwCommon=records[0].wwwCommon;
-  var outFileName=calcBUFileName(wwwCommon,type,'zip');
   
  
     // Output data
   var objArg={type:'string'}, outdata = zipfile.generate(objArg);
   
   if(boServ){
+    var outFileName=type+'.zip';
     var leafDataDir='mmmWikiData';
-    var fsPage=path.join(__dirname, '..', leafDataDir, outFileName); 
-    var err;  fs.writeFile(fsPage, outdata, 'binary', function(errT){ err=errT;  flow.next();  });   yield;
-    if(err ) { console.log(err); res.out500(err); }
+    var fsPage=path.join(__dirname, '..', leafDataDir, 'BU', outFileName); 
+    var err;  fs.writeFile(fsPage, outdata, 'binary', function(errT){ err=errT;  flow.next();  });   yield;  if(err) { res.out500(err); return;}
     res.out200('OK');
-  }else{    
+  }else{
+    var outFileName=calcBUFileName(wwwCommon,type,'zip');
     var objHead={"Content-Type": 'application/zip', "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
     res.writeHead(200,objHead);
     res.end(outdata,'binary');
@@ -132,8 +129,7 @@ app.reqBUMeta=function*(strArg) {
     // Site
   var strCql=`MATCH (s:Site) RETURN s`;
   var Val={};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err){console.log('err'); res.out500(err);   return; } 
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err){ res.out500(err); return; } 
   
   var StrFile=['"boDefault","boTLS","urlIcon16","urlIcon200","googleAnalyticsTrackingID","aPassword","vPassword","name","www"'];
   for(var k=0;k<records.length;k++){
@@ -148,8 +144,7 @@ app.reqBUMeta=function*(strArg) {
     MATCH (s:Site)-[:hasPage]->(p:Page)-[h:hasRevision]->(r:Revision {iRev:0})
     RETURN p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, p.tCreated AS tCreated, r.tMod AS tMod, p.tLastAccess AS tLastAccess, p.nAccess AS nAccess, s.name AS siteName, p.name AS strName`;
   var Val={};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err){console.log('err'); res.out500(err);   return; } 
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err){res.out500(err); return; } 
   
   var StrFile=['"boOR","boOW","boSiteMap","tCreated","tMod","tLastAccess","nAccess","siteName","strName"'];
   for(var k=0;k<records.length;k++){
@@ -164,8 +159,7 @@ app.reqBUMeta=function*(strArg) {
     MATCH (i:Image) WHERE i.boGotData
     RETURN i.boOther AS boOther, i.tCreated AS tCreated, i.tMod AS tMod, i.tLastAccess AS tLastAccess, i.nAccess AS nAccess, i.name AS imageName`;
   var Val={};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err){console.log('err'); res.out500(err);   return; } 
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err){ res.out500(err); return; } 
 
   var StrFile=['"boOther","tCreated","tMod","tLastAccess","nAccess","imageName"'];
   for(var k=0;k<records.length;k++){
@@ -180,8 +174,7 @@ app.reqBUMeta=function*(strArg) {
     MATCH (s:Site)-[:hasRedirect]->(r:Redirect)
     RETURN r.tCreated AS tCreated, r.tMod AS tMod, r.tLastAccess AS tLastAccess, r.nAccess AS nAccess, s.name AS siteName, r.nameLC AS nameLC, r.url AS url`;
   var Val={};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err){console.log('err'); res.out500(err);   return; }
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err){res.out500(err); return; }
   
   var StrFile=['"tCreated","tMod","tLastAccess","nAccess","name","nameLC","url"'];
   for(var k=0;k<records.length;k++){
@@ -194,8 +187,7 @@ app.reqBUMeta=function*(strArg) {
     // Get wwwCommon. Create filename.
   var strCql=`MATCH (s:Site {boDefault:true})  RETURN s.www AS wwwCommon`; 
   var Val={};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err){console.log('err'); res.out500(err);   return; } 
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err){ res.out500(err); return; } 
   var wwwCommon=records[0].wwwCommon;
   var outFileName=calcBUFileName(wwwCommon,'meta','zip');
  
@@ -205,8 +197,7 @@ app.reqBUMeta=function*(strArg) {
   if(strArg=='Serv'){
     var leafDataDir='mmmWikiData';
     var fsPage=path.join(__dirname, '..', leafDataDir, outFileName); 
-    var err;  fs.writeFile(fsPage, outdata, 'binary', function(errT){ err=errT;  flow.next();  });   yield;
-    if(err ) { console.log(err); res.out500(err); }
+    var err;  fs.writeFile(fsPage, outdata, 'binary', function(errT){ err=errT;  flow.next();  });   yield;  if(err) { res.out500(err); return; }
     res.out200('OK');
   }else{    
     var objHead={"Content-Type": 'application/zip', "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
@@ -251,16 +242,14 @@ app.reqBUMetaSQL=function*() {
     // Site
   var strCql=`MATCH (s:Site) RETURN s`;
   var Val={};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err){console.log('err'); res.out500(err);   return; } 
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err){res.out500(err); return; } 
   
     // Page
   var strCql=`
     MATCH (s:Site)-[:hasPage]->(p:Page)-[h:hasRevision]->(r:Revision {iRev:0})
     RETURN p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, p.tCreated AS tCreated, r.tMod AS tMod, p.tLastAccess AS tLastAccess, p.nAccess AS nAccess, s.name AS siteName, p.name AS strName`;
   var Val={};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err){console.log('err'); res.out500(err);   return; } 
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err){ res.out500(err); return; } 
   
   var SqlB=[];
   
@@ -276,14 +265,13 @@ app.reqBUMetaSQL=function*() {
     MATCH (i:Image) WHERE i.boGotData
     RETURN i.boOther AS boOther, i.tCreated AS tCreated, i.tMod AS tMod, i.tLastAccess AS tLastAccess, i.nAccess AS nAccess, i.name AS imageName`;
   var Val={};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err){console.log('err'); res.out500(err);   return; } 
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err){ res.out500(err); return; } 
   
   for(var k=0;k<records.length;k++){
     var r=records[k], tMod=(new Date(r.tMod*1000)).toISOString().substring(0, 19).replace('T', ' ');
     var tCreated=tMod;
     var imageName=myEscapeB(r.imageName);
-    SqlB.push("UPDATE "+imageTab+" SET boOther="+r.boOther+", created='"+tCreated+"' WHERE imageName="+imageName+";");
+    SqlB.push("UPDATE "+imageTab+" SET boOther="+r.boOther+", tCreated='"+tCreated+"' WHERE imageName="+imageName+";");
   }
   
     // Redirect
@@ -291,8 +279,7 @@ app.reqBUMetaSQL=function*() {
     MATCH (s:Site)-[:hasRedirect]->(r:Redirect)
     RETURN r.tCreated AS tCreated, r.tMod AS tMod, r.tLastAccess AS tLastAccess, r.nAccess AS nAccess, s.name AS siteName, r.nameLC AS nameLC, r.url AS url`;
   var Val={};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err){console.log('err'); res.out500(err);   return; }
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err){ res.out500(err); return; }
 
   for(var k=0;k<records.length;k++){
     var r=records[k];
@@ -300,15 +287,14 @@ app.reqBUMetaSQL=function*() {
     var siteName=myEscapeB(r.siteName),  pageName=myEscapeB(r.pageName),  url=myEscapeB(r.url);
     var tCreated=(new Date(r.tCreated*1000)).toISOString().substring(0, 19).replace('T', ' '),  tLastAccess=(new Date(r.tLastAccess*1000)).toISOString().substring(0, 19).replace('T', ' ');
     tCreated=myEscapeB(tCreated),  tLastAccess=myEscapeB(tLastAccess);
-    SqlB.push("REPLACE INTO mmmWiki_redirect (idSite, pageName, url, created, nAccess, tLastAccess) (SELECT idSite, "+pageName+", "+url+", "+tCreated+", "+r.nAccess+", "+tLastAccess+" FROM mmmWiki_site WHERE siteName="+siteName+");");
+    SqlB.push("REPLACE INTO mmmWiki_redirect (idSite, pageName, url, tCreated, nAccess, tLastAccess) (SELECT idSite, "+pageName+", "+url+", "+tCreated+", "+r.nAccess+", "+tLastAccess+" FROM mmmWiki_site WHERE siteName="+siteName+");");
   }
   var sql=SqlB.join("\n");
  
     // Get wwwCommon. Create filename.
   var strCql=`MATCH (s:Site {boDefault:true})  RETURN s.www AS wwwCommon`; 
   var Val={};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err){console.log('err'); res.out500(err);   return; } 
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err){  res.out500(err); return; } 
   var wwwCommon=records[0].wwwCommon;
 
   var outFileName=calcBUFileName(wwwCommon,'meta','sql');
@@ -363,14 +349,7 @@ app.reqIndex=function*() {
        // getInfoNData
   var tx=sessionNeo4j.beginTransaction();
   var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:queredPage, iRev:iRev, eTag:eTagIn, requesterCacheTime:requesterCacheTime, boFront:1});
-  var objT=yield* getInfoNDataNeo(flow, tx, objArg);
-  if(objT.mess=='err') {
-    yield* neo4jRollbackGenerator(flow, tx);
-    res.out500('err');  return; //this.mesEO('err'); return {err:'exited'};
-  }else{
-    yield* neo4jCommitGenerator(flow, tx);
-  }
-  var objDBData=objT;
+  var [err,objDBData]=yield* getInfoNDataNeo(flow, tx, objArg);    if(err) { yield* neo4jRollbackGenerator(flow, tx); res.out500(err);  return; }    yield* neo4jCommitGenerator(flow, tx);
   var objRev;
   //res.setHeader("Set-Cookie", "myCookieUpdatedOn304Test="+randomHash());
 
@@ -385,7 +364,7 @@ app.reqIndex=function*() {
   else if(mess=='noDefaultSite'){ res.out500(mess);  return;  }
   else if(mess=='redirectTLS') { 
     var strS=Number(objDBData.boTLS)?'s':'';
-    var url='http'+strS+'://'+objDBData.www+'/'+queredPage;
+    var url='http'+strS+'://'+req.www+'/'+queredPage;
     res.out301(url);  return;
   }
   else if(mess=='noSuchPage'){
@@ -425,14 +404,8 @@ app.reqIndex=function*() {
             // refreshRevNeo
         var tx=sessionNeo4j.beginTransaction();
         var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:queredPage, iRev:iRev});
-        var objT=yield* refreshRevNeo(flow, tx, objArg);
-        if(objT.mess=='err') {
-          yield* neo4jRollbackGenerator(flow, tx);
-          res.out500('err');  return; //this.mesEO('err'); return {err:'exited'};
-        }else{
-          yield* neo4jCommitGenerator(flow, tx);
-        }
-        var objDBData=objT;
+        var [err,objDBData]=yield* refreshRevNeo(flow, tx, objArg);    if(err) { yield* neo4jRollbackGenerator(flow, tx); res.out500(err);  return; }    yield* neo4jCommitGenerator(flow, tx);
+        
         var objPage=objDBData.objPage;
         var objRev=objDBData.arrRev[iRev];
       } 
@@ -440,7 +413,7 @@ app.reqIndex=function*() {
       //res.setHeader('ETag',objRev.hash);
     } 
   }
-  else { res.out500('mess='+mess);  return; }
+  else { res.out500(new Error(mess));  return; }
   
   var www=req.www;
 
@@ -466,6 +439,8 @@ app.reqIndex=function*() {
   var uTmp=strSchemeLong+www; if(queredPage!='start') uTmp=uTmp+"/"+queredPage;  Str.push('<link rel="canonical" href="'+uTmp+'"/>');
 
 
+  var ua=req.headers['user-agent']||''; ua=ua.toLowerCase();
+  var boMSIE=RegExp('msie').test(ua), boAndroid=RegExp('android').test(ua), boFireFox=RegExp('firefox').test(ua), boIOS= RegExp('iPhone|iPad|iPod','i').test(ua);
 
 
   var strSchemeCommon='http'+(siteDefault.boTLS?'s':''),   strSchemeCommonLong=strSchemeCommon+'://';
@@ -473,12 +448,14 @@ app.reqIndex=function*() {
   //var uJQuery='https://code.jquery.com/jquery-latest.min.js';    if(boDbg) uJQuery=uCommon+'/'+flFoundOnTheInternetFolder+"/jquery-latest.js";      Str.push("<script src='"+uJQuery+"'></script>");
   //var uJQuery='https://code.jquery.com/jquery-2.1.4.min.js';    if(boDbg) uJQuery=uCommon+'/'+flFoundOnTheInternetFolder+"/jquery-2.1.4.min.js";      Str.push("<script src='"+uJQuery+"'></script>");
   var uJQuery='https://code.jquery.com/jquery-3.2.1.min.js';    if(boDbg) uJQuery=uCommon+'/'+flFoundOnTheInternetFolder+"/jquery-3.2.1.min.js";
-  Str.push('<script src="'+uJQuery+'" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>');
+  Str.push('<script src="'+uJQuery+'"  ></script>');  // integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="  crossorigin="anonymous"
 
     // If boDbg then set vTmp=0 so that the url is the same, this way the debugger can reopen the file between changes
-
+    
+    // Use normal vTmp on iOS (since I don't have any method of disabling cache on iOS devices (nor any debugging interface))
+  var boDbgT=boDbg; if(boIOS) boDbgT=0;
     // Include stylesheets
-  var pathTmp='/stylesheets/style.css', vTmp=CacheUri[pathTmp].eTag; if(boDbg) vTmp=0;    Str.push('<link rel="stylesheet" href="'+uCommon+pathTmp+'?v='+vTmp+'" type="text/css">');
+  var pathTmp='/stylesheets/style.css', vTmp=CacheUri[pathTmp].eTag; if(boDbgT) vTmp=0;    Str.push('<link rel="stylesheet" href="'+uCommon+pathTmp+'?v='+vTmp+'" type="text/css">');
 
     // Include site specific JS-files
   //var uSite=req.strSchemeLong+www;
@@ -488,7 +465,7 @@ app.reqIndex=function*() {
   var StrTmp=['filter.js', 'lib.js', 'libClient.js', 'client.js', leafCommon];
   //StrTmp=StrTmp.concat(StrPako[0]);
   for(var i=0;i<StrTmp.length;i++){
-    var pathTmp='/'+StrTmp[i], vTmp=CacheUri[pathTmp].eTag; if(boDbg) vTmp=0;    Str.push('<script src="'+uCommon+pathTmp+'?v='+vTmp+'"></script>');
+    var pathTmp='/'+StrTmp[i], vTmp=CacheUri[pathTmp].eTag; if(boDbgT) vTmp=0;    Str.push('<script src="'+uCommon+pathTmp+'?v='+vTmp+'"></script>');
   }
 
 
@@ -510,6 +487,7 @@ app.reqIndex=function*() {
   }
   Str.push(strTracker);
 
+  Str.push("<script src='https://www.google.com/recaptcha/api.js?render=explicit' async defer></script>");
 
   Str.push("\
 </head>\n\
@@ -517,7 +495,7 @@ app.reqIndex=function*() {
 <title>"+strTitle+"</title>\n\
 <div id=pageText>"+objRev.strHtmlText+"</div>\n");  
 
-  Str.push("<input type=hidden id='boLCacheObs'>");
+  Str.push("<input type=hidden id='boLCacheObs' style=\"display:none\">");
   Str.push("<script language=\"JavaScript\">");
   Str.push("function indexAssign(){");
 
@@ -547,6 +525,7 @@ app.reqIndex=function*() {
 
   Str.push("strBTC="+JSON.stringify(strBTC)+";");
   Str.push("ppStoredButt="+JSON.stringify(ppStoredButt)+";");
+  Str.push("strReCaptchaSiteKey="+JSON.stringify(strReCaptchaSiteKey)+";");
   Str.push("}");
   Str.push("</script>");
 
@@ -571,7 +550,7 @@ app.reqStatic=function*() {
   var keyCache=pathName; //if(pathName==='/'+leafSiteSpecific) keyCache=req.strSite+keyCache; 
   if(!(keyCache in CacheUri)){
     var filename=pathName.substr(1);    
-    var err=yield* readFileToCache.call({flow:req.flow}, filename);
+    var [err]=yield* readFileToCache.call({flow:req.flow}, filename);
     if(err) {
       if(err.code=='ENOENT') {res.out404(); return;}
       if('Referer' in req.headers) console.log('Referer:'+req.headers.Referer);
@@ -598,24 +577,24 @@ app.reqStatic=function*() {
 /******************************************************************************
  * reqCaptcha
  ******************************************************************************/
-app.reqCaptcha=function*(){
-  var req=this.req, res=this.res;
-  var sessionID=req.sessionID;
-  var strCaptcha=parseInt(Math.random()*9000+1000);
-  var redisVar=sessionID+'_captcha';
-  var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,strCaptcha]);
-  var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,3600]);
-  var p = new captchapng(80,30,strCaptcha); // width,height,numeric captcha
-  p.color(0, 0, 0, 0);  // First color: background (red, green, blue, alpha)
-  p.color(80, 80, 80, 255); // Second color: paint (red, green, blue, alpha)
+//app.reqCaptcha=function*(){
+  //var req=this.req, res=this.res;
+  //var sessionID=req.sessionID;
+  //var strCaptcha=parseInt(Math.random()*9000+1000);
+  //var redisVar=sessionID+'_captcha';
+  //var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,strCaptcha]);
+  //var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,3600]);
+  //var p = new captchapng(80,30,strCaptcha); // width,height,numeric captcha
+  //p.color(0, 0, 0, 0);  // First color: background (red, green, blue, alpha)
+  //p.color(80, 80, 80, 255); // Second color: paint (red, green, blue, alpha)
 
-  var img = p.getBase64();
-  var imgbase64 = new Buffer(img,'base64');
-  res.writeHead(200, {
-      'Content-Type': 'image/png'
-  });
-  res.end(imgbase64);
-}
+  //var img = p.getBase64();
+  //var imgbase64 = new Buffer(img,'base64');
+  //res.writeHead(200, {
+      //'Content-Type': 'image/png'
+  //});
+  //res.end(imgbase64);
+//}
 
 
 
@@ -660,8 +639,7 @@ app.reqMediaImage=function*(){
     SET i.nAccess=i.nAccess+1
     RETURN i`;
   var Val={strNameLC:nameAsReq.toLowerCase()};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err ) { res.out500(err); return; }
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err) { res.out500(err); return; }
   if(records.length==0) {res.out404('Not Found');  return;}
   var objImg=records[0].i, idImage=objImg.idImage;
   if(!('boGotData' in objImg)) {res.out404('Not Found');  return;}
@@ -681,7 +659,7 @@ app.reqMediaImage=function*(){
   var err, doc, collection = dbMongo.collection('documents');
   collection.find( {_id:new mongodb.ObjectID(idImage)} ).toArray(function(errT, docT) { err=errT; doc=docT;  flow.next();  });
   yield;
-  if(err ) { res.out500(err); return; }
+  if(err) { res.out500(err); return; }
   if(doc.length==0) {res.out500('Image data not found');  return;}
   var data=doc[0].data.buffer;
   var eTagOrg=md5(data);  res.setHeader('Last-Modified', tMod.toUTCString());    res.setHeader('ETag', eTagOrg); res.setHeader('Content-Length',data.length);
@@ -706,8 +684,7 @@ app.reqMediaImageThumb=function*(){
     RETURN i`;
   var nameOrgAsReqLC=nameOrgAsReq.toLowerCase();
   var Val={strNameLC:nameOrgAsReqLC};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err ) { res.out500(err); return; }
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err) { res.out500(err); return; }
   if(records.length==0) {res.out404('Not Found');  return;}
   var objImgOrg=records[0].i, idImageOrg=objImgOrg.idImage;
   if(!('boGotData' in objImgOrg)) {res.out404('Not Found');  return;}
@@ -734,8 +711,7 @@ app.reqMediaImageThumb=function*(){
     MATCH (i:Image {nameLC:$strNameLC})-[h:hasThumb]->(t:ImageThumb {width:$width})
     RETURN t`;
   var Val={strNameLC:nameOrgAsReqLC, width:intReqSize};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err ) { res.out500(err); return; }
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err) { res.out500(err); return; }
   var thumbTime=false, idThumb, hashThumb;   if(records.length) {var tmp=records[0].t; thumbTime=new Date(tmp.tMod*1000); idThumb=tmp.idThumb; hashThumb=tmp.hash;  }
 
 
@@ -752,7 +728,7 @@ app.reqMediaImageThumb=function*(){
     var err, doc, collection = dbMongo.collection('documents');
     collection.find( {_id:new mongodb.ObjectID(idThumb)}).toArray(function(errT, docT) { err=errT; doc=docT;  flow.next();  });
     yield;
-    if(err ) { res.out500(err); return; }
+    if(err) { res.out500(err); return; }
     if(doc.length==0) {console.log(nameOrgAsReqLC+' w'+intReqSize+' Thumb data not found. mongoID:'+idThumb);  } //return;
     else {
       var data=doc[0].data.buffer;
@@ -767,8 +743,7 @@ app.reqMediaImageThumb=function*(){
   
     // Get original image-data 
   var err, doc, collection = dbMongo.collection('documents');
-  collection.find( {_id:new mongodb.ObjectID(idImageOrg)} ).toArray(function(errT, docT) { err=errT; doc=docT;  flow.next();  });  yield;
-  if(err ) { res.out500(err); return; }
+  collection.find( {_id:new mongodb.ObjectID(idImageOrg)} ).toArray(function(errT, docT) { err=errT; doc=docT;  flow.next();  });  yield;   if(err) { res.out500(err); return; }
   if(doc.length==0) {res.out500('Image data not found');  return;}
   var strDataOrg=doc[0].data.buffer
 
@@ -784,15 +759,12 @@ app.reqMediaImageThumb=function*(){
     if(kind=='svg'){
 
       var pathTmp, err;
-      temporary.file(function(errT, pathT, fd) { err=errT; pathTmp=pathT; flow.next(); }); yield;
-      if(err){res.out500(err);  return;}
+      temporary.file(function(errT, pathT, fd) { err=errT; pathTmp=pathT; flow.next(); }); yield;  if(err){res.out500(err);  return;}
 
-      fs.writeFile(pathTmp, strDataOrg, function(errT) { err=errT; flow.next(); }); yield;
-      if(err){res.out500(err); return;}
+      fs.writeFile(pathTmp, strDataOrg, function(errT) { err=errT; flow.next(); }); yield;   if(err){res.out500(err); return;}
       
       var stdout;
-      im.convert(['-resize', wNew+'x'+hNew, 'svg:'+pathTmp, 'png:-'],  function(errT, stdoutT){ err=errT; stdout=stdoutT; flow.next(); }); yield;
-      if(err) {res.out500(err); return;}
+      im.convert(['-resize', wNew+'x'+hNew, 'svg:'+pathTmp, 'png:-'],  function(errT, stdoutT){ err=errT; stdout=stdoutT; flow.next(); }); yield;  if(err) {res.out500(err); return;}
       strDataThumb=new Buffer(stdout,'binary');
        
     }else{
@@ -815,8 +787,7 @@ app.reqMediaImageThumb=function*(){
       MATCH (i:Image {idImage:$idImage})
       SET i.widthSkipThumb=$widthSkipThumbNew`;
     var Val={idImage:idImageOrg, widthSkipThumbNew:widthSkipThumbNew}
-    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-    if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+    var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err){res.out500(err); return;}
     res.out301Loc(nameCanonical); return; 
   }  
 
@@ -830,15 +801,13 @@ app.reqMediaImageThumb=function*(){
   
   var tNow=unixNow(), thumbTime=new Date(tNow*1000), hashThumb=md5(strDataThumb);
   var Val={idImage:idImageOrg, width:wNew, height:hNew, tNow:tNow, size:strDataThumb.length, hash:hashThumb }
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err ) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err){res.out500(err); return;}
   var objImgThumb=records[0].t;
   
   
   var collection = dbMongo.collection('documents');
-  var result, objDoc={_id:new mongodb.ObjectID(objImgThumb.idThumb), data:strDataThumb};
-  collection.save( objDoc, function(errT, resultT) { err=errT; result=resultT;  flow.next(); });   yield;
-  if(err) { extend(Ou, {mess:'err', err:err}); return Ou; }
+  var err, result, objDoc={_id:new mongodb.ObjectID(objImgThumb.idThumb), data:strDataThumb};
+  collection.save( objDoc, function(errT, resultT) { err=errT; result=resultT;  flow.next(); });   yield;  if(err){res.out500(err); return;}
   
 
     // Echo to buffer
@@ -871,7 +840,7 @@ app.reqMediaVideo=function*(){
     // Get info from videoTab
   var sql="SELECT idVideo, UNIX_TIMESTAMP(tCreated) AS tCreated, idFile, eTag, size, name FROM "+videoTab+" WHERE name=?";
   var Val=[nameOrg];
-  var objT=yield* myQueryGen(flow, sql, Val, mysqlPool), err=objT.err; if(err) {  res.out500(err); return; }    var results=objT.results;
+  var [err,results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) { res.out500(err); return; }
   var c=results.length; if(c==0) {res.out404('Not Found'); return;}
   var tmp=results[0];
   var idVideo=tmp.idVideo, orgTime=new Date(tmp.tCreated*1000), idFileOrg=tmp.idFile, eTagOrg=tmp.eTag, total=tmp.size, nameCanonical=tmp.name;
@@ -899,7 +868,7 @@ app.reqMediaVideo=function*(){
   //var sql="SELECT data FROM "+fileTab+" WHERE idFile=?";
   var sql="SELECT substr(data, "+(start+1)+", "+chunksize+") AS data FROM "+fileTab+" WHERE idFile=?";
   var Val=[idFileOrg];
-  var objT=yield* myQueryGen(flow, sql, Val, mysqlPool), err=objT.err; if(err) {  res.out500(err); return; }    var results=objT.results;
+  var [err,results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) { res.out500(err); return; }
   var c=results.length; if(c==0) {res.out404('Not Found');  return;}
   var c=results.length; if(c!=1) {res.out500('c!=1'); return;}
   var tmp=results[0], buf=tmp.data;
@@ -938,8 +907,7 @@ app.reqSiteMap=function*() {
     MATCH (s:Site {www:$www})-[:hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE NOT p.boTemplate AND p.boOR AND p.boSiteMap
     RETURN s.boTLS AS boTLS, p.name AS pageName, p.boOR AS boOR, p.boOW AS boOW, r.tMod AS tMod`;
   var Val={www:www};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err ) { res.out500(err); return; }
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err) { res.out500(err); return; }
 
   var Str=[];
   Str.push('<?xml version="1.0" encoding="UTF-8"?>');
@@ -976,7 +944,7 @@ app.reqRobots=function*() {
   //var sql="SELECT pageName, boOR, boOW, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther FROM "+pageLastView+" WHERE !(pageName REGEXP '^template:.*') AND boOR=1 AND boSiteMap=1";
   var sql="SELECT boTLS, pageName, boOR, boOW, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther FROM "+pageLastView+" WHERE www=? AND !(pageName REGEXP '^template:.*') AND boOR=1 AND boSiteMap=1"; 
   var Val=[req.www];
-  var objT=yield* myQueryGen(flow, sql, Val, mysqlPool), err=objT.err; if(err) {  res.out500(err); return; }    var results=objT.results;
+  var [err,results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) { res.out500(err); return; }  
   var Str=[];
   Str.push("User-agent: Google"); 
   Str.push("Disallow: /");
@@ -1005,16 +973,14 @@ app.reqMonitor=function*(){
       MATCH (s:Site)-[:hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE p.boOther
       RETURN s.name AS siteName, p.name AS pageName`;
     var Val={};
-    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-    if(err ) { res.out500(err); return; }
+    var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err) { res.out500(err); return; }
 
     var nEdit=records.length, pageName=nEdit==1?records[0].siteName+':'+records[0].pageName:nEdit;
 
     var strCql=` 
       MATCH (i:Image) WHERE i.boGotData AND i.boOther RETURN i.name AS imageName`;
     var Val={};
-    var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-    if(err ) { res.out500(err); return; }
+    var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err) { res.out500(err); return; }
 
     var nImage=records.length, imageName=nImage==1?records[0].imageName:nImage;
     
@@ -1043,21 +1009,19 @@ app.reqStat=function*(){
 
   var strCql=`MATCH (i:Image) WHERE i.boGotData RETURN i.name AS imageName, i.idImage AS idImage`;
   var Val={};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err ) { res.out500(err); return; };
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err) { res.out500(err); return; };
   var nImage=records.length, arrImage=records;
 
   var strCql=`MATCH (i:Image)-[h:hasThumb]->(t:ImageThumb) RETURN i.name AS imageName, t.idThumb AS idThumb, t.width AS width, t.height AS height`;
   var Val={};
-  var {err, records}= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);
-  if(err ) { res.out500(err); return; }
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err) { res.out500(err); return; }
   var nThumb=records.length, arrThumb=records;
   
     // Get mongo ids
   var collection = dbMongo.collection('documents'); //, objDoc={{},{"_id":1}};
   var err, doc;   collection.find( {}, {"_id":1} ).toArray(function(errT, docT) { err=errT; doc=docT;  flow.next();  });   yield;
   //var semY=0, semCB=0; collection.find( objDoc ).toArray(function(errT, docT) { err=errT; doc=docT;  if(semY) flow.next(); semCB=1;  });   if(!semCB) { semY=1; yield;}
-  if(err ) { res.out500(err); return; }
+  if(err) { res.out500(err); return; }
   var objDocIdToInd={}; for(var i=0;i<doc.length;i++){objDocIdToInd[doc[i]._id.id.toString('hex')]=0; }
   var nFile=doc.length;
 

@@ -1,7 +1,7 @@
 
-  //-- 'boDefault','boTLS','urlIcon16','urlIcon200','googleAnalyticsTrackingID','aPassword','vPassword','name','www'
+  // 'boDefault','boTLS','urlIcon16','urlIcon200','googleAnalyticsTrackingID','aPassword','vPassword','name','www'
 
-  //-- Site
+  // Site
 USING PERIODIC COMMIT
 LOAD CSV WITH HEADERS FROM 'file:///site.csv' AS line
 MERGE (s:Site { name:line.name  })
@@ -15,8 +15,8 @@ SET s.boDefault=toBoolean(line.boDefault),
     s.www= line.www
 ; 
 
-  //-- "boOR","boOW","boSiteMap","tCreated","tMod","tLastAccess","nAccess","siteName","strName"
-  //-- Page
+  // "boOR","boOW","boSiteMap","tCreated","tMod","tLastAccess","nAccess","siteName","strName"
+  // Page
 USING PERIODIC COMMIT
 LOAD CSV WITH HEADERS FROM 'file:///page.csv' AS line
 MERGE (s:Site { name:line.siteName })
@@ -33,8 +33,8 @@ SET p.boOR= toBoolean(line.boOR),
     p.name= line.strName
 ; 
 
-  //-- "boOther","tMod","tLastAccess","nAccess","imageName"
-  //-- Image
+  // "boOther","tMod","tLastAccess","nAccess","imageName"
+  // Image
 USING PERIODIC COMMIT
 LOAD CSV WITH HEADERS FROM 'file:///image.csv' AS line
 MERGE (i:Image { nameLC:toLower(line.imageName) })
@@ -46,8 +46,8 @@ SET i.boOther= toBoolean(line.boOther),
     i.name= line.imageName
 ; 
 
-  //-- "tCreated","tLastAccess","nAccess","siteName","nameLC","url"
-  //-- Redirect
+  // "tCreated","tLastAccess","nAccess","siteName","nameLC","url"
+  // Redirect
 USING PERIODIC COMMIT
 LOAD CSV WITH HEADERS FROM 'file:///redirect.csv' AS line
 MERGE (s:Site { name:line.siteName })

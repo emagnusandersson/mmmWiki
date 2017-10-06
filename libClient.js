@@ -22,13 +22,6 @@ setItem=function(name,value){  if(typeof value=='undefined') value=null; localSt
 getItemS=function(name){    var tmp=sessionStorage.getItem(name);    if(tmp!==null) tmp=JSON.parse(tmp);   return tmp;   }
 setItemS=function(name,value){  sessionStorage[name]=JSON.stringify(value); }
 
-function bindEvent(element, type, handler) {
-   if(element.addEventListener) {
-      element.addEventListener(type, handler, false);
-   } else {
-      element.attachEvent('on'+type, handler);
-   }
-}
 
 uVipp0="lib/image/vipp0.png";
 uVipp1="lib/image/vipp1.png";
@@ -474,7 +467,7 @@ function popupDragExtend($area,$bubble,strTitle,$parent){
   strTitle=(typeof strTitle==='undefined')?'':strTitle;
   //var $deleteButton=$('<img>').attr({src:uDelete}).mouseover(function(){$(this).attr({src:uDelete1})}).mouseout(function(){$(this).attr({src:uDelete})})
   //     .click(function(){$bubble.closeFunc();}).css({cursor:'pointer'});
-  var $deleteButton=$('<div>').append('❌').click(function(e){
+  var $deleteButton=$('<div>').append('✖').click(function(e){
     $bubble.closeFunc(); e.preventDefault(); 
     return false;
   });

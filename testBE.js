@@ -93,11 +93,11 @@ objArg={boTLS:boTLS, www:www, strName:strName, strEditText:strEditText, strHtmlT
 
 generatorWrap=function*(){
   
-  var urlMongo = 'mongodb://localhost:27017/myproject';
-  dbMongo=null;
-  var err;
-  MongoClient.connect(urlMongo, function(errT, dbT) {err=errT; dbMongo=dbT;  flow.next();  });  yield;
-  if(err) {console.log(err); return; }
+
+  var urlMongo = 'mongodb://localhost:27017';
+  var dbMongoParent=null;
+  var err;  MongoClient.connect(urlMongo, function(errT, dbT) { err=errT; dbMongoParent=dbT; flow.next(); }); yield;   if(err) {console.error(err); return; }
+  dbMongo = dbMongoParent.db('myproject');
   
   //var objT=yield* readFilterQueriesFile(flow);   if(objT.err) console.log(objT.err);   objCqlFilter=objT.objCqlFilter;
   filterQueries=new FilterQueries();  var objT=yield* filterQueries.readQueryFile(flow);  if(objT.err) console.log(objT.err);

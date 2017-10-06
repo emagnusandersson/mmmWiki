@@ -77,11 +77,10 @@ var boStartTX=1; if(arrNoTX.indexOf(strGenerator)!=-1){ boStartTX=0; }
 
 generatorWrap=function*(){
 
-  var urlMongo = 'mongodb://localhost:27017/myproject';
-  dbMongo=null;
-  var err;
-  MongoClient.connect(urlMongo, function(errT, dbT) {err=errT; dbMongo=dbT;  flow.next();  });  yield;
-  if(err) {console.log(err); return; }
+  var urlMongo = 'mongodb://localhost:27017';
+  var dbMongoParent=null;
+  var err;  MongoClient.connect(urlMongo, function(errT, dbT) { err=errT; dbMongoParent=dbT; flow.next(); }); yield;   if(err) {console.error(err); return; }
+  dbMongo = dbMongoParent.db('myproject');
   
   if(boStartTX){
     var tx=sessionNeo4j.beginTransaction();
@@ -105,7 +104,7 @@ generatorWrap=function*(){
     }else if(strGenerator=='mergePageNeo'){ extend(objArg,{www:www, strName:strName, nChild:5, nImage:6, tNow:0, boAccDefault:true}); var objT=yield* app[strGenerator](flow, tx, objArg);
     }else if(strGenerator=='saveWhenUploadingImageNeo'){   extend(objArg,{strName:'abc.jpg', data:'aabbcc'});  var objT=yield* app[strGenerator](flow, tx, objArg);
     }
-    if(objT.mess=='err') {
+    if(objT[0]) {
       yield* neo4jRollbackGenerator(flow, tx);
     }else{
       yield* neo4jCommitGenerator(flow, tx);

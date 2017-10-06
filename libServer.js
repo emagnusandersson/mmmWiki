@@ -110,7 +110,7 @@ getSetting=function*(inObj){
   if( count(array_diff(inObj,['lastOthersEdit','lastOthersUpload'])) ) mesEO(__LINE__,'Illegal invariable');  strV=inObj.join("', '");;
   var sth=dbh.prepare("SELECT * FROM "+settingTab+" WHERE name IN('"+strV+"')");    if(!sth.execute()) mesESqlO(sth,__LINE__);
   while(1){   tmp=sth.fetch(PDO.FETCH_NUM); if(!tmp) break; Ou[tmp[0]]=tmp[1];  }
-  return {err:null, result:[Ou]};
+  return [null, [Ou]];
 }
 
 setSetting=function*(inObj){ 
@@ -126,20 +126,16 @@ setSetting=function*(inObj){
     if(!sth.execute([name,value,value])) mesESqlO(sth,__LINE__);
     Ou[name]=value;
   }
-  return {err:null, result:[Ou]};
+  return [null, [Ou]];
 }
 
 
 
 
 writeCacheDynamicJS=function*() {
-  /*for(var key in Site){
-    var buf=createWWWJS(key);
-    var keyCache=key+'/'+leafSiteSpecific;
-    CacheUri.set(keyCache, buf, 'js', true, true);
-  }*/
   var buf=createCommonJS();
-  yield* CacheUri.set.call(this, '/'+leafCommon, buf, 'js', true, true);
+  var [err]=yield* CacheUri.set.call(this, '/'+leafCommon, buf, 'js', true, true);   if(err) return [err];
+  return [null];
 }
 
 /*
