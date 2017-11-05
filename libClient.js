@@ -22,13 +22,6 @@ setItem=function(name,value){  if(typeof value=='undefined') value=null; localSt
 getItemS=function(name){    var tmp=sessionStorage.getItem(name);    if(tmp!==null) tmp=JSON.parse(tmp);   return tmp;   }
 setItemS=function(name,value){  sessionStorage[name]=JSON.stringify(value); }
 
-function bindEvent(element, type, handler) {
-   if(element.addEventListener) {
-      element.addEventListener(type, handler, false);
-   } else {
-      element.attachEvent('on'+type, handler);
-   }
-}
 
 uVipp0="lib/image/vipp0.png";
 uVipp1="lib/image/vipp1.png";

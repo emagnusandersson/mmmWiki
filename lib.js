@@ -76,11 +76,11 @@ extract=function(obj,par){
     par[key]=obj[key];
   }
 }
-extractLocSome=function(strObjName,arrSome){  // Ex: eval(extractLocSome('objMy',['a','b']));
-  if(typeof arrSome=='string') arrSome=[arrSome];
-  var len=arrSome.length, Str=Array(len);  for(var i=0;i<len;i++) { var key=arrSome[i]; Str[i]=key+'='+strObjName+'.'+key; }
-  return 'var '+Str.join(', ')+';';
-}
+//extractLocSome=function(strObjName,arrSome){  // Ex: eval(extractLocSome('objMy',['a','b']));
+  //if(typeof arrSome=='string') arrSome=[arrSome];
+  //var len=arrSome.length, Str=Array(len);  for(var i=0;i<len;i++) { var key=arrSome[i]; Str[i]=key+'='+strObjName+'.'+key; }
+  //return 'var '+Str.join(', ')+';';
+//}
 
 
 

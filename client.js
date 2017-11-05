@@ -92,7 +92,8 @@ doHistPush=function(obj){
   if((boChrome || boOpera) && !boTouch)  history.boFirstScroll=true;
 
   var indNew=history.state.ind+1;
-  history.pushState({hash:history.state.hash, ind:indNew}, strHistTitle, uCanonical);
+  stateTrans={hash:history.state.hash, ind:indNew};  // Should be called stateLast perhaps
+  history.pushState(stateTrans, strHistTitle, uCanonical);
   history.StateMy=history.StateMy.slice(0,indNew);
   history.StateMy[indNew]=obj;
 }
@@ -102,7 +103,6 @@ doHistReplace=function(obj, indDiff){
   if(typeof indDiff=='undefined') indDiff=0;
   history.StateMy[history.state.ind+indDiff]=obj;
 }
-
 changeHist=function(obj){
   history.StateMy[history.state.ind]=obj;
 }
@@ -110,14 +110,6 @@ getHistStatName=function(){
   return history.StateMy[history.state.ind].$view.toString();
 }
 
-
-history.fastBack=function($viewGoal, boRefreshHash){
-  var dist=history.distToGoal($viewGoal);
-  if(dist) {
-    history.boResetHashCurrent=boRefreshHash;
-    history.go(dist);
-  }
-}
 
 history.distToGoal=function($viewGoal){
   var ind=history.state.ind;
@@ -131,6 +123,14 @@ history.distToGoal=function($viewGoal){
   var dist; if(typeof indGoal!='undefined') dist=indGoal-ind;
   return dist;
 }
+history.fastBack=function($viewGoal, boRefreshHash){
+  var dist=history.distToGoal($viewGoal);
+  if(dist) {
+    if(typeof boRefreshHash!='undefined') history.boResetHashCurrent=boRefreshHash;
+    history.go(dist);
+  }
+}
+
 
 
 commentButtonExtend=function($el){
@@ -3560,8 +3560,9 @@ setUp1=function(){
   history.StateMy=[];
 
 
-  bindEvent(window,'popstate', function(event) {
+  window.addEventListener('popstate', function(event) {
     var dir=history.state.ind-stateTrans.ind;
+    if(Math.abs(dir)>1) alert('dir=',dir);
     var boSameHash=history.state.hash==stateTrans.hash;
     if(boSameHash){
       var tmpObj=history.state;
@@ -3594,7 +3595,7 @@ setUp1=function(){
     }
   }); 
 
-
+  
   if(boFF){
     $(window).on('beforeunload', function(){   });
   } 

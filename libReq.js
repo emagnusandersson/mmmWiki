@@ -391,7 +391,7 @@ app.reqIndex=function*() {
   Str.push(tmp);
 
   var ua=req.headers['user-agent']||''; ua=ua.toLowerCase();
-  var boMSIE=RegExp('/msie/').test(ua), boAndroid=RegExp('/android/').test(ua), boFireFox=RegExp('/firefox/').test(ua), boIOS= RegExp('/iPhone|iPad|iPod/i').test(ua);
+  var boMSIE=RegExp('msie').test(ua), boAndroid=RegExp('android').test(ua), boFireFox=RegExp('firefox').test(ua), boIOS= RegExp('iPhone|iPad|iPod','i').test(ua);
 
   var strSchemeCommon='http'+(this.boTLSCommon?'s':''),   strSchemeCommonLong=strSchemeCommon+'://';
 
