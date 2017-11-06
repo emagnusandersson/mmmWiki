@@ -52,12 +52,12 @@ app.reqBU=function*(strArg) {
     if(boLimited){ strLim=" AND "+tmpQ;  }
   } else if(type=='image'){
     strExt='';
-    sql="SELECT imageName, data, UNIX_TIMESTAMP(created) AS date, eTag FROM "+imageTab+" i JOIN "+fileTab+" f ON f.idFile=i.idFile";
+    sql="SELECT imageName, data, UNIX_TIMESTAMP(tCreated) AS date, eTag FROM "+imageTab+" i JOIN "+fileTab+" f ON f.idFile=i.idFile";
     if(boLimited){ strLim=" WHERE "+tmpQ; }
   } else if(type=='video'){
     //res.out500('Error, zipping video is to slow'); return;
     strExt='';
-    sql="SELECT name, data, UNIX_TIMESTAMP(created) AS date, eTag FROM "+videoTab+" i JOIN "+fileTab+" f ON f.idFile=i.idFile";
+    sql="SELECT name, data, UNIX_TIMESTAMP(tCreated) AS date, eTag FROM "+videoTab+" i JOIN "+fileTab+" f ON f.idFile=i.idFile";
     if(boLimited){ strLim=" WHERE "+tmpQ;  }
   } else { res.out500('Error backing up, no such type'); return; }
   //sql+=strLim;
@@ -115,11 +115,11 @@ app.reqBUMeta=function*(strArg) {
   
 
   var Sql=[];
-  Sql.push("SELECT boDefault, boTLS, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, UNIX_TIMESTAMP(created) AS created FROM "+siteTab+";");
+  Sql.push("SELECT boDefault, boTLS, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+";");
   Sql.push("SELECT boTLS, siteName, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tMod) AS tMod FROM "+pageLastView+";");
-  Sql.push("SELECT imageName, boOther, UNIX_TIMESTAMP(created) AS created FROM "+imageTab+";");
-  Sql.push("SELECT name, UNIX_TIMESTAMP(created) AS created FROM "+videoTab+";");
-  Sql.push("SELECT siteName, pageName, url, UNIX_TIMESTAMP(created) AS created, nAccess, UNIX_TIMESTAMP(tLastAccess) AS tLastAccess FROM "+redirectWWWView+";");
+  Sql.push("SELECT imageName, boOther, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+imageTab+";");
+  Sql.push("SELECT name, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+videoTab+";");
+  Sql.push("SELECT siteName, pageName, url, UNIX_TIMESTAMP(tCreated) AS tCreated, nAccess, UNIX_TIMESTAMP(tLastAccess) AS tLastAccess FROM "+redirectWWWView+";");
   Sql.push("SELECT www AS wwwCommon FROM "+siteTab+" WHERE boDefault=1;");
   var sql=Sql.join('\n');
   var Val=[];
@@ -158,7 +158,7 @@ app.reqBUMeta=function*(strArg) {
     // Image
   var StrFile=['"boOther","tCreated","tMod","tLastAccess","nAccess","imageName"'];
   for(var k=0;k<matImage.length;k++){
-    var r=matImage[k], StrRow=[Boolean(r.boOther), r.created, r.created, r.created, 0, myEscapeB(r.imageName)];
+    var r=matImage[k], StrRow=[Boolean(r.boOther), r.tCreated, r.tCreated, r.tCreated, 0, myEscapeB(r.imageName)];
     StrFile.push(StrRow.join(','));
   } 
   zipfile.file('image.csv', StrFile.join("\n"), {compression:'DEFLATE'});
@@ -167,7 +167,7 @@ app.reqBUMeta=function*(strArg) {
     // Redirect
   var StrFile=['"tCreated","tMod","tLastAccess","nAccess","siteName","nameLC","url"'];
   for(var k=0;k<matRedirect.length;k++){
-    var r=matRedirect[k], StrRow=[r.created, r.created, Number(r.tLastAccess), r.nAccess, myEscapeB(r.siteName), myEscapeB(r.pageName), myEscapeB(r.url)];
+    var r=matRedirect[k], StrRow=[r.tCreated, r.tCreated, Number(r.tLastAccess), r.nAccess, myEscapeB(r.siteName), myEscapeB(r.pageName), myEscapeB(r.url)];
     StrFile.push(StrRow.join(','));
   }
   zipfile.file('redirect.csv', StrFile.join("\n"), {compression:'DEFLATE'});
@@ -203,9 +203,9 @@ app.reqBUMetaSQL=function*() {
 
   var Sql=[];
   Sql.push("SELECT boTLS, siteName, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, DATE_FORMAT(tMod,GET_FORMAT(TIMESTAMP,'ISO')) AS tMod FROM "+pageLastView+";");
-  Sql.push("SELECT imageName, boOther, DATE_FORMAT(created,GET_FORMAT(TIMESTAMP,'ISO')) AS created FROM "+imageTab+";");
-  Sql.push("SELECT name, DATE_FORMAT(created,GET_FORMAT(TIMESTAMP,'ISO')) AS created FROM "+videoTab+";");
-  Sql.push("SELECT siteName, pageName, url, DATE_FORMAT(created,GET_FORMAT(TIMESTAMP,'ISO')) AS created, nAccess, DATE_FORMAT(tLastAccess,GET_FORMAT(TIMESTAMP,'ISO')) AS tLastAccess FROM "+redirectWWWView+";");
+  Sql.push("SELECT imageName, boOther, DATE_FORMAT(tCreated,GET_FORMAT(TIMESTAMP,'ISO')) AS tCreated FROM "+imageTab+";");
+  Sql.push("SELECT name, DATE_FORMAT(tCreated,GET_FORMAT(TIMESTAMP,'ISO')) AS tCreated FROM "+videoTab+";");
+  Sql.push("SELECT siteName, pageName, url, DATE_FORMAT(tCreated,GET_FORMAT(TIMESTAMP,'ISO')) AS tCreated, nAccess, DATE_FORMAT(tLastAccess,GET_FORMAT(TIMESTAMP,'ISO')) AS tLastAccess FROM "+redirectWWWView+";");
   Sql.push("SELECT www AS wwwCommon FROM "+siteTab+" WHERE boDefault=1;");
   var sql=Sql.join('\n');
   var Val=[];
@@ -228,20 +228,20 @@ app.reqBUMetaSQL=function*() {
   for(var k=0;k<matImage.length;k++){
     var r=matImage[k];
     var imageName=mysqlPool.escape(r.imageName);
-    SqlB.push("UPDATE "+imageTab+" SET boOther="+r.boOther+", created='"+r.created+"' WHERE imageName="+imageName+";");
+    SqlB.push("UPDATE "+imageTab+" SET boOther="+r.boOther+", tCreated='"+r.tCreated+"' WHERE imageName="+imageName+";");
   }
       // Video meta
   for(var k=0;k<matVideo.length;k++){
     var r=matVideo[k];
     var name=mysqlPool.escape(r.name);
-    SqlB.push("UPDATE "+videoTab+" SET created='"+r.created+"' WHERE name="+name+";");
+    SqlB.push("UPDATE "+videoTab+" SET tCreated='"+r.tCreated+"' WHERE name="+name+";");
   }
 
       // Redirect table
   for(var k=0;k<matRedirect.length;k++){
     var r=matRedirect[k];
-    var siteName=mysqlPool.escape(r.siteName),  pageName=mysqlPool.escape(r.pageName),  url=mysqlPool.escape(r.url),  created=mysqlPool.escape(r.created);
-    SqlB.push("REPLACE INTO mmmWiki_redirect (idSite, pageName, url, created, nAccess, tLastAccess) (SELECT idSite, "+pageName+", "+url+", "+created+", "+r.nAccess+", "+r.tLastAccess+" FROM mmmWiki_site WHERE siteName="+siteName+");");
+    var siteName=mysqlPool.escape(r.siteName),  pageName=mysqlPool.escape(r.pageName),  url=mysqlPool.escape(r.url),  tCreated=mysqlPool.escape(r.tCreated),  tLastAccess=mysqlPool.escape(r.tLastAccess);
+    SqlB.push("REPLACE INTO mmmWiki_redirect (idSite, pageName, url, tCreated, nAccess, tLastAccess) (SELECT idSite, "+pageName+", "+url+", "+tCreated+", "+r.nAccess+", "+tLastAccess+" FROM mmmWiki_site WHERE siteName="+siteName+");");
   }
   var sql=SqlB.join("\n");
 
@@ -470,7 +470,7 @@ app.reqIndex=function*() {
 <title>"+strTitle+"</title>\n\
 <div id=pageText>"+this.strHtmlText+"</div>\n");  
 
-  Str.push("<input type=hidden id='boLCacheObs'>");
+  Str.push("<input id='boLCacheObs' style=\"display:none\">"); //type=hidden
   Str.push("<script language=\"JavaScript\">");
   Str.push("function indexAssign(){");
 
@@ -620,18 +620,18 @@ app.reqMediaImage=function*(){
   if( !nameOrg || nameOrg == "" ){ res.out404('Not Found'); return;} // Exit because non-valid name
 
     // Get info from imageTab
-  var sql="SELECT idImage, UNIX_TIMESTAMP(created) AS created, idFile, eTag, imageName FROM "+imageTab+" WHERE imageName=?";
+  var sql="SELECT idImage, UNIX_TIMESTAMP(tCreated) AS tCreated, idFile, eTag, imageName FROM "+imageTab+" WHERE imageName=?";
   var Val=[nameOrg];
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
   var c=results.length;    if(c==0) {res.out404('Not Found'); return;}
   //var tmp=results[0];
-  //var idImage=tmp.idImage, orgTime=new Date(tmp.created*1000), idFileOrg=tmp.idFile, eTagOrg=tmp.eTag, nameCanonical=tmp.imageName;
-  var {idImage, created, idFile:idFileOrg, eTag:eTagOrg, imageName:nameCanonical}=results[0],   orgTime=new Date(created*1000);
+  //var idImage=tmp.idImage, orgTime=new Date(tmp.tCreated*1000), idFileOrg=tmp.idFile, eTagOrg=tmp.eTag, nameCanonical=tmp.imageName;
+  var {idImage, tCreated, idFile:idFileOrg, eTag:eTagOrg, imageName:nameCanonical}=results[0],   orgTime=new Date(tCreated*1000);
        
 
   if(nameCanonical!=nameOrg){    res.out301Loc(nameCanonical); return;    }
 
-  var maxModTime=new Date(Math.max(orgTime,bootTime));
+  //var maxModTime=new Date(Math.max(orgTime,bootTime));
   var maxModTime=orgTime;
   
 
@@ -672,13 +672,13 @@ app.reqMediaImageThumb=function*(){
   if(wMax==0) { strDim="height=?"; arrDim=[hMax]; }
   else if(hMax==0){ strDim="width=?"; arrDim=[wMax]; }
   else{ strDim="(width=? OR height=?)"; arrDim=[wMax,hMax]; }
-  var sql="SELECT UNIX_TIMESTAMP(created) AS created, idFile,eTag FROM "+thumbTab+" WHERE idImage=? AND "+strDim;
+  var sql="SELECT UNIX_TIMESTAMP(tCreated) AS tCreated, idFile,eTag FROM "+thumbTab+" WHERE idImage=? AND "+strDim;
   var Val=array_merge([idImage],arrDim);
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
   var c=results.length;
   var tmp=results[0];
-  var thumbTime=false, idFileThumb, eTagThumb; if(c){ thumbTime=new Date(tmp.created*1000); idFileThumb=tmp.idFile; eTagThumb=tmp.eTag;  }
-  //var {created, idFile:idFileThumb, eTag:eTagThumb}=results[0]; var thumbTime=(typeof created!='undefined')?new Date(created*1000):null;
+  var thumbTime=false, idFileThumb, eTagThumb; if(c){ thumbTime=new Date(tmp.tCreated*1000); idFileThumb=tmp.idFile; eTagThumb=tmp.eTag;  }
+  //var {tCreated, idFile:idFileThumb, eTag:eTagThumb}=results[0]; var thumbTime=(typeof tCreated!='undefined')?new Date(tCreated*1000):null;
 
   
   var boValidRequesterCache=this.requesterCacheTime && this.requesterCacheTime>=maxModTime && (this.eTagIn === eTagThumb);
@@ -771,12 +771,12 @@ app.reqMediaImageThumb=function*(){
   var eTagThumb=md5(strDataThumb);
 
     // Store in thumbTab
-  var Sql=["CALL "+strDBPrefix+"storeThumb(?,?,?,?,?,@created);"];
+  var Sql=["CALL "+strDBPrefix+"storeThumb(?,?,?,?,?,@tCreated);"];
   var Val=[idImage,wNew,hNew,strDataThumb,eTagThumb];
-  Sql.push("SELECT @created;");
+  Sql.push("SELECT @tCreated;");
   var sql=Sql.join('\n');
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
-  var thumbTime=new Date(results[1]['@created']);
+  var thumbTime=new Date(results[1]['@tCreated']);
   if(bo301ToOrg) { res.out301Loc(nameCanonical); return; }
 
     // Echo to buffer
@@ -807,13 +807,13 @@ app.reqMediaVideo=function*(){
 
 
     // Get info from videoTab
-  var sql="SELECT idVideo, UNIX_TIMESTAMP(created) AS created, idFile, eTag, size, name FROM "+videoTab+" WHERE name=?";
+  var sql="SELECT idVideo, UNIX_TIMESTAMP(tCreated) AS tCreated, idFile, eTag, size, name FROM "+videoTab+" WHERE name=?";
   var Val=[nameOrg];
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
   var c=results.length; if(c==0) {res.out404('Not Found'); return;}
   //var tmp=results[0];
-  //var idVideo=tmp.idVideo, orgTime=new Date(tmp.created*1000), idFileOrg=tmp.idFile, eTagOrg=tmp.eTag, total=tmp.size, nameCanonical=tmp.name;
-  var {idVideo, created, idFile:idFileThumb, eTag:eTagThumb, size:total, name:nameCanonical}=results[0]; var orgTime=(typeof created!='undefined')?new Date(created*1000):null;
+  //var idVideo=tmp.idVideo, orgTime=new Date(tmp.tCreated*1000), idFileOrg=tmp.idFile, eTagOrg=tmp.eTag, total=tmp.size, nameCanonical=tmp.name;
+  var {idVideo, tCreated, idFile:idFileThumb, eTag:eTagThumb, size:total, name:nameCanonical}=results[0]; var orgTime=(typeof tCreated!='undefined')?new Date(tCreated*1000):null;
       
        
   if(nameCanonical!=nameOrg){   res.out301Loc(nameCanonical); return;  }
@@ -940,11 +940,11 @@ app.reqMonitor=function*(){
     var Sql=[];
     Sql.push("SELECT SQL_CALC_FOUND_ROWS siteName, pageName, tMod FROM "+pageLastView+" WHERE boOther=1 LIMIT 1;");
     Sql.push("SELECT FOUND_ROWS() AS n;");
-    Sql.push("SELECT SQL_CALC_FOUND_ROWS imageName, created FROM "+imageTab+" WHERE boOther=1  LIMIT 1;");
+    Sql.push("SELECT SQL_CALC_FOUND_ROWS imageName, tCreated FROM "+imageTab+" WHERE boOther=1  LIMIT 1;");
     Sql.push("SELECT FOUND_ROWS() AS n;");
     //Sql.push("SELECT key, value FROM "+settingTab+" WHERE key='tPageBU' OR key 'tImageBU';");
     //Sql.push("SELECT max(tMod) AS tMax FROM "+versionTab+";");
-    //Sql.push("SELECT max(created) AS tMax FROM "+imageTab+";");
+    //Sql.push("SELECT max(tCreated) AS tMax FROM "+imageTab+";");
 
 
     var sql=Sql.join('\n'), Val=[];
@@ -1082,7 +1082,7 @@ app.SetupSql.prototype.createTable=function(boDropOnly){
   
   var SqlTabDrop=[], SqlTab=[];
   eval(extractLoc(TableName,'TableName'));
-  eval(extractLoc(ViewName,'ViewName'));
+  //eval(extractLoc(ViewName,'ViewName'));
 
   var StrTabName=object_values(TableName);
   var tmp=StrTabName.join(', ');
@@ -1113,7 +1113,7 @@ app.SetupSql.prototype.createTable=function(boDropOnly){
   urlIcon200 varchar(128) NOT NULL DEFAULT '', \n\
   aPassword varchar(128) NOT NULL DEFAULT '', \n\
   vPassword varchar(128) NOT NULL DEFAULT '', \n\
-  created TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
+  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
   PRIMARY KEY (idSite), \n\
   UNIQUE KEY (siteName), \n\
   UNIQUE KEY (www) \n\
@@ -1190,7 +1190,7 @@ app.SetupSql.prototype.createTable=function(boDropOnly){
   imageName varchar(128) NOT NULL, \n\
   idFile int(4) NOT NULL, \n\
   boOther TINYINT(1) NOT NULL DEFAULT 0, \n\
-  created TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
+  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
   eTag varchar(32) NOT NULL, \n\
   size int(4) NOT NULL, \n\
   PRIMARY KEY (idImage), \n\
@@ -1204,7 +1204,7 @@ app.SetupSql.prototype.createTable=function(boDropOnly){
   idFile int(4) NOT NULL, \n\
   width int(4) NOT NULL, \n\
   height int(4) NOT NULL, \n\
-  created TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
+  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
   eTag varchar(32) NOT NULL, \n\
   UNIQUE KEY (idImage,width,height), \n\
   FOREIGN KEY (idImage) REFERENCES "+imageTab+"(idImage), \n\
@@ -1224,7 +1224,7 @@ app.SetupSql.prototype.createTable=function(boDropOnly){
   idVideo int(4) NOT NULL auto_increment, \n\
   name varchar(128) NOT NULL, \n\
   idFile int(4) NOT NULL, \n\
-  created TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
+  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
   size int(4) NOT NULL, \n\
   eTag varchar(32) NOT NULL, \n\
   PRIMARY KEY (idVideo), \n\
@@ -1242,7 +1242,7 @@ app.SetupSql.prototype.createTable=function(boDropOnly){
   idSite int(4) NOT NULL, \n\
   pageName varchar(128) NOT NULL, \n\
   url varchar(128) NOT NULL, \n\
-  created TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
+  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
   nAccess int(4) NOT NULL DEFAULT 0, \n\
   tLastAccess TIMESTAMP NOT NULL, \n\
   PRIMARY KEY (idSite,pageName) \n\
@@ -1251,7 +1251,7 @@ app.SetupSql.prototype.createTable=function(boDropOnly){
   SqlTab.push("CREATE TABLE "+redirectDomainTab+" ( \n\
   www varchar(128) NOT NULL, \n\
   url varchar(128) NOT NULL, \n\
-  created TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
+  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
   PRIMARY KEY (www) \n\
   ) ENGINE="+engine+" COLLATE "+collate+""); 
   SqlTab.push("CREATE TABLE "+nParentTab+" ( \n\
@@ -1273,28 +1273,58 @@ app.SetupSql.prototype.createTable=function(boDropOnly){
   for(var i=0;i<SqlTabTmp.length;i++){ if(!RegExp('size','i').test(SqlTabTmp[i])) SqlTab.push(SqlTabTmp[i]); }
 
   
-  SqlTabDrop.push("DROP VIEW IF EXISTS "+pageWWWView+"");  // pageTab with siteTab-fields: boDefault, boTLS, siteName and www
-  SqlTab.push("CREATE VIEW "+pageWWWView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev) AS \n\
-SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev FROM "+pageTab+" p JOIN "+siteTab+" st ON p.idSite=st.idSite");
+  //SqlTabDrop.push("DROP VIEW IF EXISTS "+pageWWWView+"");  // pageTab with siteTab-fields: boDefault, boTLS, siteName and www
+  //SqlTab.push("CREATE VIEW "+pageWWWView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev) AS \n\
+//SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev FROM "+pageTab+" p JOIN "+siteTab+" st ON p.idSite=st.idSite");
 
-  SqlTabDrop.push("DROP VIEW IF EXISTS "+pageLastSlimView+"");  // pageTab with versionTab-fields: boOther, tMod, tModCache, eTag, size, idFile and idFileCache for the last version
-  SqlTab.push("CREATE VIEW "+pageLastSlimView+" (idPage, idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage) AS \n\
-SELECT p.idPage, p.idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev");
+  //SqlTabDrop.push("DROP VIEW IF EXISTS "+pageLastSlimView+"");  // pageTab with versionTab-fields: boOther, tMod, tModCache, eTag, size, idFile and idFileCache for the last version
+  //SqlTab.push("CREATE VIEW "+pageLastSlimView+" (idPage, idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage) AS \n\
+//SELECT p.idPage, p.idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev");
 
-  SqlTabDrop.push("DROP VIEW IF EXISTS "+pageLastView+"");  // A combination of the above two views.
-  SqlTab.push("CREATE VIEW "+pageLastView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage) AS \n\
-SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev JOIN "+siteTab+" st ON p.idSite=st.idSite");
+  //SqlTabDrop.push("DROP VIEW IF EXISTS "+pageLastView+"");  // A combination of the above two views.
+  //SqlTab.push("CREATE VIEW "+pageLastView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage) AS \n\
+//SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev JOIN "+siteTab+" st ON p.idSite=st.idSite");
 
 
-  SqlTabDrop.push("DROP VIEW IF EXISTS "+redirectWWWView+"");
-  SqlTab.push("CREATE VIEW "+redirectWWWView+" (idSite, siteName, www, pageName, url, created, nAccess, tLastAccess) AS \n\
-SELECT r.idSite, st.siteName, st.www, r.pageName, url, r.created, nAccess, tLastAccess FROM "+redirectTab+" r JOIN "+siteTab+" st ON r.idSite=st.idSite");
+  //SqlTabDrop.push("DROP VIEW IF EXISTS "+redirectWWWView+"");
+  //SqlTab.push("CREATE VIEW "+redirectWWWView+" (idSite, siteName, www, pageName, url, tCreated, nAccess, tLastAccess) AS \n\
+//SELECT r.idSite, st.siteName, st.www, r.pageName, url, r.tCreated, nAccess, tLastAccess FROM "+redirectTab+" r JOIN "+siteTab+" st ON r.idSite=st.idSite");
 
 
   
 
   if(boDropOnly) return SqlTabDrop;
   else return array_merge(SqlTabDrop, SqlTab);
+}
+
+app.SetupSql.prototype.createView=function(boDropOnly){
+  var SqlViewDrop=[], SqlView=[];
+  eval(extractLoc(TableName,'TableName'));
+  eval(extractLoc(ViewName,'ViewName'));
+  
+  var tmp=object_values(ViewName).join(', ');   if(tmp.length) SqlViewDrop.push("DROP VIEW IF EXISTS "+tmp+"");
+
+  
+  SqlViewDrop.push("DROP VIEW IF EXISTS "+pageWWWView+"");  // pageTab with siteTab-fields: boDefault, boTLS, siteName and www
+  SqlView.push("CREATE VIEW "+pageWWWView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev) AS \n\
+SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev FROM "+pageTab+" p JOIN "+siteTab+" st ON p.idSite=st.idSite");
+
+  SqlViewDrop.push("DROP VIEW IF EXISTS "+pageLastSlimView+"");  // pageTab with versionTab-fields: boOther, tMod, tModCache, eTag, size, idFile and idFileCache for the last version
+  SqlView.push("CREATE VIEW "+pageLastSlimView+" (idPage, idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage) AS \n\
+SELECT p.idPage, p.idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev");
+
+  SqlViewDrop.push("DROP VIEW IF EXISTS "+pageLastView+"");  // A combination of the above two views.
+  SqlView.push("CREATE VIEW "+pageLastView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage) AS \n\
+SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev JOIN "+siteTab+" st ON p.idSite=st.idSite");
+
+
+  SqlViewDrop.push("DROP VIEW IF EXISTS "+redirectWWWView+"");
+  SqlView.push("CREATE VIEW "+redirectWWWView+" (idSite, siteName, www, pageName, url, tCreated, nAccess, tLastAccess) AS \n\
+SELECT r.idSite, st.siteName, st.www, r.pageName, url, r.tCreated, nAccess, tLastAccess FROM "+redirectTab+" r JOIN "+siteTab+" st ON r.idSite=st.idSite");
+
+
+  if(boDropOnly) return SqlViewDrop;
+  else return array_merge(SqlViewDrop, SqlView);
 }
 
 
@@ -1863,7 +1893,7 @@ INSERT INTO `+nParentITab+` SELECT imageName, COUNT(idPage IS NOT NULL) AS nPare
         UPDATE "+siteTab+" SET boDefault=1 WHERE www=Iwww; \n\
         IF ROW_COUNT()=0 THEN \n\
           SET Vrand=SUBSTRING(MD5(NOW()),1,5); \n\
-          INSERT INTO "+siteTab+" (boTLS, siteName, www, created, boDefault) VALUES (IboTLS, Vrand, Iwww, now(),1) ; \n\
+          INSERT INTO "+siteTab+" (boTLS, siteName, www, tCreated, boDefault) VALUES (IboTLS, Vrand, Iwww, now(),1) ; \n\
         END IF; \n\
       #ELSEIF FOUND_ROWS()>1 THEN SELECT 'multDefault' AS mess; LEAVE proc_label; END IF; \n\
       END IF; \n\
@@ -1954,10 +1984,10 @@ INSERT INTO `+nParentITab+` SELECT imageName, COUNT(idPage IS NOT NULL) AS nPare
         IF Vc=0 THEN \n\
           INSERT INTO "+fileTab+" (data) VALUES (Idata);  \n\
           SELECT LAST_INSERT_ID() INTO VidFile; \n\
-          INSERT INTO "+imageTab+" (imageName,idFile,boOther,created,eTag,size) VALUES (Iname,VidFile,IboOther,now(),IeTag,Vlen); \n\
+          INSERT INTO "+imageTab+" (imageName,idFile,boOther,tCreated,eTag,size) VALUES (Iname,VidFile,IboOther,now(),IeTag,Vlen); \n\
         ELSEIF Vc=1 THEN \n\
           IF IboOther THEN SET OboOk=0; LEAVE proc_label; END IF; \n\
-          UPDATE "+imageTab+" SET imageName=Iname,boOther=IboOther,created=now(),eTag=IeTag,size=Vlen WHERE idImage=VidImage; \n\
+          UPDATE "+imageTab+" SET imageName=Iname,boOther=IboOther,tCreated=now(),eTag=IeTag,size=Vlen WHERE idImage=VidImage; \n\
           UPDATE "+fileTab+" SET data=Idata WHERE idFile=VidFile; \n\
           #DELETE FROM "+thumbTab+" WHERE idImage=VidImage; \n\
           CALL "+strDBPrefix+"deleteThumb(VidImage); \n\
@@ -1967,7 +1997,7 @@ INSERT INTO `+nParentITab+` SELECT imageName, COUNT(idPage IS NOT NULL) AS nPare
 
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"storeThumb");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"storeThumb(IidImage INT, Iwidth INT, Iheight INT, Idata MEDIUMBLOB, IeTag varchar(32), OUT Ocreated INT) \n\
+  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"storeThumb(IidImage INT, Iwidth INT, Iheight INT, Idata MEDIUMBLOB, IeTag varchar(32), OUT OtCreated INT) \n\
       BEGIN \n\
         DECLARE VidFile, Vc INT; \n\
         START TRANSACTION; \n\
@@ -1975,18 +2005,18 @@ INSERT INTO `+nParentITab+` SELECT imageName, COUNT(idPage IS NOT NULL) AS nPare
         IF Vc=0 THEN \n\
           INSERT INTO "+fileTab+" (data) VALUES (Idata); \n\
           SELECT LAST_INSERT_ID() INTO VidFile; \n\
-          INSERT INTO "+thumbTab+" (idImage,width,height,idFile,created,eTag) VALUES (IidImage,Iwidth,Iheight,VidFile,now(),IeTag); \n\
+          INSERT INTO "+thumbTab+" (idImage,width,height,idFile,tCreated,eTag) VALUES (IidImage,Iwidth,Iheight,VidFile,now(),IeTag); \n\
         ELSEIF Vc=1 THEN \n\
-          UPDATE "+thumbTab+" SET created=now(),eTag=IeTag WHERE idImage=IidImage AND width=Iwidth AND height=Iheight; \n\
+          UPDATE "+thumbTab+" SET tCreated=now(),eTag=IeTag WHERE idImage=IidImage AND width=Iwidth AND height=Iheight; \n\
           UPDATE "+fileTab+" SET data=Idata WHERE idFile=VidFile; \n\
         END IF; \n\
-        SET Ocreated=UNIX_TIMESTAMP(now()); \n\
+        SET OtCreated=UNIX_TIMESTAMP(now()); \n\
         COMMIT; \n\
       END");
   //SqlFunction.push("CALL "+strDBPrefix+"storeImage('abc.jpg',1,'01234','0123456789abcdef0123456789abcdef',@boOK)"); 
   //SqlFunction.push("SELECT @boOK"); tmp=sth.fetch(PDO.FETCH_NUM); var_dump(tmp);
-  //SqlFunction.push("CALL "+strDBPrefix+"storeThumb(1,400,300,'01234','0123456789abcdef0123456789abcdef',@created)"); 
-  //SqlFunction.push("CALL "+strDBPrefix+"storeThumb(1,401,301,'012345','0123456789abcdef0123456789abcdef',@created)"); 
+  //SqlFunction.push("CALL "+strDBPrefix+"storeThumb(1,400,300,'01234','0123456789abcdef0123456789abcdef',@tCreated)"); 
+  //SqlFunction.push("CALL "+strDBPrefix+"storeThumb(1,401,301,'012345','0123456789abcdef0123456789abcdef',@tCreated)"); 
 
 
 
@@ -2000,9 +2030,9 @@ INSERT INTO `+nParentITab+` SELECT imageName, COUNT(idPage IS NOT NULL) AS nPare
         IF Vc=0 THEN \n\
           INSERT INTO "+fileTab+" (data) VALUES (Idata);  \n\
           SELECT LAST_INSERT_ID() INTO VidFile; \n\
-          INSERT INTO "+videoTab+" (name,idFile,created,eTag,size) VALUES (Iname,VidFile,now(),IeTag,Vlen); \n\
+          INSERT INTO "+videoTab+" (name,idFile,tCreated,eTag,size) VALUES (Iname,VidFile,now(),IeTag,Vlen); \n\
         ELSEIF Vc=1 THEN \n\
-          UPDATE "+videoTab+" SET name=Iname,created=now(),eTag=IeTag,size=Vlen WHERE idVideo=VidVideo; \n\
+          UPDATE "+videoTab+" SET name=Iname,tCreated=now(),eTag=IeTag,size=Vlen WHERE idVideo=VidVideo; \n\
           UPDATE "+fileTab+" SET data=Idata WHERE idFile=VidFile; \n\
         END IF; \n\
         COMMIT; \n\
@@ -2020,9 +2050,9 @@ INSERT INTO `+nParentITab+` SELECT imageName, COUNT(idPage IS NOT NULL) AS nPare
         IF Vc=0 THEN \n\
           INSERT INTO "+fileTab+" (data) VALUES (Idata);  \n\
           SELECT LAST_INSERT_ID() INTO VidFile; \n\
-          INSERT INTO "+videoTab+" (name,idFile,created,eTag,size) VALUES (Iname,VidFile,now(),IeTag,Vlen); \n\
+          INSERT INTO "+videoTab+" (name,idFile,tCreated,eTag,size) VALUES (Iname,VidFile,now(),IeTag,Vlen); \n\
         ELSEIF Vc=1 THEN \n\
-          UPDATE "+videoTab+" SET name=Iname,created=now(),eTag=IeTag,size=Vlen WHERE idVideo=VidVideo; \n\
+          UPDATE "+videoTab+" SET name=Iname,tCreated=now(),eTag=IeTag,size=Vlen WHERE idVideo=VidVideo; \n\
           UPDATE "+fileTab+" SET data=Idata WHERE idFile=VidFile; \n\
         END IF; \n\
         COMMIT; \n\
@@ -2138,15 +2168,15 @@ app.SetupSql.prototype.createDummies=function(){
   (3,3,'ok','MA',0,3,now());"); 
 
 
-  this.SqlDummies.push("INSERT INTO "+imageTab+" (idImage,pageName,boOther,created,idFile) VALUES \n\
+  this.SqlDummies.push("INSERT INTO "+imageTab+" (idImage,pageName,boOther,tCreated,idFile) VALUES \n\
   (1,'oak.jpg',0,now(),8), \n\
   (2,'wiki.png',0,now(),9);"); 
 
-  this.SqlDummies.push("INSERT INTO "+thumbTab+" (idImage,width,height,created,idFile) VALUES \n\
+  this.SqlDummies.push("INSERT INTO "+thumbTab+" (idImage,width,height,tCreated,idFile) VALUES \n\
   (1,50,50,now(),10), \n\
   (2,50,50,now(),11);"); 
 
-  this.SqlDummies.push("INSERT INTO "+videoTab+" (idVideo,pageName,created,idFile) VALUES \n\
+  this.SqlDummies.push("INSERT INTO "+videoTab+" (idVideo,pageName,tCreated,idFile) VALUES \n\
   (1,'ttt.ogg',now(),12), \n\
   (2,'abc.mp4',now(),13);"); 
   
@@ -2194,7 +2224,7 @@ app.SetupSql.prototype.truncate=function(){
 
   // Called when --sql command line option is used
 app.SetupSql.prototype.doQuery=function*(strCreateSql, flow){
-  //var StrValidSqlCalls=['createTable', 'dropTable', 'createFunction', 'dropFunction', 'truncate', 'createDummy', 'createDummies'];
+  //var StrValidSqlCalls=['createTable', 'dropTable', 'createView', 'dropView', 'createFunction', 'dropFunction', 'truncate', 'createDummy', 'createDummies'];
   if(StrValidSqlCalls.indexOf(strCreateSql)==-1){var tmp=strCreateSql+' is not valid input, try any of these: '+StrValidSqlCalls.join(', '); console.log(tmp); return; }
   var Match=RegExp("^(drop|create)?(.*?)$").exec(strCreateSql);
   if(!Match) { debugger;  return; }

@@ -42,7 +42,6 @@ myQueryGen=function*(flow, sql, Val, pool){
     else {break;}
   }
   return [err, results, fields];
-  
 }
 
 

@@ -68,7 +68,7 @@ interpretArgv=function(){
   }
 }
 
-StrValidSqlCalls=['createTable', 'dropTable', 'createFunction', 'dropFunction', 'truncate', 'createDummy', 'createDummies'];
+StrValidSqlCalls=['createTable', 'dropTable', 'createView', 'dropView', 'createFunction', 'dropFunction', 'truncate', 'createDummy', 'createDummies'];
  
 
 
@@ -118,6 +118,8 @@ var flow=( function*(){
   maxAdminUnactivityTime=5*60;  
   intDDOSMax=100; tDDOSBan=5; 
   strSalt='abcdef';
+  strBTC="";
+  ppStoredButt="";
   interpretArgv();
 
 
@@ -167,7 +169,7 @@ var flow=( function*(){
     process.exit(0);
   }
 
-  bootTime=new Date();  strBootTime=bootTime.toISOStringMy();
+  tIndexMod=new Date(); tIndexMod.setMilliseconds(0);
 
   ETagUri={}; CacheUri={};
 
@@ -294,7 +296,7 @@ var flow=( function*(){
       else {
         if(levelMaintenance){res.outCode(503, "Down for maintenance, try again in a little while."); return;}
         if(pathName=='/'+leafBE){ var reqBE=new ReqBE(req, res);  yield* reqBE.go();    }
-        else if(pathName.indexOf('/image/')==0){  yield* reqImage.call(objReqRes);   } //RegExp('^/image/').test(pathName)
+        //else if(pathName.indexOf('/image/')==0){  yield* reqImage.call(objReqRes);   } //RegExp('^/image/').test(pathName)
         else if(pathName=='/captcha.png'){    yield* reqCaptcha.call(objReqRes);    }
         else if(regexpLib.test(pathName) || regexpLooseJS.test(pathName) || regexpPakoJS.test(pathName) || pathName=='/conversion.html'){    yield* reqStatic.call(objReqRes);   }
         else if(regexpImage.test(pathName)){  yield* reqMediaImage.call(objReqRes);   }

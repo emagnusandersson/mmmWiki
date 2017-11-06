@@ -277,7 +277,7 @@ pageViewExtend=function($el){
  
 
   var boShowAdminButton=getItem('boShowAdminButton');  if(boShowAdminButton===null)  boShowAdminButton=false;
-  $el.adminButtonToggleEventF=function(){
+  var adminButtonToggleEventF=function(){
     var now=Date.now(); if(now>timeSpecialR+1000*10) {timeSpecialR=now; nSpecialReq=0;}    nSpecialReq++;
     if(nSpecialReq==3) { nSpecialReq=0;boShowAdminButton=!boShowAdminButton; $spanAdmin.toggle(boShowAdminButton);  setItem('boShowAdminButton',boShowAdminButton);  }
   }
@@ -289,8 +289,8 @@ pageViewExtend=function($el){
   var $paymentButton=$('<button>').append($tmpSpan).addClass('fixWidth').css({'vertical-align':'bottom','margin-right':'1em','line-height':strSizeIcon}).click(function(){
     doHistPush({$view:$paymentDiv});
     $paymentDiv.setVis();
-    $el.adminButtonToggleEventF();
   }); if(ppStoredButt=='' && strBTC=='') $paymentButton.hide();
+  $editButton.on('click', adminButtonToggleEventF);
   var $tmpImg=$('<img>').prop({src:uAdmin}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'});
   var $adminButton=$('<button>').append($tmpImg).addClass('fixWidth').click(function(){
     doHistPush({$view:$adminDiv});
@@ -343,7 +343,7 @@ adminDivExtend=function($el){
 
   var aPass2F=function(){  
     var tmp=SHA1($password2.val()+strSalt); 
-    var vec=[['aLogin',{pass:tmp}],['saveByReplace',{newcontent:$editText.val()}]];   majax(oAJAX,vec); 
+    var vec=[['aLogin',{pass:tmp}],['saveByReplace',{strEditText:$editText.val()}]];   majax(oAJAX,vec); 
     $password2.val('');
     $boLCacheObs.val(1);
   }
@@ -437,7 +437,7 @@ adminMoreDivExtend=function($el){
   var $butBUMetaServ=$('<button>').append('(MetaData).zip').click(function(){      httpGetAsync('BUMetaServ',function(str) {setMess(str,3);});    });
   
 
-  var $butLoadFromServer=$('<button>').append('Load from server').click(function(){   var vec=[['uploadAdminServ',1]];   majax(oAJAX,vec);    });
+  var $butLoadFromServer=$('<button>').append('"upload" from server-BU').click(function(){   var vec=[['uploadAdminServ',1]];   majax(oAJAX,vec);    });
   
   var $siteButton=$('<button>').append('Site table').addClass('fixWidth').click(function(){    doHistPush({$view:$siteTab}); $siteTab.setVis();   });
   var $redirectButton=$('<button>').append('Redirect table').addClass('fixWidth').click(function(){   doHistPush({$view:$redirectTab}); $redirectTab.setVis();   });
@@ -762,8 +762,8 @@ diffBackUpDivExtend=function($el){
         var dateOldUnix=dateOld.toUnix();
       
 // local database 1411715164
-        var dSize=FileNew[key].size-size, dUnix=FileNew[key].created-dateOldUnix;
-        //if(FileNew[key].size==size && FileNew[key].created>>1==dateOldUnix>>1){  // Division by two (>>1) because zip uses microsoft time 
+        var dSize=FileNew[key].size-size, dUnix=FileNew[key].tCreated-dateOldUnix;
+        //if(FileNew[key].size==size && FileNew[key].tCreated>>1==dateOldUnix>>1){  // Division by two (>>1) because zip uses microsoft time 
         if(dSize==0 && dUnix>>1==0){  // Division by two (>>1) because zip uses microsoft time 
           StrReuse.push(key);
         }else{
@@ -837,7 +837,7 @@ diffBackUpDivExtend=function($el){
     var progressHandlingFunction=function(e){      if(e.lengthComputable){   $progress.attr({value:e.loaded,max:e.total});      }      }
     var semCB=0, semY=0, dataFetched;
     var xhr = new XMLHttpRequest();
-    xhr.open('POST', 'backUpImage', true);
+    xhr.open('POST', 'BUimage', true);
     xhr.responseType = 'blob';
     xhr.addEventListener("progress", progressHandlingFunction, false);
     xhr.onload=function(e) {
@@ -1890,12 +1890,12 @@ imageListExtend=function($el){
     var StrImg=[], $Caption=$([]); 
     $Tr.each(function(i,p){ 
       var $tr=$(this), imageName=$tr.data('imageName'), i=$tr.data('iFlip');
-      //var size=$tr.data('$tdSize'), created=$tr.data('$tdCreated').data, boOther=$tr.data('$tdBoOther')
-      //var size=$tr.children('span[name=size]').text(), created=$tr.children('span[name=created]').text(), boOther=$tr.children('span[name=boOther]').text();
-      var size=File[i].size, created=mySwedDate(File[i].created), boOther=File[i].boOther;
+      //var size=$tr.data('$tdSize'), tCreated=$tr.data('$tdCreated').data, boOther=$tr.data('$tdBoOther')
+      //var size=$tr.children('span[name=size]').text(), tCreated=$tr.children('span[name=tCreated]').text(), boOther=$tr.children('span[name=boOther]').text();
+      var size=File[i].size, tCreated=mySwedDate(File[i].tCreated), boOther=File[i].boOther;
       StrImg.push(imageName);
-      //var str='<p>'+imageName+'<p>Size: '+File[i].size+'<p>Mod: '+mySwedDate(File[i].created); if(File[i].boOther) str+='<p style="color:red">Others Upload</p>'
-      var str='<p>'+imageName+'<p>Size: '+size+'<p>Created: '+created; if(Number(boOther)) str+='<p style="color:red">Uploaded by user</p>'
+      //var str='<p>'+imageName+'<p>Size: '+File[i].size+'<p>Mod: '+mySwedDate(File[i].tCreated); if(File[i].boOther) str+='<p style="color:red">Others Upload</p>'
+      var str='<p>'+imageName+'<p>Size: '+size+'<p>Created: '+tCreated; if(Number(boOther)) str+='<p style="color:red">Uploaded by user</p>'
       var $cap=$('<div>').append(str);
       $Caption.push($cap);    
     });
@@ -1967,7 +1967,7 @@ imageListExtend=function($el){
       $r.children('span[name=cb]').data('valSort',0).children('input').prop({'checked':false});
       var tmp=File[i].imageName; $r.children('span[name=image]').data('valSort',tmp).children('img').prop({src:'50apx-'+tmp});
       var tmp=File[i].boOther; $r.children('span[name=boOther]').data('valSort',tmp).visibilityToggle(tmp==1);      
-      var tmp=File[i].created; $r.children('span[name=date]').data('valSort',-tmp.valueOf()).html(mySwedDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));    
+      var tmp=File[i].tCreated; $r.children('span[name=date]').data('valSort',-tmp.valueOf()).html(mySwedDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));    
       var size=File[i].size, sizeDisp=size, pre=''; if(size>=1024) {sizeDisp=Math.round(size/1024); pre='k';} if(size>=1048576) { sizeDisp=Math.round(size/1048576); pre='M';}
       var $tmp=$r.children('span[name=size]').data('valSort',size).html(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; $tmp.prop('title',strTitle);   //$tmp.css({weight:pre=='M'?'bold':'',color:pre==''?'grey':''}); 
       var tmp=File[i].imageName; $r.children('span[name=link]').data('valSort',tmp).children('a').prop({href:uCommon+'/'+tmp}).text(tmp);
@@ -2339,12 +2339,12 @@ spanSaveExtend=function($el){
   }
   var $save=$('<button>').append('Save').click(function(){
     if(!$summary.val() || !$signature.val()) { setMess('Summary- or signature- field is empty',5); return;}
-    var vec=[['saveByAdd',{newcontent:$editText.val(), summary:$summary.val(), signature:$signature.val()}]];   majax(oAJAX,vec); 
+    var vec=[['saveByAdd',{strEditText:$editText.val(), summary:$summary.val(), signature:$signature.val()}]];   majax(oAJAX,vec); 
     $summary.val(''); $signature.val('');
     $boLCacheObs.val(1);
   });
   var $preview=$('<button>').append('Show preview').click(function(){
-    var vec=[['getPreview',{newcontent:$editText.val()}]];   majax(oAJAX,vec); 
+    var vec=[['getPreview',{strEditText:$editText.val()}]];   majax(oAJAX,vec); 
   });
 
   $el.append($summary,' ',$signature,' ',$save,' ',$preview);
@@ -2613,7 +2613,7 @@ paymentDivExtend=function($el){
   $el.toString=function(){return 'paymentDiv';}
     // menuB
   var $formPP=formPPExtend($('<form>')),     $divPP=$('<div>').append($formPP).css({'margin-top':'1em'}); if(ppStoredButt.length==0) $divPP.hide();  //'Paypal: ',
-  var $strBTC=$('<span>').append(strBTC).css({'font-size':'0.70em'}),    $divBC=$('<div>').append('฿: ',$strBTC);
+  var $strBTC=$('<span>').append(strBTC).css({'font-size':'0.70em'}),    $divBC=$('<div>').append('฿: ',$strBTC); if(strBTC.length==0) $divBC.hide();
   var $menuB=$('<div>').append($divBC,$divPP).css({'text-align':'center'}).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'center',margin:'1em auto'});
 
     // menuA
@@ -2857,7 +2857,7 @@ redirectSetPopExtend=function($el){
   var saveRet=function(data){
     if(!data.boOK) return;
     if(boUpd) {  $redirectTab.myEdit(r); } //r.idSite=idSite;
-    else {r.created=unixNow(); $redirectTab.myAdd(r); }
+    else {r.tCreated=unixNow(); $redirectTab.myAdd(r); }
     //$redirectTab.setUp();
     doHistBack();
   }
@@ -2954,12 +2954,12 @@ redirectTabExtend=function($el){
   var funcLinkTmp=function(url, r){  var rS=$el.indexSiteTabById[r.idSite], urlLink=url; if(!regHttp.test(url)) urlLink='http'+(rS.boTLS?'s':'')+'://'+rS.www+'/'+url; $(this).children('a').prop({href:urlLink}).html(url);  }
   var TDProt={
     url:{ mySetVal:funcLinkTmp },
-    created:{ mySetVal:funcTTimeTmp },
+    tCreated:{ mySetVal:funcTTimeTmp },
     tLastAccess:{ mySetVal:funcTTimeTmp }
   }
   var TDConstructors={
     url:function(){ var $a=$('<a>').prop({target:"_blank"}),$el=$('<td>').append($a);  $.extend($el[0],TDProt.url);  return $el;  },
-    created:function(){ var $el=$('<td>');  $.extend($el[0],TDProt.created);  return $el;  },
+    tCreated:function(){ var $el=$('<td>');  $.extend($el[0],TDProt.tCreated);  return $el;  },
     tLastAccess:function(){ var $el=$('<td>');  $.extend($el[0],TDProt.tLastAccess);  return $el;  }
   }
   $el.myAdd=function(r){
@@ -3006,7 +3006,6 @@ redirectTabExtend=function($el){
       var r={}; for(var j=0;j<StrCol.length;j++){ r[StrCol[j]]=$el.siteTab[i][j];}
       $el.siteTab[i]=r;
       $el.indexSiteTabById[r.idSite]=r;
-      //$el.indexSiteTabByName[r.siteName]=r;
       if(r.boDefault) $el.idSiteDefault=r.idSite;
     }
   }
@@ -3027,8 +3026,8 @@ redirectTabExtend=function($el){
   $el.$table=$("<table>").append($tbody); //.css({width:'100%',position:'relative'});
   $el.$divCont=$("<div>").append($el.$table).css({'margin':'1em auto','text-align':'left',display:'inline-block'});
 
-  var StrCol=['siteName','pageName','url', 'created', 'nAccess', 'tLastAccess'], BoAscDefault={created:0};
-  var Label={created:'Age'};
+  var StrCol=['siteName','pageName','url', 'tCreated', 'nAccess', 'tLastAccess'], BoAscDefault={tCreated:0};
+  var Label={tCreated:'Age'};
   var $thead=headExtend($('<thead>'),$el,StrCol,BoAscDefault,Label);
   $thead.css({background:'white', width:'inherit'});  //,height:'calc(12px + 1.2em)'
   $el.$table.prepend($thead);
@@ -3071,7 +3070,7 @@ siteSetPopExtend=function($el){
     if(!data.boOK) return;
     r.idSite=data.idSite;
     if(boUpd) { $siteTab.myEdit(r); } //r.idSite=idSite;
-    else {r.created=unixNow(); $siteTab.myAdd(r); }    
+    else {r.tCreated=unixNow(); $siteTab.myAdd(r); }    
     //$siteTab.setUp();
     doHistBack();
   }
@@ -3177,7 +3176,7 @@ siteTabExtend=function($el){
         var $td=$(this), strS=Number($td.parent().data('r').boTLS)?'s':'', $a=$td.children().prop('href','http'+strS+'://'+strText).text(strText);
       }
     },
-    created:{
+    tCreated:{
       mySetVal:function(tCreated){      var $td=$(this), arrT=getSuitableTimeUnit(unixNow()-tCreated);  $td.text(Math.round(arrT[0])+arrT[1]);  }
     },
     urlIcon16:{
@@ -3191,7 +3190,7 @@ siteTabExtend=function($el){
     boDefault:function(){ var $b=$('<button>').css('width','1.2em').click(setDefault), $el=$('<td>').css('text-align','center').append($b);  $.extend($el[0],TDProt.boDefault);  return $el;  },
     boTLS:function(){ var $el=$('<td>'); $.extend($el[0],TDProt.boTLS);  return $el;  },
     www:function(){ var $a=$('<a>').prop({target:"_blank"}),  $el=$('<td>').append($a);  $.extend($el[0],TDProt.www);  return $el;  },
-    created:function(){ var $el=$('<td>');  $.extend($el[0],TDProt.created);  return $el;  },
+    tCreated:function(){ var $el=$('<td>');  $.extend($el[0],TDProt.tCreated);  return $el;  },
     urlIcon16:function(){ var $i=$('<img>').css({'vertical-align':'middle'}), $el=$('<td>').append($i); $.extend($el[0],TDProt.urlIcon16);  return $el;  },
     urlIcon200:function(){ var $i=$('<img>').css({'vertical-align':'middle', 'max-width':'50px', 'max-height':'50px'}), $el=$('<td>').append($i); $.extend($el[0],TDProt.urlIcon200);  return $el;  }
   }
@@ -3239,7 +3238,7 @@ siteTabExtend=function($el){
     for(var i=0;i<tab.length;i++) {  
       var obj={}; for(var j=0;j<StrCol.length;j++){ obj[StrCol[j]]=tab[i][j];}
       tab[i]=obj;
-      //$el.myAdd(idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, created);  
+      //$el.myAdd(idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, tCreated);  
       $el.myAdd(tab[i]);      
     }
     $el.nRowVisible=tab.length;
@@ -3263,8 +3262,8 @@ siteTabExtend=function($el){
   $el.$table=$("<table>").append($tbody); //.css({width:'100%',position:'relative'});
   $el.$divCont=$("<div>").append($el.$table).css({'margin':'1em auto','text-align':'left',display:'inline-block'});
 
-  var StrColHead=['boDefault','secure', 'idSite','siteName','www','googleAnalyticsTrackingID','urlIcon16','urlIcon200','created','nPage'], BoAscDefault={boDefault:0,boTLS:0,created:0,nPage:0};
-  var Label={boDefault:'Default',siteName:'siteName/prefix', gog:'gog...', created:'Age', nPage:'#page'};
+  var StrColHead=['boDefault','secure (TLS)', 'idSite','siteName','www','googleAnalyticsTrackingID','urlIcon16','urlIcon200','tCreated','nPage'], BoAscDefault={boDefault:0,boTLS:0,tCreated:0,nPage:0};
+  var Label={boDefault:'Default',siteName:'siteName/prefix', gog:'gog...', tCreated:'Age', nPage:'#page'};
   var $thead=headExtend($('<thead>'),$el,StrColHead,BoAscDefault,Label);
   $thead.css({background:'white', width:'inherit'});  //,height:'calc(12px + 1.2em)'
   $el.$table.prepend($thead);
@@ -3390,7 +3389,7 @@ boTemplate:'Template',
 boOther:'Supplied by user',
 tMod:'Modification age',
 tModCache:'Cache age',
-created:'Created'
+tCreated:'Created'
 }
 helpBub={}
 
@@ -3406,7 +3405,7 @@ setUp1=function(){
   boTouch = Boolean('ontouchstart' in document.documentElement);
   //boTouch=1;
 
-  $boLCacheObs=$('#boLCacheObs'); if($boLCacheObs.val().length) { location.reload(); return} //$boLCacheObs.val(1);
+  $boLCacheObs=$('#boLCacheObs'); if($boLCacheObs.val().length) { $boLCacheObs.val(""); location.reload(); return} //$boLCacheObs.val(1);
 
   browser=getBrowser();
   var intBrowserVersion=parseInt(browser.version.slice(0, 2));

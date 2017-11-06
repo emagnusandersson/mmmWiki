@@ -1,12 +1,12 @@
 {
-  "name": "mawiki",
+  "name": "mmmwiki",
   "description": "Wiki software",
   "main": "script.js",
   "authors": [
     "Magnus Andersson"
   ],
   "license": "BSD-2-Clause",
-  "homepage": "https://github.com/emandersson/maWiki",
+  "homepage": "https://github.com/emandersson/mmmWiki",
   "moduleType": [],
   "private": true,
   "ignore": [

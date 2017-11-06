@@ -433,7 +433,7 @@ ReqBE.prototype.pageCompare=function*(inObj){
 ReqBE.prototype.getPreview=function*(inObj){ 
   var req=this.req, res=this.res;
   var Ou={}, GRet=this.GRet, flow=req.flow;
-  this.strEditText=inObj.newcontent;
+  this.strEditText=inObj.strEditText;
   
   this.boOW==1;
 
@@ -467,7 +467,7 @@ ReqBE.prototype.saveByReplace=function*(inObj){
     extend(this,{boOW:1,boOR:1,boSiteMap:1});  
   }
   
-  extend(this,{strEditText:inObj.newcontent});
+  extend(this,{strEditText:inObj.strEditText});
 
     // parse
   var [err]=yield* parse.call(this); if(err) return [err];
@@ -515,8 +515,8 @@ ReqBE.prototype.saveByAdd=function*(inObj){
   }else if(rowA.mess=='noSuchPage'){
     extend(this,{boOW:1,boOR:1,boSiteMap:1});  
   }
- if(this.boOW==0) {return [new ErrorClient('Not authorized')]; } 
-  copySome(this,inObj,['summary', 'signature']);    this.strEditText=inObj.newcontent;
+  if(this.boOW==0) {return [new ErrorClient('Not authorized')]; } 
+  copySome(this,inObj,['summary', 'signature']);    this.strEditText=inObj.strEditText;
     
     // parse
   var [err]=yield* parse.call(this); if(err) return [err];
@@ -699,14 +699,14 @@ ReqBE.prototype.setUpImageListCond=function*(inObj){
 ReqBE.prototype.getImageList=function*(inObj) {
   var req=this.req, res=this.res;
   var Sql=[], flow=req.flow;
-  //var sql="SELECT imageName, UNIX_TIMESTAMP(created) AS created, boOther, idImage, idFile FROM "+imageTab+"";
+  //var sql="SELECT imageName, UNIX_TIMESTAMP(tCreated) AS tCreated, boOther, idImage, idFile FROM "+imageTab+"";
   var tmpCond=array_filter(this.Where), strCond=''; if(tmpCond.length) strCond='WHERE '+tmpCond.join(' AND ');
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.created) AS created, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.created) AS created, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, COUNT(DISTINCT pp.pageName) AS nParent, pp.pageName AS nameParent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.created) AS created, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, COUNT(DISTINCT sParCount.idPage) AS nParent, pParCount.pageName AS nameParent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
+  //Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.tCreated) AS tCreated, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
+  //Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.tCreated) AS tCreated, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, COUNT(DISTINCT pp.pageName) AS nParent, pp.pageName AS nameParent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
+  //Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.tCreated) AS tCreated, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, COUNT(DISTINCT sParCount.idPage) AS nParent, pParCount.pageName AS nameParent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
 // , pParCount.siteName AS siteParent
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.created) AS created, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, COUNT(DISTINCT sParCount.idPage) AS nParent, pParCount.idPage AS idParent, pParCount.pageName AS nameParent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
-  Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.created) AS created, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, np.nParent, pp.idPage AS idParent, pp.pageName AS nameParent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
+  //Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.tCreated) AS tCreated, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, COUNT(DISTINCT sParCount.idPage) AS nParent, pParCount.idPage AS idParent, pParCount.pageName AS nameParent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
+  Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.tCreated) AS tCreated, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, np.nParent, pp.idPage AS idParent, pp.pageName AS nameParent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
 
   Sql.push("SELECT FOUND_ROWS() AS n;"); // nFound
   Sql.push("SELECT count(idImage) AS n FROM "+imageTab+";"); // nUnFiltered
@@ -778,7 +778,7 @@ ReqBE.prototype.getImageInfo=function*(inObj){
     nName=arrName.length; if(nName>1) { tmpQ=array_fill(nName, "?").join(','); tmpQ="imageName IN ("+tmpQ+")";  } else if(nName==1) tmpQ="imageName=?"; else tmpQ="false";
   } 
 
-  var sql="SELECT imageName, UNIX_TIMESTAMP(created) AS created, boOther, eTag, size FROM "+imageTab;
+  var sql="SELECT imageName, UNIX_TIMESTAMP(tCreated) AS tCreated, boOther, eTag, size FROM "+imageTab;
   
   var strLim=''; if(boLimited){ strLim=" WHERE "+tmpQ; }
   sql+=strLim;
@@ -795,8 +795,8 @@ ReqBE.prototype.redirectTabGet=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
-  var sql="SELECT idSite, siteName, www, pageName, url, UNIX_TIMESTAMP(created) AS created, nAccess, UNIX_TIMESTAMP(tLastAccess) AS tLastAccess FROM "+redirectWWWView+";";
-  //var sql="SELECT idSite, pageName, url, UNIX_TIMESTAMP(created) AS created FROM "+redirectTab+";";
+  var sql="SELECT idSite, siteName, www, pageName, url, UNIX_TIMESTAMP(tCreated) AS tCreated, nAccess, UNIX_TIMESTAMP(tLastAccess) AS tLastAccess FROM "+redirectWWWView+";";
+  //var sql="SELECT idSite, pageName, url, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+redirectTab+";";
   var Val=[];
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
   var Ou=arrObj2TabNStrCol(results);
@@ -812,12 +812,12 @@ ReqBE.prototype.redirectTabSet=function*(inObj){
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
   var boUpd=inObj.boUpd||false;
   if(boUpd){
-    //var sql="UPDATE "+redirectTab+" SET url=?, created=now() WHERE idSite=? AND pageName=?;";
+    //var sql="UPDATE "+redirectTab+" SET url=?, tCreated=now() WHERE idSite=? AND pageName=?;";
     //var Val=[inObj.url, inObj.idSite, inObj.pageName.replace(RegExp(' ','g'),'_')];
-    var sql="UPDATE "+redirectTab+" SET idSite=?, pageName=?, url=?, created=now() WHERE idSite=? AND pageName=?;"; 
+    var sql="UPDATE "+redirectTab+" SET idSite=?, pageName=?, url=?, tCreated=now() WHERE idSite=? AND pageName=?;"; 
     var Val=[inObj.idSite, inObj.pageName.replace(RegExp(' ','g'),'_'), inObj.url, inObj.idSiteOld, inObj.pageNameOld.replace(RegExp(' ','g'),'_')];
   } else {
-    var sql="INSERT INTO "+redirectTab+" (idSite, pageName, url, created) VALUES (?, ?, ?, now())";
+    var sql="INSERT INTO "+redirectTab+" (idSite, pageName, url, tCreated) VALUES (?, ?, ?, now())";
     var Val=[inObj.idSite, inObj.pageName.replace(RegExp(' ','g'),'_'), inObj.url];
   }
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);   
@@ -867,8 +867,8 @@ ReqBE.prototype.siteTabGet=function*(inObj){
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
-  //var sql="SELECT idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, UNIX_TIMESTAMP(created) AS created FROM "+siteTab+";";
-  var sql="SELECT boDefault, boTLS, st.idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, UNIX_TIMESTAMP(st.created) AS created, SUM(p.idSite IS NOT NULL) AS nPage FROM "+siteTab+" st LEFT JOIN "+pageTab+" p ON st.idSite=p.idSite GROUP BY idSite;"
+  //var sql="SELECT idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+";";
+  var sql="SELECT boDefault, boTLS, st.idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, UNIX_TIMESTAMP(st.tCreated) AS tCreated, SUM(p.idSite IS NOT NULL) AS nPage FROM "+siteTab+" st LEFT JOIN "+pageTab+" p ON st.idSite=p.idSite GROUP BY idSite;"
   var Val=[];
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
   var Ou=arrObj2TabNStrCol(results);
@@ -885,10 +885,10 @@ ReqBE.prototype.siteTabSet=function*(inObj){
   var boUpd=inObj.boUpd||false;
 
   if(boUpd){
-    var sql="UPDATE "+siteTab+" SET boTLS=?, siteName=?, www=?, googleAnalyticsTrackingID=?, urlIcon16=?, urlIcon200=? WHERE idSite=?;";  //, created=now() 
+    var sql="UPDATE "+siteTab+" SET boTLS=?, siteName=?, www=?, googleAnalyticsTrackingID=?, urlIcon16=?, urlIcon200=? WHERE idSite=?;";  //, tCreated=now() 
     var Val=[inObj.boTLS, inObj.siteName, inObj.www, inObj.googleAnalyticsTrackingID, inObj.urlIcon16, inObj.urlIcon200, inObj.idSite];
   } else {
-    var sql="INSERT INTO "+siteTab+" (boTLS, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, created) VALUES (?, ?, ?, ?, ?, ?, now());";
+    var sql="INSERT INTO "+siteTab+" (boTLS, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, tCreated) VALUES (?, ?, ?, ?, ?, ?, now());";
     var Val=[inObj.boTLS, inObj.siteName, inObj.www, inObj.googleAnalyticsTrackingID, inObj.urlIcon16, inObj.urlIcon200];
     sql+="SELECT LAST_INSERT_ID() AS idSite;";
   }
@@ -989,7 +989,7 @@ ReqBE.prototype.uploadAdmin=function*(inObj){
         var type=Match[1].toLowerCase(), bufT=new Buffer(fileInZip._data,'binary');//b.toString();
 
         console.log(j+'/'+Key.length+' '+fileName+' '+bufT.length);
-        yield* this.storeUploadedFile.call(this,fileName,type,bufT);  
+        var [err]=yield* this.storeUploadedFile.call(this,fileName,type,bufT);  if(err) return [err];
       } 
 
     } else {  
@@ -998,7 +998,7 @@ ReqBE.prototype.uploadAdmin=function*(inObj){
       var type=Match[1].toLowerCase();
  
       console.log(i+'/'+FileOrg.length+' '+fileName+' '+dataOrg.length);
-      yield* this.storeUploadedFile.call(this,fileName,type,dataOrg);  
+      var [err]=yield* this.storeUploadedFile.call(this,fileName,type,dataOrg);  if(err) return [err];
     } 
   }
   return [null, [0]];
@@ -1010,11 +1010,12 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data){
   var req=this.req, res=this.res;
   var regImg=RegExp("^(png|jpeg|jpg|gif|svg)$"), regVid=RegExp('^(mp4|ogg|webm)$');
   var flow=req.flow;
+  var Ou={};
   
   if(type=='txt'){
     //fileName=fileName.replace(RegExp('(talk|template|template_talk) ','i'),'$1:');   
-    fileName=fileName.replace(RegExp('.txt$','i'),'');
-    var obj=parsePage(fileName);
+    var fileNameB=fileName.replace(RegExp('.txt$','i'),'');
+    var obj=parsePage(fileNameB);
     var siteName=obj.siteName, pageName=obj.pageName;
 
     extend(this,{strEditText:data.toString(), boOW:1, boOR:1, boSiteMap:1});
@@ -1030,7 +1031,7 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data){
     var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
     var iRowLast=results.length-nEndingResults-1;
     var mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
- 
+    if(mess!='done' && mess!='deleting') { console.log(mess); return [new ErrorClient('Error: '+mess+' ('+fileName+')')]; }
     console.timeEnd('dbOperations');
 
   }else if(regImg.test(type)){
@@ -1046,7 +1047,8 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data){
     var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
   }
   else{ this.mes("Unrecognized file type: "+type); return [null, [Ou]]; }
-
+  
+  return [null, [Ou]];
   //process.stdout.write("*");
 }
 

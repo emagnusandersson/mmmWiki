@@ -139,7 +139,7 @@ PropImage={
 parentSite:          {b:'11',feat:{kind:'B'}},
 parent:              {b:'11',feat:{kind:'B'}},
 size:                {b:'11',feat:sizeImageFeat},
-created:             {b:'11',feat:tFeat},
+tCreated:             {b:'11',feat:tFeat},
 boOther:             {b:'01',feat:{kind:'BN',span:1}}
 };
 StrOrderFiltImage=Object.keys(PropImage);
@@ -151,10 +151,10 @@ idFile:              {b:'00'},
 nParent:             {b:'00'},
 nameParent:          {b:'00'}});
 
-PropImage.created.cond0F=function(name, val){  return "UNIX_TIMESTAMP(i.created)<=UNIX_TIMESTAMP(now())-"+val; };
+PropImage.tCreated.cond0F=function(name, val){  return "UNIX_TIMESTAMP(i.tCreated)<=UNIX_TIMESTAMP(now())-"+val; };
 PropImage.size.cond0F=function(name, val){ return "i.size>"+val;};
 
-PropImage.created.cond1F=function(name, val){ return "UNIX_TIMESTAMP(i.created)>UNIX_TIMESTAMP(now())-"+val; };
+PropImage.tCreated.cond1F=function(name, val){ return "UNIX_TIMESTAMP(i.tCreated)>UNIX_TIMESTAMP(now())-"+val; };
 PropImage.size.cond1F=function(name, val){ return "i.size<="+val;};
 
 PropImage.parentSite.condBNameF=function(name, Val){ return "siteName";} // Becomes "pp.siteName"
@@ -164,7 +164,7 @@ PropImage.parent.boIncludeNull=1;
 
 PropImage.parentSite.pre='pp.';
 PropImage.parent.pre='pp.';
-PropImage.size.pre = PropImage.created.pre = PropImage.boOther.pre = 'i.';
+PropImage.size.pre = PropImage.tCreated.pre = PropImage.boOther.pre = 'i.';
 
 
 
@@ -198,13 +198,13 @@ GROUP BY bin ORDER BY "+strOrder+";";
 } // CONCAT(pp.siteName,':',   , i.imageName
 //, pp.idPage 
 var tmpF=function(name){ return "COUNT(DISTINCT i.imageName, i."+name+")";}
-var StrTmp=['size','created','boOther'];
+var StrTmp=['size','tCreated','boOther'];
 for(var i=0;i<StrTmp.length;i++){  var name=StrTmp[i]; PropImage[name].binValueF=tmpF; }
 
-PropImage.created.histCondF=function(name){ return "-UNIX_TIMESTAMP(i.created)+UNIX_TIMESTAMP(now())";};
+PropImage.tCreated.histCondF=function(name){ return "-UNIX_TIMESTAMP(i.tCreated)+UNIX_TIMESTAMP(now())";};
 PropImage.size.histCondF=function(name){ return "i.size";};
 
-//PropImage.created.selF=selTimeF;
+//PropImage.tCreated.selF=selTimeF;
 
 featCalcValExtend=function(Prop){
   for(var name in Prop){
