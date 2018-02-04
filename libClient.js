@@ -467,7 +467,7 @@ function popupDragExtend($area,$bubble,strTitle,$parent){
   strTitle=(typeof strTitle==='undefined')?'':strTitle;
   //var $deleteButton=$('<img>').attr({src:uDelete}).mouseover(function(){$(this).attr({src:uDelete1})}).mouseout(function(){$(this).attr({src:uDelete})})
   //     .click(function(){$bubble.closeFunc();}).css({cursor:'pointer'});
-  var $deleteButton=$('<div>').append('❌').click(function(e){
+  var $deleteButton=$('<div>').append('✖').click(function(e){
     $bubble.closeFunc(); e.preventDefault(); 
     return false;
   });

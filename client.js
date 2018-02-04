@@ -242,6 +242,7 @@ pageViewExtend=function($el){
     }
     $el.$spanNR.html(strNR);  $spanDetail.html(str);
   }
+  $el.setFixedDivColor=function(boOR){   $el.$fixedDiv.css({background:boOR?'#fff':'lightgreen'});  }
 
     // menuB == versionMenu
   var $versionTableButton=$('<button>').append('Version list').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){
@@ -387,12 +388,32 @@ adminDivExtend=function($el){
 
 adminMoreDivExtend=function($el){
   $el.toString=function(){return 'adminMoreDiv';}
-  var $imgH=$imgHelp.clone().css({'margin-left':'1em','margin-right':'0.5em'}); popupHoverM($imgH,$('<div>').html('Others access:<br><b>r</b>=read access<br><b>w</b>=write access<br><b>p</b>=promote=include the page in sitemap.xml etc. (encourage search engines to list the page)'));
-  $accessORead=accessOReadExtend($('<input type=checkbox>'));  $accessORead.setStat(boOR);
-  $accessOWrite=accessOWriteExtend($('<input type=checkbox>'));  $accessOWrite.setStat(boOW); $editDiv.$spanSave.toggle(Boolean(boOW));
-  $accessSiteMap=accessSiteMapExtend($('<input type=checkbox>'));  $accessSiteMap.setStat(boSiteMap);
- 
-
+  $el.setUp=function(){
+    majax(oAJAX,[['getLastTMod',{},function(data){  $aBUFilesToComp.prop('title', swedTime(data.tLastMod) );  }]]);  
+  }
+  var strPublicRead='<span style="display:inline-block">'+charPublicRead+'</span>';
+  var $imgH=$imgHelp.clone().css({'margin-left':'.5em','margin-right':'0.5em'}); popupHoverM($imgH,$('<div>').html(strPublicRead+' = public read access<br>'+charPublicWrite+' = public write access<br>'+charPromote+' = promote = include the page in sitemap.xml etc. (encourage search engines to list the page)'));
+  $el.setMod=function(){
+    setButMod.call($butModRead[0], objPage.boOR);
+    setButMod.call($butModWrite[0], objPage.boOW);
+    setButMod.call($butModSiteMap[0], objPage.boSiteMap);
+  }
+  
+  var $butModRead=$('<button>').append(strPublicRead).prop('title','Public read access').click( function(){clickModF.call(this,'boOR');} );  
+  var $butModWrite=$('<button>').append(charPublicWrite).prop('title','Public write access').click(function(){clickModF.call(this,'boOW');});
+  var $butModSiteMap=$('<button>').append(charPromote).prop('title','Promote (include page in sitemap.xml)').click(function(){clickModF.call(this,'boSiteMap');});
+    // Methods of the above buttons:
+  var clickModF=function(strType){
+    var $b=$(this), boOn=$b.hasClass('boxShadowOn'); boOn=!boOn;
+    var o={File:[objPage.idPage]}; o[strType]=boOn;
+    var vec=[['myChMod',o]];   majax(oAJAX,vec); 
+    setButMod.call($b[0], boOn);
+  }
+  var setButMod=function(boOn){  boOn=Boolean(boOn); var $b=$(this); $b.toggleClass('boxShadowOn', boOn).toggleClass('boxShadowOff', !boOn); }
+  $butModRead.add($butModWrite).add($butModSiteMap).css({'margin-right':'0.4em', width:'1.5em', padding:0});   
+     
+  $el.setMod();
+  
   var boIsGeneratorSupported=isGeneratorSupported();
   var $uploadAdminDiv='', $buttonDiffBackUpDiv='';
   if(boIsGeneratorSupported) {
@@ -405,11 +426,11 @@ adminMoreDivExtend=function($el){
 
   var $statLink=$('<a>').prop({href:'stat.html'}).append('stat');
   var $pageListButton=$('<button>').append('List').addClass('fixWidth').click(function(){
-    var idTmp=idPage; if(isNaN(idTmp)) idTmp=null;
+    var idTmp=objPage.idPage; if(isNaN(idTmp)) idTmp=null;
     $pageFilterDiv.Filt.setSingleParent(idTmp);  $pageList.histPush(); $pageList.loadTab();  $pageList.setVis();
   });    
   var $imageListButton=$('<button>').append('List').addClass('fixWidth').click(function(){
-    var idTmp=idPage; if(isNaN(idTmp)) idTmp=null;
+    var idTmp=objPage.idPage; if(isNaN(idTmp)) idTmp=null;
     $imageFilterDiv.Filt.setSingleParent(idTmp);   $imageList.histPush();  $imageList.loadTab();  $imageList.setVis();  // $pageFilterDiv.Filt.filtClear();
   });
 
@@ -437,17 +458,17 @@ adminMoreDivExtend=function($el){
   var $butBUMetaServ=$('<button>').append('(MetaData).zip').click(function(){      httpGetAsync('BUMetaServ',function(str) {setMess(str,3);});    });
   
 
-  var $butLoadFromServer=$('<button>').append('"upload" from server-BU').click(function(){   var vec=[['uploadAdminServ',1]];   majax(oAJAX,vec);    });
+  var $butLoadFromServer=$('<button>').append('Load from server-BU-(zip)-files').click(function(){   var vec=[['uploadAdminServ',1]];   majax(oAJAX,vec);    });
   
   var $siteButton=$('<button>').append('Site table').addClass('fixWidth').click(function(){    doHistPush({$view:$siteTab}); $siteTab.setVis();   });
   var $redirectButton=$('<button>').append('Redirect table').addClass('fixWidth').click(function(){   doHistPush({$view:$redirectTab}); $redirectTab.setVis();   });
 
   var $imgHRename=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverM($imgHRename,$('<div>').html('"Rename" will <b>not</b> rename any links to the page. (maybe something for future versions)'));  
   var $renameButton=$('<button>').append('Rename').css({'margin-left':'0.5em'}).click(function(){
-    $renamePop.openFunc('page',null,idPage,queredPage);
+    $renamePop.openFunc('page',null,objPage.idPage,queredPage);
   });
   var objBottomLine={'border-bottom':'gray solid 1px'};
-  var $menuA=$('<div>').append('r:', $accessORead, ' w:', $accessOWrite, ' p:', $accessSiteMap, $imgH, ' | ', $renameButton, $imgHRename).css(objBottomLine);
+  var $menuA=$('<div>').append($butModRead, $butModWrite, $butModSiteMap, $imgH, ' | ', $renameButton, $imgHRename).css(objBottomLine);
   var $menuB0=$('<div>').append("<b>BU download: </b>");
   var $menuB=$('<div>').append("<b>Page: </b>", $pageListButton, ' | ', $aBUFilesToComp, ', Use prefix on default-site-pages: ', $cb, $imgHPrefix);
   var $menuC=$('<div>').append("<b>Image: </b>", $imageListButton, ' | ', $aBUImageToComp, ' | ', $buttonDiffBackUpDiv).css({'background':'lightblue'});
@@ -476,33 +497,12 @@ adminMoreDivExtend=function($el){
 }
 
 
-accessOWriteExtend=function($el){
-"use strict"
-  $el.setStat=function(boY){    $el.prop({checked:Boolean(Number(boY))});  }
-  $el.change(function(){
-    var tmp=this.checked; //this.disabled=true;
-    var vec=[['myChMod',{boOW:Number(tmp),File:[idPage]}]];   majax(oAJAX,vec); 
-  });
-  return $el;
-}
-accessOReadExtend=function($el){
-"use strict"
-  $el.setStat=function(boY){    $el.prop({checked:Boolean(Number(boY))});  }
-  $el.change(function(){
-    var tmp=this.checked; //this.disabled=true;
-    var vec=[['myChMod',{boOR:Number(tmp),File:[idPage]}]];   majax(oAJAX,vec); 
-  });
-  return $el;
-}
-accessSiteMapExtend=function($el){
-"use strict"
-  $el.setStat=function(boY){    $el.prop({checked:Boolean(Number(boY))});  }
-  $el.change(function(){
-    var tmp=this.checked; //this.disabled=true;
-    var vec=[['myChMod',{boSiteMap:Number(tmp),File:[idPage]}]];   majax(oAJAX,vec); 
-  });
-  return $el;
-}
+
+  
+
+
+
+
 
 
 dumpDivExtend=function($el){
@@ -998,7 +998,7 @@ uploadAdminDivExtend=function($el){
       var Match=regTxt.exec(arrName[i]);
       if(Match) { 
         var tmp=Match[1];
-        var obj=parsePage(tmp);
+        var obj=parsePageNameHD(tmp);
         var siteName=obj.siteName, pageName=obj.pageName;
         if(siteName.length==0) siteName=strKeyDefault;
         if(!(siteName in StrTxt)) StrTxt[siteName]=[];
@@ -1132,7 +1132,7 @@ uploadUserDivExtend=function($el){
 
   var setMess=function(str) {$divMess.html(str);}
   var clearMess=function() {$divMess.html('');}
-  var toggleVerified=function(boT){ if(typeof boT=='undefined') boT=$divName.is('visible'); boT=Boolean(boT); $divName.toggle(boT); $divCaptcha.toggle(boT);  $uploadButton.prop("disabled",!boT); }
+  var toggleVerified=function(boT){ if(typeof boT=='undefined') boT=$divName.is('visible'); boT=Boolean(boT); $divName.toggle(boT);  $uploadButton.prop("disabled",!boT); }  //$divCaptcha.toggle(boT);
   var verifyFun=function(){  
     clearMess();
     var arrFile=this.files;
@@ -1156,17 +1156,23 @@ uploadUserDivExtend=function($el){
     if(boFormDataOK==0) {alert("Your browser doesn't support FormData"); return; };
     var formData = new FormData();
     formData.append("type", 'single');
-    formData.append("captcha", $inpCaptcha.val());
+    //formData.append("captcha", $inpCaptcha.val());
     formData.append("strName", $inpName.val()+$spanExtension.html());
     formData.append("fileToUpload[]", objFile);
+    
+    var strTmp=grecaptcha.getResponse();  if(!strTmp) {setMess("Captcha response is empty"); return; }   formData.append('g-recaptcha-response', strTmp);
      
     majax(oAJAXL,[['uploadUser',formData,function(data){if('strMessage' in data) setMess(data.strMessage); $progress.invisible(); $uploadButton.prop("disabled",false);}]]);
     setMess('Uploading ...');
     $uploadButton.prop("disabled",true);
   }
   $el.setVis=function(){
-    $el.show();   
-    $imgCaptcha.prop({src:leafCaptcha});
+    $el.show();
+    //$imgCaptcha.prop({src:'captcha.png'});
+    
+    $divName.after($divReCaptcha);
+    $divReCaptcha.setUp();
+    
     return true;
   }
 
@@ -1190,29 +1196,30 @@ uploadUserDivExtend=function($el){
     clearMess();
     var strNameA=$inpName.val(), strName=strNameA+$spanExtension.html(); 
     var boOK=strNameA.length>0; $spanOK.html(boOK?'&nbsp;':'Empty').css({color:'red'});   
-    if(boOK) majax(oAJAX,[['getImageInfo',{objName:[strName]},inpNameRet]]);
+    if(boOK) majax(oAJAX,[['getImageInfo',{arrName:[strName]},inpNameRet]]);
     else $uploadButton.prop("disabled",!boOK);
   }
   var inpNameRet=function(data){
     var boOK=data.FileInfo.length==0; $spanOK.html(boOK?'OK':'Exists').css({color:boOK?'green':'red'});  $uploadButton.prop("disabled",!boOK);    
   } 
-  var $inpName=$('<input type=text>').on('input', inpNameChange).keypress( function(e){ if(e.which==13) {$inpCaptcha.focus();return false;}} );//.css({width:'15em'});
+  var $inpName=$('<input type=text>').on('input', inpNameChange);// .keypress( function(e){ if(e.which==13) {$inpCaptcha.focus();return false;}} );//.css({width:'15em'});
   var $spanExtension=$('<span>');
   var $spanOK=$('<span>').html('').css('margin-left', '0.3em');
   var $divNameInner=$("<div>").append($inpName, $spanExtension, $spanOK);
   var $divName=$("<div>").append('Name: ', $divNameInner).css({'margin-top':'1.2em','line-height':'2em'}).hide();
 
-  var $imgCaptcha=$('<img>').css({'display':'block'});
-  var $inpCaptcha=$('<input type=text name=captcha >').css({width:'6em'}).keypress( function(e){ if(e.which==13) {sendFun();return false;}} );
-  var $divCaptcha=$("<div>").append('Enter anti-spam-letters:', $imgCaptcha, $inpCaptcha).css({'margin-top':'1.2em'}).hide();
+  //var $imgCaptcha=$('<img>').css({'display':'block'});
+  //var $inpCaptcha=$('<input type=text name=captcha >').css({width:'6em'}).keypress( function(e){ if(e.which==13) {sendFun();return false;}} );
+  //var $divCaptcha=$("<div>").append('Enter anti-spam-letters:', $imgCaptcha, $inpCaptcha).css({'margin-top':'1.2em'}).hide();
 
   var $closeButton=$('<button>').append('Close').click(doHistBack);
   var $menuBottom=$('<div>').append($closeButton, $uploadButton).css({'margin-top':'1.2em'});
 
 
   var $blanket=$('<div>').addClass("blanket");
-  var $centerDiv=$('<div>').append($head, $formFile, $progress, $divName, $divCaptcha, $divMess,$menuBottom);
-  $centerDiv.addClass("Center").css({'width':'20em', height:'26em', padding: '0.3em 0.5em 1.2em 0.6em'})
+  var $centerDiv=$('<div>').append($head, $formFile, $progress, $divName, $divMess,$menuBottom);  // , $divCaptcha
+  $centerDiv.addClass("Center").css({'width':'20em', height:'26em', padding: '0.3em 0.5em 1.2em 0.6em'});
+  $centerDiv.css({'box-sizing':'content-box'});
   if(boIE) $centerDiv.css({'width':'20em'}); 
   $el.addClass("Center-Container").append($centerDiv,$blanket); //
   
@@ -1336,10 +1343,10 @@ pageListExtend=function($el){
       var $buttonNParent=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'page','page');});
       var $tdNParent=$('<span>').append($buttonNParent).attr('name','nParent').prop('title','Parents');
       var $tdCB=$('<span>').data('valSort',0).append($cb).attr('name','cb'); //.css({'margin-left':'0.15em'});
-      var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
-      var $buttonExecute=$('<button>').append($tmpImg).on(strMenuExecuteEvent,buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"}) 
+      //var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
+      var $buttonExecute=$('<button>').append(charFlash).on(strMenuExecuteEvent,buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"}) 
       var $tdExecute=$('<span>').data('valSort',0).append($buttonExecute).attr('name','execute'); 
-      var $tdR=$('<span>').attr('name','boOR').html('r').prop('title',Label.boOR), $tdW=$('<span>').attr('name','boOW').html('w').prop('title',Label.boOW), $tdP=$('<span>').attr('name','boSiteMap').html('p').css({'margin-right':'0.15em'}).prop('title',Label.boSiteMap);
+      var $tdR=$('<span>').attr('name','boOR').html(charPublicRead).prop('title',Label.boOR), $tdW=$('<span>').attr('name','boOW').html(charPublicWrite).prop('title',Label.boOW), $tdP=$('<span>').attr('name','boSiteMap').html(charPromote).css({'margin-right':'0.15em'}).prop('title',Label.boSiteMap);
       var $tdVer=$('<span>').attr('name','version'); //.css({'margin-left':'0.15em'});
       var $tdDate=$('<span>').attr('name','date').prop('title',Label.date);
       var $tdSite=$('<span>').attr('name','siteName'); //.hide();
@@ -1484,6 +1491,8 @@ pageListExtend=function($el){
     $pageFilterDiv.update();
     //$pageList.setCBStat(0);
   }
+  
+    // Methods of clicked button
   var clickSetParentFilter=function(){
     var idPage=$(this).parent().parent().data('idPage');  $pageFilterDiv.Filt.setSingleParent(idPage); $pageList.histPush(); $pageList.loadTab();
   }
@@ -1492,14 +1501,23 @@ pageListExtend=function($el){
     $imageList.setVis();
     var idPage=$(this).parent().parent().data('idPage');   $imageFilterDiv.Filt.setSingleParent(idPage); $imageList.histPush(); $imageList.loadTab(); 
   }
+  
+    // Methods of resp row
+  var getRenameData=function(){
+    var $r=$(this), iTab=$r.index(), idPage=$r.data('idPage'), strName=$r.data('pageName');    return [iTab,idPage,strName];  }
+  var changeModOfSingle=function(strName,boVal){
+    var $r=$(this), $span=$r.children('span[name='+strName+']'), boValO=$span.data('valSort');
+    if(typeof boVal=='undefined') boVal=1-boValO;
+ 
+    var o={File:[$r.data('idPage')]}; o[strName]=boVal;
+    var vec=[['myChMod',o]];   majax(oAJAX,vec);
+    $span.data('valSort',Number(boVal)).css({visibility:boVal?'':'hidden'});
+  }
+  
   var getChecked=function(){
     var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')'), $checked=$Tr.find('input:checked'), FileTmp=[]; $checked.each(function(){var tmp=$(this).parent().parent().data('idPage'); FileTmp.push(tmp);});
     return FileTmp;
   }
-  var getRenameData=function(){
-    var $r=$(this).parent().parent(), iTab=$r.index(), idPage=$r.data('idPage'), strName=$r.data('pageName');    return [iTab,idPage,strName];  }
-  var changeModOfSingle=function(strName,boVal){
-    var $b=$(this); $b.parent().parent().children('span[name='+strName+']').data('valSort',Number(boVal)).css({visibility:boVal?'':'hidden'});  }
   var changeModOfChecked=function(strName,boVal){
     var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')');
     $Tr.find('input:checked').each(function(i){var $cb=$(this); $cb.parent().parent().children('span[name='+strName+']').data('valSort',Number(boVal)).css({visibility:boVal?'':'hidden'}); });
@@ -1517,6 +1535,7 @@ pageListExtend=function($el){
     var vec=[['deletePage',{File:FileDelete}],['setUpPageListCond',oF],['getPageList',1,getListRet],['getPageHist',1,histRet]];
     restExecuteButton();  majax(oAJAX,vec);
   }
+  
   var funPopped=function(stateMyPopped){ 
     $pageFilterDiv.frStored(stateMyPopped);
     $el.loadTab();
@@ -1566,31 +1585,25 @@ pageListExtend=function($el){
   var strEvent='mouseup'; if(boTouch) strEvent='click';
 
 
+  var strPublicRead='<span style="display:inline-block">'+charPublicRead+'</span> (pulic read)';
+  var strPublicWrite=charPublicWrite+' (pulic write)';
+  var strPromote=charPromote+' (promote)';
 
     // menuSingle
   var $buttonDownload=$('<div>').html('Download');
   var $buttonRename=$('<div>').append('Rename').on(strEvent,function(){
-    var $b=$(this).parent().data('$button'),  arrTmp=getRenameData.call($b[0]); arrTmp.unshift('page'); $renamePop.openFunc.apply(null,arrTmp);    });
-  var $buttonROn=$('<div>').append('<b>r</b>ead on').on(strEvent,function(){
-    var $b=$(this).parent().data('$button'),   FileTmp=[$b.parent().parent().data('idPage')],   vec=[['myChMod',{boOR:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfSingle.call($b[0],'boOR',1);   });
-  var $buttonROff=$('<div>').append('<b>r</b>ead off').on(strEvent,function(){
-    var $b=$(this).parent().data('$button'),   FileTmp=[$b.parent().parent().data('idPage')],   vec=[['myChMod',{boOR:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfSingle.call($b[0],'boOR',0);   });
-  var $buttonWOn=$('<div>').append('<b>w</b>rite on').on(strEvent,function(){
-    var $b=$(this).parent().data('$button'),   FileTmp=[$b.parent().parent().data('idPage')],   vec=[['myChMod',{boOW:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfSingle.call($b[0],'boOW',1);   });
-  var $buttonWOff=$('<div>').append('<b>w</b>rite off').on(strEvent,function(){
-    var $b=$(this).parent().data('$button'),   FileTmp=[$b.parent().parent().data('idPage')],   vec=[['myChMod',{boOW:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfSingle.call($b[0],'boOW',0);
-   });
-  var $buttonPOn=$('<div>').append('<b>p</b>romote on').on(strEvent,function(){
-    var $b=$(this).parent().data('$button'),   FileTmp=[$b.parent().parent().data('idPage')],   vec=[['myChMod',{boSiteMap:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfSingle.call($b[0],'boSiteMap',1);   });
-  var $buttonPOff=$('<div>').append('<b>p</b>romote off').on(strEvent,function(){
-    var $b=$(this).parent().data('$button'),   FileTmp=[$b.parent().parent().data('idPage')],   vec=[['myChMod',{boSiteMap:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfSingle.call($b[0],'boSiteMap',0);   });
-  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){   var $b=$(this).parent().data('$button'),   FileTmp=[$b.parent().parent().data('idPage')], strLab='Are sure you want to delete this page'; 
+    var $b=$(this).parent().data('$button'), $r=$b.parent().parent(),  FileTmp=[$r.data('idPage')],  arrTmp=getRenameData.call($r[0]); arrTmp.unshift('page'); $renamePop.openFunc.apply(null,arrTmp);    });
+  var $buttonRTog=$('<div>').append('Toggle '+strPublicRead).on(strEvent,function(){  var $b=$(this).parent().data('$button'), $r=$b.parent().parent();   changeModOfSingle.call($r[0],'boOR');   });
+  var $buttonWTog=$('<div>').append('Toggle '+strPublicWrite).on(strEvent,function(){  var $b=$(this).parent().data('$button'), $r=$b.parent().parent();  changeModOfSingle.call($r[0],'boOW');    });
+  var $buttonPTog=$('<div>').append('Toggle '+strPromote).on(strEvent,function(){  var $b=$(this).parent().data('$button'), $r=$b.parent().parent();   changeModOfSingle.call($r[0],'boSiteMap');   });
+  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){
+    var $b=$(this).parent().data('$button'), $r=$b.parent().parent(),  FileTmp=[$r.data('idPage')], strLab='Are sure you want to delete this page'; 
     $areYouSurePop.openFunc(strLab,function(){$el.deleteF(FileTmp);}); });
 
 
   
   //var $itemSingle=$([]).push($buttonGoToParent, $buttonRename, $buttonROn, $buttonROff, $buttonWOn, $buttonWOff, $buttonPOn, $buttonPOff, $buttonDelete);
-  var $itemSingle=$([]).push($buttonRename, $buttonROn, $buttonROff, $buttonWOn, $buttonWOff, $buttonPOn, $buttonPOff, $buttonDelete);
+  var $itemSingle=$([]).push($buttonRename, $buttonRTog, $buttonWTog, $buttonPTog, $buttonDelete);
   var $menuSingle=menuExtend($('<div>')).css({'text-align':'left'});
   var buttonExeSingleClick=function(e){ 
     var $button=$(this); 
@@ -1599,16 +1612,16 @@ pageListExtend=function($el){
 
     // menuMult
   var $buttonDownload=$('<div>').html('Download');
-  var $buttonROn=$('<div>').append('<b>r</b>ead on').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOR:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOR',1);   });
-  var $buttonROff=$('<div>').append('<b>r</b>ead off').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOR:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOR',0);   });
-  var $buttonWOn=$('<div>').append('<b>w</b>rite on').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOW:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOW',1);   });
-  var $buttonWOff=$('<div>').append('<b>w</b>rite off').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOW:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOW',0);   });
-  var $buttonPOn=$('<div>').append('<b>p</b>romote on').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boSiteMap:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boSiteMap',1);   });
-  var $buttonPOff=$('<div>').append('<b>p</b>romote off').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boSiteMap:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boSiteMap',0);   });
+  var $buttonROn=$('<div>').append(strPublicRead+' on').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOR:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOR',1);   });
+  var $buttonROff=$('<div>').append(strPublicRead+' off').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOR:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOR',0);   });
+  var $buttonWOn=$('<div>').append(strPublicWrite+' on').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOW:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOW',1);   });
+  var $buttonWOff=$('<div>').append(strPublicWrite+' off').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOW:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOW',0);   });
+  var $buttonPOn=$('<div>').append(strPromote+' on').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boSiteMap:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boSiteMap',1);   });
+  var $buttonPOff=$('<div>').append(strPromote+' off').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boSiteMap:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boSiteMap',0);   });
   var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){   var FileTmp=getChecked(), strLab='Are sure you want to delete these pages';   $areYouSurePop.openFunc(strLab,function(){$el.deleteF(FileTmp);}); });
   
-  var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
-  var $executeButton=$('<button>').append($tmpImg).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
+  //var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});   
+  var $executeButton=$('<button>').append(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
   var $itemMulti=$([]).push($buttonROn, $buttonROff, $buttonWOn, $buttonWOff, $buttonPOn, $buttonPOff, $buttonDelete);
   var $menuMult=menuExtend($('<div>')).css({'text-align':'left'});
   var buttonExeMultClick=function(e){ 
@@ -1625,9 +1638,10 @@ pageListExtend=function($el){
   var $spanTmp=$('<span>').append(strFastBackSymbol).css({'font-size':'0.7em'});
   var $buttonFastBack=$('<button>').append($spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){history.fastBack($adminMoreDiv);});
   //var $spanLabel=$('<span>').append('Pages').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var $buttPI=$('<button>').click(function(){  
+  var $buttPI=$('<button>').css({'line-height':'normal','min-width':'1.4em', 'background-image':'url("stylesheets/buttonRightBlue1.png")'}).click(function(){  
     var idParent=$pageFilterDiv.Filt.getSingleParent();
-    $imageFilterDiv.Filt.setSingleParent(idParent);   $imageList.histPush(); $imageList.loadTab(); $imageList.setVis();}).css({background:'lightblue','line-height':'normal','min-width':'1.4em'});
+    $imageFilterDiv.Filt.setSingleParent(idParent);   $imageList.histPush(); $imageList.loadTab(); $imageList.setVis();
+  }); //background:'lightblue',
   var $buttPIW=$('<span>').append($buttPI).css({'float':'right','margin-right':'0.6em'});
   var $tmpImg=$('<img>').prop({src:uFilter}).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
   $el.$filterInfoWrap=$('<span>');
@@ -1643,7 +1657,7 @@ pageListExtend=function($el){
 
   var $menuA=$('<div>').append($buttonFastBack, $allButton, $executeButton, $buttFilter, $buttClear, $buttOrphan);  // $buttonBack, 
   $menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
-  var $menuTop=$('<div>').append($spanGrandParent, $spanSingleFilter, $buttPIW);  // , $spanGrandParentI     
+  var $menuTop=$('<div>').append($spanGrandParent, $spanSingleFilter, $buttPIW).addClass('divMenuTop');  // , $spanGrandParentI     
   $menuTop.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em', 'line-height':'2.7em'});
 
   $el.addClass('pageList');
@@ -1657,9 +1671,6 @@ pageListExtend=function($el){
 
 
 
-//strCamera="📷";  strLink="🔗";
-
-// thumbs up 👍, thumbs down 👎, Speech ballon 💬
 renamePopExtend=function($el){
 "use strict"
   $el.toString=function(){return 'renamePop';}
@@ -1732,13 +1743,13 @@ var goToParentMethod=function(strTypeCur, strTypeGoal){
 }
 
 var SpanGrandParent=function(strTypeCur, strTypeGoal){
-  var $el=$('<span>').addClass('spanGrandParent'); $.extend($el,SpanGrandParent.tmpPrototype);
+  var $el=$('<span>'); $.extend($el,SpanGrandParent.tmpPrototype);
   $el.boSame=strTypeCur==strTypeGoal;
   $el.strTypeCur=strTypeCur;  $el.strTypeGoal=strTypeGoal;
   $el.strColor=$el.strTypeGoal=='page'?'':'Blue';
   $el.GrandParent=[];
-  $el.$buttPop=$('<button>').css({'background-image':'url("stylesheets/buttonUp'+$el.strColor+'1.png")'}).click(function(){$grandParentSelPop.openFunc($el.GrandParent,strTypeCur,strTypeGoal);}).hide();
-  $el.$buttOrphan=$('<button>').append('(orphans)').css({'background-image':'url("stylesheets/buttonUp'+$el.strColor+'3.png")'}).click(function(){ $el.clickFunc(null); }).hide();
+  $el.$buttPop=$('<button>').css({'background-image':'url("stylesheets/buttonLeft'+$el.strColor+'1.png")'}).click(function(){$grandParentSelPop.openFunc($el.GrandParent,strTypeCur,strTypeGoal);}).hide();
+  $el.$buttOrphan=$('<button>').append('(orphans)').css({'background-image':'url("stylesheets/buttonLeft'+$el.strColor+'3.png")'}).click(function(){ $el.clickFunc(null); }).hide();
   $el.$spanButt=$('<span>').on('click','button',function(){var ind=$(this).data('ind'); $el.clickFunc($el.GrandParent[ind]);});
 
   $el.append($el.$buttPop, $el.$buttOrphan, $el.$spanButt); //  'Up: ',    .click(function(){$el.clickFunc();}); 
@@ -1758,7 +1769,7 @@ SpanGrandParent.tmpPrototype.setUp=function(GrandParent){
       var str=GrandParent[i].pageName; if(str.length>lenMax) str=str.substr(0,lenMax-2)+'...';
       var $butt=$('<button>').append(str).prop('title',GrandParent[i].pageName).data({ind:i});       this.$spanButt.append($butt);
       var intSize=1; if(str.length>6) intSize=3;  else if(str.length>3) intSize=2;
-      $butt.css({'background-image':'url("stylesheets/buttonUp'+this.strColor+intSize+'.png")'});
+      $butt.css({'background-image':'url("stylesheets/buttonLeft'+this.strColor+intSize+'.png")'});
     }
     //if(len>1) this.$spanButt.prepend('(').append(')');
   }
@@ -1798,24 +1809,17 @@ var grandParentSelPopExtend=function($el){
 
   $el.openFunc=function(GrandParent, strTypeCurrent, strTypeGoalT){
     strTypeGoal=strTypeGoalT;
-    //var GrandParentAlt=[].concat(GrandParent);
-    var GrandParentAlt=$.extend(true, [], GrandParent);  
     var FiltT=strTypeCurrent=='page'?$pageFilterDiv.Filt:$imageFilterDiv.Filt;
     $listGoal=strTypeGoal=='page'?$pageList:$imageList;
     var idParent=FiltT.getSingleParent()
-    var boAlt=FiltT.isWhite() && FiltT.getNParentsOn()==1; // boAlt: Only list the alternative parents (remove the current parent)
-    if(boAlt){
-      for(var i=GrandParentAlt.length-1;i>-1;i--){
-        if(GrandParentAlt[i].idPage===idParent) mySplice1(GrandParentAlt, i);
-      }
-    }
-    var len=GrandParentAlt.length;
+    
     $div.empty();
-    var tmpA=boAlt?'alternative ':'', tmpS=len==1?'':'s'
-    $head.html(len+' '+tmpA+'parent'+tmpS);
+    var len=GrandParent.length, tmpS=len==1?'':'s';
+    $head.html(len+' parent'+tmpS+':');
     for(var i=0;i<len;i++) {  
-      var idPage=GrandParentAlt[i].idPage, name=GrandParentAlt[i].pageName;
-      var $but=$('<button>').css({display:'block'}).data({idPage:idPage}).html(name).click(buttonPress); 
+      var idPage=GrandParent[i].idPage, name=GrandParent[i].pageName;
+      var boCur=idPage===idParent;
+      var $but=$('<button>').css({display:'block'}).data({idPage:idPage}).html(name).click(buttonPress).prop('disabled', boCur); 
       $div.append($but);
     }
     doHistPush({$view:$grandParentSelPop});
@@ -1916,8 +1920,8 @@ imageListExtend=function($el){
       var $buttonNParentI=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'image','image');});
       var $tdNParentI=$('<span>').append($buttonNParentI).attr('name','nParentI').prop('title','Parents'); 
       var $tdCB=$('<span>').data('valSort',0).append($cb).attr('name','cb');
-      var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
-      var $buttonExecute=$('<button>').append($tmpImg).on(strMenuExecuteEvent,buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"}) 
+      //var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'}); 
+      var $buttonExecute=$('<button>').append(charFlash).on(strMenuExecuteEvent,buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"});
       var $tdExecute=$('<span>').data('valSort',0).append($buttonExecute).attr('name','execute'); 
       var $tdDate=$('<span>').attr('name','date').prop('title',Label.date);  //.css({margin:'auto 0.3em'})
       var $img=$('<img>').click(imageClick);//.css({'margin-right':'0.1em','max-width':'50px','max-height':'50px'});
@@ -2064,10 +2068,20 @@ imageListExtend=function($el){
     var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')'), $checked=$Tr.find('input:checked'), FileTmp=[]; $checked.each(function(){var tmp=$(this).parent().parent().data('idImage'); FileTmp.push(tmp);});
     return FileTmp;
   }
+  
+    // Methods of resp row
   var getRenameData=function(){
-    var $r=$(this).parent().parent(), iTab=$r.index(), idImage=$r.data('idImage'), strName=$r.data('imageName');    return [iTab,idImage,strName];  }
+    var $r=$(this), iTab=$r.index(), idImage=$r.data('idImage'), strName=$r.data('imageName');    return [iTab,idImage,strName];  }
   var changeModOfSingleI=function(strName,boVal){
-    var $b=$(this); $b.parent().parent().children('span[name='+strName+']').data('valSort',Number(boVal)).css({visibility:boVal?'':'hidden'});  }
+    var $r=$(this), $span=$r.children('span[name='+strName+']'), boValO=$span.data('valSort');
+    if(typeof boVal=='undefined') boVal=1-boValO;
+ 
+    var o={File:[$r.data('idImage')]}; o[strName]=boVal;
+    var vec=[['myChModImage',o]];   majax(oAJAX,vec);
+    $span.data('valSort',Number(boVal)).css({visibility:boVal?'':'hidden'}); 
+  }
+  
+  
   $el.changeName=function(iTab,strNewName){
     var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')');
     var $r=$Tr.eq(iTab), iFlip=$r.data('iFlip');
@@ -2079,6 +2093,7 @@ imageListExtend=function($el){
     var vec=[['deleteImage',{File:FileDelete}],['setUpImageListCond',oF],['getImageList',1,getListRet],['getImageHist',1,histRet]];
     restExecuteButton();  majax(oAJAX,vec)
   }
+  
   var funPopped=function(statePopped){ 
     $imageFilterDiv.frStored(statePopped);
     $el.loadTab();
@@ -2130,18 +2145,16 @@ imageListExtend=function($el){
     // menuSingle
   var $buttonDownload=$('<div>').html('Download');
   var $buttonRename=$('<div>').append('Rename').on(strEvent,function(){
-    var $b=$(this).parent().data('$button'),  arrTmp=getRenameData.call($b[0]); arrTmp.unshift('image'); $renamePop.openFunc.apply(null,arrTmp);    });
-  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){   var $b=$(this).parent().data('$button'),   FileTmp=[$b.parent().parent().data('idImage')], strLab='Are sure you want to delete this image'; 
-    $areYouSurePop.openFunc(strLab,function(){$el.deleteF(FileTmp);}); });
-  var $buttonBoOtherOn=$('<div>').append('boOther on').on(strEvent,function(){
-    var $b=$(this).parent().data('$button'),   FileTmp=[$b.parent().parent().data('idImage')],   vec=[['myChModImage',{boOther:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfSingleI.call($b[0],'boOther',1);
-   });
-  var $buttonBoOtherOff=$('<div>').append('boOther off').on(strEvent,function(){
-    var $b=$(this).parent().data('$button'),   FileTmp=[$b.parent().parent().data('idImage')],   vec=[['myChModImage',{boOther:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfSingleI.call($b[0],'boOther',0);
-   });
+    var $b=$(this).parent().data('$button'), $r=$b.parent().parent(),  arrTmp=getRenameData.call($r[0]); arrTmp.unshift('image'); $renamePop.openFunc.apply(null,arrTmp);
+  });
+  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){
+     var $b=$(this).parent().data('$button'), $r=$b.parent().parent(),  FileTmp=[$r.data('idImage')], strLab='Are sure you want to delete this image'; 
+    $areYouSurePop.openFunc(strLab,function(){$el.deleteF(FileTmp);});
+  });
+  var $buttonBoOtherTog=$('<div>').append('Toggle boOther').on(strEvent,function(){ var $b=$(this).parent().data('$button'), $r=$b.parent().parent();   changeModOfSingleI.call($r[0],'boOther'); });
   
   //var $itemSingle=$([]).push($buttonGoToParent, $buttonRename, $buttonDelete);
-  var $itemSingle=$([]).push($buttonRename, $buttonDelete, $buttonBoOtherOn, $buttonBoOtherOff);
+  var $itemSingle=$([]).push($buttonRename, $buttonDelete, $buttonBoOtherTog);
   var $menuSingle=menuExtend($('<div>')).css({'text-align':'left'});
   var buttonExeSingleClick=function(e){ 
     var $button=$(this); //, $r=$button.parent().parent(), nParent=$r.data('nParent'), strParent=$r.data('nameParent');
@@ -2154,8 +2167,8 @@ imageListExtend=function($el){
   var $buttonDownload=$('<div>').html('Download');
   var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){  var FileTmp=getChecked(), strLab='Deleting '+FileTmp.length+' image(s).';   $areYouSurePop.openFunc(strLab,function(){$el.deleteF(FileTmp);}); });
   
-  var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
-  var $executeButton=$('<button>').append($tmpImg).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
+  //var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
+  var $executeButton=$('<button>').append(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
   var $itemMulti=$([]).push( $buttonDelete);
   //var menuExtender=menuExtend; if(boTouch) menuExtender=menuStickyExtend;
   var $menuMult=menuExtend($('<div>')).css({'text-align':'left'});
@@ -2175,10 +2188,10 @@ imageListExtend=function($el){
   var $spanTmp=$('<span>').append(strFastBackSymbol).css({'font-size':'0.7em'});
   var $buttonFastBack=$('<button>').append($spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){history.fastBack($adminMoreDiv);});
   //var $spanLabel=$('<span>').append('Images').css({'float':'right',margin:'0.2em 0 0 0'}); 
-  var $buttPI=$('<button>').click(function(){  //.append($tmpImg)
+  var $buttPI=$('<button>').css({'line-height':'normal','min-width':'1.4em', 'background-image':'url("stylesheets/buttonRight1.png")'}).click(function(){  //.append($tmpImg)
     var idParent=$imageFilterDiv.Filt.getSingleParent();
     $pageFilterDiv.Filt.setSingleParent(idParent);
-    $pageList.histPush(); $pageList.loadTab(); $pageList.setVis();}).css({'line-height':'normal','min-width':'1.4em'});
+    $pageList.histPush(); $pageList.loadTab(); $pageList.setVis();});
   var $buttPIW=$('<span>').append($buttPI).css({'float':'right','margin-right':'0.6em'});
   var $tmpImg=$('<img>').prop({src:uFilter}).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
   $el.$filterInfoWrap=$('<span>');
@@ -2192,7 +2205,7 @@ imageListExtend=function($el){
   //var $spanSingleFilterW=$('<span>').append();
   var $menuA=$('<div>').append($buttonFastBack, $allButton, $executeButton, $buttFilter, $buttClear, $buttOrphan);  // $buttonBack, 
   $menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
-  var $menuTop=$('<div>').append($spanGrandParent, $spanGrandParentI, $spanSingleFilter, $buttPIW); // 'Parent Filter: ',
+  var $menuTop=$('<div>').append($spanGrandParent, $spanGrandParentI, $spanSingleFilter, $buttPIW).addClass('divMenuTop'); // 'Parent Filter: ',
   $menuTop.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em', 'line-height':'2.7em'});
 
   $el.addClass('imageList');
@@ -2208,6 +2221,14 @@ imageListExtend=function($el){
 /*******************************************************************************
  * editDiv
  ******************************************************************************/
+divReCaptchaExtend=function($el){
+"use strict"
+  $el.setUp=function(){
+    if($el.is(':empty')){    grecaptcha.render($el[0], {sitekey:strReCaptchaSiteKey});    }
+  }
+  return $el;
+}
+
 editDivExtend=function($el){
 "use strict"
   $el.toString=function(){return 'editDiv';}
@@ -2215,6 +2236,9 @@ editDivExtend=function($el){
     if($editText.parent()[0]!==$el.$fixedDiv[0]) {
       $el.$fixedDiv.prepend($dragHR,$editText);
     }
+    
+    $el.$spanSave.prepend($divReCaptcha);
+    $divReCaptcha.setUp();
   }
   
     // menuB
@@ -2259,7 +2283,8 @@ editButtonExtend=function($el){
   return $el;
 }
 spanModExtend=function($el){
-  $el.setup=function(data){   $el.html((data.boOR?'r':' ') + (data.boOW?'w':' ') + (data.boSiteMap?'p':' '));  }
+  var strPublicRead='<span style="display:inline-block">'+charPublicRead+'</span>';
+  $el.setup=function(data){   $el.html((data.boOR?strPublicRead:' ') + (data.boOW?charPublicWrite:' ') + (data.boSiteMap?charPromote:' '));  }
   return $el;
 }
 
@@ -2339,7 +2364,11 @@ spanSaveExtend=function($el){
   }
   var $save=$('<button>').append('Save').click(function(){
     if(!$summary.val() || !$signature.val()) { setMess('Summary- or signature- field is empty',5); return;}
-    var vec=[['saveByAdd',{strEditText:$editText.val(), summary:$summary.val(), signature:$signature.val()}]];   majax(oAJAX,vec); 
+    
+    var strTmp=grecaptcha.getResponse(); if(!strTmp) {setMess("Captcha response is empty"); return; }
+    var o={strEditText:$editText.val(), summary:$summary.val(), signature:$signature.val(),  'g-recaptcha-response': grecaptcha.getResponse()};
+    
+    var vec=[['saveByAdd',o]];   majax(oAJAX,vec); 
     $summary.val(''); $signature.val('');
     $boLCacheObs.val(1);
   });
@@ -2598,7 +2627,7 @@ var formPPExtend=function($el){
 "use strict"
   //var urlPaypalButton="https://www.paypal.com/en_US/i/btn/btn_paynowCC_LG.gif";
   //var urlPaypalButton="https://www.paypalobjects.com/webstatic/en_US/btn/btn_paynow_cc_144x47.png";
-  var urlPaypalButton="https://www.paypalobjects.com/webstatic/en_US/btn/btn_pponly_142x27.png";
+  //var urlPaypalButton="https://www.paypalobjects.com/webstatic/en_US/btn/btn_pponly_142x27.png";
   if(boDbg) urlPaypalButton='';
   $el.empty();   $el.prop({action:urlPayPal,method:'post'}).css({display:"inline","vertical-align":"-6px"});
   var $input0=$('<input>').prop({type:"hidden",name:"cmd", value:"_s-xclick"});
@@ -3076,7 +3105,7 @@ siteSetPopExtend=function($el){
   }
   $el.setUp=function(){
     if(typeof r.boTLS=='undefined') r.boTLS=0;
-    $selBoTLS.val(r.boTLS); $inpName.val(r.siteName); $inpWWW.val(r.www); $inpGog.val(r.googleAnalyticsTrackingID); $inpURLIcon16.val(r.urlIcon16); $inpURLIcon200.val(r.urlIcon200);
+    $selBoTLS.val(Number(r.boTLS)); $inpName.val(r.siteName); $inpWWW.val(r.www); $inpGog.val(r.googleAnalyticsTrackingID); $inpURLIcon16.val(r.urlIcon16); $inpURLIcon200.val(r.urlIcon200);
     $inpName.focus();  return true;
   }
   $el.openFunc=function(boUpdT,boGotData){
@@ -3332,13 +3361,16 @@ GRet=function(data){
   var tmp;
   tmp=data.boALoggedIn;   if(typeof tmp!="undefined") boALoggedIn=tmp;
   tmp=data.boVLoggedIn;   if(typeof tmp!="undefined") { boVLoggedIn=tmp;  }
-  tmp=data.idPage;   if(typeof tmp!="undefined") { idPage=tmp;  }
+  tmp=data.idPage;   if(typeof tmp!="undefined") { objPage.idPage=tmp;  }
   tmp=data.tMod;   if(typeof tmp!="undefined") { tMod=tmp; $editDiv.$spanLastMod.html(mySwedDate(tMod)); }
   //tmp=data.tModCache;   if(typeof tmp!="undefined") tModCache=tmp;
-  tmp=data.boOW;   if(typeof tmp!="undefined") { boOW=tmp; $editButton.setImg(boOW); $accessOWrite.setStat(tmp);  $editDiv.$spanSave.toggle(Boolean(tmp));}
-  tmp=data.boOR;   if(typeof tmp!="undefined") { boOR=tmp; $accessORead.setStat(tmp); }
-  tmp=data.boSiteMap;   if(typeof tmp!="undefined") { boSiteMap=tmp; $accessSiteMap.setStat(tmp); }
-  $spanMod.setup({boOW:boOW, boOR:boOR, boSiteMap:boSiteMap});
+  tmp=data.boOW;   if(typeof tmp!="undefined") { objPage.boOW=tmp; $editButton.setImg(tmp);  $editDiv.$spanSave.toggle(Boolean(tmp));}
+  tmp=data.boOR;   if(typeof tmp!="undefined") { objPage.boOR=tmp;  }
+  tmp=data.boSiteMap;   if(typeof tmp!="undefined") { objPage.boSiteMap=tmp;  }
+
+  $adminMoreDiv.setMod();
+  $spanMod.setup(objPage);
+  $pageView.setFixedDivColor(objPage.boOR);
 
   tmp=data.arrVersionCompared;   if(typeof tmp!="undefined") arrVersionCompared=tmp;
 
@@ -3353,8 +3385,8 @@ GRet=function(data){
   tmp=data.boTalkExist;   if(typeof tmp!="undefined") $commentButton.setUp(tmp);
   //tmp=data.strMessageText;   if(typeof tmp!="undefined") setMess(tmp,5);
   tmp=data.CSRFCode;   if(typeof tmp!="undefined") CSRFCode=tmp;
-  $viewDiv.toggle(Boolean(boVLoggedIn || boOR));
-  $vLoginDiv.myToggle(!Boolean(boVLoggedIn || boOR));  
+  $viewDiv.toggle(Boolean(boVLoggedIn || objPage.boOR));
+  $vLoginDiv.myToggle(!Boolean(boVLoggedIn || objPage.boOR));  
 
   //$adminButton.setStat();
   $adminDiv.setAdminStat();
@@ -3439,8 +3471,29 @@ setUp1=function(){
     }
   } 
 
-  if(boIOS  || boIE) strBackSymbol='◄'; else strBackSymbol='◀';
-  strFastBackSymbol=strBackSymbol+strBackSymbol;
+  if(boIOS  || boIE) charBackSymbol='◄'; else charBackSymbol='◀';
+  strFastBackSymbol=charBackSymbol+charBackSymbol;
+  charFlash='⚡';//⚡↯
+  charPublicRead='͡°'; //☉͡°
+  charPublicRead='<span style="font-family:courier">͡°</span>'; //☉͡°
+  charPublicRead='<span class=eye>(∘)</span>'; //☉͡° ·
+  charPublicRead='👀&#xFE0E;'; //☉͡° ·
+  charPublicRead='r'; //☉͡° ·
+  charPublicWrite='✎&#xFE0E;'; //✎
+  charPublicWrite='w'; //✎
+  charPromote='&#1f62e;&#10006;';  //😱😭😮&#xFE0E;
+  charPromote='📣&#xFE0E;';  //😱😭😮&#xFE0E;
+  charPromote='p';  //😱😭😮&#xFE0E;
+  charDelete='✖'; //x, ❌, X, ✕, ☓, ✖, ✗, ✘
+  charLink='☞'; //☞🔗
+  charThumbsUp='☝'; //👍☝
+  charThumbsDown='☟'; //👎☟
+  charSpeechBaloon='💬'; //💬
+  charCamera='📷'; //📷
+  
+  // ♿⚠⌂☞
+  
+  //cssEye={'font-family':'courier', 'font-size':'90%', 'letter-spacing':'-.5em', transform:'rotate(90deg)', display:'inline-block','vertical-align':'.4em'}
   
   //boHistPushOK='pushState' in history && 'state' in history;
   boHistPushOK='pushState' in history;
@@ -3482,8 +3535,6 @@ setUp1=function(){
   KeyColPage=Object.keys(PropPage);  KeyColImage=Object.keys(PropImage);
 
 
-
-
   //colsFlip=array_flip(KeyCol);
   //StrOrderFiltFlip=array_flip(StrOrderFilt);
   var strScheme='http'+(boTLS?'s':''),    strSchemeLong=strScheme+'://';    uSite=strSchemeLong+wwwSite;
@@ -3493,7 +3544,6 @@ setUp1=function(){
   if(queredPage=='start') uCanonical=uSite;
 
 
-  leafCaptcha='captcha.png';
 
  
 
@@ -3535,6 +3585,7 @@ setUp1=function(){
   uFlash=uLibImageFolder+'flash.png';
   uFilter=uLibImageFolder+'filter.png';
   //uZoom=uLibImageFolder+'zoom.png';
+  urlPaypalButton=uLibImageFolder+"btn_pponly_142x27.png";
   
 
   uDelete=uLibImageFolder+'delete.png';
@@ -3651,6 +3702,7 @@ setUp1=function(){
 
   $dragHR=dragHRExtend($('<hr>')); $dragHR.css({height:'0.3em',background:'grey',margin:0});
   if(boTouch) $dragHR="";
+  $divReCaptcha=divReCaptchaExtend($('<div>'));
   $editText=editTextExtend($('<textarea>'));
 
   $pageView=pageViewExtend($('<div>')); 
@@ -3757,6 +3809,7 @@ setUp1=function(){
   }
   $adminMoreDiv.setVis=function(){
     var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();
+    $tmp.setUp();
     $tmp.$divCont.css({'margin-bottom':285+'px'});
     fillScreenF(false); $redirectTab.boStale=1; $siteTab.boStale=1;
     return true; 
@@ -3864,13 +3917,17 @@ setUp1=function(){
 
   $editText.val(strEditText);  $templateList.setUp(objTemplateE);  
   
-  $editButton.setImg(boOW);
-  $spanMod.setup({boOW:boOW, boOR:boOR, boSiteMap:boSiteMap});
+
+  $editButton.setImg(objPage.boOW);
+  $spanMod.setup(objPage);
+  $pageView.setFixedDivColor(objPage.boOR);
+  
+  $editDiv.$spanSave.toggle(Boolean(objPage.boOW));
 
   boMakeFirstScroll=1;
   //if(!boChrome) 
   $pageView.setVis();
-  if(boOR==0) { 
+  if(objPage.boOR==0) { 
     $viewDiv.hide();
     if(boVLoggedIn){ 
       $vLoginDiv.hide();

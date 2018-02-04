@@ -73,7 +73,8 @@ ReqBE.prototype.go=function*(){
       if(err){this.mesEO(err);  return; } 
       
       this.File=files['fileToUpload[]'];
-      if('captcha' in fields) this.captchaIn=fields.captcha; else this.captchaIn='';
+      //if('captcha' in fields) this.captchaIn=fields.captcha; else this.captchaIn='';
+      if('g-recaptcha-response' in fields) this.captchaIn=fields['g-recaptcha-response']; else this.captchaIn='';
       if('strName' in fields) this.strName=fields.strName; else this.strName='';
       if(!(this.File instanceof Array)) this.File=[this.File];
       jsonInput=fields.vec;
@@ -115,7 +116,7 @@ ReqBE.prototype.go=function*(){
 
            // Arrays of functions
     // Functions that changes something must check and refresh CSRF-code
-  var arrCSRF=['myChMod', 'myChModImage', 'saveByAdd', 'saveByReplace', 'uploadUser', 'uploadAdmin', 'uploadAdminServ', 'getPageInfo', 'getImageInfo', 'setUpPageListCond','getPageList','getPageHist', 'setUpImageListCond','getImageList','getImageHist', 'getParent','getParentOfImage','getSingleParentExtraStuff', 'deletePage','deleteImage','renamePage','renameImage', 'redirectTabGet','redirectTabSet','redirectTabDelete', 'redirectTabResetNAccess', 'siteTabGet', 'siteTabSet', 'siteTabDelete', 'siteTabSetDefault'];
+  var arrCSRF=['myChMod', 'myChModImage', 'saveByAdd', 'saveByReplace', 'uploadUser', 'uploadAdmin', 'uploadAdminServ', 'getPageInfo', 'getImageInfo', 'getLastTMod', 'setUpPageListCond','getPageList','getPageHist', 'setUpImageListCond','getImageList','getImageHist', 'getParent','getParentOfImage','getSingleParentExtraStuff', 'deletePage','deleteImage','renamePage','renameImage', 'redirectTabGet','redirectTabSet','redirectTabDelete', 'redirectTabResetNAccess', 'siteTabGet', 'siteTabSet', 'siteTabDelete', 'siteTabSetDefault'];
   var arrNoCSRF=['specSetup','vLogin','aLogin','aLogout','pageLoad','pageCompare','getPreview'];  
   allowed=arrCSRF.concat(arrNoCSRF);
 
@@ -504,6 +505,18 @@ ReqBE.prototype.saveByAdd=function*(inObj){
   var req=this.req, res=this.res;
   var Ou={}, GRet=this.GRet, flow=req.flow;
 
+    // Check reCaptcha with google
+  var strCaptchaIn=inObj['g-recaptcha-response'];
+  var uGogCheck = "https://www.google.com/recaptcha/api/siteverify"; 
+  var objForm={  secret:strReCaptchaSecretKey, response:strCaptchaIn, remoteip:req.connection.remoteAddress  };
+  var semY=0, semCB=0, err, response, body;
+  var reqStream=requestMod.post({url:uGogCheck, form:objForm}, function(errT, responseT, bodyT) { err=errT; response=responseT; body=bodyT; if(semY)flow.next(); semCB=1;  }); if(!semCB){semY=1; yield;}
+  var buf=body;
+  try{ var data = JSON.parse(buf.toString()); }catch(e){ return [e]; }
+  //console.log('Data: ', data);
+  if(!data.success) return [new ErrorClient('reCaptcha test not successfull')];
+  
+
     // getInfo
   var [err,rowA]=yield* getInfo.call(this); if(err) return [err];
 
@@ -788,6 +801,18 @@ ReqBE.prototype.getImageInfo=function*(inObj){
   return [null, [Ou]];
 }
 
+ReqBE.prototype.getLastTMod=function*(inObj){
+  var req=this.req, res=this.res, flow=req.flow, Ou={};
+  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+
+  var sql='SELECT UNIX_TIMESTAMP(MAX(tMod)) AS tLastMod FROM '+versionTab;
+  var Val={};
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
+  Ou.tLastMod=results[0].tLastMod;
+  return [null, [Ou]];
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // RedirectTab
 ////////////////////////////////////////////////////////////////////////
@@ -943,7 +968,7 @@ ReqBE.prototype.uploadAdminServ=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
-  var strFileToLoadFolder=path.join(__dirname, '..', 'mmmWikiData', 'FileToLoad'); 
+  var strFileToLoadFolder=path.join(__dirname, '..', 'mmmWikiData', 'BU'); 
   var err, files;
   fs.readdir(strFileToLoadFolder, function(errT, filesT){ err=errT; files=filesT; flow.next(); }); yield;  if(err) return [err];
 
@@ -1015,7 +1040,7 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data){
   if(type=='txt'){
     //fileName=fileName.replace(RegExp('(talk|template|template_talk) ','i'),'$1:');   
     var fileNameB=fileName.replace(RegExp('.txt$','i'),'');
-    var obj=parsePage(fileNameB);
+    var obj=parsePageNameHD(fileNameB);
     var siteName=obj.siteName, pageName=obj.pageName;
 
     extend(this,{strEditText:data.toString(), boOW:1, boOR:1, boSiteMap:1});
@@ -1059,12 +1084,23 @@ ReqBE.prototype.uploadUser=function*(inObj){
   var Ou={};
   var regImg=RegExp("^(png|jpeg|jpg|gif|svg)$"), regVid=RegExp('^(mp4|ogg|webm)$');
 
-  var redisVar=req.sessionID+'_captcha';
-  var tmp=yield* wrapRedisSendCommand.call(req, 'get',[redisVar]);
-  if(this.captchaIn!=tmp) { Ou.strMessage='Wrong captcha'; return [null, [Ou]];}
+  //var redisVar=req.sessionID+'_captcha';
+  //var tmp=yield* wrapRedisSendCommand.call(req, 'get',[redisVar]);
+  //if(this.captchaIn!=tmp) { Ou.strMessage='Wrong captcha'; return [null, [Ou]];}
+
+    // Check reCaptcha with google
+  var strCaptchaIn=this.captchaIn;
+  var uGogCheck = "https://www.google.com/recaptcha/api/siteverify"; 
+  var objForm={  secret:strReCaptchaSecretKey, response:strCaptchaIn, remoteip:req.connection.remoteAddress  };
+  var semY=0, semCB=0, err, response, body;
+  var reqStream=requestMod.post({url:uGogCheck, form:objForm}, function(errT, responseT, bodyT) { err=errT; response=responseT; body=bodyT; if(semY)flow.next(); semCB=1;  }); if(!semCB){semY=1; yield;}
+  var buf=body;
+  try{ var data = JSON.parse(buf.toString()); }catch(e){ return [e]; }
+  //console.log('Data: ', data);
+  if(!data.success) return [new ErrorClient('reCaptcha test not successfull')];
+  
   var File=this.File;
   var n=File.length; this.mes("nFile: "+n);
-
   
   var file=File[0], tmpname=file.path, fileName=file.name; if(this.strName.length) fileName=this.strName;
   var Match=RegExp('\\.(\\w{1,3})$').exec(fileName); 

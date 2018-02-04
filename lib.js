@@ -130,7 +130,15 @@ object_values=function(obj){
   var arr=[];      for(var name in obj) arr.push(obj[name]);
   return arr;
 }
+overwriteProperties=function(oGoal, oOrg){
+    // If oGoal or oOrg has wrong type then return oGoal
+  if(oGoal===undefined || oGoal===null || ['string', 'number', 'boolean'].indexOf(typeof oGoal)!==-1) return oGoal;
+  if(oOrg===undefined || oOrg===null || ['string', 'number', 'boolean'].indexOf(typeof oOrg)!==-1) return oGoal;
+  for(var k in oOrg)  if(oOrg.hasOwnProperty(k)) oGoal[k]= oOrg[k];
+  return oGoal;
+}
 isEmpty=function(obj) {    return Object.keys(obj).length === 0;  }
+
 
 //
 // Dates and time
@@ -283,14 +291,14 @@ calcBUFileName=function(wwwSite,type,ending){
   return www+'_'+date+'_'+type+'.'+ending;
 }
 
-regParsePageKey=RegExp('([^:]+):','g');
-parsePage=function(strPage){
-  regParsePageKey.lastIndex=0;
+regParsePageNameHD=RegExp('([^:]+):','g');
+parsePageNameHD=function(strPage){ // parsePageNameHD (PageNameHD = pageName that is both Human- and Data-friendly)
+  regParsePageNameHD.lastIndex=0;
   var obj={boTalk:false, boTemplate:false, strTemplateTalk:'', siteName:''}, lastIndex;
   while(true) {
-    var Match=regParsePageKey.exec(strPage);
+    var Match=regParsePageNameHD.exec(strPage);
     if(Match==null) break;
-    lastIndex=regParsePageKey.lastIndex;
+    lastIndex=regParsePageNameHD.lastIndex;
     var tmp=Match[1]; 
     if(tmp=='talk') {obj.boTalk=true; obj.strTemplateTalk=tmp;}
     else if(tmp=='template') {obj.boTemplate=true; obj.strTemplateTalk=tmp;}
@@ -303,7 +311,6 @@ parsePage=function(strPage){
   //obj.pageName=strPage.substr(lastIndex);
   return obj;
 }
-
 
 
 

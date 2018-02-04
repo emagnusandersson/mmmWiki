@@ -28,8 +28,9 @@ imageSize = require('image-size');
 NodeZip=require('node-zip');
 //redis = require("then-redis");
 redis = require("redis");
-captchapng = require('captchapng');
+//captchapng = require('captchapng');
 //Neo4j = require('neo4j-transactions');
+var argv = require('minimist')(process.argv.slice(2));
 require('./lib.js');
 require('./libServerGeneral.js');
 require('./libServer.js');
@@ -49,36 +50,15 @@ boLocal=strInfrastructure=='local';
 boDO=strInfrastructure=='do'; 
 
 
-
-interpretArgv=function(){
-  var myArg=process.argv.slice(2);
-  for(var i=0;i<myArg.length;i++){
-    var Match=RegExp("^(-{1,2})([^-\\s]+)$").exec(myArg[i]);
-    if(Match[1]=='-') {
-      var tmp=Match[2][0];
-      if(tmp=='p') port=Match[2].substr(1);
-      else if(tmp=='h') helpTextExit();
-      else {console.log('Neglected option: '+myArg[i]); }
-    }else if(Match[1]=='--') {
-      var tmp=Match[2], tmpSql='sql';
-      if(tmp.slice(0,tmpSql.length)==tmpSql) strCreateSql=Match[2].substr(tmpSql.length);
-      else if(tmp=='help') helpTextExit();
-      else {console.log('Neglected option: '+myArg[i]); }
-    }
-  }
-}
-
 StrValidSqlCalls=['createTable', 'dropTable', 'createView', 'dropView', 'createFunction', 'dropFunction', 'truncate', 'createDummy', 'createDummies'];
- 
-
 
 helpTextExit=function(){
   var arr=[];
   arr.push('USAGE script [OPTION]...');
-  arr.push('\t-h, --help\t\tDisplay this text');
-  arr.push('\t-p[PORT]\t\tPort number (default: 5000)');
-  arr.push('\t--sql[SQL_ACTION]\tRun a sql action.');
-  arr.push('\t\tSQL_ACTION='+StrValidSqlCalls.join('|'));
+  arr.push('  -h, --help          Display this text');
+  arr.push('  -p, --port [PORT]   Port number (default: 5000)');
+  arr.push('  --sql [SQL_ACTION]  Run a sql action.');
+  arr.push('    SQL_ACTION='+StrValidSqlCalls.join('|'));
   console.log(arr.join('\n'));
   process.exit(0);
 }
@@ -120,8 +100,9 @@ var flow=( function*(){
   strSalt='abcdef';
   strBTC="";
   ppStoredButt="";
-  interpretArgv();
-
+  
+  port=argv.p||argv.port||5000;
+  if(argv.h || argv.help) {helpTextExit(); return;}
 
   var strConfig;
   if(boHeroku){ 
@@ -161,10 +142,11 @@ var flow=( function*(){
   
   SiteName=[strDBPrefix]; // To make the code analog to my other programs :-)
 
-    // Do db-query if --sqlXXXX was set in the argument
-  if(typeof strCreateSql!='undefined'){
+    // Do db-query if --sql XXXX was set in the argument
+  if(typeof argv.sql!='undefined'){
+    if(typeof argv.sql!='string') {console.log('sql argument is not a string'); process.exit(-1); return; }
     var tTmp=new Date().getTime();
-    var objSetupSql=new SetupSql(); yield* objSetupSql.doQuery(strCreateSql,flow);
+    var objSetupSql=new SetupSql(); yield* objSetupSql.doQuery(argv.sql,flow);
     console.log('Time elapsed: '+(new Date().getTime()-tTmp)/1000+' s'); 
     process.exit(0);
   }
@@ -224,7 +206,8 @@ var flow=( function*(){
   handler=function(req, res){
     req.flow=(function*(){
       if(typeof isRedirAppropriate!='undefined'){ 
-        var tmpUrl=isRedirAppropriate(req); if(tmpUrl) { res.out301(tmpUrl); return; }
+        //var tmpUrl=isRedirAppropriate(req); if(tmpUrl) { res.out301(tmpUrl); return; }
+        var tmpUrl=isRedirAppropriate(req); if(tmpUrl) { res.out200('The domain name has changed, use: '+tmpUrl+' instead'); return; }
       }
     
       var cookies = parseCookies(req);
@@ -297,7 +280,7 @@ var flow=( function*(){
         if(levelMaintenance){res.outCode(503, "Down for maintenance, try again in a little while."); return;}
         if(pathName=='/'+leafBE){ var reqBE=new ReqBE(req, res);  yield* reqBE.go();    }
         //else if(pathName.indexOf('/image/')==0){  yield* reqImage.call(objReqRes);   } //RegExp('^/image/').test(pathName)
-        else if(pathName=='/captcha.png'){    yield* reqCaptcha.call(objReqRes);    }
+        //else if(pathName=='/captcha.png'){    yield* reqCaptcha.call(objReqRes);    }
         else if(regexpLib.test(pathName) || regexpLooseJS.test(pathName) || regexpPakoJS.test(pathName) || pathName=='/conversion.html'){    yield* reqStatic.call(objReqRes);   }
         else if(regexpImage.test(pathName)){  yield* reqMediaImage.call(objReqRes);   }
         else if(regexpVideo.test(pathName)){   yield* reqMediaVideo.call(objReqRes);   }

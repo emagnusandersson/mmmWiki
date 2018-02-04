@@ -243,6 +243,8 @@ td,th {border-width:inherit;border-style:inherit }
 tr {border-width:inherit;border-style:inherit }
 tbody,thead {border-width:inherit;border-style:inherit }
 
+.boxShadowOn {box-shadow: 0 0 0 0.2em lightgreen inset;background-color:#eee; color:limegreen}
+.boxShadowOff {box-shadow: 0 0 0 0.2em darkgrey inset;background-color: #ddd}
 
 button, select { box-sizing:border-box; height:2.5em; font-size:0.8em; margin:0.5 0.5; padding:0 0.2em; font-size: inherit;vertical-align:middle;background-color:#eee;border-radius:0.4em}
 button.flexWidth{} /*height:1.8em;padding-left:0.7em;padding-right:0.7em*/
@@ -276,22 +278,20 @@ button.fixWidth{} /*width:2em*/
 .pageList span[name=nParent], .imageList span[name=nParent], .imageList span[name=nParentI] { min-width:1.5em;}
 .pageList span[name=nParent] > button, .imageList span[name=nParent] > button, .imageList span[name=nParentI] > button { padding:0; min-width:1.4em}
 
-.spanGrandParent button { padding:0; min-width:1.4em}
+.divMenuTop button { padding:0; min-width:1.4em}
 
     /* Arrow buttons */
-.pageList span[name=nParent] button, .imageList span[name=nParent] button, .imageList span[name=nParentI] button, .spanGrandParent button { background-position: center; background-repeat: no-repeat; background-size: 100% 100%; border: 0;border-radius: 0;background-color: transparent;}
+.pageList span[name=nChild] button, .pageList span[name=nImage] button, .pageList span[name=nParent] button, .imageList span[name=nParent] button, .imageList span[name=nParentI] button, .divMenuTop button { background-position: center; background-repeat: no-repeat; background-size: 100% 100%; border: 0;border-radius: 0;background-color: transparent;}
+
+.pageList span[name=nParent] button, .imageList span[name=nParent] button {background-image: url("buttonLeft1.png");}
+.imageList span[name=nParentI] button {background-image: url("buttonLeftBlue1.png");}
 /*
-.pageList span[name=nChild] button, .pageList span[name=nImage] button,
+, .divMenuTop button
 */
-.pageList span[name=nParent] button, .imageList span[name=nParent] button {background-image: url("buttonUp1.png");}
-.imageList span[name=nParentI] button {background-image: url("buttonUpBlue1.png");}
-/*
-, .spanGrandParent button
-*/
-/*
-.pageList span[name=nChild] button {background-image: url("buttonDown1.png");}
-.pageList span[name=nImage] button {background-image: url("buttonDownBlue1.png");}
-*/ 
+
+.pageList span[name=nChild] button {background-image: url("buttonRight1.png");}
+.pageList span[name=nImage] button {background-image: url("buttonRightBlue1.png");}
+
 
 .pageList span[name=siteName] { margin-right:0.5em}
 .listHead {margin:.5em 0 0}

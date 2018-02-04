@@ -82,18 +82,19 @@ app.reqBU=function*(strArg) {
     zipfile.file(strNameTmp, file.data, objArg);  //
   } 
 
-  var outFileName=calcBUFileName(results[1][0].wwwCommon,type,'zip');
   
     // Output data
   var objArg={type:'string'}, outdata = zipfile.generate(objArg);
   
   if(boServ){
+    var outFileName=type+'.zip';
     var leafDataDir='mmmWikiData';
-    var fsPage=path.join(__dirname, '..', leafDataDir, outFileName); 
+    var fsPage=path.join(__dirname, '..', leafDataDir, 'BU', outFileName); 
     var err;  fs.writeFile(fsPage, outdata, 'binary', function(errT){ err=errT;  flow.next();  });   yield;
     if(err) { console.log(err); res.out500(err); }
     res.out200('OK');
-  }else{    
+  }else{
+    var outFileName=calcBUFileName(results[1][0].wwwCommon,type,'zip');
     var objHead={"Content-Type": 'application/zip', "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
     res.writeHead(200,objHead);
     res.end(outdata,'binary');
@@ -463,7 +464,8 @@ app.reqIndex=function*() {
   }
   Str.push(strTracker);
 
-
+  Str.push("<script src='https://www.google.com/recaptcha/api.js?render=explicit' async defer></script>");
+            
   Str.push("\
 </head>\n\
 <body style=\"margin:0\">\n\
@@ -474,12 +476,15 @@ app.reqIndex=function*() {
   Str.push("<script language=\"JavaScript\">");
   Str.push("function indexAssign(){");
 
+  var objPage=copySome({},this,['boOR', 'boOW', 'boSiteMap', 'idPage']);
+//idPage="+JSON.stringify(this.idPage)+";\n\
+//boOR="+JSON.stringify(this.boOR)+";\n\
+//boOW="+JSON.stringify(this.boOW)+";\n\
+//boSiteMap="+JSON.stringify(this.boSiteMap)+";\n\
+
   Str.push("\
 tMod="+JSON.stringify(this.tMod.toUnix())+";\n\
-idPage="+JSON.stringify(this.idPage)+";\n\
-boOR="+JSON.stringify(this.boOR)+";\n\
-boOW="+JSON.stringify(this.boOW)+";\n\
-boSiteMap="+JSON.stringify(this.boSiteMap)+";\n\
+objPage="+JSON.stringify(objPage)+";\n\
 boTalkExist="+JSON.stringify(this.boTalkExist)+";\n\
 strEditText="+JSON.stringify(this.strEditText)+";\n\
 objTemplateE="+JSON.stringify(this.objTemplateE)+";\n\
@@ -492,6 +497,7 @@ boTLSCommon="+JSON.stringify(this.boTLSCommon)+";\n\
 wwwCommon="+JSON.stringify(this.wwwCommon)+";\n\
 wwwSite="+JSON.stringify(wwwSite)+";\n\
 queredPage="+JSON.stringify(queredPage)+";\n\
+strReCaptchaSiteKey="+JSON.stringify(strReCaptchaSiteKey)+";\n\
 ");
   if(boEmptySiteTab){  Str.push("boEmptySiteTab=1;");  }
   if(!this.boOR){
@@ -555,24 +561,24 @@ app.reqStatic=function*() {
 /******************************************************************************
  * reqCaptcha
  ******************************************************************************/
-app.reqCaptcha=function*(){
-  var req=this.req, res=this.res;
-  var sessionID=req.sessionID;
-  var strCaptcha=parseInt(Math.random()*9000+1000);
-  var redisVar=sessionID+'_captcha';
-  var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,strCaptcha]);
-  var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,3600]);
-  var p = new captchapng(80,30,strCaptcha); // width,height,numeric captcha
-  p.color(0, 0, 0, 0);  // First color: background (red, green, blue, alpha)
-  p.color(80, 80, 80, 255); // Second color: paint (red, green, blue, alpha)
+//app.reqCaptcha=function*(){
+  //var req=this.req, res=this.res;
+  //var sessionID=req.sessionID;
+  //var strCaptcha=parseInt(Math.random()*9000+1000);
+  //var redisVar=sessionID+'_captcha';
+  //var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,strCaptcha]);
+  //var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,3600]);
+  //var p = new captchapng(80,30,strCaptcha); // width,height,numeric captcha
+  //p.color(0, 0, 0, 0);  // First color: background (red, green, blue, alpha)
+  //p.color(80, 80, 80, 255); // Second color: paint (red, green, blue, alpha)
 
-  var img = p.getBase64();
-  var imgbase64 = new Buffer(img,'base64');
-  res.writeHead(200, {
-      'Content-Type': 'image/png'
-  });
-  res.end(imgbase64);
-}
+  //var img = p.getBase64();
+  //var imgbase64 = new Buffer(img,'base64');
+  //res.writeHead(200, {
+      //'Content-Type': 'image/png'
+  //});
+  //res.end(imgbase64);
+//}
 
 
 
