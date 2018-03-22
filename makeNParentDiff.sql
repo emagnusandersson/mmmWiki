@@ -7,11 +7,16 @@ CREATE PROCEDURE mmmWikimakeNParentDiff(IidSite INT, IidPage INT)
 
       -- DROP TEMPORARY TABLE IF EXISTS tmpSubDiff;
       -- CREATE TEMPORARY TABLE IF NOT EXISTS tmpSubDiff (pageName varchar(128) NOT NULL, nDelta TINYINT NOT NULL) AS SELECT pageName, 1 AS nDelta FROM tmpSubNew;
+        -- Create tmpSubDiff (pageNames, nDelta) by combining the data from mmmWiki_sub and from tmpSubNew
+        -- Rows in tmpSubNew but not in mmmWiki_sub gets nDelta=1
+        -- Rows in mmmWiki_sub but not in tmpSubNew gets nDelta=-1
       CREATE TEMPORARY TABLE IF NOT EXISTS tmpSubDiff (pageName varchar(128) NOT NULL, nDelta TINYINT NOT NULL);
       TRUNCATE tmpSubDiff; INSERT INTO tmpSubDiff SELECT pageName, 1 AS nDelta FROM tmpSubNew;
 
       -- SELECT * FROM tmpSubDiffOld;
       SELECT * FROM tmpSubDiff;
+        -- Removing rows that are  both in mmmWiki_sub and tmpSubNew (since nothing needs to be changed (nDelta=0)).
+        -- And insert (pageName,-1) when mmmWiki_sub.pageName is not in tmpSubNew.
       BEGIN 
         DECLARE VpageName varchar(128);
         DECLARE VnOld, VboInNew INT;
@@ -55,7 +60,7 @@ CREATE PROCEDURE mmmWikimakeNParentDiff(IidSite INT, IidPage INT)
           IF VnDelta=1 THEN
             IF VnParentOld IS NULL THEN
               INSERT INTO mmmWiki_nParent (idSite, pageName, nParent) VALUES (IidSite, VpageName,1);
-            ELSEIF VnParentOld<0 THEN
+            ELSEIF VnParentOld<0 THEN -- This should never happen really
               UPDATE mmmWiki_nParent SET nParent=VnDelta WHERE idSite=IidSite AND pageName=VpageName;
             ELSE
               UPDATE mmmWiki_nParent SET nParent=nParent+VnDelta WHERE idSite=IidSite AND pageName=VpageName;
@@ -113,11 +118,16 @@ CREATE PROCEDURE mmmWikimakeNParentIDiff(IidPage INT)
       -- CREATE TEMPORARY TABLE tmpSubDiffOld (imageName varchar(128) NOT NULL) AS SELECT imageName FROM mmmWiki_subImage s WHERE s.idPage=IidPage;
 
       -- DROP TEMPORARY TABLE IF EXISTS tmpSubIDiff;
+        -- Create tmpSubIDiff (imageName, nDelta) by combining the data from mmmWiki_subImage and from tmpSubNewImage
+        -- Rows in tmpSubNewImage but not in mmmWiki_subImage gets nDelta=1
+        -- Rows in mmmWiki_subImage but not in tmpSubNewImage gets nDelta=-1
       CREATE TEMPORARY TABLE IF NOT EXISTS tmpSubIDiff (imageName varchar(128) NOT NULL, nDelta TINYINT NOT NULL);
       TRUNCATE tmpSubIDiff; INSERT INTO tmpSubIDiff SELECT imageName, 1 AS nDelta FROM tmpSubNewImage  ;
 
       #SELECT * FROM tmpSubDiffOld;
       #SELECT * FROM tmpSubIDiff;
+        -- Removing rows that are  both in mmmWiki_subImage and tmpSubNewImage (since nothing needs to be changed (nDelta=0)).
+        -- And insert (imageName,-1) when mmmWiki_subImage.imageName is not in tmpSubNewImage.
       BEGIN 
         DECLARE VimageName varchar(128);
         DECLARE VnOld, VboInNew INT;
@@ -140,7 +150,7 @@ CREATE PROCEDURE mmmWikimakeNParentIDiff(IidPage INT)
         CLOSE cursor_i;
       END;
       #SELECT * FROM tmpSubIDiff;
-        -- Change nParentTab based on tmpSubIDiff
+        -- Change nParentITab based on tmpSubIDiff
       BEGIN 
         DECLARE VimageName varchar(128);
         DECLARE VnParentOld, VnDelta, Vtrash INT;
@@ -161,7 +171,7 @@ CREATE PROCEDURE mmmWikimakeNParentIDiff(IidPage INT)
           IF VnDelta=1 THEN
             IF VnParentOld IS NULL THEN
               INSERT INTO mmmWiki_nParentI (imageName, nParent) VALUES (VimageName,1);
-            ELSEIF VnParentOld<0 THEN
+            ELSEIF VnParentOld<0 THEN -- This should never happen really
               UPDATE mmmWiki_nParentI SET nParent=VnDelta WHERE imageName=VimageName;
             ELSE
               UPDATE mmmWiki_nParentI SET nParent=nParent+VnDelta WHERE imageName=VimageName;

@@ -40,7 +40,7 @@ ReqBE.prototype.mesEO=function(e){
   }
     
   var strELog=StrELog.join('\n'); console.error(strELog);  // Write message to the error log
-  if(e instanceof Error) { console.error(e);}
+  if(e instanceof Error) { console.error(e);}   // Write stack to error log
   
     // Write message (and other data) to browser
   this.Str.push(strEBrowser);
@@ -69,8 +69,7 @@ ReqBE.prototype.go=function*(){
       form.multiples = true;  
 
       var err, fields, files;
-      form.parse(req, function(errT, fieldsT, filesT) { err=errT; fields=fieldsT; files=filesT; flow.next();  });  yield;
-      if(err){this.mesEO(err);  return; } 
+      form.parse(req, function(errT, fieldsT, filesT) { err=errT; fields=fieldsT; files=filesT; flow.next();  });  yield;  if(err){ this.mesEO(err);  return; } 
       
       this.File=files['fileToUpload[]'];
       //if('captcha' in fields) this.captchaIn=fields.captcha; else this.captchaIn='';
@@ -89,8 +88,8 @@ ReqBE.prototype.go=function*(){
   }
   
   try{ var beArr=JSON.parse(jsonInput); }catch(e){ this.mesEO(e);  return; }
- 
- 
+
+
   var redisVar=req.sessionID+'_Main', strTmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,1]);   var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
 
       // Conditionally push deadlines forward
@@ -170,7 +169,6 @@ ReqBE.prototype.go=function*(){
     else this.Out.dataArr.push(result);
   }
   this.mesO();
-  
 }
 
 
@@ -218,7 +216,6 @@ ReqBE.prototype.aLogin=function*(inObj){
   GRet.boALoggedIn=this.boALoggedIn; 
   return [null, [Ou]];
 }
-
 
 
 ReqBE.prototype.myChMod=function*(inObj){   
@@ -322,62 +319,64 @@ ReqBE.prototype.pageLoad=function*(inObj) {
   //                                                           index.html  first ajax (specSetup)
   //Shall look the same (be cacheable (not include CSRFcode))     yes          no
 
-  //this.tModCache=UTC2JS(  bootTime.toUnix()  );
-  //this.tModCache=new Date(bootTime.toUnix()*1000);
-  this.tMod=new Date(0);
-  this.tModCache=new Date(0);
+
   this.CSRFCode='';  // If Private then No CSRFCode since the page is going to be cacheable (look the same each time)
-  if(typeof inObj=='object' && 'version' in inObj) {  this.version=inObj.version;  this.rev=this.version-1 } else {  this.version=NaN; this.rev=-1; }
-  this.eTagIn=''; this.requesterCacheTime=new Date(0);
-  if(req.method=='GET') {this.eTagIn=getETag(req.headers); this.requesterCacheTime=getRequesterTime(req.headers); }
-  //if(bootTime>this.requesterCacheTime) this.requesterCacheTime=new Date(0);
-  extend(this,{strHtmlText:'', boTalkExist:0, strEditText:'', arrVersionCompared:[null,1], matVersion:[], objTemplateE:{}}); 
-  this.boFront=0;
+  var version, rev; if(typeof inObj=='object' && 'version' in inObj) {  version=inObj.version;  rev=version-1 } else {  version=NaN; rev=-1; }
+  var eTagIn='', requesterCacheTime=new Date(0);
+  if(req.method=='GET') {eTagIn=getETag(req.headers); requesterCacheTime=getRequesterTime(req.headers); }
 
 
     // getInfoNData
-  var [err,rowA]=yield* getInfoNData.call(this); if(err) return [err];
-
-  var mess=rowA.mess;
+  //var [err,rowA]=yield* getInfoNData.call(this); if(err) return [err];
+  var arg={boFront:0, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:queredPage, rev:rev, eTagIn:eTagIn, requesterCacheTime:requesterCacheTime}
+  var [err, Ou]=yield* getInfoNData(flow, arg); if(err) return [err];
+  var {mess, version, rev, eTag, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
+  
+  if(typeof tMod=='undefined') tMod=new Date(0);
+  if(typeof tModCache=='undefined') tModCache=new Date(0);
+  var arrVersionCompared=[null,1];
+  
   if(mess=='IwwwNotFound'){ res.out404('No wiki there'); return [];  }
   else if(mess=='304') { res.out304(); return []; }
   else if(mess=='noSuchRev') {return [new ErrorClient(mess)];  }
   else if(mess=='noSuchPage'){ res.out404(); return [];   }
-  else if(mess=='serverCacheStale' || mess=='serverCacheOK'){
-    copySome(this,rowA,['idPage', 'rev', 'version', 'eTag', 'boOR', 'boOW', 'boSiteMap', 'talkPage', 'boTalkExist', 'tMod', 'tModCache', 'strEditText']);
-    var boValidServerCache=mess=='serverCacheOK'; 
-    //this.tModCache=new Date(Math.max(this.tModCache, bootTime)); 
-    //this.tMod=new Date(this.tMod); 
-    //this.tModCache=new Date(this.tModCache); 
-  
-    var tmp=this.boOR?'':', private';
-    res.setHeader("Cache-Control", "must-revalidate"+tmp);  res.setHeader('Last-Modified',this.tModCache.toUTCString());  res.setHeader('ETag',this.eTag);
-    
-    //this.matVersion=makeMatVersion.call(this);
-    this.matVersion=makeMatVersion(this.Version);
-    this.arrVersionCompared=[null,this.rev+1];
-
-    if(!boValidServerCache){
-
-        // parse
-      var [err]=yield* parse.call(this); if(err) return [err];
-
-          // setNewCacheSQL
-      var {sql, Val, nEndingResults}=createSetNewCacheSQL(req.wwwSite, queredPage, this.rev, this.strHtmlText, this.eTag, this.arrSub, this.StrSubImage);
-      var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
-      var iRowLast=results.length-nEndingResults-1;
-      var mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
-
-    } else {
-      this.strHtmlText=rowA.strHtmlText;
-    }
+  else if(mess=='serverCacheOK'){
+    eTag=randomHash();
+    var sql=`UPDATE `+pageLastView+` SET tModCache=now(), eTag=? WHERE www=? AND pageName=?;  
+SELECT now() AS tModCache`;
+    var Val=[eTag, req.wwwSite, queredPage];
+    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
+    var rowA=results[1][0];
+    tModCache=new Date(rowA.tModCache*1000);
+    var tmp=boOR?'':', private';
+    res.setHeader("Cache-Control", "must-revalidate"+tmp);  res.setHeader('Last-Modified',tModCache.toUTCString());  res.setHeader('ETag',eTag);
   }
-  else { return [new ErrorClient(mess)]; }
+  else if(mess=='serverCacheStale'){
+    eTag=randomHash();
+      // parse
+    var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW};
+    var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) return [err];
+    
+      // setNewCacheSQL
+    var {sql, Val, nEndingResults}=createSetNewCacheSQL(req.wwwSite, queredPage, rev, strHtmlText, eTag, arrSub, StrSubImage);
+    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
+    var iRowLast=results.length-nEndingResults-1;
+    var rowA=results[iRowLast][0];
+    var mess=rowA.mess;       if(mess!='done') { return [new Error(mess)]; }
+    tModCache=new Date(rowA.tModCache*1000);
+     
+    var tmp=boOR?'':', private';
+    res.setHeader("Cache-Control", "must-revalidate"+tmp);  res.setHeader('Last-Modified',tModCache.toUTCString());  res.setHeader('ETag',eTag);
+  }
+  else { return [new ErrorClient(mess)];  }
+  
+  var matVersion=makeMatVersion(Version); 
+  
+  
   //'redir', 'noSuchPage', 'redirCase', 'private', '304', 'serverCacheStale', 'serverCacheOK'
   //this.myAsyncPageLoad.Func.push(         thisChangedWArg(this.pageLoadC, this)        ); 
   //this.pageLoadC.call(this);
-  copySome(GRet,this,['idPage', 'boOR', 'boOW', 'boSiteMap', 'tMod', 'tModCache', 'boTalkExist', 'strEditText', 'strHtmlText', 'matVersion', 'objTemplateE']);
-  extend(GRet,{strDiffText:'', arrVersionCompared:this.arrVersionCompared});
+  extend(GRet, {strDiffText:'', arrVersionCompared:arrVersionCompared, strHtmlText:strHtmlText, objTemplateE:objTemplateE, strEditText:strEditText, boTalkExist:boTalkExist, matVersion:matVersion, boOR:boOR, boOW:boOW, boSiteMap:boSiteMap, idPage:idPage, tMod:tMod, tModCache:tModCache});
   return [null, [Ou]];
 }
 
@@ -386,47 +385,47 @@ ReqBE.prototype.pageCompare=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  this.versionOld=arr_min(inObj.arrVersionCompared);  this.version=arr_max(inObj.arrVersionCompared); 
-  this.versionOld=Math.max(1,this.versionOld);  this.version=Math.max(1,this.version);
-  if(this.version==this.versionOld) {return [new ErrorClient('Same version')]; }
-  this.eTagIn=''; this.requesterCacheTime=0;
-  this.rev=this.versionOld-1;
+  var versionOld=arr_min(inObj.arrVersionCompared),  version=arr_max(inObj.arrVersionCompared); 
+  versionOld=Math.max(1,versionOld);  version=Math.max(1,version);
+  if(version==versionOld) {return [new ErrorClient('Same version')]; }
+  var eTagIn='', requesterCacheTime=0;
+  var rev=versionOld-1;
 
-  this.boFront=0; this.eTagIn=''; this.requesterCacheTime=0;
 
       // getInfoNData Old
-  var [err,rowA]=yield* getInfoNData.call(this); if(err) return [err];
+  //var [err,rowA]=yield* getInfoNData.call(this); if(err) return [err];
+  var arg={boFront:0, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:this.queredPage, rev:rev, eTagIn:eTagIn, requesterCacheTime:requesterCacheTime}
+  var [err, Ou]=yield* getInfoNData(flow, arg); if(err) return [err];
+  var {mess, version, rev, eTag, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
   
-  var nVersion=this.Version.length; 
+  var nVersion=Version.length; 
   if(nVersion==0){return [new ErrorClient('Page does not exist')]; } 
-  if(!rowA.boOR && !this.boVLoggedIn){return [new ErrorClient('Not logged in')]; }
+  if(!boOR && !this.boVLoggedIn){return [new ErrorClient('Not logged in')]; }
 
-  this.strEditTextOld=rowA.strEditText;
+  var strEditTextOld=strEditText;
 
       // getInfoNData 
-  this.rev=this.version-1;
-  var [err,rowA]=yield* getInfoNData.call(this); if(err) return [err];
+  var rev=version-1;
+  //var [err,rowA]=yield* getInfoNData.call(this); if(err) return [err];
+  var arg={boFront:0, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:this.queredPage, rev:rev, eTagIn:eTagIn, requesterCacheTime:requesterCacheTime}
+  var [err, Ou]=yield* getInfoNData(flow, arg); if(err) return [err];
+  var {mess, version, rev, eTag, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
   
-  copySome(this,rowA,['idPage', 'rev', 'version', 'eTag', 'boOR', 'boOW', 'boSiteMap', 'boTalkExist', 'tMod', 'tModCache', 'strEditText']);
+  var matVersion=makeMatVersion(Version);
   
-    // parse
-  var [err]=yield* parse.call(this); if(err) return [err];
+    // parse 
+  var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW};
+  var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) return [err];
 
-  this.strEditText=rowA.strEditText;
-  this.strHtmlText=rowA.strHtmlText;
+  var strDiffText='';
+  if(versionOld!==null){
+    strDiffText=myDiff(strEditTextOld,strEditText);
+    if(strDiffText.length==0) strDiffText='(equal)';
+    this.mes("v "+versionOld+" vs "+version);
+  } else this.mes("v "+version);
 
-  this.strDiffText='';
-  if(this.versionOld!==null){
-    this.strDiffText=myDiff(this.strEditTextOld,this.strEditText);
-    if(this.strDiffText.length==0) this.strDiffText='(equal)';
-    this.mes("v "+this.versionOld+" vs "+this.version);
-  } else this.mes("v "+this.version);
-
-  //this.matVersion=makeMatVersion.call(this);
-  this.matVersion=makeMatVersion(this.Version);
   
-  copySome(GRet,this,['idPage', 'boOR', 'boOW', 'boSiteMap', 'tMod', 'tModCache', 'boTalkExist', 'strEditText', 'strHtmlText', 'matVersion', 'objTemplateE']);
-  extend(GRet,{strDiffText:this.strDiffText, arrVersionCompared:[this.versionOld,this.version]});
+  extend(GRet,{strDiffText:strDiffText, arrVersionCompared:[versionOld,version], strHtmlText:strHtmlText, objTemplateE:objTemplateE, strEditText:strEditText, boTalkExist:boTalkExist, matVersion:matVersion, boOR:boOR, boOW:boOW, boSiteMap:boSiteMap, idPage:idPage, tMod:tMod, tModCache:tModCache});
   return [null, [0]];
 }
 
@@ -434,18 +433,17 @@ ReqBE.prototype.pageCompare=function*(inObj){
 ReqBE.prototype.getPreview=function*(inObj){ 
   var req=this.req, res=this.res;
   var Ou={}, GRet=this.GRet, flow=req.flow;
-  this.strEditText=inObj.strEditText;
+  var strEditText=inObj.strEditText;
   
-  this.boOW==1;
+  var boOW=1;
+  var matVersion=[];
 
     // parse
-  var [err]=yield* parse.call(this); if(err) return [err];
-
+  var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW};
+  var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) return [err];
+  
   this.mes('Preview');
-  GRet.strHtmlText=this.strHtmlText;
-  GRet.strEditText=this.strEditText;
-  GRet.objTemplateE=this.objTemplateE;
-  GRet.strDiffText='';
+  extend(GRet,{strDiffText:'', strEditText:strEditText, strHtmlText:strHtmlText, objTemplateE:objTemplateE});
   
   return [null, [0]];
 } 
@@ -456,47 +454,54 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   var Ou={}, GRet=this.GRet, flow=req.flow;
 
     // getInfo
-  var [err,rowA]=yield* getInfo.call(this); if(err) return [err];
+  var arg={wwwSite:req.wwwSite, queredPage:this.queredPage}
+  var [err,Ou]=yield* getInfo(flow, arg); if(err) return [err];
+  var {mess, boTLS, boOR, boOW, boSiteMap, tMod, tModCache}=Ou;
   
-  if(rowA.mess=='IwwwNotFound'){ res.out404('No wiki there'); return [];   }
-  else if(rowA.mess=='pageExist'){
-    copySome(this,rowA,['boOR', 'boOW', 'boSiteMap', 'tMod', 'tModCache']);
-    if(!this.boOR && !this.boVLoggedIn) {return [new ErrorClient('Not logged in')]; }
+  if(mess=='IwwwNotFound'){ res.out404('No wiki there'); return [];   }
+  else if(mess=='pageExist'){
+    if(!boOR && !this.boVLoggedIn) {return [new ErrorClient('Not logged in')]; }
     if(!this.boALoggedIn) {return [new ErrorClient('Not logged in as admin')]; } 
-    if(this.tModBrowser<this.tMod) { return [new ErrorClient("tModBrowser (from your action) ("+this.tModBrowser+") < tMod db ("+this.tMod+"), "+messPreventBecauseOfNewerVersions)];  }
-  }else if(rowA.mess=='noSuchPage'){
-    extend(this,{boOW:1,boOR:1,boSiteMap:1});  
+    if(this.tModBrowser<tMod) { return [new ErrorClient("tMod from the version on your browser: "+this.tModBrowser+" < tMod on the version on the server: "+tMod+", "+messPreventBecauseOfNewerVersions)];  }
+  }else if(mess=='noSuchPage'){
+    boOW=1; boOR=1; boSiteMap=1;  
   }
   
-  extend(this,{strEditText:inObj.strEditText});
+  var strEditText=inObj.strEditText;
 
     // parse
-  var [err]=yield* parse.call(this); if(err) return [err];
+  var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW};
+  var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) return [err];
+  
+  var eTag=randomHash();
   
       // saveByReplace
-  var {sql, Val, nEndingResults}=createSaveByReplaceSQL('', req.wwwSite, this.queredPage, this.strEditText, this.strHtmlText, this.eTag, this.arrSub, this.StrSubImage); 
+  var {sql, Val, nEndingResults}=createSaveByReplaceSQL('', req.wwwSite, this.queredPage, strEditText, strHtmlText, eTag, arrSub, StrSubImage); 
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
   var iRowLast=results.length-nEndingResults-1;
-  var mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
+  var rowA=results[iRowLast][0], tMod=new Date(rowA.tMod*1000), tModCache=new Date(rowA.tModCache*1000);
+  var mess=rowA.mess;//if(typeof results[iRowLast][0]=='object')
   
       // getInfoNData
-  this.boFront=0; this.rev=0; this.eTagIn='', this.requesterCacheTime=0;
-  var [err,rowA]=yield* getInfoNData.call(this); if(err) return [err];
+  var rev=0, eTagIn='', requesterCacheTime=0;
+  //var [err,rowA]=yield* getInfoNData.call(this); if(err) return [err];
+  var arg={boFront:0, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:this.queredPage, rev:rev, eTagIn:eTagIn, requesterCacheTime:requesterCacheTime}
+  var [err, Ou]=yield* getInfoNData(flow, arg); if(err) return [err];
+  var {mess, version, rev, eTag, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
   
-  if(this.strEditText.length>0){
-    copySome(this, rowA, ['idPage', 'rev', 'version', 'eTag', 'boOR', 'boOW', 'boSiteMap', 'boTalkExist', 'tMod', 'tModCache', 'strEditText']);
-    //this.matVersion=makeMatVersion.call(this);
-    this.matVersion=makeMatVersion(this.Version);
+  var matVersion=[];
+  if(inObj.strEditText.length>0){
+    matVersion=makeMatVersion(Version);
     this.mes("Page overwritten");
   } else {
-    extend(this, {idPage:NaN, rev:0, version:1, eTag:'', boOR:1, boOW:1, boSiteMap:1, boTalkExist:0, tMod:new Date(0), tModCache:new Date(0), strPageHtml:'', objTemplateE:{}});
+    strHtmlText=''; objTemplateE={};
+    idPage=NaN; rev=0; version=1; boOR=1; boOW=1; boSiteMap=1; boTalkExist=0; tMod=new Date(0); tModCache=new Date(0);
     this.mes("No content, Page deleted");
   }
   
   //boPageBUNeeded=true; 
   
-  copySome(GRet,this,['idPage', 'boOR', 'boOW', 'boSiteMap', 'tMod', 'tModCache', 'boTalkExist', 'strEditText', 'strHtmlText', 'matVersion', 'objTemplateE']);
-  extend(GRet,{strDiffText:'', arrVersionCompared:[null,1]});
+  extend(GRet,{strDiffText:'', arrVersionCompared:[null,1], strHtmlText:strHtmlText, objTemplateE:objTemplateE, strEditText:strEditText, boTalkExist:boTalkExist, matVersion:matVersion, boOR:boOR, boOW:boOW, boSiteMap:boSiteMap, idPage:idPage, tMod:tMod, tModCache:tModCache});
   return [null, [0]];
 }
 
@@ -518,42 +523,50 @@ ReqBE.prototype.saveByAdd=function*(inObj){
   
 
     // getInfo
-  var [err,rowA]=yield* getInfo.call(this); if(err) return [err];
+  var arg={wwwSite:req.wwwSite, queredPage:this.queredPage}
+  var [err,Ou]=yield* getInfo(flow, arg); if(err) return [err];
+  var {mess, boTLS, boOR, boOW, boSiteMap, tMod, tModCache}=Ou;
 
-  if(rowA.mess=='IwwwNotFound'){ res.out404('No wiki there'); return [];   }
-  else if(rowA.mess=='pageExist'){
-    copySome(this,rowA,['boOR', 'boOW', 'boSiteMap', 'tMod', 'tModCache']);
-    if(!this.boOR && !this.boVLoggedIn) {return [new ErrorClient('Not logged in')]; }
-    if(this.tModBrowser<this.tMod) { return [new ErrorClient("tModBrowser (from your action) ("+this.tModBrowser+") < tMod db ("+this.tMod+"), "+messPreventBecauseOfNewerVersions)];  }
-  }else if(rowA.mess=='noSuchPage'){
-    extend(this,{boOW:1,boOR:1,boSiteMap:1});  
+
+  if(mess=='IwwwNotFound'){ res.out404('No wiki there'); return [];   }
+  else if(mess=='pageExist'){
+    if(!boOR && !this.boVLoggedIn) {return [new ErrorClient('Not logged in')]; }
+    if(this.tModBrowser<tMod) { return [new ErrorClient("tMod from the version on your browser: "+this.tModBrowser+" < tMod on the version on the server: "+tMod+", "+messPreventBecauseOfNewerVersions)];  }
+  }else if(mess=='noSuchPage'){
+    boOW=1; boOR=1; boSiteMap=1;  
   }
-  if(this.boOW==0) {return [new ErrorClient('Not authorized')]; } 
-  copySome(this,inObj,['summary', 'signature']);    this.strEditText=inObj.strEditText;
+  if(boOW==0) {return [new ErrorClient('Not authorized')]; } 
+  //copySome(this,inObj,['summary', 'signature']);    
+  var strEditText=inObj.strEditText, summary=inObj.summary, signature=inObj.signature;
+  
     
     // parse
-  var [err]=yield* parse.call(this); if(err) return [err];
+  var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW};
+  var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) return [err];
 
+  var eTag=randomHash();
+  
       // saveByAddSQL
-  var {sql, Val, nEndingResults}=createSaveByAddSQL(req.wwwSite, this.queredPage, this.summary, this.signature, this.strEditText, this.strHtmlText, this.eTag, this.arrSub, this.StrSubImage);
+  var {sql, Val, nEndingResults}=createSaveByAddSQL(req.wwwSite, this.queredPage, summary, signature, strEditText, strHtmlText, eTag, arrSub, StrSubImage);
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
   var iRowLast=results.length-nEndingResults-1;
   var mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
   
 
       // getInfoNData
-  this.boFront=0; this.rev=-1; this.eTagIn=''; this.requesterCacheTime=0;
-  var [err,rowA]=yield* getInfoNData.call(this); if(err) return [err];
+  var rev=-1, eTagIn='', requesterCacheTime=0;
+  //var [err,rowA]=yield* getInfoNData.call(this); if(err) return [err];
+  var arg={boFront:0, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:this.queredPage, rev:rev, eTagIn:eTagIn, requesterCacheTime:requesterCacheTime}
+  var [err, Ou]=yield* getInfoNData(flow, arg); if(err) return [err];
+  var {mess, version, rev, eTag, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
 
-  copySome(this,rowA,['idPage', 'rev', 'version', 'eTag', 'boOR', 'boOW', 'boSiteMap', 'boTalkExist', 'tMod', 'tModCache', 'strEditText']);
-  //this.matVersion=makeMatVersion.call(this);
-  this.matVersion=makeMatVersion(this.Version);
+
+  var matVersion=makeMatVersion(Version);
   
   this.mes("New version added");
-  if(objOthersActivity) { objOthersActivity.nEdit++; objOthersActivity.pageName=this.siteName+':'+this.queredPage; }
+  if(objOthersActivity) { objOthersActivity.nEdit++; objOthersActivity.pageName=siteName+':'+this.queredPage; }
 
-  copySome(GRet,this,['idPage', 'boOR', 'boOW', 'boSiteMap', 'tMod', 'tModCache', 'boTalkExist', 'strEditText', 'strHtmlText', 'matVersion', 'objTemplateE']);
-  extend(GRet,{strDiffText:'', arrVersionCompared:[null,this.matVersion.length]});
+  extend(GRet,{strDiffText:'', arrVersionCompared:[null,matVersion.length], strHtmlText:strHtmlText, objTemplateE:objTemplateE, strEditText:strEditText, boTalkExist:boTalkExist, matVersion:matVersion, boOR:boOR, boOW:boOW, boSiteMap:boSiteMap, idPage:idPage, tMod:tMod, tModCache:tModCache});
 
   return [null, [0]];
 }
@@ -563,7 +576,7 @@ ReqBE.prototype.renamePage=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
   var sql="UPDATE "+pageTab+" SET pageName=? WHERE idPage=?";
   var strNewName=inObj.strNewName.replace(RegExp(' ','g'),'_');
   var Val=[strNewName, inObj.id];
@@ -579,7 +592,7 @@ ReqBE.prototype.renameImage=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
   var sql="UPDATE "+imageTab+" SET imageName=? WHERE idImage=?";
   var Val=[inObj.strNewName, inObj.id];
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
@@ -682,7 +695,7 @@ ReqBE.prototype.getPageHist=function*(inObj){
   var Ou={}, flow=req.flow
   //var strTableRefCount=pageTab+' p';
   var arg={strTableRef:strTableRefPageHist, Ou:Ou, WhereExtra:[], Prop:PropPage, StrOrderFilt:StrOrderFiltPage};  
-  copySome(arg, this, ['Where']); arg.strDBPrefix=strDBPrefix;
+  arg.Where=this.Where;  arg.strDBPrefix=strDBPrefix;
   
   var [err, Hist]=yield* getHist(flow, mysqlPool, arg); if(err) return [err];  Ou.Hist=Hist;
 
@@ -735,7 +748,7 @@ ReqBE.prototype.getImageHist=function*(inObj){
   var Ou={}, flow=req.flow
   //var arg={strTableRef:strTableRefImage, Ou:Ou, WhereExtra:[], Prop:PropImage, StrOrderFilt:StrOrderFiltImage};
   var arg={strTableRef:strTableRefImageHist, Ou:Ou, WhereExtra:[], Prop:PropImage, StrOrderFilt:StrOrderFiltImage};  
-  copySome(arg, this, ['Where']); arg.strDBPrefix=strDBPrefix;  arg.pool=mysqlPool;
+  arg.Where=this.Where;  arg.strDBPrefix=strDBPrefix;  arg.pool=mysqlPool;
   
   var [err, Hist]=yield* getHist(flow, mysqlPool, arg); if(err) return [err];
   Ou.Hist=Hist;
@@ -801,7 +814,7 @@ ReqBE.prototype.getImageInfo=function*(inObj){
   return [null, [Ou]];
 }
 
-ReqBE.prototype.getLastTMod=function*(inObj){
+ReqBE.prototype.getLastTMod=function*(inObj){  // To be displayed in adminMore
   var req=this.req, res=this.res, flow=req.flow, Ou={};
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
 
@@ -906,7 +919,7 @@ ReqBE.prototype.siteTabSet=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
   var boUpd=inObj.boUpd||false;
 
   if(boUpd){
@@ -944,11 +957,11 @@ ReqBE.prototype.siteTabDelete=function*(inObj){
   Ou.boOK=boOK;      
   return [null, [Ou]];
 }
-ReqBE.prototype.siteTabSetDefault=function*(inObj){ 
+ReqBE.prototype.siteTabSetDefault=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
   var Sql=[];
   Sql.push("START TRANSACTION;");
   Sql.push("UPDATE "+siteTab+" SET boDefault=0;");
@@ -957,85 +970,16 @@ ReqBE.prototype.siteTabSetDefault=function*(inObj){
   var sql=Sql.join('\n'),    Val=[inObj.idSite];
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
   this.mes("OK");
-  return [null, [Ou]]; 
+  return [null, [Ou]];
 }
 
 ////////////////////////////////////////////////////////////////////////
 // Uploading
 ////////////////////////////////////////////////////////////////////////
 
-ReqBE.prototype.uploadAdminServ=function*(inObj){
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
-  var strFileToLoadFolder=path.join(__dirname, '..', 'mmmWikiData', 'BU'); 
-  var err, files;
-  fs.readdir(strFileToLoadFolder, function(errT, filesT){ err=errT; files=filesT; flow.next(); }); yield;  if(err) return [err];
 
-  this.File=Array(files.length);
-  for(var i=0;i<files.length;i++){
-    var file=files[i], strPath=path.join(strFileToLoadFolder,file);
-    var strType=''; if(file.substr(-4)=='.zip') strType='application/zip';
-    this.File[i]={name:file, path:strPath,type:strType};
-  }
-  //files.forEach(file => { console.log(file);  });
-  
-  var objT=yield* this.uploadAdmin(inObj);
-  return objT;
-}
-
-ReqBE.prototype.uploadAdmin=function*(inObj){
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
-  var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
-  var regBoTalk=RegExp('(template_)?talk:');
-  var FileOrg=this.File;
-  var n=FileOrg.length;
-  var tmp=n+" files."; console.log(tmp); this.mes(tmp); 
-  var FileTalk=[]; for(var i=FileOrg.length-1;i>=0;i--){ if(regBoTalk.test(FileOrg[i].name)) { var item=mySplice1(FileOrg,i);  FileTalk.push(item);  }  } FileOrg=FileTalk.concat(FileOrg);
-  for(var i=0;i<FileOrg.length;i++){
-    var fileOrg=FileOrg[i], tmpname=fileOrg.path;
-    var err, buf;
-    fs.readFile(tmpname, function(errT, bufT) { err=errT; buf=bufT;  flow.next();  }); yield;  if(err) return [err];
-    var dataOrg=buf; 
-    if(fileOrg.type=='application/zip' || fileOrg.type=='application/x-zip-compressed'){
-       
-      var zip=new NodeZip(dataOrg, {base64: false, checkCRC32: true});
-      var FileInZip=zip.files;
-      
-      var tmp="Zip file with "+Object.keys(FileInZip).length+" files."; console.log(tmp); this.mes(tmp);
-      var Key=Object.keys(FileInZip), KeyTalk=[];  for(var j=Key.length-1;j>=0;j--){ if(regBoTalk.test(Key[j])) { var item=mySplice1(Key,j);  KeyTalk.push(item); } }  Key=KeyTalk.concat(Key);  
-      //for(var fileName in File){
-      for(var j=0;j<Key.length;j++){
-        var fileName=Key[j];
-        var fileInZip=FileInZip[fileName];
-        var Match=RegExp('\\.(\\w{1,3})$').exec(fileName);
-        var type=Match[1].toLowerCase(), bufT=new Buffer(fileInZip._data,'binary');//b.toString();
-
-        console.log(j+'/'+Key.length+' '+fileName+' '+bufT.length);
-        var [err]=yield* this.storeUploadedFile.call(this,fileName,type,bufT);  if(err) return [err];
-      } 
-
-    } else {  
-      var fileName=fileOrg.name;
-      var Match=RegExp('\\.(\\w{1,4})$').exec(fileName);
-      var type=Match[1].toLowerCase();
- 
-      console.log(i+'/'+FileOrg.length+' '+fileName+' '+dataOrg.length);
-      var [err]=yield* this.storeUploadedFile.call(this,fileName,type,dataOrg);  if(err) return [err];
-    } 
-  }
-  return [null, [0]];
-}
-
-//regTalkOrTemplate=RegExp("(template_)?talk");
-
-ReqBE.prototype.storeUploadedFile=function*(fileName,type,data){
-  var req=this.req, res=this.res;
+app.storeFile=function*(fileName, type, data, flow){
   var regImg=RegExp("^(png|jpeg|jpg|gif|svg)$"), regVid=RegExp('^(mp4|ogg|webm)$');
-  var flow=req.flow;
-  var Ou={};
   
   if(type=='txt'){
     //fileName=fileName.replace(RegExp('(talk|template|template_talk) ','i'),'$1:');   
@@ -1043,14 +987,18 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data){
     var obj=parsePageNameHD(fileNameB);
     var siteName=obj.siteName, pageName=obj.pageName;
 
-    extend(this,{strEditText:data.toString(), boOW:1, boOR:1, boSiteMap:1});
+    var strEditText=data.toString(), boOW=1, boOR=1, boSiteMap=1;
+    var matVersion=[];
 
       // parse
-    var [err]=yield* parse.call(this); if(err) return [err];
+    var arg={strEditText:strEditText, boOW:boOW, siteName:siteName};
+    var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) return [err];
 
+    var eTag=randomHash();
+    
           // saveByReplace
-    var {sql, Val, nEndingResults}=createSaveByReplaceSQL(siteName, '', pageName, this.strEditText, this.strHtmlText, '', this.arrSub, this.StrSubImage);
-    console.log(this.strEditText.length+', '+this.strHtmlText.length+', nSub:'+this.arrSub.length+', nsubImage:'+this.StrSubImage.length);
+    var {sql, Val, nEndingResults}=createSaveByReplaceSQL(siteName, '', pageName, strEditText, strHtmlText, '', arrSub, StrSubImage);
+    console.log(strEditText.length+', '+strHtmlText.length+', nSub:'+arrSub.length+', nsubImage:'+StrSubImage.length);
     console.time('dbOperations');
     sql="SET autocommit=0;"+sql;  // +"SET autocommit=1;";
     var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
@@ -1071,12 +1019,91 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data){
     var Val=[fileName,data,eTag];
     var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
   }
-  else{ this.mes("Unrecognized file type: "+type); return [null, [Ou]]; }
+  else{  return [new Error("Unrecognized file type: "+type)]; }
   
-  return [null, [Ou]];
+  return [null, [{}]];
   //process.stdout.write("*");
 }
 
+
+app.storeFileMult=function*(flow, File){
+  var regBoTalk=RegExp('(template_)?talk:');
+  var FileOrg=File;
+  var n=FileOrg.length;
+  var tmp=n+" files."; console.log(tmp); 
+  var FileTalk=[]; for(var i=FileOrg.length-1;i>=0;i--){ if(regBoTalk.test(FileOrg[i].name)) { var item=mySplice1(FileOrg,i);  FileTalk.push(item);  }  } FileOrg=FileTalk.concat(FileOrg);
+  for(var i=0;i<FileOrg.length;i++){
+    var fileOrg=FileOrg[i], tmpname=fileOrg.path;
+    var err, buf;
+    fs.readFile(tmpname, function(errT, bufT) { err=errT; buf=bufT; flow.next(); }); yield;  if(err) return [err];
+    var dataOrg=buf; 
+    if(fileOrg.type=='application/zip' || fileOrg.type=='application/x-zip-compressed'){
+       
+      var zip=new NodeZip(dataOrg, {base64: false, checkCRC32: true});
+      var FileInZip=zip.files;
+      
+      var tmp="Zip file with "+Object.keys(FileInZip).length+" files."; console.log(tmp);
+      var Key=Object.keys(FileInZip), KeyTalk=[];  for(var j=Key.length-1;j>=0;j--){ if(regBoTalk.test(Key[j])) { var item=mySplice1(Key,j);  KeyTalk.push(item); } }  Key=KeyTalk.concat(Key);  
+      //for(var fileName in File){
+      for(var j=0;j<Key.length;j++){
+        var fileName=Key[j];
+        var fileInZip=FileInZip[fileName];
+        var Match=RegExp('\\.(\\w{1,3})$').exec(fileName);
+        var type=Match[1].toLowerCase(), bufT=new Buffer(fileInZip._data,'binary');//b.toString();
+
+        console.log(j+'/'+Key.length+' '+fileName+' '+bufT.length);
+        var [err]=yield* storeFile.call({}, fileName, type, bufT, flow);  if(err) return [err];
+      } 
+
+    } else {  
+      var fileName=fileOrg.name;
+      var Match=RegExp('\\.(\\w{1,4})$').exec(fileName);
+      var type=Match[1].toLowerCase();
+ 
+      console.log(i+'/'+FileOrg.length+' '+fileName+' '+dataOrg.length);
+      var [err]=yield* storeFile.call({}, fileName, type, dataOrg, flow);  if(err) return [err];
+    } 
+  }
+  return [null];
+}
+
+app.loadFrBUFolder=function*(flow, strFile){
+  var strFileToLoadFolder=path.join(__dirname, '..', 'mmmWikiData', 'BU'); 
+  var files;
+  if(strFile) files=[strFile];
+  else {  var err;  fs.readdir(strFileToLoadFolder, function(errT, filesT){ err=errT; files=filesT; flow.next(); }); yield;  if(err) return [err];   }  
+
+  var File=Array(files.length);
+  for(var i=0;i<files.length;i++){
+    var file=files[i], strPath=path.join(strFileToLoadFolder,file);
+    var strType=''; if(file.substr(-4)=='.zip') strType='application/zip';
+    File[i]={name:file, path:strPath,type:strType};
+  }
+  
+  var [err]=yield* storeFileMult.call({}, flow, File); if(err) return [err];
+  return [null, [0]];
+}
+
+
+ReqBE.prototype.uploadAdminServ=function*(inObj){
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
+  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+  this.mesO("Working ... ")
+  var [err]=yield* loadFrBUFolder.call({}, flow, inObj.file); if(err) return [err];
+  return [null, [0]];
+}
+
+
+ReqBE.prototype.uploadAdmin=function*(inObj){
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
+  var Ou={};
+  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  
+  var [err]=yield* storeFileMult.call(this, flow, this.File); if(err) return [err];
+  return [null, [0]];
+}
 
 ReqBE.prototype.uploadUser=function*(inObj){
   var self=this, req=this.req, res=this.res;
@@ -1106,17 +1133,17 @@ ReqBE.prototype.uploadUser=function*(inObj){
   var Match=RegExp('\\.(\\w{1,3})$').exec(fileName); 
   if(!Match){ Ou.strMessage="The file name should be in the form xxxx.xxx"; return [null, [Ou]]; }
   var type=Match[1].toLowerCase(), err, buf;
-  fs.readFile(tmpname, function(errT, bufT) { err=errT; buf=bufT; flow.next(); });  yield;  if(err) return [err];
+  fs.readFile(tmpname, function(errT, bufT) { err=errT; buf=bufT; flow.next(); });  yield; if(err) return [err];
   var data=buf;
   if(data.length==0){ this.mes("data.length==0"); return [null, [Ou]]; }
 
   if(regImg.test(type)){
       // autoOrient
     var semY=0, semCB=0, err;
-    var myCollector=concat(function(buf){  data=buf;  if(semY) flow.next(); semCB=1;  }); 
+    var myCollector=concat(function(buf){  data=buf;  if(semY) flow.next(); semCB=1;  });
     var streamImg=gm(data).autoOrient().stream(function streamOut(errT, stdout, stderr) {
-      err=errT; if(err){ if(semY) flow.next(); semCB=1; return; } 
-      stdout.pipe(myCollector); 
+      err=errT; if(err){ if(semY) flow.next(); semCB=1; return; }
+      stdout.pipe(myCollector);
     });
     if(!semCB) { semY=1; yield;}
     if(err) return [err];

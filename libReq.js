@@ -174,18 +174,18 @@ app.reqBUMeta=function*(strArg) {
   zipfile.file('redirect.csv', StrFile.join("\n"), {compression:'DEFLATE'});
     
 
-    // Create filename.
-  var outFileName=calcBUFileName(matWWWCommon[0].wwwCommon,'meta','zip');
 
     // Output data 
   var objArg={type:'string'}, outdata = zipfile.generate(objArg);
   if(strArg=='Serv'){
+    var outFileName='meta.zip';
     var leafDataDir='mmmWikiData';
-    var fsPage=path.join(__dirname, '..', leafDataDir, outFileName); 
+    var fsPage=path.join(__dirname, '..', leafDataDir, 'BU', outFileName); 
     var err;  fs.writeFile(fsPage, outdata, 'binary', function(errT){ err=errT;  flow.next();  });   yield;
     if(err) { console.log(err); res.out500(err); }
     res.out200('OK');
-  }else{    
+  }else{  
+    var outFileName=calcBUFileName(matWWWCommon[0].wwwCommon,'meta','zip');  
     var objHead={"Content-Type": 'application/zip', "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
     res.writeHead(200,objHead);
     res.end(outdata,'binary');
@@ -265,11 +265,11 @@ app.reqIndex=function*() {
   var pathName=decodeURIComponent(req.pathName);
 
   var Match=RegExp('^/([^\\/]+)$').exec(pathName);
-  if(Match) this.queredPage=Match[1]; 
+  if(Match) var queredPage=Match[1]; 
   else{
     if(pathName!='/') { res.out301Loc(''); return;}
     if('page' in objQS) { res.out301Loc(objQS.page); return;}
-    this.queredPage='start';
+    var queredPage='start';
   }
 
       // Conditionally push deadlines forward
@@ -284,10 +284,7 @@ app.reqIndex=function*() {
   //                                                           index.html  first ajax (specSetup)
   //Shall look the same (be cacheable (not include CSRFcode))     yes          no
 
-  //this.tModCache=new Date(bootTime.toUnix()*1000);
-  this.tMod=new Date(0);
-  this.tModCache=new Date(0);
-  this.CSRFCode='';  // If public then No CSRFCode since the page is going to be cacheable (look the same each time)
+  var CSRFCode='';  // If public then No CSRFCode since the page is going to be cacheable (look the same each time)
 
   //if(req.boTLS) res.setHeader("Strict-Transport-Security", "max-age="+24*3600+"; includeSubDomains");
   var tmpS=req.boTLS?'s':'';
@@ -295,40 +292,33 @@ app.reqIndex=function*() {
   //res.setHeader("Content-Security-Policy", "default-src http");
   
     
-  if('version' in objQS) {  this.version=objQS.version;  this.rev=this.version-1 } else {  this.version=NaN; this.rev=-1; }
-  this.eTagIn=getETag(req.headers); this.requesterCacheTime=getRequesterTime(req.headers);
-  //if(bootTime>this.requesterCacheTime) this.requesterCacheTime=new Date(0);
-  extend(this,{strHtmlText:'', boTalkExist:0, strEditText:'', arrVersionCompared:[null,1], matVersion:[], objTemplateE:{}}); 
+  var version, rev; if('version' in objQS) {  version=objQS.version;  rev=version-1 } else {  version=NaN; rev=-1; }
+  var eTagIn=getETag(req.headers), requesterCacheTime=getRequesterTime(req.headers);
  
-  this.boFront=1;
-  var boEmptySiteTab=0;
 
     // getInfoNData
-  var [err,rowA]=yield* getInfoNData.call(this); if(err) { res.out500(err); return;   }
+  //var [err,rowA]=yield* getInfoNData.call(this); if(err) { res.out500(err); return;   }
+  var arg={boFront:1, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:queredPage, rev:rev, eTagIn:eTagIn, requesterCacheTime:requesterCacheTime}
+  var [err, Ou]=yield* getInfoNData(flow, arg); if(err) { res.out500(err); return;   }
+  var {mess, version, rev, eTag, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
   
-  var mess=rowA.mess; 
-  if(mess=='boEmptySiteTab'){
-    this.eTag=md5(''); 
-    res.statusCode=200;
-    res.setHeader("Cache-Control", "must-revalidate");  res.setHeader('Last-Modified',this.tModCache.toUTCString());  res.setHeader('ETag',this.eTag);
-    extend(this,{strHtmlText:'', boTalkExist:0, strEditText:'', arrVersionCompared:[null,1], matVersion:[], objTemplateE:{}});     
-    extend(this,{idPage:NaN, boOR:1, boOW:1, boSiteMap:1});
-    boEmptySiteTab=1;
-  }
-  else if(mess=='IwwwNotFound'){ res.out404('No wiki there');  return;  }
+  if(typeof tMod=='undefined') tMod=new Date(0);
+  if(typeof tModCache=='undefined') tModCache=new Date(0);
+  var arrVersionCompared=[null,rev+1];
+  
+  if(mess=='IwwwNotFound'){ res.out404('No wiki there');  return;  }
   else if(mess=='redirect') {
-    var url=rowA.urlRedir;
-    //res.writeHead(301, {Location: url}); res.end(mess);  return;
-    res.out301(url); return;
+    //res.writeHead(301, {Location: strEditText}); res.end(mess);  return;
+    res.out301(strEditText); return;
   }
   else if(mess=='redirectDomain') {
-    var url=rowA.urlRedir+'/'+this.queredPage;
+    var url=urlRedir+'/'+queredPage;
     //res.writeHead(301, {Location: url}); res.end(mess);  return;
     res.out301(url); return;
   }
   else if(mess=='redirectCase') { 
-    var strS=Number(rowA.boTLS)?'s':'';
-    var url='http'+strS+'://'+rowA.www+'/'+rowA.pageName;
+    var strS=Number(boTLS)?'s':'';
+    var url='http'+strS+'://'+www+'/'+pageName;
     //res.writeHead(301, {Location: url}); res.end(mess+req.boTLS);  return;
     res.out301(url);  return;
   }
@@ -336,53 +326,51 @@ app.reqIndex=function*() {
   else if(mess=='noSuchRev') {res.out500(mess);  return; }
   else if(mess=='private') { 
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0"); // no-cache
-    extend(this,{strHtmlText:'', boTalkExist:0, strEditText:'', arrVersionCompared:[null,1], matVersion:[], objTemplateE:{}}); 
-    extend(this,{idPage:NaN, boOR:0, boOW:1, boSiteMap:1});  
-    this.CSRFCode=randomHash(); 
-    var redisVar=sessionID+'_'+this.queredPage+'_CSRF';
-    var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,this.CSRFCode]);
+    strHtmlText=''; objTemplateE={}; strEditText=''; boTalkExist=0; arrVersionCompared=[null,1]; Version=[]; idPage=NaN; boOR=0; boOW=1; boSiteMap=1; 
+    var CSRFCode=randomHash(); 
+    var redisVar=sessionID+'_'+queredPage+'_CSRF';
+    var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,CSRFCode]);
     var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
     //return; 
   }
   else if(mess=='noSuchPage'){
-    this.eTag=md5(''); // What's produced by the server will here always be the same
+    //eTag=md5(''); // What's produced by the server will here always be the same
     res.statusCode=404;
-    res.setHeader("Cache-Control", "must-revalidate");  res.setHeader('Last-Modified',this.tModCache.toUTCString());  res.setHeader('ETag',this.eTag);
-    extend(this,{strHtmlText:'', boTalkExist:0, strEditText:'', arrVersionCompared:[null,1], matVersion:[], objTemplateE:{}});     
-    extend(this,{idPage:NaN, boOR:1, boOW:1, boSiteMap:1});     
+    //res.setHeader("Cache-Control", "must-revalidate");  res.setHeader('Last-Modified',tModCache.toUTCString());  res.setHeader('ETag',eTag);
+    strHtmlText=''; objTemplateE={}; strEditText=''; boTalkExist=0; arrVersionCompared=[null,1]; Version=[]; idPage=NaN; boOR=1; boOW=1; boSiteMap=1;     
   }
-  else if(mess=='serverCacheStale' || mess=='serverCacheOK'){
-    copySome(this, rowA, ['idPage', 'rev', 'version', 'eTag', 'boOR', 'boOW', 'boSiteMap', 'boTalkExist', 'tMod', 'tModCache', 'strEditText']);
-    var boValidServerCache=mess=='serverCacheOK'; 
-    //this.tModCache=new Date(Math.max(this.tModCache, bootTime)); 
-    //this.tMod=new Date(this.tMod); 
-    //this.tModCache=new Date(this.tModCache); 
-  
-    res.setHeader("Cache-Control", "must-revalidate");  res.setHeader('Last-Modified',this.tModCache.toUTCString());  res.setHeader('ETag',this.eTag);
+  else if(mess=='serverCacheOK'){
+    eTag=randomHash();
+    var sql=`UPDATE `+pageLastView+` SET tModCache=now(), eTag=? WHERE www=? AND pageName=?;  
+SELECT now() AS tModCache`;
+    var Val=[eTag, req.wwwSite, queredPage];
+    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
+    var rowA=results[1][0];
+    tModCache=new Date(rowA.tModCache*1000);
+    res.setHeader("Cache-Control", "must-revalidate");  res.setHeader('Last-Modified',tModCache.toUTCString());  res.setHeader('ETag',eTag);
+  }
+  else if(mess=='serverCacheStale'){
+    eTag=randomHash();
+      // parse
+    var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW};
+    var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) { res.out500(err); return; }
     
-    //this.matVersion=makeMatVersion.call(this);
-    this.matVersion=makeMatVersion(this.Version);
-
-    this.arrVersionCompared=[null,this.rev+1];
-
-    if(!boValidServerCache){
-        // parse
-      var [err]=yield* parse.call(this); if(err) { res.out500(err); return; }
-
-          // setNewCacheSQL
-      var {sql, Val, nEndingResults}=createSetNewCacheSQL(req.wwwSite, this.queredPage, this.rev, this.strHtmlText, this.eTag, this.arrSub, this.StrSubImage); 
-      var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) {  res.out500(err); return; }
-      var iRowLast=results.length-nEndingResults-1;
-      var mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
-      
-    } else {
-      this.strHtmlText=rowA.strHtmlText;
-    }
-
+      // setNewCacheSQL
+    var {sql, Val, nEndingResults}=createSetNewCacheSQL(req.wwwSite, queredPage, rev, strHtmlText, eTag, arrSub, StrSubImage); 
+    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) {  res.out500(err); return; }
+    var iRowLast=results.length-nEndingResults-1;
+    var rowA=results[iRowLast][0];
+    var mess=rowA.mess;       if(mess!='done') {res.out500(mess);  return; }
+    tModCache=new Date(rowA.tModCache*1000);
+     
+    res.setHeader("Cache-Control", "must-revalidate");  res.setHeader('Last-Modified',tModCache.toUTCString());  res.setHeader('ETag',eTag);
   }
   else { res.out500('mess='+mess);  return; }
   
-  var wwwSite=req.wwwSite, queredPage=this.queredPage;
+  var matVersion=makeMatVersion(Version); 
+  
+  
+  var wwwSite=req.wwwSite
 
   var Str=[];
   var tmp='<!DOCTYPE html>\n\
@@ -394,9 +382,9 @@ app.reqIndex=function*() {
   var ua=req.headers['user-agent']||''; ua=ua.toLowerCase();
   var boMSIE=RegExp('msie').test(ua), boAndroid=RegExp('android').test(ua), boFireFox=RegExp('firefox').test(ua), boIOS= RegExp('iPhone|iPad|iPod','i').test(ua);
 
-  var strSchemeCommon='http'+(this.boTLSCommon?'s':''),   strSchemeCommonLong=strSchemeCommon+'://';
+  var strSchemeCommon='http'+(boTLSCommon?'s':''),   strSchemeCommonLong=strSchemeCommon+'://';
 
-  Str.push('<link rel="icon" type="image/png" href="'+this.urlIcon16+'" />');
+  Str.push('<link rel="icon" type="image/png" href="'+urlIcon16+'" />');
 
 
   var strTmp='';  //if(boAndroid && boFireFox) {  strTmp=", width=device-width'";}    
@@ -405,7 +393,7 @@ app.reqIndex=function*() {
   Str.push("<meta name='viewport' id='viewportMy' content='initial-scale=1"+strTmp+strTmpB+"'/>");
 
   var boTemplate=RegExp('^template:','i').test(queredPage);
-  if(!this.boSiteMap || this.strHtmlText=='' || boTemplate){ Str.push('<meta name="robots" content="noindex">\n'); }
+  if(!boSiteMap || strHtmlText=='' || boTemplate){ Str.push('<meta name="robots" content="noindex">\n'); }
 
   var strTitle;
   if(queredPage=='start') { 
@@ -421,7 +409,7 @@ app.reqIndex=function*() {
 
 
   //var uCommon=''; if(wwwCommon) uCommon=req.strSchemeLong+wwwCommon;
-  var uCommon=strSchemeCommonLong+this.wwwCommon;
+  var uCommon=strSchemeCommonLong+wwwCommon;
   //var uJQuery='https://code.jquery.com/jquery-latest.min.js';    if(boDbg) uJQuery=uCommon+'/'+flFoundOnTheInternetFolder+"/jquery-latest.js";      Str.push("<script src='"+uJQuery+"'></script>");
   //var uJQuery='https://code.jquery.com/jquery-2.1.4.min.js';    if(boDbg) uJQuery=uCommon+'/'+flFoundOnTheInternetFolder+"/jquery-2.1.4.min.js";      Str.push("<script src='"+uJQuery+"'></script>");
   var uJQuery='https://code.jquery.com/jquery-3.2.1.min.js';    if(boDbg) uJQuery=uCommon+'/'+flFoundOnTheInternetFolder+"/jquery-3.2.1.min.js";
@@ -450,7 +438,7 @@ app.reqIndex=function*() {
   Str.push('<script src="'+uCommon+'/lib/foundOnTheInternet/sha1.js"></script>');
 
 
-  var strTracker, tmpID=this.googleAnalyticsTrackingID||null;
+  var strTracker, tmpID=googleAnalyticsTrackingID||null;
   if(boDbg||!tmpID){strTracker="<script> ga=function(){};</script>";}else{ 
   strTracker="\n\
 <script type=\"text/javascript\">\n\
@@ -470,39 +458,34 @@ app.reqIndex=function*() {
 </head>\n\
 <body style=\"margin:0\">\n\
 <title>"+strTitle+"</title>\n\
-<div id=pageText>"+this.strHtmlText+"</div>\n");  
+<div id=pageText>"+strHtmlText+"</div>\n");  
 
   Str.push("<input id='boLCacheObs' style=\"display:none\">"); //type=hidden
   Str.push("<script language=\"JavaScript\">");
   Str.push("function indexAssign(){");
 
-  var objPage=copySome({},this,['boOR', 'boOW', 'boSiteMap', 'idPage']);
-//idPage="+JSON.stringify(this.idPage)+";\n\
-//boOR="+JSON.stringify(this.boOR)+";\n\
-//boOW="+JSON.stringify(this.boOW)+";\n\
-//boSiteMap="+JSON.stringify(this.boSiteMap)+";\n\
+  var objPage={boOR:boOR, boOW:boOW, boSiteMap:boSiteMap, idPage:idPage};
 
   Str.push("\
-tMod="+JSON.stringify(this.tMod.toUnix())+";\n\
+tMod="+JSON.stringify(tMod.toUnix())+";\n\
 objPage="+JSON.stringify(objPage)+";\n\
-boTalkExist="+JSON.stringify(this.boTalkExist)+";\n\
-strEditText="+JSON.stringify(this.strEditText)+";\n\
-objTemplateE="+JSON.stringify(this.objTemplateE)+";\n\
-arrVersionCompared="+JSON.stringify(this.arrVersionCompared)+";\n\
-matVersion="+JSON.stringify(this.matVersion)+";\n\
+boTalkExist="+JSON.stringify(boTalkExist)+";\n\
+strEditText="+JSON.stringify(strEditText)+";\n\
+objTemplateE="+JSON.stringify(objTemplateE)+";\n\
+arrVersionCompared="+JSON.stringify(arrVersionCompared)+";\n\
+matVersion="+JSON.stringify(matVersion)+";\n\
 boTLS="+JSON.stringify(req.boTLS)+";\n\
 strBTC="+JSON.stringify(strBTC)+";\n\
 ppStoredButt="+JSON.stringify(ppStoredButt)+";\n\
-boTLSCommon="+JSON.stringify(this.boTLSCommon)+";\n\
-wwwCommon="+JSON.stringify(this.wwwCommon)+";\n\
+boTLSCommon="+JSON.stringify(boTLSCommon)+";\n\
+wwwCommon="+JSON.stringify(wwwCommon)+";\n\
 wwwSite="+JSON.stringify(wwwSite)+";\n\
 queredPage="+JSON.stringify(queredPage)+";\n\
 strReCaptchaSiteKey="+JSON.stringify(strReCaptchaSiteKey)+";\n\
 ");
-  if(boEmptySiteTab){  Str.push("boEmptySiteTab=1;");  }
-  if(!this.boOR){
+  if(!boOR){
     Str.push("\
-CSRFCode="+JSON.stringify(this.CSRFCode)+";\n\
+CSRFCode="+JSON.stringify(CSRFCode)+";\n\
 boVLoggedIn="+JSON.stringify(this.boVLoggedIn)+";\n\
 boALoggedIn="+JSON.stringify(this.boALoggedIn)+";");
   }
@@ -579,11 +562,6 @@ app.reqStatic=function*() {
   //});
   //res.end(imgbase64);
 //}
-
-
-
-
-
 
 
 
@@ -1365,49 +1343,63 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
         IF VboTalk THEN SET VboErrAlreadyTalk=1; LEAVE proc_label; END IF; \n\
         IF VboTemplate THEN SET OtalkName=CONCAT('template_talk:',SUBSTR(Iname,10));  ELSE SET OtalkName=CONCAT('talk:',Iname); END IF; \n\
       END");
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"deletePageID");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"deletePageID(IidPage int(4)) \n\
-      BEGIN \n\
-        DECLARE VidSite, VidPage, VboTalk, VboTemplate INT; \n\
-        DECLARE Vname varchar(128); \n\
-        START TRANSACTION; \n\
-        SELECT idSite, pageName INTO VidSite, Vname FROM "+pageTab+" WHERE idPage=IidPage; \n\
-        CALL testIfTalkOrTemplate(Vname, VboTalk, VboTemplate); \n\
-        CALL "+strDBPrefix+"markStaleParentsOfPage(VidSite, Vname, 0, VboTemplate); \n\
-        SET VidPage=IidPage; \n\
-        #DROP TEMPORARY TABLE IF EXISTS tmp; \n\
-        #CREATE TEMPORARY TABLE tmp AS  \n\
-        #  SELECT idFile, idFileCache FROM "+versionTab+" WHERE idPage=VidPage; \n\
-        CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4), idFileCache INT(4)); \n\
-        TRUNCATE tmp; INSERT INTO tmp SELECT idFile, idFileCache FROM "+versionTab+" WHERE idPage=VidPage; \n\
-        DELETE FROM "+versionTab+" WHERE idPage=VidPage; \n\
-        DELETE f FROM "+fileTab+" f JOIN tmp t ON t.idFile=f.idFile WHERE 1; \n\
-        DELETE f FROM "+fileTab+" f JOIN tmp t ON t.idFileCache=f.idFile WHERE 1; \n\
-        \n\
-        DELETE FROM "+pageTab+" WHERE idPage=VidPage; \n\
-        COMMIT; \n\
-      END");
+  SqlFunctionDrop.push(`DROP PROCEDURE IF EXISTS `+strDBPrefix+`deletePageID`);
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`deletePageID(IidPage int(4))
+      BEGIN
+        DECLARE VidSite, VidPage, VboTalk, VboTemplate INT;
+        DECLARE Vname varchar(128);
+        START TRANSACTION;
+        SELECT idSite, pageName INTO VidSite, Vname FROM `+pageTab+` WHERE idPage=IidPage;
+        CALL testIfTalkOrTemplate(Vname, VboTalk, VboTemplate);
+        CALL `+strDBPrefix+`markStaleParentsOfPage(VidSite, Vname, 0, VboTemplate);
+        SET VidPage=IidPage;
+        #DROP TEMPORARY TABLE IF EXISTS tmp;
+        #CREATE TEMPORARY TABLE tmp AS 
+        #  SELECT idFile, idFileCache FROM `+versionTab+` WHERE idPage=VidPage;
+        CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4), idFileCache INT(4));
+        TRUNCATE tmp; INSERT INTO tmp SELECT idFile, idFileCache FROM `+versionTab+` WHERE idPage=VidPage;
+        DELETE FROM `+versionTab+` WHERE idPage=VidPage;
+        DELETE f FROM `+fileTab+` f JOIN tmp t ON t.idFile=f.idFile WHERE 1;
+        DELETE f FROM `+fileTab+` f JOIN tmp t ON t.idFileCache=f.idFile WHERE 1;
+       
+              -- Subtract(delete) IidPage's children's nParent-value in nParentTab
+          -- Delete any rows with 1 (or less) in nParentTab
+        DELETE FROM `+nParentTab+` n JOIN `+subTab+` s ON n.pageName=s.pageName AND n.idSite=IidSite WHERE s.idPage=IidPage AND nParent<=1;
+          -- Subtract 1 from nParentTab.nParent for each row in (old) subTab
+        UPDATE `+nParentTab+` n JOIN `+subTab+` s ON n.pageName=s.pageName AND n.idSite=IidSite SET n.nParent=n.nParent-1 WHERE s.idPage=IidPage;
 
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"deletePage");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"deletePage(Iwww varchar(128), Iname varchar(128)) \n\
-      BEGIN \n\
-        DECLARE VidSite, VidPage, VboTalk, VboTemplate INT; \n\
-        START TRANSACTION; \n\
-        SELECT idSite, idPage INTO VidSite, VidPage FROM "+pageTab+" WHERE pageName=Iname; \n\
-        CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); \n\
-        CALL "+strDBPrefix+"markStaleParentsOfPage(VidSite, Iname, 0, VboTemplate); \n\
-        #DROP TEMPORARY TABLE IF EXISTS tmp; \n\
-        #CREATE TEMPORARY TABLE tmp AS  \n\
-        #  SELECT idFile, idFileCache FROM "+versionTab+" WHERE idPage=VidPage; \n\
-        CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4), idFileCache INT(4)); \n\
-        TRUNCATE tmp; INSERT INTO tmp SELECT idFile, idFileCache FROM "+versionTab+" WHERE idPage=VidPage; \n\
-        DELETE FROM "+versionTab+" WHERE idPage=VidPage; \n\
-        DELETE f FROM "+fileTab+" f JOIN tmp t ON t.idFile=f.idFile WHERE 1; \n\
-        DELETE f FROM "+fileTab+" f JOIN tmp t ON t.idFileCache=f.idFile WHERE 1; \n\
-        \n\
-        DELETE FROM "+pageTab+" WHERE idPage=VidPage; \n\
-        COMMIT; \n\
-      END");
+
+        DELETE FROM `+pageTab+` WHERE idPage=VidPage;
+        COMMIT;
+      END`);
+
+  SqlFunctionDrop.push(`DROP PROCEDURE IF EXISTS `+strDBPrefix+`deletePage`);
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`deletePage(Iwww varchar(128), Iname varchar(128))
+      BEGIN
+        DECLARE VidSite, VidPage, VboTalk, VboTemplate INT;
+        START TRANSACTION;
+        SELECT idSite, idPage INTO VidSite, VidPage FROM `+pageTab+` WHERE pageName=Iname;
+        CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate);
+        CALL `+strDBPrefix+`markStaleParentsOfPage(VidSite, Iname, 0, VboTemplate);
+        #DROP TEMPORARY TABLE IF EXISTS tmp;
+        #CREATE TEMPORARY TABLE tmp AS 
+        #  SELECT idFile, idFileCache FROM `+versionTab+` WHERE idPage=VidPage;
+        CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4), idFileCache INT(4));
+        TRUNCATE tmp; INSERT INTO tmp SELECT idFile, idFileCache FROM `+versionTab+` WHERE idPage=VidPage;
+        DELETE FROM `+versionTab+` WHERE idPage=VidPage;
+        DELETE f FROM `+fileTab+` f JOIN tmp t ON t.idFile=f.idFile WHERE 1;
+        DELETE f FROM `+fileTab+` f JOIN tmp t ON t.idFileCache=f.idFile WHERE 1;
+        
+              -- Subtract(delete) IidPage's children's nParent-value in nParentTab
+          -- Delete any rows with 1 (or less) in nParentTab
+        DELETE FROM `+nParentTab+` n JOIN `+subTab+` s ON n.pageName=s.pageName AND n.idSite=IidSite WHERE s.idPage=IidPage AND nParent<=1;
+          -- Subtract 1 from nParentTab.nParent for each row in (old) subTab
+        UPDATE `+nParentTab+` n JOIN `+subTab+` s ON n.pageName=s.pageName AND n.idSite=IidSite SET n.nParent=n.nParent-1 WHERE s.idPage=IidPage;
+
+
+        DELETE FROM `+pageTab+` WHERE idPage=VidPage;
+        COMMIT;
+      END`);
   //SqlFunction.push("CALL "+strDBPrefix+"deletePage('www.common.com','mmm')");
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"deleteAllButFirst");  
@@ -1496,11 +1488,16 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
 
       # DROP TEMPORARY TABLE IF EXISTS tmpSubDiff;
       # CREATE TEMPORARY TABLE IF NOT EXISTS tmpSubDiff (pageName varchar(128) NOT NULL, nDelta TINYINT NOT NULL,  PRIMARY KEY (pageName)) AS SELECT pageName, 1 AS nDelta FROM tmpSubNew;
+        -- Create tmpSubDiff (pageNames, nDelta) by combining the data from mmmWiki_sub and from tmpSubNew
+        -- Rows in tmpSubNew but not in mmmWiki_sub gets nDelta=1
+        -- Rows in mmmWiki_sub but not in tmpSubNew gets nDelta=-1
       CREATE TEMPORARY TABLE IF NOT EXISTS tmpSubDiff (pageName varchar(128) NOT NULL, nDelta TINYINT NOT NULL);
       TRUNCATE tmpSubDiff; INSERT INTO tmpSubDiff SELECT pageName, 1 AS nDelta FROM tmpSubNew;
 
       #SELECT * FROM tmpSubDiffOld;
       #SELECT * FROM tmpSubDiff;
+        -- Removing rows that are  both in mmmWiki_sub and tmpSubNew (since nothing needs to be changed (nDelta=0)).
+        -- And insert (pageName,-1) when mmmWiki_sub.pageName is not in tmpSubNew.
       BEGIN 
         DECLARE VnOld, VboInNew INT;
         DECLARE done INT DEFAULT FALSE;
@@ -1542,7 +1539,7 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
           IF VnDelta=1 THEN
             IF VnParentOld IS NULL THEN
               INSERT INTO `+nParentTab+` (idSite, pageName, nParent) VALUES (IidSite, VpageName,1);
-            ELSEIF VnParentOld<0 THEN
+            ELSEIF VnParentOld<0 THEN -- This should never happen really
               UPDATE `+nParentTab+` SET nParent=VnDelta WHERE idSite=IidSite AND pageName=VpageName;
             ELSE
               UPDATE `+nParentTab+` SET nParent=nParent+VnDelta WHERE idSite=IidSite AND pageName=VpageName;
@@ -1570,11 +1567,16 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
 
       #DROP TEMPORARY TABLE IF EXISTS tmpSubIDiff;
       #CREATE TEMPORARY TABLE IF NOT EXISTS tmpSubIDiff (imageName varchar(128) NOT NULL, nDelta TINYINT NOT NULL) AS SELECT imageName, 1 AS nDelta FROM tmpSubNewImage;
+        -- Create tmpSubIDiff (imageName, nDelta) by combining the data from mmmWiki_subImage and from tmpSubNewImage
+        -- Rows in tmpSubNewImage but not in mmmWiki_subImage gets nDelta=1
+        -- Rows in mmmWiki_subImage but not in tmpSubNewImage gets nDelta=-1
       CREATE TEMPORARY TABLE IF NOT EXISTS tmpSubIDiff (imageName varchar(128) NOT NULL, nDelta TINYINT NOT NULL);
       TRUNCATE tmpSubIDiff; INSERT INTO tmpSubIDiff SELECT imageName, 1 AS nDelta FROM tmpSubNewImage  ;
 
       #SELECT * FROM tmpSubDiffOld;
       #SELECT * FROM tmpSubIDiff;
+        -- Removing rows that are  both in mmmWiki_subImage and tmpSubNewImage (since nothing needs to be changed (nDelta=0)).
+        -- And insert (imageName,-1) when mmmWiki_subImage.imageName is not in tmpSubNewImage.
       BEGIN 
         DECLARE VimageName varchar(128);
         DECLARE VnOld, VboInNew INT;
@@ -1597,7 +1599,7 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
         CLOSE cursor_i;
       END;
       #SELECT * FROM tmpSubIDiff;
-        -- Change nParentTab based on tmpSubIDiff
+        -- Change nParentITab based on tmpSubIDiff
       BEGIN 
         DECLARE VimageName varchar(128);
         DECLARE VnParentOld, VnDelta, Vtrash INT;
@@ -1618,7 +1620,7 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
           IF VnDelta=1 THEN
             IF VnParentOld IS NULL THEN
               INSERT INTO `+nParentITab+` (imageName, nParent) VALUES (VimageName,1);
-            ELSEIF VnParentOld<0 THEN
+            ELSEIF VnParentOld<0 THEN -- This should never happen really
               UPDATE `+nParentITab+` SET nParent=VnDelta WHERE imageName=VimageName;
             ELSE
               UPDATE `+nParentITab+` SET nParent=nParent+VnDelta WHERE imageName=VimageName;
@@ -1684,10 +1686,10 @@ INSERT INTO `+nParentITab+` SELECT imageName, COUNT(idPage IS NOT NULL) AS nPare
         UPDATE "+pageTab+" SET nChild=VnChild, nImage=vnImage WHERE idPage=IidPage;\n\
 \n\
            # Make changes to nParentTab and nParentITab \n\
-        CALL "+strDBPrefix+"makeNParentDiff(VidSite, IidPage); \n\
-        CALL "+strDBPrefix+"makeNParentIDiff(IidPage); \n\
+        # CALL "+strDBPrefix+"makeNParentDiff(VidSite, IidPage); \n\
+        # CALL "+strDBPrefix+"makeNParentIDiff(IidPage); \n\
 \n\
-          # Replace other (normal) subpages \n\
+          # Replace subpages \n\
         DELETE FROM "+subTab+" WHERE idPage=IidPage; \n\
         INSERT INTO "+subTab+" (idPage, idSite, pageName, boOnWhenCached) SELECT IidPage, VidSite, t.pageName, boOn FROM "+tmpSubNew+" t; \n\
 \n\
@@ -1748,7 +1750,7 @@ INSERT INTO `+nParentITab+` SELECT imageName, COUNT(idPage IS NOT NULL) AS nPare
         END IF; \n\
   \n\
         CALL "+strDBPrefix+"writeSubTables(VidPage); \n\
-        SELECT 'done' AS mess; \n\
+        SELECT 'done' AS mess, now() AS tMod, now() AS tModCache; \n\
       END");
 
 
@@ -1806,7 +1808,7 @@ INSERT INTO `+nParentITab+` SELECT imageName, COUNT(idPage IS NOT NULL) AS nPare
   VALUES (VidPage,nversion,Isummary,Isignature,1,VidFile,now(),VidFileCache,now(),IeTag,LENGTH(Idata)); \n\
           \n\
         CALL "+strDBPrefix+"writeSubTables(VidPage); \n\
-        SELECT 'done' AS mess; LEAVE proc_label;\n\
+        SELECT 'done' AS mess, now() AS tMod, now() AS tModCache; LEAVE proc_label;\n\
       END");
 
   if(0){
@@ -1846,7 +1848,7 @@ INSERT INTO `+nParentITab+` SELECT imageName, COUNT(idPage IS NOT NULL) AS nPare
         #END IF; \n\
   \n\
         CALL "+strDBPrefix+"writeSubTables(VidPage); \n\
-        SELECT 'done' AS mess; \n\
+        SELECT 'done' AS mess, now() AS tModCache; \n\
       END");
 
   if(0){

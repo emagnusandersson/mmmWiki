@@ -59,10 +59,14 @@ helpTextExit=function(){
   arr.push('  -p, --port [PORT]   Port number (default: 5000)');
   arr.push('  --sql [SQL_ACTION]  Run a sql action.');
   arr.push('    SQL_ACTION='+StrValidSqlCalls.join('|'));
+  arr.push('  --loadFrBUFolder [FILE] Load from BU folder.');
+  arr.push('    FILE= txt-file with wiki-text');
+  arr.push('          image-file (acceptable formats: jpg, jpeg, png, gif, svg)');
+  arr.push('          zip-file containing any of the above formats.');
+  arr.push('    If FILE is left empty then all files in the BU folder are loaded.');
   console.log(arr.join('\n'));
   process.exit(0);
 }
-
 
     // Set up redisClient
 var urlRedis;
@@ -142,6 +146,10 @@ var flow=( function*(){
   
   SiteName=[strDBPrefix]; // To make the code analog to my other programs :-)
 
+    // loadPageZip or load
+  if(typeof argv.loadFrBUFolder!='undefined'){
+    yield* loadFrBUFolder(flow, argv.loadFrBUFolder);
+  }
     // Do db-query if --sql XXXX was set in the argument
   if(typeof argv.sql!='undefined'){
     if(typeof argv.sql!='string') {console.log('sql argument is not a string'); process.exit(-1); return; }

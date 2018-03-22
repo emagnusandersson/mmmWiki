@@ -61,73 +61,75 @@ sanitizeStyle=function(attrIn){
 //lcnotfirst=function(str){  if(count(str)>1) return str[0]+substr(str,1).toLowerCase(); else return str; }  // Make all except first lowercase
 
 
-calcETag=function(){ return md5(this.strHtmlText +this.tMod +this.tModCache +this.boOR +this.boOW +this.boSiteMap +this.boTalkExist +JSON.stringify(this.objTemplateE) +JSON.stringify(this.arrVersionCompared) +JSON.stringify(this.matVersion)  );}
-
-
-makeMatVersion=function(Version){ 
+makeMatVersion=function(Version){ //Rows are transfered: {tMod:X, summary:'bla', signature:'meh'} => [X, 'bla', 'meh']
   var nVersion=Version.length, t=Array(nVersion);
   for(var i=0;i<nVersion;i++){    t[i]=[Version[i].tMod, Version[i].summary, Version[i].signature];   }  return t;
 }
 
-parse=function*() { // Should be seen as a method  (assigns things to this)
-  var req=this.req, flow=req.flow;
-  var mPa=new Parser(this.strEditText, this.boOW==0);
-  mPa.text=this.strEditText;
+parse=function*(flow, arg) {
+  var mPa=new Parser(arg.strEditText, arg.boOW==0);
+  mPa.text=arg.strEditText;
   mPa.preParse();
-  this.StrTemplate=mPa.getStrTemplate();
+  var StrTemplate=mPa.getStrTemplate();
 
+    // Site specifiaction may come in two ways:
+  var sqlSiteQuery="www=?", siteArg=arg.wwwSite; if(!siteArg) { sqlSiteQuery="siteName=?"; siteArg=arg.siteName;}
+    
     // get objTemplate from DB
-  var len=this.StrTemplate.length, objTemplate={};   
+  var len=StrTemplate.length, objTemplate={};   
   if(len) {
     var strQ=array_fill(len,'?').join(', ');
-    var sql="SELECT pageName, data FROM "+pageLastView+" p JOIN "+fileTab+" f WHERE f.idFile=p.idFile AND www=? AND pageName IN ("+strQ+")";
-    var Val=[this.req.wwwSite].concat(this.StrTemplate);
-    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return [err]; 
+    var sql="SELECT pageName, data FROM "+pageLastView+" p JOIN "+fileTab+" f WHERE f.idFile=p.idFile AND "+sqlSiteQuery+" AND pageName IN ("+strQ+")";
+    var Val=[siteArg].concat(StrTemplate);
+    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return [err, []]; 
      
     for(var i=0;i<results.length;i++){ var tmpR=results[i]; objTemplate[tmpR.pageName]=tmpR.data; }
   }
 
 
-  var len=this.StrTemplate.length;
-  this.objTemplateE={}; for(var i=0;i<len;i++) { var key=this.StrTemplate[i]; this.objTemplateE[key]=key in objTemplate; }
+  var len=StrTemplate.length;
+  var objTemplateE={}; for(var i=0;i<len;i++) { var key=StrTemplate[i]; objTemplateE[key]=key in objTemplate; }
   mPa.objTemplate=objTemplate;    mPa.parse();
-  this.StrSub=mPa.getStrSub(); this.StrSubImage=mPa.getStrSubImage();
+  var StrSub=mPa.getStrSub(), StrSubImage=mPa.getStrSubImage();
 
 
     // get objExistingSub from DB
-  var len=this.StrSub.length, objExistingSub={};
+  var len=StrSub.length, objExistingSub={};
   if(len) {
     var strQ=array_fill(len,'?').join(', ');
-    var sql="SELECT pageName FROM "+pageLastView+" WHERE pageName IN ("+strQ+") AND www=?";
-    var Val=this.StrSub.concat(this.req.wwwSite);
-    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return [err]; 
+    var sql="SELECT pageName FROM "+pageLastView+" WHERE pageName IN ("+strQ+") AND "+sqlSiteQuery+"";
+    var Val=StrSub.concat(siteArg);
+    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return [err, []]; 
     
     for(var i=0;i<results.length;i++){ var tmpR=results[i]; objExistingSub[tmpR.pageName]=1; }
   }
 
 
   mPa.objExistingSub=objExistingSub; mPa.setArrSub();      mPa.endParse();
-  this.strHtmlText=mPa.text;  this.arrSub=mPa.arrSub; this.eTag=calcETag.call(this);
+  var strHtmlText=mPa.text, arrSub=mPa.arrSub;
+  
+  //var eTag=md5(strHtmlText +JSON.stringify(objTemplateE) +arg.tMod +arg.tModCache +arg.boOR +arg.boOW +arg.boSiteMap +arg.boTalkExist +JSON.stringify(arg.arrVersionCompared) +JSON.stringify(arg.matVersion));
 
-  //callback(null,0);
-  return [null];
+  //var Ou={StrTemplate:StrTemplate, objTemplateE:objTemplateE, StrSub:StrSub, StrSubImage:StrSubImage, strHtmlText:strHtmlText, arrSub:arrSub, eTag:eTag};
+  var Ou=[objTemplateE, StrSubImage, strHtmlText, arrSub];
+  return [null, Ou];
 }
 
-getInfoNData=function*() {
-  var req=this.req, flow=req.flow;
+
+getInfoNData=function*(flow, arg) {
   var sql="CALL "+strDBPrefix+"getInfoNData(?, ?, ?, ?, ?, ?, ?);"; 
-  var Val=[this.boFront, req.boTLS, req.wwwSite, this.queredPage, this.rev, this.eTagIn, this.requesterCacheTime/1000];
+  var Val=[arg.boFront, arg.boTLS, arg.wwwSite, arg.queredPage, arg.rev, arg.eTagIn, arg.requesterCacheTime/1000];
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return [err];
   var len=results.length, iRowLast=len-2; 
-  var rowLast=results[iRowLast][0]; 
-  //if('strEditText' in rowLast) rowLast.strEditText=rowLast.strEditText?rowLast.strEditText.toString():'';
-  //if('strHtmlText' in rowLast) rowLast.strHtmlText=rowLast.strHtmlText?rowLast.strHtmlText.toString():'';
-  if('rev' in rowLast) rowLast.version=rowLast.rev+1;
-  if('tMod' in rowLast) rowLast.tMod=new Date(rowLast.tMod*1000);
-  if('tModCache' in rowLast) rowLast.tModCache=new Date(rowLast.tModCache*1000);
+  var objDB=results[iRowLast][0];
+  //if('strEditText' in objDB) objDB.strEditText=objDB.strEditText?objDB.strEditText.toString():'';
+  //if('strHtmlText' in objDB) objDB.strHtmlText=objDB.strHtmlText?objDB.strHtmlText.toString():'';
+  if('rev' in objDB) objDB.version=objDB.rev+1;
+  if('tMod' in objDB) objDB.tMod=new Date(objDB.tMod*1000);
+  if('tModCache' in objDB) objDB.tModCache=new Date(objDB.tModCache*1000);
 
 
-  var mess=rowLast.mess, nRes=0;
+  var mess=objDB.mess, nRes=0;
   if(mess=='serverCacheOK') nRes=6;
   else if(mess=='serverCacheStale') nRes=4;
   else if(mess=='304' || mess=='noSuchRev' || mess=='zeroVersion' ) nRes=3; 
@@ -135,11 +137,11 @@ getInfoNData=function*() {
   else if(mess=='IwwwNotFound') nRes=1; 
   else if(mess=='redirect' || mess=='redirectDomain' || mess=='multDefault') nRes=0;
 
-  if(nRes>0) {  var tmp=results[0][0]; copySome(this,tmp,['boTLSCommon', 'wwwCommon']); }
-  if(nRes>1) {  var tmp=results[1][0]; copySome(this,tmp,['siteName', 'googleAnalyticsTrackingID', 'urlIcon16', 'urlIcon200', 'aPassword', 'vPassword']); }
-  if(nRes>2)    this.Version=results[2];
-  if(nRes>3)    rowLast.strEditText=results[3][0].strEditText.toString();
-  if(nRes>4)    rowLast.strHtmlText=results[4][0].strHtmlText.toString();
+  if(nRes>0) {  copySome(objDB,results[0][0],['boTLSCommon', 'wwwCommon']); }
+  if(nRes>1) {  copySome(objDB,results[1][0],['siteName', 'googleAnalyticsTrackingID', 'urlIcon16', 'urlIcon200', 'aPassword', 'vPassword']); }
+  if(nRes>2)    objDB.Version=results[2];
+  if(nRes>3)    objDB.strEditText=results[3][0].strEditText.toString();
+  if(nRes>4)    objDB.strHtmlText=results[4][0].strHtmlText.toString();
   if(nRes>5) {
     var resT=results[5], c=resT.length;
     var obj={}; 
@@ -147,28 +149,25 @@ getInfoNData=function*() {
       var tmpR=resT[i];
       var tmpname=tmpR.pageName.replace(RegExp('^template:'),''); obj[tmpname]=tmpR.boOnWhenCached; 
     }
-    this.objTemplateE=obj;
+    objDB.objTemplateE=obj;
   }
 
-  //callback(null,rowLast);
-  return [null, rowLast];  
+  //callback(null,objDB);
+  return [null, objDB];  
 }
 
-
-getInfo=function*() {
-  var Ou={};
-  var req=this.req, flow=req.flow;
-  var sql="CALL "+strDBPrefix+"getInfo(?,?);", Val=[req.wwwSite, this.queredPage];
+getInfo=function*(flow, arg) {
+  var sql="CALL "+strDBPrefix+"getInfo(?,?);", Val=[arg.wwwSite, arg.queredPage];
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return [err];
-  var rowLast;
-  if(results[0].length==0) { rowLast={mess:'noSuchPage'}; }
+  var objDB={};
+  if(results[0].length==0) { objDB.mess='noSuchPage'; }
   else {
-    rowLast=results[0][0];    rowLast.mess='pageExist';
-    rowLast.tMod=new Date(rowLast.tMod*1000);
-    rowLast.tModCache=new Date(rowLast.tModCache*1000);
+    objDB=results[0][0];    objDB.mess='pageExist';
+    objDB.tMod=new Date(objDB.tMod*1000);
+    objDB.tModCache=new Date(objDB.tModCache*1000);
   }
-  //callback(null,rowLast);
-  return [null, rowLast]; 
+  //callback(null,objDB);
+  return [null, objDB]; 
 }
 
 

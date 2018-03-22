@@ -453,12 +453,13 @@ adminMoreDivExtend=function($el){
   var $aBUMetaSQL=$('<a>').prop({href:'BUMetaSQL', rel:'nofollow', download:''}).append('(MetaData).sql');
   var $imgHSql=$imgHelp.clone().css({'margin':'0 1em'}); popupHoverM($imgHSql,$('<div>').html('<p>Download "meta-data":<br>-extra data for pages/images (modification dates, access rights ...). <br>-redirect table.'));
   
-  var $butBUPageServ=$('<button>').append('(pages).zip').click(  function(){    httpGetAsync('BUPageServ',function(str) {setMess(str,3);});    });
-  var $butBUImageServ=$('<button>').append('(images).zip').click(function(){    httpGetAsync('BUImageServ',function(str) {setMess(str,3);});   });
-  var $butBUMetaServ=$('<button>').append('(MetaData).zip').click(function(){      httpGetAsync('BUMetaServ',function(str) {setMess(str,3);});    });
+  var $butBUPageServ=$('<button>').append('page.zip').click(  function(){    httpGetAsync('BUPageServ',function(str) {setMess(str,3);});    });
+  var $butBUImageServ=$('<button>').append('image.zip').click(function(){    httpGetAsync('BUImageServ',function(str) {setMess(str,3);});   });
+  var $butBUMetaServ=$('<button>').append('MetaData.zip').click(function(){      httpGetAsync('BUMetaServ',function(str) {setMess(str,3);});    });
   
 
-  var $butLoadFromServer=$('<button>').append('Load from server-BU-(zip)-files').click(function(){   var vec=[['uploadAdminServ',1]];   majax(oAJAX,vec);    });
+  var $butLoadFromServerP=$('<button>').append('page.zip').click(function(){   var vec=[['uploadAdminServ',{file:'page.zip'}]];   majax(oAJAX,vec);    });
+  var $butLoadFromServerI=$('<button>').append('image.zip').click(function(){   var vec=[['uploadAdminServ',{file:'image.zip'}]];   majax(oAJAX,vec);    });
   
   var $siteButton=$('<button>').append('Site table').addClass('fixWidth').click(function(){    doHistPush({$view:$siteTab}); $siteTab.setVis();   });
   var $redirectButton=$('<button>').append('Redirect table').addClass('fixWidth').click(function(){   doHistPush({$view:$redirectTab}); $redirectTab.setVis();   });
@@ -476,8 +477,8 @@ adminMoreDivExtend=function($el){
   var $menuE=$('<div>').append("<b>Other: </b>", $aBUMeta, $imgHSql, ' | ', $statLink, ' | ', $aBUMetaSQL).css(objBottomLine);
   var $menuF=$('<div>').append($uploadAdminDiv).css(objBottomLine);
   var $menuG=$('<div>').append($siteButton,$redirectButton).css(objBottomLine);
-  var $menuH=$('<div>').append("<b>BU to server: </b>", $butBUPageServ,$butBUImageServ,$butBUMetaServ).css(objBottomLine);
-  var $menuI=$('<div>').append($butLoadFromServer);
+  var $menuH=$('<div>').append("<b>Save to server-BU-Folder: </b>", $butBUPageServ,$butBUImageServ,$butBUMetaServ).css(objBottomLine);
+  var $menuI=$('<div>').append("<b>Load from server-BU-Folder: </b>", $butLoadFromServerP, $butLoadFromServerI);
   var $Menu=$([]).push($menuA,$menuB0, $menuB,$menuC,$menuE,$menuF,$menuG, $menuH, $menuI).css({margin:'0.5em 0'}); //,$menuD
 
   $el.$divCont=$('<div>').append($Menu);
@@ -1856,7 +1857,7 @@ areYouSurePopExtend=function($el){
 "use strict"
   $el.toString=function(){return 'areYouSurePop';}
   var continueA=function(){ 
-    continueB();   doHistBack();
+    continueB();   //doHistBack();
   }
   $el.openFunc=function(strLab,continueT){
     $labPageName.html(strLab);
