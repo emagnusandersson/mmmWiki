@@ -124,6 +124,7 @@ app.reqBUMeta=function*(strArg) {
   var zipfile = new NodeZip();
   var myEscape=myNeo4j.escape; 
   var myEscapeB=function(str){ return '"'+myNeo4j.escape(str)+'"'; }
+  var StrData=[], StrFileName=[];
 
 
     // Site
@@ -136,7 +137,7 @@ app.reqBUMeta=function*(strArg) {
     var r=records[k].s, StrRow=[r.boDefault, r.boTLS, myEscapeB(r.urlIcon16), myEscapeB(r.urlIcon200), myEscapeB(r.googleAnalyticsTrackingID), myEscapeB(r.aPassword), myEscapeB(r.vPassword), myEscapeB(r.name), myEscapeB(r.www)];
     StrFile.push(StrRow.join(','));
   }
-  zipfile.file('site.csv', StrFile.join("\n"), {compression:'DEFLATE'});
+  StrData.push(StrFile.join("\n")); StrFileName.push('site.csv');
   
   
     // Page
@@ -150,8 +151,8 @@ app.reqBUMeta=function*(strArg) {
   for(var k=0;k<records.length;k++){
     var r=records[k], StrRow=[r.boOR, r.boOW, r.boSiteMap, r.tCreated, r.tMod, r.tLastAccess, r.nAccess, myEscapeB(r.siteName), myEscapeB(r.strName)];
     StrFile.push(StrRow.join(','));
-  } 
-  zipfile.file('page.csv', StrFile.join("\n"), {compression:'DEFLATE'});
+  }
+  StrData.push(StrFile.join("\n")); StrFileName.push('page.csv');
   
   
     // Image
@@ -165,8 +166,8 @@ app.reqBUMeta=function*(strArg) {
   for(var k=0;k<records.length;k++){
     var r=records[k], StrRow=[r.boOther, r.tCreated, r.tMod, r.tLastAccess, r.nAccess, myEscapeB(r.imageName)];
     StrFile.push(StrRow.join(','));
-  } 
-  zipfile.file('image.csv', StrFile.join("\n"), {compression:'DEFLATE'});
+  }
+  StrData.push(StrFile.join("\n")); StrFileName.push('image.csv');
   
   
     // Redirect
@@ -181,7 +182,7 @@ app.reqBUMeta=function*(strArg) {
     var r=records[k], StrRow=[r.tCreated, r.tMod, r.tLastAccess, r.nAccess, myEscapeB(r.siteName), myEscapeB(r.nameLC), myEscapeB(r.url)];
     StrFile.push(StrRow.join(','));
   }
-  zipfile.file('redirect.csv', StrFile.join("\n"), {compression:'DEFLATE'});
+  StrData.push(StrFile.join("\n")); StrFileName.push('redirect.csv');
     
 
     // Get wwwCommon. Create filename.
@@ -189,17 +190,21 @@ app.reqBUMeta=function*(strArg) {
   var Val={};
   var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err){ res.out500(err); return; } 
   var wwwCommon=records[0].wwwCommon;
-  var outFileName=calcBUFileName(wwwCommon,'meta','zip');
  
-    // Output data
-  var objArg={type:'string'}, outdata = zipfile.generate(objArg);
-  
+    // Output data  
   if(strArg=='Serv'){
+    //var outFileName='meta.zip';
     var leafDataDir='mmmWikiData';
-    var fsPage=path.join(__dirname, '..', leafDataDir, outFileName); 
-    var err;  fs.writeFile(fsPage, outdata, 'binary', function(errT){ err=errT;  flow.next();  });   yield;  if(err) { res.out500(err); return; }
+    var fsBU=path.join(__dirname, '..', leafDataDir, 'BU'); 
+    for(var i=0;i<StrData.length;i++){ 
+      var fsTmp=path.join(fsBU, StrFileName[i]), err;  fs.writeFile(fsTmp, StrData[i], function(errT){ err=errT;  flow.next();  });   yield;     if(err) { console.log(err); res.out500(err); }
+    }  //, 'binary'
     res.out200('OK');
-  }else{    
+  }else{
+    for(var i=0;i<StrData.length;i++){ zipfile.file(StrFileName[i], StrData[i], {compression:'DEFLATE'}); }
+    var objArg={type:'string'}, outdata = zipfile.generate(objArg);
+    
+    var outFileName=calcBUFileName(wwwCommon,'meta','zip');  
     var objHead={"Content-Type": 'application/zip', "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
     res.writeHead(200,objHead);
     res.end(outdata,'binary');
@@ -374,8 +379,9 @@ app.reqIndex=function*() {
     objRev={strHtmlText:''};
   }
   else if(mess=='redirectCase') { 
-    var strS=Number(objDBData.boTLS)?'s':'';
-    var url='http'+strS+'://'+objDBData.www+'/'+objDBData.objPage.name;
+    //var strS=Number(objDBData.boTLS)?'s':'';
+    //var url='http'+strS+'://'+objDBData.www+'/'+objDBData.objPage.name;
+    var url=objDBData.objPage.name
     res.out301(url);  return;
   }
   else if(mess=='private') { 

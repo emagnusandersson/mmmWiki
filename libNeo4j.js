@@ -191,19 +191,22 @@ deletePageByMultIDNeo=function*(flow, tx, objArg){
   var strCql=` 
     MATCH (p:Page)-[hasRevision]->(r:Revision) WHERE p.idPage IN $IdPage
     DETACH DELETE r`;
-  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err]; 
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val);
+  if(err) return [err]; 
 
       // Delete Child links
   var strCql=` 
     MATCH (p:Page)-[hc:hasChild]->(c:Page) WHERE p.idPage IN $IdPage
     DELETE hc`;
-  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err]; 
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); 
+  if(err) return [err]; 
 
       // Delete orphan stubs
   var strCql=`
     MATCH (cOrphan:Page) WHERE (NOT (:Page)-[:hasChild]->(cOrphan)) AND (NOT (cOrphan)-[:hasRevision]->(:Revision))
     DETACH DELETE cOrphan`;
-  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err]; 
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val);
+  if(err) return [err]; 
 
 
       // Delete Image links

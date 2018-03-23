@@ -409,7 +409,7 @@ adminMoreDivExtend=function($el){
     var vec=[['myChMod',o]];   majax(oAJAX,vec); 
     setButMod.call($b[0], boOn);
   }
-  var setButMod=function(boOn){  var $b=$(this); $b.toggleClass('boxShadowOn', boOn).toggleClass('boxShadowOff', !boOn); }
+  var setButMod=function(boOn){  boOn=Boolean(boOn); var $b=$(this); $b.toggleClass('boxShadowOn', boOn).toggleClass('boxShadowOff', !boOn); }
   $butModRead.add($butModWrite).add($butModSiteMap).css({'margin-right':'0.4em', width:'1.5em', padding:0});   
      
   $el.setMod();
@@ -455,12 +455,13 @@ adminMoreDivExtend=function($el){
   var $aBUMetaSQL=$('<a>').prop({href:'BUMetaSQL', rel:'nofollow', download:''}).append('(MetaData).sql');
   var $imgHSql=$imgHelp.clone().css({'margin':'0 1em'}); popupHoverM($imgHSql,$('<div>').html('<p>Download "meta-data":<br>-extra data for pages/images (modification dates, access rights ...). <br>-redirect table.'));
   
-  var $butBUPageServ=$('<button>').append('(pages).zip').click(  function(){    httpGetAsync('BUPageServ',function(str) {setMess(str,3);});    });
-  var $butBUImageServ=$('<button>').append('(images).zip').click(function(){    httpGetAsync('BUImageServ',function(str) {setMess(str,3);});   });
-  var $butBUMetaServ=$('<button>').append('(MetaData).zip').click(function(){      httpGetAsync('BUMetaServ',function(str) {setMess(str,3);});    });
+  var $butBUPageServ=$('<button>').append('page.zip').click(  function(){    httpGetAsync('BUPageServ',function(str) {setMess(str,3);});    });
+  var $butBUImageServ=$('<button>').append('image.zip').click(function(){    httpGetAsync('BUImageServ',function(str) {setMess(str,3);});   });
+  var $butBUMetaServ=$('<button>').append('Meta-data (4 files)').click(function(){      httpGetAsync('BUMetaServ',function(str) {setMess(str,3);});    });
   
 
-  var $butLoadFromServer=$('<button>').append('Load from server-BU').click(function(){   var vec=[['uploadAdminServ',1]];   majax(oAJAX,vec);    });
+  var $butLoadFromServerP=$('<button>').append('page.zip').click(function(){   var vec=[['uploadAdminServ',{file:'page.zip'}]];   majax(oAJAX,vec);    });
+  var $butLoadFromServerI=$('<button>').append('image.zip').click(function(){   var vec=[['uploadAdminServ',{file:'image.zip'}]];   majax(oAJAX,vec);    });
   
   var $siteButton=$('<button>').append('Site table').addClass('fixWidth').click(function(){    doHistPush({$view:$siteTab}); $siteTab.setVis();   });
   var $redirectButton=$('<button>').append('Redirect table').addClass('fixWidth').click(function(){   doHistPush({$view:$redirectTab}); $redirectTab.setVis();   });
@@ -478,8 +479,8 @@ adminMoreDivExtend=function($el){
   var $menuE=$('<div>').append("<b>Other: </b>", $aBUMeta, $imgHSql, ' | ', $statLink, ' | ', $aBUMetaSQL).css(objBottomLine);
   var $menuF=$('<div>').append($uploadAdminDiv).css(objBottomLine);
   var $menuG=$('<div>').append($siteButton,$redirectButton).css(objBottomLine);
-  var $menuH=$('<div>').append("<b>BU to server: </b>", $butBUPageServ,$butBUImageServ,$butBUMetaServ).css(objBottomLine);
-  var $menuI=$('<div>').append($butLoadFromServer);
+  var $menuH=$('<div>').append("<b>Save to server-BU-Folder: </b>", $butBUPageServ,$butBUImageServ,$butBUMetaServ).css(objBottomLine);
+  var $menuI=$('<div>').append("<b>Load from server-BU-Folder: </b>", $butLoadFromServerP, $butLoadFromServerI);
   var $Menu=$([]).push($menuA,$menuB0, $menuB,$menuC,$menuE,$menuF,$menuG, $menuH, $menuI).css({margin:'0.5em 0'}); //,$menuD
 
   $el.$divCont=$('<div>').append($Menu);
@@ -1532,10 +1533,11 @@ pageListExtend=function($el){
     var www=File[iFlip].www, strS=Number(File[iFlip].boTLS)?'s':'';
     $r.data('pageName',strNewName).children('span[name=link]').data('valSort',strNewName).children('a').prop({href:'http'+strS+'://'+www+'/'+strNewName}).text(strNewName);
   }
-  $el.deleteF=function(FileDelete){
+  $el.deleteF=function(FileDelete, histBackFun){
     var oF=$pageFilterDiv.gatherFiltData();    
-    var vec=[['deletePage',{File:FileDelete}],['setUpPageListCond',oF],['getPageList',1,getListRet],['getPageHist',1,histRet]];
-    restExecuteButton();  majax(oAJAX,vec);
+    //var vec=[['deletePage',{File:FileDelete}],['setUpPageListCond',oF],['getPageList',1,getListRet],['getPageHist',1,histRet]];
+    var vec=[['deletePage',{File:FileDelete}, histBackFun]];
+    restExecuteButton();  majax(oAJAX, vec);
   }
   
   var funPopped=function(stateMyPopped){ 
@@ -1600,7 +1602,7 @@ pageListExtend=function($el){
   var $buttonPTog=$('<div>').append('Toggle '+strPromote).on(strEvent,function(){  var $b=$(this).parent().data('$button'), $r=$b.parent().parent();   changeModOfSingle.call($r[0],'boSiteMap');   });
   var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){
     var $b=$(this).parent().data('$button'), $r=$b.parent().parent(),  FileTmp=[$r.data('idPage')], strLab='Are sure you want to delete this page'; 
-    $areYouSurePop.openFunc(strLab,function(){$el.deleteF(FileTmp);}); });
+    $areYouSurePop.openFunc(strLab,function(histBackFun){$el.deleteF(FileTmp, histBackFun);}); });
 
 
   
@@ -1620,7 +1622,7 @@ pageListExtend=function($el){
   var $buttonWOff=$('<div>').append(strPublicWrite+' off').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOW:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOW',0);   });
   var $buttonPOn=$('<div>').append(strPromote+' on').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boSiteMap:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boSiteMap',1);   });
   var $buttonPOff=$('<div>').append(strPromote+' off').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boSiteMap:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boSiteMap',0);   });
-  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){   var FileTmp=getChecked(), strLab='Are sure you want to delete these pages';   $areYouSurePop.openFunc(strLab,function(){$el.deleteF(FileTmp);}); });
+  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){   var FileTmp=getChecked(), strLab='Are sure you want to delete these pages';   $areYouSurePop.openFunc(strLab,function(histBackFun){$el.deleteF(FileTmp, histBackFun);}); });
   
   //var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});   
   var $executeButton=$('<button>').append(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
@@ -1858,19 +1860,20 @@ areYouSurePopExtend=function($el){
 "use strict"
   $el.toString=function(){return 'areYouSurePop';}
   var continueA=function(){ 
-    continueB();   doHistBack();
+    //continueCB();   //doHistBack();
+    continueCBLoc(doHistBack);   //doHistBack();
   }
-  $el.openFunc=function(strLab,continueT){
+  $el.openFunc=function(strLab,continueCB){ // continueCB(histBackFun): called when the user clicks the continue button. It takes a callback-argument which closes the areYouSurePop.
     $labPageName.html(strLab);
     doHistPush({$view:$areYouSurePop});
     $el.setVis();
-    continueB=continueT;
+    continueCBLoc=continueCB;
   }
   $el.setVis=function(){
     $el.show(); return 1;
   }
  
-  var continueB;
+  var continueCBLoc;
   //$el=popUpExtend($el);  
   //$el.css({'max-width':'20em', padding: '1.2em 0.5em 1.2em 1.2em'}); 
 
@@ -1933,7 +1936,7 @@ imageListExtend=function($el){
       var $aLink=$('<a>').prop({target:"_blank"});
       var $tdLink=$('<span>').append($aLink).attr('name','link');
       var $tdSize=$('<span>').attr('name','size');  //.css({'margin-left':'1em'})
-      $r.append($tdNParent, $tdNParentI, $tdCB, $tdExecute, $tdDate, $tdImg, $tdSize, $tdBoOther, $tdLink);  //  $tdName  ,$('<span>').append($bView)
+      $r.append($tdNParentI, $tdCB, $tdExecute, $tdDate, $tdImg, $tdSize, $tdBoOther, $tdLink);  //  $tdName  ,$('<span>').append($bView)  $tdNParent, 
       //$r.data({$tdCB:$tdCB, $tdDate:$tdDate, $tdImg:$tdImg, $tdLink:$tdLink, $tdBoOther:$tdBoOther, $tdSize:$tdSize});
       $tbody.append($r);
     }
@@ -1957,7 +1960,7 @@ imageListExtend=function($el){
     $myRows.each(function(i,r){ 
       var $r=$(r).data({idImage:File[i].idImage, iFlip:i, imageName:File[i].imageName, nParent:File[i].nParent, idParent:File[i].idParent, nameParent:File[i].nameParent}); 
       var nParent=File[i].nParent;
-      var $buttonTmp=$r.children('span[name=nParent]').data('valSort',nParent).children('button');
+      //var $buttonTmp=$r.children('span[name=nParent]').data('valSort',nParent).children('button');
       var $buttonITmp=$r.children('span[name=nParentI]').data('valSort',nParent).children('button');
         var boSingle=$imageFilterDiv.Filt.checkIfSingleParent();
         var strTitle;
@@ -1967,7 +1970,7 @@ imageListExtend=function($el){
           strTitle=nParent+' parents'; if(nParent==1) strTitle=File[i].nameParent; else if(!nParent) strTitle='orphan';
         }
         var boHide=boSingle && nParent<=1; 
-        $buttonTmp.prop('title',strTitle);   $buttonTmp.children('span:eq(0)').html(nParent);   $buttonTmp.visibilityToggle(!boHide);
+        //$buttonTmp.prop('title',strTitle);   $buttonTmp.children('span:eq(0)').html(nParent);   $buttonTmp.visibilityToggle(!boHide);
         $buttonITmp.prop('title',strTitle);  $buttonITmp.children('span:eq(0)').html(nParent);  $buttonITmp.visibilityToggle(!boHide);
         
       $r.children('span[name=cb]').data('valSort',0).children('input').prop({'checked':false});
@@ -2090,10 +2093,11 @@ imageListExtend=function($el){
     File[iFlip].imageName=strNewName;
     $r.data('imageName',strNewName).children('span[name=link]').data('valSort',strNewName).children('a').prop({href:uCommon+'/'+strNewName}).text(strNewName);
   }
-  $el.deleteF=function(FileDelete){
+  $el.deleteF=function(FileDelete, histBackFun){
     var oF=$imageFilterDiv.gatherFiltData();    
-    var vec=[['deleteImage',{File:FileDelete}],['setUpImageListCond',oF],['getImageList',1,getListRet],['getImageHist',1,histRet]];
-    restExecuteButton();  majax(oAJAX,vec)
+    //var vec=[['deleteImage',{File:FileDelete}],['setUpImageListCond',oF],['getImageList',1,getListRet],['getImageHist',1,histRet]];
+    var vec=[['deleteImage',{File:FileDelete}, histBackFun]];
+    restExecuteButton();  majax(oAJAX,vec);
   }
   
   var funPopped=function(statePopped){ 
@@ -2123,7 +2127,7 @@ imageListExtend=function($el){
   $el.$divCont=$("<div>").append($el.$table).css({'margin':'3em auto 1em','text-align':'left',display:'inline-block'});//
   
   var strTmp='Parents / Alternatve parents';
-  var StrCol=['nParent','nParentI','cb','execute','date','image','size','boOther','link'], BoAscDefault={cb:0,boOther:0,size:0}, Label={nParent:strTmp, nParentI:strTmp, cb:'Select',date:'tMod',boOther:'Supplied by user'};
+  var StrCol=['nParentI','cb','execute','date','image','size','boOther','link'], BoAscDefault={cb:0,boOther:0,size:0}, Label={nParent:strTmp, nParentI:strTmp, cb:'Select',date:'tMod',boOther:'Supplied by user'}; //'nParent',
   //var $headFill=$('<p>').append().css({background:'white',margin:'0px',height:'calc(12px + 1.2em)'});
   var $head=headExtend($('<p>'),$el,StrCol,BoAscDefault,Label,'p','span');
   $head.css({background:'white', width:'inherit',height:'calc(12px + 1.2em)'});
@@ -2151,7 +2155,7 @@ imageListExtend=function($el){
   });
   var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){
      var $b=$(this).parent().data('$button'), $r=$b.parent().parent(),  FileTmp=[$r.data('idImage')], strLab='Are sure you want to delete this image'; 
-    $areYouSurePop.openFunc(strLab,function(){$el.deleteF(FileTmp);});
+    $areYouSurePop.openFunc(strLab,function(histBackFun){$el.deleteF(FileTmp, histBackFun);});
   });
   var $buttonBoOtherTog=$('<div>').append('Toggle boOther').on(strEvent,function(){ var $b=$(this).parent().data('$button'), $r=$b.parent().parent();   changeModOfSingleI.call($r[0],'boOther'); });
   
@@ -2167,7 +2171,7 @@ imageListExtend=function($el){
 
     // menuMult
   var $buttonDownload=$('<div>').html('Download');
-  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){  var FileTmp=getChecked(), strLab='Deleting '+FileTmp.length+' image(s).';   $areYouSurePop.openFunc(strLab,function(){$el.deleteF(FileTmp);}); });
+  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){  var FileTmp=getChecked(), strLab='Deleting '+FileTmp.length+' image(s).';   $areYouSurePop.openFunc(strLab,function(histBackFun){$el.deleteF(FileTmp, histBackFun);}); });
   
   //var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
   var $executeButton=$('<button>').append(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
@@ -2202,12 +2206,12 @@ imageListExtend=function($el){
   var $spanTmp=$('<span>').append('(orphans)').css({'font-size':'0.8em'});
   var $buttOrphan=$('<button>').append($spanTmp).click(function(){$imageFilterDiv.Filt.setSingleParent(null);  $imageList.histPush(); $imageList.loadTab()}).css({'float':'right','margin-right':'1em'});
   var $spanGrandParent=new SpanGrandParent('image','page').css({'margin-left':'0.6em'});
-  var $spanGrandParentI=new SpanGrandParent('image','image').css({'margin-right':'0.6em'});
+  var $spanGrandParentI=new SpanGrandParent('image','image').css({'margin-right':'0.6em', 'margin-left':'0.6em'});
   var $aSingleFilter=$('<a>').prop({target:"_blank"}).css({'font-weight':'bold'}), $spanSingleFilter=$('<span>').css({'margin-right':'0.5em', 'margin-top':'0.7em'});  //.hide()
   //var $spanSingleFilterW=$('<span>').append();
   var $menuA=$('<div>').append($buttonFastBack, $allButton, $executeButton, $buttFilter, $buttClear, $buttOrphan);  // $buttonBack, 
   $menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
-  var $menuTop=$('<div>').append($spanGrandParent, $spanGrandParentI, $spanSingleFilter, $buttPIW).addClass('divMenuTop'); // 'Parent Filter: ',
+  var $menuTop=$('<div>').append($spanGrandParentI, $spanSingleFilter, $buttPIW).addClass('divMenuTop'); // 'Parent Filter: ', $spanGrandParent, 
   $menuTop.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em', 'line-height':'2.7em'});
 
   $el.addClass('imageList');
@@ -3025,7 +3029,7 @@ redirectTabExtend=function($el){
   $el.myEdit=function(r){
     var $r=$tbody.children('[idSite='+r.idSiteOld+'][pageName='+r.pageNameOld+']');
     $r.attr({idSite:r.idSite,pageName:r.pageName}).data('r',r);
-    for(var i=0;i<StrCol.length;i++) { var name=StrCol[i], val=r[name], $td=$r.children('td:eq('+i+')'); if($td[0].mySetVal) $td[0].mySetVal(val); else $td.text(val); }
+    for(var i=0;i<StrCol.length;i++) { var name=StrCol[i], val=r[name], $td=$r.children('td:eq('+i+')'); if($td[0].mySetVal) $td[0].mySetVal(val, r); else $td.text(val); }
     return $el;
   }
   $el.setUp=function(){
@@ -4009,5 +4013,6 @@ $(function(){  setUp1(); });
 
 })();
 
-
+//var root = document.documentElement,   node = document.createTextNode("This is some new textA.");    root.appendChild(node);
+ 
 

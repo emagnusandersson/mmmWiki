@@ -60,7 +60,7 @@ ReqBE.prototype.mesEO=function(e){
   if(typeof e=='string'){strEBrowser=e; StrELog.push(e);}
   else if(typeof e=='object'){
     if('syscal' in e) StrELog.push('syscal: '+e.syscal);
-    if(e instanceof Error) {strEBrowser='name: '+e.name+', code: '+e.code+', message: ' + e.message;  }
+    if(e instanceof Error) {strEBrowser='name: '+e.name+', code: '+e.code+', message: ' + e.message; }
     else { strEBrowser=e.toString(); StrELog.push(strEBrowser); }
   }
     
@@ -80,8 +80,6 @@ ReqBE.prototype.mesEO=function(e){
 
 
 
-
-
 ReqBE.prototype.go=function*(){
   var req=this.req, res=this.res;
   var flow=req.flow;
@@ -89,7 +87,7 @@ ReqBE.prototype.go=function*(){
   this.Out={GRet:{boSpecialistExistDiff:{}}, dataArr:[]}; this.GRet=this.Out.GRet;
 
     // Extract input data either 'POST' or 'GET'
-  if(req.method=='POST'){ 
+  if(req.method=='POST'){
     if('x-type' in req.headers ){ //&& req.headers['x-type']=='single'
       var form = new formidable.IncomingForm();
       form.multiples = true;  
@@ -105,7 +103,7 @@ ReqBE.prototype.go=function*(){
       this.jsonInput=fields.vec;
       
 
-    }else{  
+    }else{
       var buf, myConcat=concat(function(bufT){ buf=bufT; flow.next();  });    req.pipe(myConcat);    yield;
       this.jsonInput=buf.toString();
     }
@@ -164,9 +162,9 @@ ReqBE.prototype.go=function*(){
     // cecking/set CSRF-code
   var redisVar=req.sessionID+'_'+this.queredPage+'_CSRF', CSRFCode;
   if(boCheckCSRF){
-    if(!CSRFIn){ this.mesO('CSRFCode not set (try reload page)'); return;  }
+    if(!CSRFIn){ this.mesO('CSRFCode not set (try reload page)'); return;}
     var tmp=yield* wrapRedisSendCommand.call(req, 'get',[redisVar]);
-    if(CSRFIn!==tmp){ this.mesO('CSRFCode err (try reload page)'); return; }
+    if(CSRFIn!==tmp){ this.mesO('CSRFCode err (try reload page)'); return;}
   }
   if(boSetNewCSRF) {
     var CSRFCode=randomHash();
@@ -177,8 +175,8 @@ ReqBE.prototype.go=function*(){
 
   var Func=[];
   for(var k=0; k<beArr.length; k++){
-    var strFun=beArr[k][0]; 
-    if(in_array(strFun,allowed)) { 
+    var strFun=beArr[k][0];
+    if(in_array(strFun,allowed)) {
       var inObj=beArr[k][1],     tmpf; if(strFun in this) tmpf=this[strFun]; else tmpf=global[strFun];
       var fT=[tmpf,inObj];   Func.push(fT);
     }
@@ -259,7 +257,7 @@ ReqBE.prototype.myChMod=function*(inObj){
   var req=this.req, res=this.res, queredPage=this.queredPage;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) {return [new ErrorClient('not logged in (as Administrator)')];}
+  if(!this.boALoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
   
   if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else { return [new ErrorClient('chmod: no files')]; }  
   
@@ -307,7 +305,8 @@ ReqBE.prototype.deletePage=function*(inObj){
 
   var tx=sessionNeo4j.beginTransaction();
   var objArg={};      extend(objArg, {IdPage:File});
-  var [err]=yield* deletePageByMultIDNeo(flow, tx, objArg);    if(err) { yield* neo4jRollbackGenerator(flow, tx); return [err]; }    yield* neo4jCommitGenerator(flow, tx);
+  var [err]=yield* deletePageByMultIDNeo(flow, tx, objArg);
+      if(err) { yield* neo4jRollbackGenerator(flow, tx); return [err]; }    yield* neo4jCommitGenerator(flow, tx);
 
   this.mes('pages deleted');
   return [null, [Ou]];
@@ -726,9 +725,8 @@ ReqBE.prototype.getSingleParentExtraStuff=function*(inObj){
       RETURN nSub, COUNT(iOrphan) AS nImage`;
     var Val={};
     var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err) return [err];
-    if(records.length!=1) {  return [new Error('records.length!=1')]; }
-    Ou=records[0];
-
+    if(records.length>1) {  return [new Error('records.length>1')]; }
+    if(records.length==1) {  Ou=records[0]; }
   } else {  
     var strCql=`
       MATCH (s:Site)-[hasPage]->(p:Page {idPage:$idPage})
@@ -740,8 +738,8 @@ ReqBE.prototype.getSingleParentExtraStuff=function*(inObj){
       RETURN s.boTLS AS boTLS, s.name AS siteName, s.www AS www, p.name AS pageName, p.nameLC AS nameLC, nSub, nImage, COUNT(p2) AS nSame`;
     var Val={idPage:inObj.idPage};
     var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err) return [err];
-    if(records.length!=1) {  return [new Error('records.length!=1')]; }
-    Ou=records[0];
+    if(records.length>1) {  return [new Error('records.length>1')]; }
+    if(records.length==1) {  Ou=records[0]; }
   } 
   
   return [null, [Ou]];
@@ -1122,77 +1120,9 @@ ReqBE.prototype.siteTabSetDefault=function*(inObj){
 // Uploading
 ////////////////////////////////////////////////////////////////////////
 
-ReqBE.prototype.uploadAdminServ=function*(inObj){
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
-  var strFileToLoadFolder=path.join(__dirname, '..', 'mmmWikiData', 'BU'); 
-  var err, files;
-  fs.readdir(strFileToLoadFolder, function(errT, filesT){ err=errT; files=filesT; flow.next(); }); yield;  if(err) return [err];
 
-  this.File=Array(files.length);
-  for(var i=0;i<files.length;i++){
-    var file=files[i], strPath=path.join(strFileToLoadFolder,file);
-    var strType=''; if(file.substr(-4)=='.zip') strType='application/zip';
-    this.File[i]={name:file, path:strPath,type:strType};
-  }
-  //files.forEach(file => { console.log(file);  });
-  
-  var arrT=yield* this.uploadAdmin(inObj);
-  return arrT;
-}
-
-ReqBE.prototype.uploadAdmin=function*(inObj){
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
-  var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
-  var regBoTalk=RegExp('(template_)?talk:');
-  var FileOrg=this.File;
-  var n=FileOrg.length;
-  var tmp=n+" files."; console.log(tmp); this.mes(tmp); 
-  var FileTalk=[]; for(var i=FileOrg.length-1;i>=0;i--){ if(regBoTalk.test(FileOrg[i].name)) { var item=mySplice1(FileOrg,i);  FileTalk.push(item);  }  } FileOrg=FileTalk.concat(FileOrg);
-  for(var i=0;i<FileOrg.length;i++){
-    var fileOrg=FileOrg[i], tmpname=fileOrg.path;
-    var err, buf;
-    fs.readFile(tmpname, function(errT, bufT) { err=errT; buf=bufT; flow.next(); }); yield;  if(err) return [err];
-    var dataOrg=buf; 
-    if(fileOrg.type=='application/zip' || fileOrg.type=='application/x-zip-compressed'){
-       
-      var zip=new NodeZip(dataOrg, {base64: false, checkCRC32: true});
-      var FileInZip=zip.files;
-      
-      var tmp="Zip file with "+Object.keys(FileInZip).length+" files."; console.log(tmp); this.mes(tmp);
-      var Key=Object.keys(FileInZip), KeyTalk=[];  for(var j=Key.length-1;j>=0;j--){ if(regBoTalk.test(Key[j])) { var item=mySplice1(Key,j);  KeyTalk.push(item); } }  Key=KeyTalk.concat(Key);  
-      //for(var fileName in File){
-      for(var j=0;j<Key.length;j++){
-        var fileName=Key[j];
-        var fileInZip=FileInZip[fileName];
-        var Match=RegExp('\\.(\\w{1,3})$').exec(fileName);
-        var type=Match[1].toLowerCase(), bufT=new Buffer(fileInZip._data,'binary');//b.toString();
-
-        console.log(j+'/'+Key.length+' '+fileName+' '+bufT.length);
-        var [err,objT]=yield* this.storeUploadedFile.call(this,fileName,type,bufT);   if(err) return [err]
-      } 
-
-    } else {  
-      var fileName=fileOrg.name;
-      var Match=RegExp('\\.(\\w{1,4})$').exec(fileName);
-      var type=Match[1].toLowerCase();
- 
-      console.log(i+'/'+FileOrg.length+' '+fileName+' '+dataOrg.length);
-      var [err,objT]=yield* this.storeUploadedFile.call(this,fileName,type,dataOrg);   if(err) return [err];
-    } 
-  }
-  return [null, [0]];
-}
-
-//regTalkOrTemplate=RegExp("(template_)?talk");
-
-ReqBE.prototype.storeUploadedFile=function*(fileName,type,data){
-  var req=this.req, res=this.res;
+app.storeFile=function*(fileName, type, data, flow){
   var regImg=RegExp("^(png|jpeg|jpg|gif|svg)$"), regVid=RegExp('^(mp4|ogg|webm)$');
-  var flow=req.flow;
   
   if(type=='txt'){
     //fileName=fileName.replace(RegExp('(talk|template|template_talk) ','i'),'$1:');   
@@ -1204,7 +1134,8 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data){
     
         // saveWhenUploading
     var tx=sessionNeo4j.beginTransaction();
-    var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {fileName:fileName, strEditText:strEditText});
+    //var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {fileName:fileName, strEditText:strEditText});
+    var objArg={boTLS:false, fileName:fileName, strEditText:strEditText};
     var [err,objT]=yield* saveWhenUploadingNeo(flow, tx, objArg);    if(err) { yield* neo4jRollbackGenerator(flow, tx); return [err]; }    yield* neo4jCommitGenerator(flow, tx);
 
     console.timeEnd('dbOperations');
@@ -1219,7 +1150,8 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data){
     
     var tx=sessionNeo4j.beginTransaction();
     
-    var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:fileName, data:data, width:width, height:height, boOther:false});
+    //var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:fileName, data:data, width:width, height:height, boOther:false});
+    var objArg={strName:fileName, data:data, width:width, height:height, boOther:false};
     var [err,objT]=yield* storeImageNeo(flow, tx, objArg);    if(err) { yield* neo4jRollbackGenerator(flow, tx); return [err]; }    yield* neo4jCommitGenerator(flow, tx);
   }else if(regVid.test(type)){ 
     var eTag=md5(data);
@@ -1227,12 +1159,91 @@ ReqBE.prototype.storeUploadedFile=function*(fileName,type,data){
     var Val=[fileName,data,eTag];
     var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
   }
-  else{ this.mes("Unrecognized file type: "+type); return [null, [0]]; }
-
-  return [null, [0]];
+  else{  return [new Error("Unrecognized file type: "+type)]; }
+  
+  return [null, [{}]];
   //process.stdout.write("*");
 }
 
+
+app.storeFileMult=function*(flow, File){
+  var regBoTalk=RegExp('(template_)?talk:');
+  var FileOrg=File;
+  var n=FileOrg.length;
+  var tmp=n+" files."; console.log(tmp); 
+  var FileTalk=[]; for(var i=FileOrg.length-1;i>=0;i--){ if(regBoTalk.test(FileOrg[i].name)) { var item=mySplice1(FileOrg,i);  FileTalk.push(item);  }  } FileOrg=FileTalk.concat(FileOrg);
+  for(var i=0;i<FileOrg.length;i++){
+    var fileOrg=FileOrg[i], tmpname=fileOrg.path;
+    var err, buf;
+    fs.readFile(tmpname, function(errT, bufT) { err=errT; buf=bufT; flow.next(); }); yield;  if(err) return [err];
+    var dataOrg=buf; 
+    if(fileOrg.type=='application/zip' || fileOrg.type=='application/x-zip-compressed'){
+       
+      var zip=new NodeZip(dataOrg, {base64: false, checkCRC32: true});
+      var FileInZip=zip.files;
+      
+      var tmp="Zip file with "+Object.keys(FileInZip).length+" files."; console.log(tmp);
+      var Key=Object.keys(FileInZip), KeyTalk=[];  for(var j=Key.length-1;j>=0;j--){ if(regBoTalk.test(Key[j])) { var item=mySplice1(Key,j);  KeyTalk.push(item); } }  Key=KeyTalk.concat(Key);  
+      //for(var fileName in File){
+      for(var j=0;j<Key.length;j++){
+        var fileName=Key[j];
+        var fileInZip=FileInZip[fileName];
+        var Match=RegExp('\\.(\\w{1,3})$').exec(fileName);
+        var type=Match[1].toLowerCase(), bufT=new Buffer(fileInZip._data,'binary');//b.toString();
+
+        console.log(j+'/'+Key.length+' '+fileName+' '+bufT.length);
+        var [err]=yield* storeFile.call({}, fileName, type, bufT, flow);  if(err) return [err];
+      } 
+
+    } else {  
+      var fileName=fileOrg.name;
+      var Match=RegExp('\\.(\\w{1,4})$').exec(fileName);
+      var type=Match[1].toLowerCase();
+ 
+      console.log(i+'/'+FileOrg.length+' '+fileName+' '+dataOrg.length);
+      var [err]=yield* storeFile.call({}, fileName, type, dataOrg, flow);  if(err) return [err];
+    } 
+  }
+  return [null];
+}
+
+app.loadFrBUFolder=function*(flow, strFile){
+  var strFileToLoadFolder=path.join(__dirname, '..', 'mmmWikiData', 'BU'); 
+  var files;
+  if(strFile) files=[strFile];
+  else {  var err;  fs.readdir(strFileToLoadFolder, function(errT, filesT){ err=errT; files=filesT; flow.next(); }); yield;  if(err) return [err];   }  
+
+  var File=Array(files.length);
+  for(var i=0;i<files.length;i++){
+    var file=files[i], strPath=path.join(strFileToLoadFolder,file);
+    var strType=''; if(file.substr(-4)=='.zip') strType='application/zip';
+    File[i]={name:file, path:strPath,type:strType};
+  }
+  
+  var [err]=yield* storeFileMult.call({}, flow, File); if(err) return [err];
+  return [null, [0]];
+}
+
+
+ReqBE.prototype.uploadAdminServ=function*(inObj){
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
+  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+  this.mesO("Working... (check server console for progress) ");
+  var [err]=yield* loadFrBUFolder.call({}, flow, inObj.file); if(err) return [err];
+  return [null, [0]];
+}
+
+
+ReqBE.prototype.uploadAdmin=function*(inObj){
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
+  var Ou={};
+  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  this.mesO("Working... (check server console for progress) ");
+  var [err]=yield* storeFileMult.call(this, flow, this.File); if(err) return [err];
+  return [null, [0]];
+}
 
 ReqBE.prototype.uploadUser=function*(inObj){
   var self=this, req=this.req, res=this.res;
@@ -1243,7 +1254,7 @@ ReqBE.prototype.uploadUser=function*(inObj){
   //var redisVar=req.sessionID+'_captcha';
   //var tmp=yield* wrapRedisSendCommand.call(req, 'get',[redisVar]);
   //if(this.captchaIn!=tmp) { Ou.strMessage='Wrong captcha'; return [null, [Ou]];}
-  
+
     // Check reCaptcha with google
   var strCaptchaIn=this.captchaIn;
   var uGogCheck = "https://www.google.com/recaptcha/api/siteverify"; 
@@ -1257,7 +1268,6 @@ ReqBE.prototype.uploadUser=function*(inObj){
   
   var File=this.File;
   var n=File.length; this.mes("nFile: "+n);
-
   
   var file=File[0], tmpname=file.path, fileName=file.name; if(this.strName.length) fileName=this.strName;
   var Match=RegExp('\\.(\\w{1,3})$').exec(fileName); 
@@ -1268,7 +1278,7 @@ ReqBE.prototype.uploadUser=function*(inObj){
   if(data.length==0){ this.mes("data.length==0"); return [null, [Ou]]; }
 
   if(regImg.test(type)){
-          // autoOrient
+      // autoOrient
     var semY=0, semCB=0, err;
     var myCollector=concat(function(buf){  data=buf;  if(semY) flow.next(); semCB=1;  });
     var streamImg=gm(data).autoOrient().stream(function streamOut(errT, stdout, stderr) {
@@ -1277,8 +1287,6 @@ ReqBE.prototype.uploadUser=function*(inObj){
     });
     if(!semCB) { semY=1; yield;}
     if(err) return [err];
-    
-    
 
     var eTag=md5(data);
 

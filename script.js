@@ -30,6 +30,7 @@ NodeZip=require('node-zip');
 redis = require("redis");
 //captchapng = require('captchapng');
 //Neo4j = require('neo4j-transactions');
+var argv = require('minimist')(process.argv.slice(2));
 require('./lib.js');
 require('./libServerGeneral.js');
 require('./libServer.js');
@@ -41,7 +42,6 @@ mongodb = require('mongodb');  MongoClient = mongodb.MongoClient;
 neo4j = require('neo4j-driver').v1; // Official
 //neo4j = require('neo4j'); // Thingdom
 require('./libNeo4j.js');
-var argv = require('minimist')(process.argv.slice(2));
 
 strAppName='mmmWiki';
 app=(typeof window==='undefined')?global:window;
@@ -60,6 +60,14 @@ helpTextExit=function(){
   arr.push('USAGE script [OPTION]...');
   arr.push('  -h, --help                          Display this text');
   arr.push('  -p, --port [PORT]                   Port number (default: 5000)');
+  
+  arr.push('  --loadFrBUFolder [FILE] Load from BU folder.');
+  arr.push('    FILE= a single file of any of the following formats:');
+  arr.push('          txt-file with wiki-text');
+  arr.push('          image-file (acceptable formats: jpg, jpeg, png, gif, svg)');
+  arr.push('          zip-file containing one or multiple files of the above formats.');
+  arr.push('    If FILE is left empty then all files in the BU folder are loaded.');
+  
   arr.push('  -c, --createSiteDefault [DOMAIN]    Create a default site with the domain name DOMAIN');
   arr.push('');
   arr.push('  If --createSiteDefault is set then the following options can also be used:');
@@ -67,11 +75,11 @@ helpTextExit=function(){
   //arr.push('  --aPassword[APASSWORD]: APASSWORD=administrator password for writing etc. Default:123');
   arr.push('  --strSiteName [strSiteName]         Name of the created site (default:"default")');
   arr.push('  --boTLS [BOTLS]                     If TLS is going to be used on the created site (default:false)');
+  
 
   console.log(arr.join('\n'));
   process.exit(0);
 }
-
 
     // Set up redisClient
 var urlRedis;
@@ -105,7 +113,7 @@ var client = Neo4j({
   }
 })
 */
-var driver = neo4j.driver("bolt://localhost", neo4j.auth.basic("neo4j", "jh10k"));
+var driver = neo4j.driver("bolt://localhost", neo4j.auth.basic("neo4j", "jh10k"), {encrypted:false});
 sessionNeo4j = driver.session();
 
 var flow=( function*(){
@@ -165,6 +173,12 @@ var flow=( function*(){
   myNeo4j=new MyNeo4j();
   
   SiteName=[strAppName]; // To make the code analog to my other programs :-)
+
+    // loadPageZip or load
+  if(typeof argv.loadFrBUFolder!='undefined'){
+    yield* loadFrBUFolder(flow, argv.loadFrBUFolder);
+    process.exit(0); return;
+  }
 
     // Do db-query if --createSiteDefault was set in the arguments
   if(argv.createSiteDefault || argv.c){

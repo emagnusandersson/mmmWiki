@@ -60,23 +60,23 @@ sanitizeStyle=function(attrIn){
 //myDump=function(a,boStr){ if(typeof boStr=='undefined') boStr=1; var str='<pre>'+print_r(a,1)+'</pre>'; if(boStr) echo str; else return str;}
 //lcnotfirst=function(str){  if(count(str)>1) return str[0]+substr(str,1).toLowerCase(); else return str; }  // Make all except first lowercase
 
-
-calcETag=function(strHtmlText, objPage, objRev, boTalkExist){
-  var arrTmp=[strHtmlText, Number(objPage.boOR), Number(objPage.boOW), Number(objPage.boSiteMap), objRev.tMod, objRev.tModCache, Number(boTalkExist)];
-  return md5(arrTmp.join(" "));
-}
-
-
-
-
-
-
-makeMatVersion=function(arrRev){ 
+makeMatVersion=function(arrRev){ //Rows are transfered: {tMod:X, summary:'bla', signature:'meh'} => [X, 'bla', 'meh']
   var nVersion=arrRev.length, t=Array(nVersion);
   for(var i=0;i<nVersion;i++){    t[i]=[arrRev[i].tMod, arrRev[i].summary, arrRev[i].signature];   }  return t;
 }
 
 
+
+
+
+
+
+
+
+calcETag=function(strHtmlText, objPage, objRev, boTalkExist){
+  var arrTmp=[strHtmlText, Number(objPage.boOR), Number(objPage.boOW), Number(objPage.boSiteMap), objRev.tMod, objRev.tModCache, Number(boTalkExist)];
+  return md5(arrTmp.join(" "));
+}
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
