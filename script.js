@@ -60,9 +60,10 @@ helpTextExit=function(){
   arr.push('  --sql [SQL_ACTION]  Run a sql action.');
   arr.push('    SQL_ACTION='+StrValidSqlCalls.join('|'));
   arr.push('  --loadFrBUFolder [FILE] Load from BU folder.');
-  arr.push('    FILE= txt-file with wiki-text');
+  arr.push('    FILE= a single file of any of the following formats:');
+  arr.push('          txt-file with wiki-text');
   arr.push('          image-file (acceptable formats: jpg, jpeg, png, gif, svg)');
-  arr.push('          zip-file containing any of the above formats.');
+  arr.push('          zip-file containing one or multiple files of the above formats.');
   arr.push('    If FILE is left empty then all files in the BU folder are loaded.');
   console.log(arr.join('\n'));
   process.exit(0);
@@ -149,6 +150,7 @@ var flow=( function*(){
     // loadPageZip or load
   if(typeof argv.loadFrBUFolder!='undefined'){
     yield* loadFrBUFolder(flow, argv.loadFrBUFolder);
+    process.exit(0); return;
   }
     // Do db-query if --sql XXXX was set in the argument
   if(typeof argv.sql!='undefined'){
@@ -182,7 +184,7 @@ var flow=( function*(){
   StrFilePreCache=StrFilePreCache.concat(StrPako);
   if(boDbg){
     fs.watch('.',function (ev,filename) {
-      var StrFile=['filter.js','client.js'];
+      var StrFile=['filter.js','client.js','libClient.js'];
         //console.log(filename+' changed: '+ev);
       if(StrFile.indexOf(filename)!=-1){
         console.log(filename+' changed: '+ev);

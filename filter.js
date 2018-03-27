@@ -474,7 +474,7 @@ FilterDivProt.createDivs=function(){
     var strName=$el.StrOrderFilt[i];
     var $divT=$('<div>').attr('name',strName);
     
-    if(strName in $el.helpBub){ $imgH=$imgHelp.clone().css({'vertical-align':'top'});  popupHoverM($imgH,$el.helpBub[strName]);    }   
+    if(strName in $el.helpBub){ $imgH=$imgHelp.clone().css({'vertical-align':'top'});  popupHoverJQ($imgH,$el.helpBub[strName]);    }   
     var strUnit=''; if(strName in $el.Unit) strUnit=' ['+$el.Unit[strName]+']';
     if($el.Prop[strName].feat.kind[0]=='B') { 
       //$h=$('<div>').append($el.arrLabel[strName],strUnit,': ',$imgH); //.css({'margin':'0.3em 0em 0em'})

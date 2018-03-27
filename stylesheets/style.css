@@ -238,6 +238,9 @@ table.sortable thead {
 }
 
 
+.tableSticky {border-width:0px;}
+.tableSticky td, .tableSticky th {background:lightgrey} /*box-shadow:0 0 0.3em 0.1em darkgrey inset*/
+.tableSticky th {position:sticky; position: -webkit-sticky; top:0px; background:white; z-index:1}
 
 td,th {border-width:inherit;border-style:inherit }
 tr {border-width:inherit;border-style:inherit }
@@ -294,7 +297,7 @@ button.fixWidth{} /*width:2em*/
 
 
 .pageList span[name=siteName] { margin-right:0.5em}
-.listHead {margin:.5em 0 0}
+.listHead {margin:.5em 0 0; position:sticky; position:-webkit-sticky; top:57px; z-index:1} /* */
 .listHead span[name=siteName] { margin-left:1em}
 .listHead span[name=link] { margin-left:2em}
 .listHead span {cursor:pointer}

@@ -265,12 +265,22 @@ ReqBE.prototype.deletePage=function*(inObj){
   if(!this.boALoggedIn) {return [new ErrorClient('not logged in (as Administrator)')];}
   
   if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else { return [new ErrorClient('deletePage: no files')]; }
-  var sql=array_fill(File.length, "CALL "+strDBPrefix+"deletePageID(?);").join('\n'); 
+  
+  var Sql=[], len=File.length;
+  if(len>=3){ // This way is quicker if many pages are to be deleted
+    Sql.push("CREATE TEMPORARY TABLE IF NOT EXISTS arrPageID (idPage varchar(128) NOT NULL);");
+    Sql.push("TRUNCATE arrPageID; INSERT INTO arrPageID VALUES "+array_fill(len,'(?)').join(', ')+';');
+    Sql.push("CALL "+strDBPrefix+"deletePageIDMult();"); 
+    var sql=Sql.join('\n');
+  }else{
+    var sql=array_fill(File.length, "CALL "+strDBPrefix+"deletePageID(?);").join('\n'); 
+  }  
   var Val=File;
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
   this.mes('pages deleted');
   return [null, [Ou]];
 }
+  
   
 ReqBE.prototype.deleteImage=function*(inObj){   
   var req=this.req, res=this.res;
@@ -833,8 +843,7 @@ ReqBE.prototype.redirectTabGet=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
-  var sql="SELECT idSite, siteName, www, pageName, url, UNIX_TIMESTAMP(tCreated) AS tCreated, nAccess, UNIX_TIMESTAMP(tLastAccess) AS tLastAccess FROM "+redirectWWWView+";";
-  //var sql="SELECT idSite, pageName, url, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+redirectTab+";";
+  var sql="SELECT idSite, siteName, www, pageName, url, UNIX_TIMESTAMP(tCreated) AS tCreated, nAccess, UNIX_TIMESTAMP(tLastAccess) AS tLastAccess, UNIX_TIMESTAMP(tMod) AS tMod FROM "+redirectWWWView+";";
   var Val=[];
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
   var Ou=arrObj2TabNStrCol(results);
@@ -850,12 +859,12 @@ ReqBE.prototype.redirectTabSet=function*(inObj){
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
   var boUpd=inObj.boUpd||false;
   if(boUpd){
-    //var sql="UPDATE "+redirectTab+" SET url=?, tCreated=now() WHERE idSite=? AND pageName=?;";
+    //var sql="UPDATE "+redirectTab+" SET url=?, tCreated=now(), tMod=now() WHERE idSite=? AND pageName=?;";
     //var Val=[inObj.url, inObj.idSite, inObj.pageName.replace(RegExp(' ','g'),'_')];
-    var sql="UPDATE "+redirectTab+" SET idSite=?, pageName=?, url=?, tCreated=now() WHERE idSite=? AND pageName=?;"; 
+    var sql="UPDATE "+redirectTab+" SET idSite=?, pageName=?, url=?, tCreated=now(), tMod=now() WHERE idSite=? AND pageName=?;"; 
     var Val=[inObj.idSite, inObj.pageName.replace(RegExp(' ','g'),'_'), inObj.url, inObj.idSiteOld, inObj.pageNameOld.replace(RegExp(' ','g'),'_')];
   } else {
-    var sql="INSERT INTO "+redirectTab+" (idSite, pageName, url, tCreated) VALUES (?, ?, ?, now())";
+    var sql="INSERT INTO "+redirectTab+" (idSite, pageName, url, tCreated, tMod) VALUES (?, ?, ?, now(), now())";
     var Val=[inObj.idSite, inObj.pageName.replace(RegExp(' ','g'),'_'), inObj.url];
   }
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);   
@@ -1089,7 +1098,7 @@ ReqBE.prototype.uploadAdminServ=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
-  this.mesO("Working ... ")
+  this.mesO("Working... (check server console for progress) ");
   var [err]=yield* loadFrBUFolder.call({}, flow, inObj.file); if(err) return [err];
   return [null, [0]];
 }
@@ -1100,7 +1109,7 @@ ReqBE.prototype.uploadAdmin=function*(inObj){
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
-  
+  this.mesO("Working... (check server console for progress) ");
   var [err]=yield* storeFileMult.call(this, flow, this.File); if(err) return [err];
   return [null, [0]];
 }
