@@ -215,7 +215,7 @@ var flow=( function*(){
   StrFilePreCache=StrFilePreCache.concat(StrPako);
   if(boDbg){
     fs.watch('.',function (ev,filename) {
-      var StrFile=['filter.js','client.js'];
+      var StrFile=['filter.js','client.js','libClient.js'];
         //console.log(filename+' changed: '+ev);
       if(StrFile.indexOf(filename)!=-1){
         console.log(filename+' changed: '+ev);

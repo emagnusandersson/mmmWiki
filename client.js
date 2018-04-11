@@ -298,7 +298,7 @@ pageViewExtend=function($el){
     $adminDiv.setVis();
   });
   var $spanAdmin=$('<span>').append($spanMod, $adminButton).css({'float':'right'})
-  if(!boTouch) popupHoverM($adminButton,$('<div>').html('Administrator entry.'));
+  if(!boTouch) popupHoverJQ($adminButton,$('<div>').html('Administrator entry.'));
   $spanAdmin.toggle(boShowAdminButton);
   
 
@@ -350,7 +350,7 @@ adminDivExtend=function($el){
   }
   var $handyButton=$('<button>').append('Overwrite').click(aPass2F); 
   var $password2=$('<input type=password  placeholder="Overwrite">').keypress( function(e){   if(e.which==13) {aPass2F(); return false;}   }); 
-  var $imgH=$imgHelp.clone().css({margin:'0em 1em'}); popupHoverM($imgH,$('<div>').html('Write password for:<li>Login: logging in<li>Overwrite: A brutal but handy quick route for saving plus deleting all old versions.'));
+  var $imgH=$imgHelp.clone().css({margin:'0em 1em'}); popupHoverJQ($imgH,$('<div>').html('Write password for:<li>Login: logging in<li>Overwrite: A brutal but handy quick route for saving plus deleting all old versions.'));
   //var $handySpan=$('<span>').append();  
   var $aLoginDiv=$('<span>').append($imgH, $logoutButt, $password, ' ', $handyButton, $password2);
   $password.add($password2).css({width:'6em'});
@@ -392,7 +392,7 @@ adminMoreDivExtend=function($el){
     majax(oAJAX,[['getLastTMod',{},function(data){  $aBUFilesToComp.prop('title', swedTime(data.tLastMod) );  }]]);  
   }
   var strPublicRead='<span style="display:inline-block">'+charPublicRead+'</span>';
-  var $imgH=$imgHelp.clone().css({'margin-left':'.5em','margin-right':'0.5em'}); popupHoverM($imgH,$('<div>').html(strPublicRead+' = public read access<br>'+charPublicWrite+' = public write access<br>'+charPromote+' = promote = include the page in sitemap.xml etc. (encourage search engines to list the page)'));
+  var $imgH=$imgHelp.clone().css({'margin-left':'.5em','margin-right':'0.5em'}); popupHoverJQ($imgH,$('<div>').html(strPublicRead+' = public read access<br>'+charPublicWrite+' = public write access<br>'+charPromote+' = promote = include the page in sitemap.xml etc. (encourage search engines to list the page)'));
   $el.setMod=function(){
     setButMod.call($butModRead[0], objPage.boOR);
     setButMod.call($butModWrite[0], objPage.boOW);
@@ -436,7 +436,7 @@ adminMoreDivExtend=function($el){
     $imageFilterDiv.Filt.setSingleParent(idTmp);   $imageList.histPush();  $imageList.loadTab();  $imageList.setVis();  // $pageFilterDiv.Filt.filtClear();
   });
 
-  var $imgHPrefix=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverM($imgHPrefix,$('<div>').html('<p>Use prefix on default-site-pages:<p>Note that non-default-site-pages always gets the prefix added (to the filename in the zip-file).<p>Click the "Site table"-button below if you want to see or change the prefixes, and if you want to change which site is the default.'));  
+  var $imgHPrefix=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverJQ($imgHPrefix,$('<div>').html('<p>Use prefix on default-site-pages:<p>Note that non-default-site-pages always gets the prefix added (to the filename in the zip-file).<p>Click the "Site table"-button below if you want to see or change the prefixes, and if you want to change which site is the default.'));  
   var boUsePrefix=getItem('boUsePrefixOnDefaultSitePages')||true;
   var $cb=$('<input type=checkbox>').prop('checked',boUsePrefix).click(function(){
     boUsePrefix=Number($cb.prop('checked')); 
@@ -444,7 +444,7 @@ adminMoreDivExtend=function($el){
     $aBUFilesToComp.setUp(boUsePrefix);
   })
 
-  //var $imgHDownload=$imgHelp.clone().css({'margin-left':'1em','margin-right':'1em'}); popupHoverM($imgHDownload,$('<div>').html('Put all pages (or images or videos) in a zip-file and download.'));
+  //var $imgHDownload=$imgHelp.clone().css({'margin-left':'1em','margin-right':'1em'}); popupHoverJQ($imgHDownload,$('<div>').html('Put all pages (or images or videos) in a zip-file and download.'));
   var $aBUFilesToComp=$('<a>').prop({rel:'nofollow', download:''}).append('(pages).zip');
   $aBUFilesToComp.setUp=function(boUsePrefix){
     var tmpUrl='BUPage'+(boUsePrefix?'':'?{"boUsePrefixOnDefaultSitePages":0}'); $(this).prop({href:tmpUrl});
@@ -453,7 +453,7 @@ adminMoreDivExtend=function($el){
   var $aBUVideoToComp=$('<a>').prop({href:'BUVideo', rel:'nofollow', download:''}).append('(vidoes).zip');
   var $aBUMeta=$('<a>').prop({href:'BUMeta', rel:'nofollow', download:''}).append('(MetaData).zip');
   var $aBUMetaSQL=$('<a>').prop({href:'BUMetaSQL', rel:'nofollow', download:''}).append('(MetaData).sql');
-  var $imgHSql=$imgHelp.clone().css({'margin':'0 1em'}); popupHoverM($imgHSql,$('<div>').html('<p>Download "meta-data":<br>-extra data for pages/images (modification dates, access rights ...). <br>-redirect table.'));
+  var $imgHSql=$imgHelp.clone().css({'margin':'0 1em'}); popupHoverJQ($imgHSql,$('<div>').html('<p>Download "meta-data":<br>-extra data for pages/images (modification dates, access rights ...). <br>-redirect table.'));
   
   var $butBUPageServ=$('<button>').append('page.zip').click(  function(){    httpGetAsync('BUPageServ',function(str) {setMess(str,3);});    });
   var $butBUImageServ=$('<button>').append('image.zip').click(function(){    httpGetAsync('BUImageServ',function(str) {setMess(str,3);});   });
@@ -466,7 +466,7 @@ adminMoreDivExtend=function($el){
   var $siteButton=$('<button>').append('Site table').addClass('fixWidth').click(function(){    doHistPush({$view:$siteTab}); $siteTab.setVis();   });
   var $redirectButton=$('<button>').append('Redirect table').addClass('fixWidth').click(function(){   doHistPush({$view:$redirectTab}); $redirectTab.setVis();   });
 
-  var $imgHRename=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverM($imgHRename,$('<div>').html('"Rename" will <b>not</b> rename any links to the page. (maybe something for future versions)'));  
+  var $imgHRename=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverJQ($imgHRename,$('<div>').html('"Rename" will <b>not</b> rename any links to the page. (maybe something for future versions)'));  
   var $renameButton=$('<button>').append('Rename').css({'margin-left':'0.5em'}).click(function(){
     $renamePop.openFunc('page',null,objPage.idPage,queredPage);
   });
@@ -595,7 +595,7 @@ tabBUSumExtend=function($el){
       }
     }
     //var $divPop=$('<div>'); $DivPop.push($divPop);
-    //popupHoverM($r,$divPop);
+    //popupHoverJQ($r,$divPop);
     $tbody.append($r);
   }
   var $R=$tbody.find('tr');
@@ -648,7 +648,7 @@ tabBUSumExtend=function($el){
       }
     }
     var $divPop=$('<div>'); $DivPop.push($divPop);
-    popupHoverM($r,$divPop);
+    popupHoverJQ($r,$divPop);
     $tbody.append($r);
   }
   var $R=$tbody.find('tr');
@@ -942,10 +942,10 @@ diffBackUpDivExtend=function($el){
 
   var $imgDone=$('<span>').append('Done').css({'background':'lightgreen'}).hide();
 
-  var $imgHHead=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverM($imgHHead,$('<div>').html('<p>If the old files\' size and modification date match then they are considered up to date.'));
+  var $imgHHead=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverJQ($imgHHead,$('<div>').html('<p>If the old files\' size and modification date match then they are considered up to date.'));
   var $head=$('<div>').append('Differential backup of images',$imgHHead).css({'font-weight':'bold'});
   var strTmpExt=StrImageExt.join(', ');
-  var $imgHLoad=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverM($imgHLoad,$('<div>').html('<p>Accepted file endings: '+strTmpExt+', or zip files containing these formats (no folders in the zip file)'));
+  var $imgHLoad=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverJQ($imgHLoad,$('<div>').html('<p>Accepted file endings: '+strTmpExt+', or zip files containing these formats (no folders in the zip file)'));
   var $formFile=$('<form enctype="multipart/form-data">');
   var $inpFile=$('<input name="file" type="file" accept="application/zip" >').css({background:'lightgrey'}); //multiple
   var $ul=$('<ul>');//.hide();
@@ -1086,7 +1086,7 @@ uploadAdminDivExtend=function($el){
   }
 
   var strTmpExt=StrImageExt.join(', ');
-  var $imgHUpload=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverM($imgHUpload,$('<div>').html('Accepted file endings: '+strTmpExt+', txt or zips file containing these formats (no folders in the zip file)'));
+  var $imgHUpload=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverJQ($imgHUpload,$('<div>').html('Accepted file endings: '+strTmpExt+', txt or zips file containing these formats (no folders in the zip file)'));
 
   var $formFile=$('<form enctype="multipart/form-data">');
   var $inpFile=$('<input name="file" type="file" multiple>').css({background:'lightgrey'});
@@ -1608,10 +1608,14 @@ pageListExtend=function($el){
   
   //var $itemSingle=$([]).push($buttonGoToParent, $buttonRename, $buttonROn, $buttonROff, $buttonWOn, $buttonWOff, $buttonPOn, $buttonPOff, $buttonDelete);
   var $itemSingle=$([]).push($buttonRename, $buttonRTog, $buttonWTog, $buttonPTog, $buttonDelete);
-  var $menuSingle=menuExtend($('<div>')).css({'text-align':'left'});
+  //var $menuSingle=menuExtend($('<div>')).css({'text-align':'left'});
+  var $menuSingle=$('<div>').css({'text-align':'left'});  menuExtend($menuSingle[0]);
   var buttonExeSingleClick=function(e){ 
     var $button=$(this); 
-    $menuSingle.data('$button',$button);     $menuSingle.openFunc(e,$button,$itemSingle);
+    $menuSingle.data('$button',$button);
+    //$menuSingle.openFunc(e,$button,$itemSingle);
+    var fragItems=jQueryObjToFragment($itemSingle);
+    $menuSingle[0].openFunc(e,this,fragItems);
   }
 
     // menuMult
@@ -1627,11 +1631,14 @@ pageListExtend=function($el){
   //var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});   
   var $executeButton=$('<button>').append(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
   var $itemMulti=$([]).push($buttonROn, $buttonROff, $buttonWOn, $buttonWOff, $buttonPOn, $buttonPOff, $buttonDelete);
-  var $menuMult=menuExtend($('<div>')).css({'text-align':'left'});
+  //var $menuMult=menuExtend($('<div>')).css({'text-align':'left'});
+  var $menuMult=$('<div>').css({'text-align':'left'});  menuExtend($menuMult[0]);
   var buttonExeMultClick=function(e){ 
-    var $button=$(this);  //$itemMulti.eq(0).toggle(isOneOn());
+    //var $button=$(this);  //$itemMulti.eq(0).toggle(isOneOn());
     //if(boTouch){ doHistPush({$view:$menuDiv});     $menuDiv.setUp($itemMulti);   $menuDiv.setVis();    }else{   }
-    $menuMult.openFunc(e,$button,$itemMulti); 
+    //$menuMult.openFunc(e,$button,$itemMulti); 
+    var fragItems=jQueryObjToFragment($itemMulti);
+    $menuMult[0].openFunc(e,this,fragItems);
   }
   $executeButton.on(strMenuExecuteEvent,buttonExeMultClick); 
 
@@ -2161,11 +2168,14 @@ imageListExtend=function($el){
   
   //var $itemSingle=$([]).push($buttonGoToParent, $buttonRename, $buttonDelete);
   var $itemSingle=$([]).push($buttonRename, $buttonDelete, $buttonBoOtherTog);
-  var $menuSingle=menuExtend($('<div>')).css({'text-align':'left'});
+  //var $menuSingle=menuExtend($('<div>')).css({'text-align':'left'});
+  var $menuSingle=$('<div>').css({'text-align':'left'});  menuExtend($menuSingle[0]);
   var buttonExeSingleClick=function(e){ 
     var $button=$(this); //, $r=$button.parent().parent(), nParent=$r.data('nParent'), strParent=$r.data('nameParent');
-
-    $menuSingle.data('$button',$button);   $menuSingle.openFunc(e,$button,$itemSingle);
+    $menuSingle.data('$button',$button);
+    //$menuSingle.openFunc(e,$button,$itemSingle);
+    var fragItems=jQueryObjToFragment($itemSingle);
+    $menuSingle[0].openFunc(e,this,fragItems);
   }
   
 
@@ -2176,14 +2186,16 @@ imageListExtend=function($el){
   //var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
   var $executeButton=$('<button>').append(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
   var $itemMulti=$([]).push( $buttonDelete);
-  //var menuExtender=menuExtend; if(boTouch) menuExtender=menuStickyExtend;
-  var $menuMult=menuExtend($('<div>')).css({'text-align':'left'});
+  //var $menuMult=menuExtend($('<div>')).css({'text-align':'left'});
+  var $menuMult=$('<div>').css({'text-align':'left'});  menuExtend($menuMult[0]);
   var buttonExeMultClick=function(e){ 
-    var $button=$(this);  //$itemMulti.eq(0).toggle(isOneOn());
+    //var $button=$(this);  //$itemMulti.eq(0).toggle(isOneOn());
     //if(boTouch){      doHistPush({$view:$menuDiv});     $menuDiv.setUp($itemMulti);   $menuDiv.setVis();    }else{    }
-    $menuMult.openFunc(e,$button,$itemMulti);
+    var fragItems=jQueryObjToFragment($itemMulti);
+    $menuMult[0].openFunc(e,this,fragItems);
+    //$menuMult.openFunc(e,$button,$itemMulti);
   }
-  $executeButton.on(strMenuExecuteEvent,buttonExeMultClick); 
+  $executeButton.on(strMenuExecuteEvent,buttonExeMultClick);
 
 
 
@@ -2280,7 +2292,7 @@ editButtonExtend=function($el){
     //$imgOW.toggle(boOW); $imgOWNot.toggle(1-boOW);
     $divHov.html(boOW?'Edit the page.':'See wiki text.')
   }
-  var $divHov=$('<div>');  if(!boTouch) { popupHoverM($el,$divHov);  };
+  var $divHov=$('<div>');  if(!boTouch) { popupHoverJQ($el,$divHov);  };
   
   var $imgOW=$('<img>').prop({src:uPen}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'});
   //var $imgOWNot=$('<img>').prop({src:uPenNot}).css({height:'1em',width:'1em','vertical-align':'text-bottom'}).hide();
@@ -2779,7 +2791,7 @@ var slideShowExtend=function($el){
     for(var i=0;i<3;i++){  //StrImgUrl.length
       //var $img=$('<img>').prop({src:StrImgUrl[i]});
       var iTmp=(iCur+i-1+nImg)%nImg;
-      var $img=$('<div>').css({'background-image':'url("'+StrImgUrl[iTmp]+'")'}); //.click($winCaption.openFunc);
+      var $img=$('<div>').css({'background-image':'url("'+StrImgUrl[iTmp]+'")'}); //.click($winCaption[0].openFunc);
       $Img.push($img);
     }
     $Img.eq(0).css({left:'-100%'});
@@ -2790,7 +2802,7 @@ var slideShowExtend=function($el){
     $board.empty().append($Img);
     $document.on('keydown',arrowPressF);
     $winCaption.css({width:'',left:'0px',top:$window.height()/3+'px'});
-    $divCaptionCont.empty().append($Caption.eq(iCur).clone());  $winCaption.openFunc(); 
+    $divCaptionCont.empty().append($Caption.eq(iCur).clone());  $winCaption[0].openFunc(); 
     
   } 
   $el.addClass('unselectable').prop({UNSELECTABLE:"on"}).css({height:'100%',width:'100%'}); // class: needed by firefox, attr: needed by opera, firefox and ie 
@@ -2803,7 +2815,7 @@ var slideShowExtend=function($el){
   $el.append($board);
 
   if(boTouch){
-    $el[0].addEventListener("click", function(){ $winCaption.toggleFunc();}, true);
+    $el[0].addEventListener("click", function(){ $winCaption[0].toggleFunc();}, true);
   }else{
     var intArrowSize=20, strColor='blue';
     var $arrowLeft=$('<div>').css({'border-right': intArrowSize+'px solid '+strColor}),  $arrowRight=$('<div>').css({'border-left': intArrowSize+'px solid '+strColor});
@@ -2820,7 +2832,7 @@ var slideShowExtend=function($el){
     var $divLeft=$('<div>').append($arrowLeft).css({left:'0px'}).click(function(){shiftFunc(-1);}),  $divRight=$('<div>').append($arrowRight).css({right:'0px'}).click(function(){shiftFunc(1);});
     $divLeft.add($divRight).css({height:'100%', display:'flex', 'justify-content':'center','align-items':'center', flex:'1 1 auto'});
     $divLeft.add($divRight).mouseover(function(){$(this).children('div').css({opacity:1});}).mouseout(function(){$(this).children('div').css({opacity:0.3});});
-    var $divCenter=$('<div>').css({flex:'1 1 auto'}).click(function(){$winCaption.toggleFunc();});
+    var $divCenter=$('<div>').css({flex:'1 1 auto'}).click(function(){$winCaption[0].toggleFunc();});
     $divAreaParent.append($divLeft,$divCenter,$divRight);
     $el.append($divAreaParent);
   }
@@ -2828,7 +2840,7 @@ var slideShowExtend=function($el){
   var $divCaptionCont=$('<div>');//.css({padding:'0.1em'});
   var $winCaption=$('<div>').append($divCaptionCont);
   //var $divPopParent=$('<div>').css({position:'absolute', width:'100vw', height:'100vh', top:'0px', left:'0px'}); $el.prepend($divPopParent);
-  popupDragExtendM($('<div>'),$winCaption,'',$el).css({left:'3px',top:'200px'}); 
+  $winCaption[0]=popupDragExtendM($winCaption[0],'',$el[0]); $winCaption.css({left:'3px',top:'200px'}); 
 
 
   var el = $board[0];
@@ -3139,7 +3151,7 @@ siteSetPopExtend=function($el){
   var $selBoTLS=$('<select><option value=0 selected>http</option><option value=1>https</option></select>').css({display:'block'}); 
   var $labName=$('<b>').append('Name (used as prefix when backing up...)');
   var $inpName=$('<input type=text>');
-  var $imgHWWW=$imgHelp.clone().css({margin:'0em 1em'}); popupHoverM($imgHWWW,$('<div>').html('<p>Ex:<p>www.example.com<p>127.0.0.1:5000<p>localhost:5000'));
+  var $imgHWWW=$imgHelp.clone().css({margin:'0em 1em'}); popupHoverJQ($imgHWWW,$('<div>').html('<p>Ex:<p>www.example.com<p>127.0.0.1:5000<p>localhost:5000'));
   var $labWWW=$('<b>').append('www', $imgHWWW);
   var $inpWWW=$('<input type=text>');
   var $labGog=$('<b>').append('googleAnalyticsTrackingID');
@@ -3443,6 +3455,7 @@ helpBub={}
 setUp1=function(){
 
 
+  elHtml=document.documentElement;  elBody=document.body
   $body=$('body');  $html=$('html');
   $bodyNHtml=$body.add($html);  
   $body.css({margin:'0px'});
