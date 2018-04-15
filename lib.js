@@ -91,6 +91,7 @@ array_removeInd=function(a,i){a.splice(i,1);}
 arrValMerge=function(arr,val){  var indOf=arr.indexOf(val); if(indOf==-1) arr.push(val); }
 //arrValRemove=function(arr,val){  var indOf=arr.indexOf(val); if(indOf!=-1) arr.splice(indOf,1); }
 arrValRemove=function(arr,val){  var indOf=arr.indexOf(val); if(indOf!=-1) mySplice1(arr,indOf); }
+const allEqual = arr => arr.every( v => v === arr[0] );
 
 //
 // Str (Array of Strings)
@@ -115,6 +116,7 @@ overwriteProperties=function(oGoal, oOrg){
   return oGoal;
 }
 isEmpty=function(obj) {    return Object.keys(obj).length === 0;  }
+
 
 //
 // Dates and time
@@ -268,7 +270,7 @@ calcBUFileName=function(wwwSite,type,ending){
 }
 
 regParsePageNameHD=RegExp('([^:]+):','g');
-parsePageNameHD=function(strPage){ // parsePageNameHD (PageNameHD = pageName that is both Human- and Data-friendly) 
+parsePageNameHD=function(strPage){ // parsePageNameHD (PageNameHD = pageName that is both Human- and Data-friendly)
   regParsePageNameHD.lastIndex=0;
   var obj={boTalk:false, boTemplate:false, strTemplateTalk:'', siteName:''}, lastIndex;
   while(true) {

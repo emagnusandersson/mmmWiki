@@ -44,7 +44,7 @@ tmp.out304=function(){  this.outCode(304);   }
 tmp.out404=function(str){ str=str||"404 Not Found\n"; this.outCode(404, str);    }
 //tmp.out500=function(err){ var errN=(err instanceof Error)?err:(new MyError(err)); console.log(errN.stack); this.writeHead(500, {"Content-Type": "text/plain"});  this.end(err+ "\n");   }
 tmp.out500=function(e){
-  if(e instanceof Error) {var mess=e.name + ': ' + e.message; console.error(e);} else {var mess=e; console.error(mess);} 
+  if(e instanceof Error) {var mess=e.name + ': ' + e.message; console.error(e.stack);} else {var mess=e; console.error(mess);} 
   this.writeHead(500, {"Content-Type": "text/plain"});  this.end(mess+ "\n");
 }
 tmp.out501=function(){ this.outCode(501, "Not implemented\n");   }
@@ -177,7 +177,8 @@ readFileToCache=function*(strFileName) {
   var flow=this.flow;
   var type, Match=regFileType.exec(strFileName);    if(Match && Match.length>1) type=Match[1]; else type='txt';
   var boZip=regZip.test(type),  boUglify=regUglify.test(type);
-  var err, buf;  fs.readFile(strFileName, function(errT, bufT) {  err=errT; buf=bufT;  flow.next();   });  yield;  if(err) return [err];
+  var err, buf;
+  fs.readFile(strFileName, function(errT, bufT) {  err=errT; buf=bufT;  flow.next();   });  yield;  if(err) return [err];
   var [err]=yield* CacheUri.set.call(this, '/'+strFileName, buf, type, boZip, boUglify);  if(err) return [err];
   return [null];  
 }
@@ -195,7 +196,8 @@ CacheUriT=function(){
       var bufI=buf;
       var gzip = zlib.createGzip();
       var err;
-      zlib.gzip(bufI, function(errT, bufT) { err=errT; buf=bufT; selfA.flow.next(); });  yield; if(err) return [err];
+      zlib.gzip(bufI, function(errT, bufT) { err=errT; buf=bufT; selfA.flow.next(); });  yield;
+      if(err) return [err];
       //if(err){  console.log(err);  process.exit(); return;}
     }
     self[key]={buf:buf,type:type,eTag:eTag,boZip:boZip,boUglify:boUglify};

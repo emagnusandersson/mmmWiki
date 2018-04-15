@@ -1,7 +1,7 @@
 
   // 'boDefault','boTLS','urlIcon16','urlIcon200','googleAnalyticsTrackingID','aPassword','vPassword','name','www'
 
-  // Site
+//----- site.csv
 USING PERIODIC COMMIT
 LOAD CSV WITH HEADERS FROM 'file:///site.csv' AS line
 MERGE (s:Site { name:line.name  })
@@ -13,10 +13,12 @@ SET s.boDefault=toBoolean(line.boDefault),
     s.aPassword= line.aPassword,
     s.vPassword= line.vPassword,
     s.www= line.www
-; 
+//----- 
+
 
   // "boOR","boOW","boSiteMap","tCreated","tMod","tLastAccess","nAccess","siteName","strName"
-  // Page
+
+//----- page.csv
 USING PERIODIC COMMIT
 LOAD CSV WITH HEADERS FROM 'file:///page.csv' AS line
 MERGE (s:Site { name:line.siteName })
@@ -31,10 +33,11 @@ SET p.boOR= toBoolean(line.boOR),
     p.tLastAccess= toInteger(line.tLastAccess),
     p.nAccess= toInteger(line.nAccess),
     p.name= line.strName
-; 
+//----- 
 
   // "boOther","tMod","tLastAccess","nAccess","imageName"
-  // Image
+
+//----- image.csv
 USING PERIODIC COMMIT
 LOAD CSV WITH HEADERS FROM 'file:///image.csv' AS line
 MERGE (i:Image { nameLC:toLower(line.imageName) })
@@ -44,10 +47,10 @@ SET i.boOther= toBoolean(line.boOther),
     i.tLastAccess= toInteger(line.tLastAccess),
     i.nAccess= toInteger(line.nAccess),
     i.name= line.imageName
-; 
+//----- 
 
   // "tCreated","tLastAccess","nAccess","siteName","nameLC","url"
-  // Redirect
+//----- redirect.csv
 USING PERIODIC COMMIT
 LOAD CSV WITH HEADERS FROM 'file:///redirect.csv' AS line
 MERGE (s:Site { name:line.siteName })
@@ -57,5 +60,6 @@ SET r.url= line.url,
     r.tMod= toInteger(line.tMod),
     r.tLastAccess= coalesce(toInteger(line.tLastAccess), 0),
     r.nAccess= toInteger(line.nAccess)
-; 
+
+
 

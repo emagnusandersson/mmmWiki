@@ -140,7 +140,7 @@ ReqBE.prototype.go=function*(){
 
            // Arrays of functions
     // Functions that changes something must check and refresh CSRF-code
-  var arrCSRF=['myChMod', 'myChModImage', 'saveByAdd', 'saveByReplace', 'uploadUser', 'uploadAdmin', 'uploadAdminServ', 'getPageInfo', 'getImageInfo', 'getLastTMod', 'setUpPageListCond','getPageList','getPageHist', 'setUpImageListCond','getImageList','getImageHist', 'getParent','getParentOfImage','getSingleParentExtraStuff', 'deletePage','deleteImage','renamePage','renameImage', 'redirectTabGet','redirectTabSet','redirectTabDelete', 'redirectTabResetNAccess', 'siteTabGet', 'siteTabSet', 'siteTabDelete', 'siteTabSetDefault'];
+  var arrCSRF=['myChMod', 'myChModImage', 'saveByAdd', 'saveByReplace', 'uploadUser', 'uploadAdmin', 'uploadAdminServ', 'loadMeta', 'getPageInfo', 'getImageInfo', 'getLastTModNTLastBU', 'setUpPageListCond','getPageList','getPageHist', 'setUpImageListCond','getImageList','getImageHist', 'getParent','getParentOfImage','getSingleParentExtraStuff', 'deletePage','deleteImage','renamePage','renameImage', 'redirectTabGet','redirectTabSet','redirectTabDelete', 'redirectTabResetNAccess', 'siteTabGet', 'siteTabSet', 'siteTabDelete', 'siteTabSetDefault'];
   var arrNoCSRF=['specSetup','vLogin','aLogin','aLogout','pageLoad','pageCompare','getPreview'];  
   allowed=arrCSRF.concat(arrNoCSRF);
 
@@ -415,6 +415,7 @@ ReqBE.prototype.pageLoad=function*(inObj) {
   else if(mess=='serverCacheStale' || mess=='304' || mess=='serverCacheOK'){
     var iRev=objDBData.iRev, objRev=objDBData.arrRev[iRev];
     var objPage=objDBData.objPage;
+    if(!objPage.boOR && !this.boVLoggedIn) {  res.outCode(401, "Unauthorized"); return []; }
     var tmp=objPage.boOR?'':', private';
     res.setHeader("Cache-Control", "must-revalidate"+tmp);  res.setHeader('Last-Modified',(new Date(objRev.tModCache*1000)).toUTCString());
     if(mess=='304') { res.out304();  return []; }
@@ -628,18 +629,15 @@ ReqBE.prototype.renamePage=function*(inObj){
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
-
-  var strCql=` 
-    MATCH (p:Page {idPage:$idPage})
-    SET p.name=$name, p.nameLC=$nameLC
-    RETURN p.name AS name`;
+  
   var strNewName=inObj.strNewName.replace(RegExp(' ','g'),'_');
-  var Val={idPage:inObj.id, name:strNewName, nameLC:strNewName.toLowerCase()};
-  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err) return [err];
+  
+  var tx=sessionNeo4j.beginTransaction();
+  var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:strNewName, idPage:inObj.id});
+  var [err,objT]=yield* renamePageNeo(flow, tx, objArg);   if(err) { yield* neo4jRollbackGenerator(flow, tx); return [err]; } else  yield* neo4jCommitGenerator(flow, tx);
 
-  var c=records.length, boOK, mestmp; if(c==1) { boOK=1; mestmp="1 page renamed"; } else {boOK=0; mestmp=c+" pages renamed!?"; }
-  this.mes(mestmp);
-  Ou.boOK=boOK;      
+  this.mes('OK');
+  Ou.boOK=true;      
   return [null, [Ou]];
 }
 
@@ -649,17 +647,26 @@ ReqBE.prototype.renameImage=function*(inObj){
   var Ou={};
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
 
-  var strCql=` 
-    MATCH (i:Image {idImage:$idImage})
-    SET i.name=$name, i.nameLC=$nameLC
-    RETURN i.name AS name`;
-  var strNewName=inObj.strNewName.replace(RegExp(' ','g'),'_');
-  var Val={idImage:inObj.id, name:strNewName, nameLC:strNewName.toLowerCase()};
-  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err) return [err];
+  //var strCql=` 
+    //MATCH (i:Image {idImage:$idImage})
+    //SET i.name=$name, i.nameLC=$nameLC
+    //RETURN i.name AS name`;
+  //var strNewName=inObj.strNewName.replace(RegExp(' ','g'),'_');
+  //var Val={idImage:inObj.id, name:strNewName, nameLC:strNewName.toLowerCase()};
+  //var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err) return [err];
 
-  var c=records.length, boOK, mestmp; if(c==1) { boOK=1; mestmp="1 image renamed"; } else {boOK=0; mestmp=c+" images renamed!?"; }
-  this.mes(mestmp);
-  Ou.boOK=boOK;      
+  //var c=records.length, boOK, mestmp; if(c==1) { boOK=1; mestmp="1 image renamed"; } else {boOK=0; mestmp=c+" images renamed!?"; }
+  //this.mes(mestmp);
+  //Ou.boOK=boOK;
+  
+  var strNewName=inObj.strNewName.replace(RegExp(' ','g'),'_');
+  
+  var tx=sessionNeo4j.beginTransaction();
+  var objArg={};   copySome(objArg, req, ['boTLS', 'www']);     extend(objArg, {strName:strNewName, idImage:inObj.id});
+  var [err,objT]=yield* renameImageNeo(flow, tx, objArg);   if(err) { yield* neo4jRollbackGenerator(flow, tx); return [err]; } else  yield* neo4jCommitGenerator(flow, tx);
+
+  this.mes('OK');
+  Ou.boOK=true;  
   return [null, [Ou]];
   
 }
@@ -704,7 +711,7 @@ ReqBE.prototype.getParentOfImage=function*(inObj){
 
   var strCql=`
     MATCH (s:Site)-[hasPage]->(p:Page)-[hi:hasImage]->(i:Image {idImage:$idImage})
-    RETURN s.boTLS AS boTLS, s.www AS www, p.idPage AS idPage, p.name AS pageName`;
+    RETURN s.boTLS AS boTLS, s.name AS siteName, s.www AS www, p.idPage AS idPage, p.name AS pageName`;
   var Val={idImage:inObj.idImage};
   var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err) return [err];
   
@@ -722,7 +729,7 @@ ReqBE.prototype.getSingleParentExtraStuff=function*(inObj){
       OPTIONAL MATCH (pOrphan:Page) WHERE (NOT (:Page)-[:hasChild]->(pOrphan)) 
       WITH COUNT(pOrphan) AS nSub
       OPTIONAL MATCH (iOrphan:Image)  WHERE (NOT (:Page)-[:hasImage]->(iOrphan))
-      RETURN nSub, COUNT(iOrphan) AS nImage`;
+      RETURN nSub, COUNT(iOrphan) AS nImage, null AS idPage`;
     var Val={};
     var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err) return [err];
     if(records.length>1) {  return [new Error('records.length>1')]; }
@@ -730,12 +737,14 @@ ReqBE.prototype.getSingleParentExtraStuff=function*(inObj){
   } else {  
     var strCql=`
       MATCH (s:Site)-[hasPage]->(p:Page {idPage:$idPage})
+      OPTIONAL MATCH (p)-[hasRevision]->(r:RevisionLast)
+      WITH s, p, r
       OPTIONAL MATCH (p)-[hc:hasChild]->(c:Page)
-      WITH s, p, COUNT(c) AS nSub
+      WITH s, p, r, COUNT(c) AS nSub
       OPTIONAL MATCH (p)-[hc:hasImage]->(i:Image)
-      WITH s, p, nSub, COUNT(i) AS nImage
+      WITH s, p, r, nSub, COUNT(i) AS nImage
       OPTIONAL MATCH (p2:Page {nameLC:p.nameLC})
-      RETURN s.boTLS AS boTLS, s.name AS siteName, s.www AS www, p.name AS pageName, p.nameLC AS nameLC, nSub, nImage, COUNT(p2) AS nSame`;
+      RETURN s.boTLS AS boTLS, s.name AS siteName, s.www AS www, p.idPage AS idPage, p.name AS pageName, p.nameLC AS nameLC, nSub, nImage, COUNT(p2) AS nSame, r.size AS size, r.tMod AS tMod, r.boOther AS boOther, r.iRev AS lastRev, p.nAccess AS nAccess, p.tCreated AS tCreated, p.tLastAccess AS tLastAccess, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap`;
     var Val={idPage:inObj.idPage};
     var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err) return [err];
     if(records.length>1) {  return [new Error('records.length>1')]; }
@@ -802,7 +811,7 @@ ReqBE.prototype.setUpImageListCond=function*(inObj){
   return [null, [Ou]];
 }
 
-ReqBE.prototype.getImageList=function*(inObj) {
+ReqBE.prototype.getImageList=function*(inObj) {  // Used by imageList
   var req=this.req, res=this.res;
   var flow=req.flow;
 
@@ -849,9 +858,9 @@ ReqBE.prototype.getImageHist=function*(inObj){
 }
 
 //MATCH (s:Site)-[:hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE s.boDefault=1 AND p.nameLC IN ['start', 'starta', 'startb']
-//    RETURN p.name AS pageName, p.boOR AS boOR, p.boOW AS boOW, r.tMod AS tMod, p.boOther AS boOther, r.size AS size
+//    RETURN p.name AS pageName, p.boOR AS boOR, p.boOW AS boOW, r.tMod AS tMod, r.boOther AS boOther, r.size AS size
     
-ReqBE.prototype.getPageInfo=function*(inObj){
+ReqBE.prototype.getPageInfo=function*(inObj){  // Used by uploadAdminDiv
   var req=this.req, res=this.res, Ou={}
   var GRet=this.GRet, flow=req.flow;
   var Ou={FileInfo:[]};
@@ -860,7 +869,7 @@ ReqBE.prototype.getPageInfo=function*(inObj){
     MATCH (s:Site)-[:hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE 
     
       // ----- end
-    RETURN p.name AS pageName, p.boOR AS boOR, p.boOW AS boOW, r.tMod AS tMod, p.boOther AS boOther, r.size AS size`;
+    RETURN p.name AS pageName, p.boOR AS boOR, p.boOW AS boOW, r.tMod AS tMod, r.boOther AS boOther, r.size AS size`;
   var objCql=splitCql(strCql);
     
   var Val={}; 
@@ -889,7 +898,7 @@ ReqBE.prototype.getPageInfo=function*(inObj){
 }
 
 
-ReqBE.prototype.getImageInfo=function*(inObj){
+ReqBE.prototype.getImageInfo=function*(inObj){  // Used by diffBackUpDiv, uploadAdminDiv, uploadUserDiv 
   var req=this.req, res=this.res, Ou={}
   var GRet=this.GRet, flow=req.flow;
   var Ou={FileInfo:[]};
@@ -914,16 +923,26 @@ ReqBE.prototype.getImageInfo=function*(inObj){
   return [null, [Ou]];
 }
 
-ReqBE.prototype.getLastTMod=function*(inObj){
+ReqBE.prototype.getLastTModNTLastBU=function*(inObj){
   var req=this.req, res=this.res, flow=req.flow, Ou={};
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
 
-  var strCql=`MATCH (p:Page)-[h:hasRevision]->(r:RevisionLast) RETURN MAX(r.tMod) AS tLastMod`;
+  //var strCql=`MATCH (p:Page)-[h:hasRevision]->(r:RevisionLast) RETURN p.name AS pageName, MAX(r.tMod) AS tLastMod`;
+  var strCql=`MATCH (r:RevisionLast)
+  WITH MAX(r.tMod) AS tLastMod
+  MATCH (p:Page)-[h:hasRevision]->(r {tMod:tLastMod})
+  RETURN p.name AS pageName, tLastMod`;
   var Val={};
   var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err) return [err];
-  Ou.tLastMod=records[0].tLastMod;
+  if(records[0]) copySome(Ou, records[0], ['pageName', 'tLastMod']);
+  //Ou.tLastMod=records[0].tLastMod;
+  
+  var redisVar='mmmWiki_tLastBU', strTmp=yield* wrapRedisSendCommand.call(req, 'get',[redisVar]);
+  Ou.tLastBU=strTmp;
+  
   return [null, [Ou]];
 }
+
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -1178,7 +1197,6 @@ app.storeFileMult=function*(flow, File){
     fs.readFile(tmpname, function(errT, bufT) { err=errT; buf=bufT; flow.next(); }); yield;  if(err) return [err];
     var dataOrg=buf; 
     if(fileOrg.type=='application/zip' || fileOrg.type=='application/x-zip-compressed'){
-       
       var zip=new NodeZip(dataOrg, {base64: false, checkCRC32: true});
       var FileInZip=zip.files;
       
@@ -1207,11 +1225,11 @@ app.storeFileMult=function*(flow, File){
   return [null];
 }
 
-app.loadFrBUFolder=function*(flow, strFile){
-  var strFileToLoadFolder=path.join(__dirname, '..', 'mmmWikiData', 'BU'); 
-  var files;
-  if(strFile) files=[strFile];
-  else {  var err;  fs.readdir(strFileToLoadFolder, function(errT, filesT){ err=errT; files=filesT; flow.next(); }); yield;  if(err) return [err];   }  
+app.loadDataFrBU=function*(flow, strFile){  // Can be called both from commandline and from BE-request
+  var strFileToLoadFolder=path.join(__dirname, '..', 'mmmWikiBU'); 
+  var files=[strFile];
+  //if(strFile) files=[strFile];
+  //else {  var err;  fs.readdir(strFileToLoadFolder, function(errT, filesT){ err=errT; files=filesT; flow.next(); }); yield;  if(err) return [err];   }  
 
   var File=Array(files.length);
   for(var i=0;i<files.length;i++){
@@ -1230,7 +1248,7 @@ ReqBE.prototype.uploadAdminServ=function*(inObj){
   var GRet=this.GRet, flow=req.flow;
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
   this.mesO("Working... (check server console for progress) ");
-  var [err]=yield* loadFrBUFolder.call({}, flow, inObj.file); if(err) return [err];
+  var [err]=yield* loadDataFrBU.call({}, flow, inObj.file); if(err) return [err];
   return [null, [0]];
 }
 
@@ -1314,9 +1332,78 @@ ReqBE.prototype.uploadUser=function*(inObj){
   return [null, [Ou]];
 }
 
+ReqBE.prototype.loadMeta=function*(inObj){
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
+  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+  
+  var tmpname=path.join(__dirname, 'loadMMMWiki.cyp'); 
+  
+  var err, buf;
+  fs.readFile(tmpname, function(errT, bufT) { err=errT; buf=bufT; flow.next(); }); yield;  if(err) return [err];
+  var strCql=buf; 
+  
+  var Val={};
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err) return [err];
+  
+  //var c=records[0].nDelete, boOK, mestmp; 
+  //if(c==1) {boOK=1; mestmp="Entry deleted"; } else {boOK=1; mestmp=c+ " entries deleted!?"; }
+  //this.mes(mestmp);
+  //Ou.boOK=boOK; 
+  
+  return [null, [0]];
+}
+
+app.loadMetaFrBU=function*(flow, strFile){
+  
+  var strCql=objCqlFilter[strFile];
+  var Val={};
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err) return [err];
+  
+  return [null, [0]];
+}
+
+app.loadFrBU=function*(flow, strFileArg){
+  var StrValidZip=['page.zip', 'image.zip'];
+  var StrFile;
+  if(typeof strFileArg!='string') StrFile=StrValidLoadMeta.concat(['page.zip', 'image.zip', 'page.csv', 'image.csv']);
+  else {
+    StrFile=strFileArg.split('+');  
+    for(var i=0;i<StrFile.length;i++){
+      var strFile=StrFile[i];
+      //if(strFile=='all') { StrFile=StrValidLoadMeta.concat([]); break; }
+      if(StrValidLoadMeta.indexOf(strFile)==-1 && StrValidZip.indexOf(strFile)==-1) {helpTextExit(); return;}
+    }
+  }
+
+  for(var i=0;i<StrFile.length;i++){
+    var strFile=StrFile[i];
+    var Match=/\.([a-z]+)/.exec(strFile);
+    if(Match[1].toLowerCase()=='csv') yield* loadMetaFrBU(flow, strFile);
+    else yield* loadDataFrBU(flow, strFile);
+    console.log(strFile+' done');
+  }
+  
+  return [null, [0]];
+}
+
+app.deleteAll=function*(flow){  // Called from commandline  // Can be called both from commandline and from BE-request (not)
 
 
-
-
+    // Delete documents
+  var err, result;
+  dbMongo.dropDatabase(function(errT, resultT) { err=errT; result=resultT;  flow.next(); });   yield;  if(err) return [err]; 
+    
+  //var collection = dbMongo.collection('documents');
+  //var err, result, objDoc={};
+  //collection.deleteMany( objDoc, function(errT, resultT) { err=errT; result=resultT;  flow.next(); });   yield;  if(err) return [err]; 
+  
+  var strCql=`MATCH (n) DETACH DELETE n`;
+  var Val={};
+  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err) return [err];
+  
+  
+  return [null, [0]];
+}
 
 

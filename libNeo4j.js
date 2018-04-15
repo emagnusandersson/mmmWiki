@@ -124,8 +124,8 @@ neo4jRun=function*(flow, session, strCql, Val, boRaw=false){
   //CREATE CONSTRAINT ON (p:Page) ASSERT p.idPage IS UNIQUE
 
 setUpNeo=function*(flow, objArg){
-  var www=objArg.www, boTLS=objArg.boTLS, strSiteName=objArg.strSiteName;
-  boTLS=Boolean(boTLS);
+  //var www=objArg.www, boTLS=objArg.boTLS, strSiteName=objArg.strSiteName;
+  //boTLS=Boolean(boTLS);
   var Val={};
   var strCql=`CREATE CONSTRAINT ON (s:Site) ASSERT s.name IS UNIQUE`;
   var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err) return [err];
@@ -133,11 +133,11 @@ setUpNeo=function*(flow, objArg){
   var strCql=`CREATE CONSTRAINT ON (s:Site) ASSERT s.www IS UNIQUE`;
   var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err) return [err];
   
-  var strCql=`
-    MERGE (sd:Site {boDefault:true}) ON CREATE SET sd+={ name:coalesce($strSiteName, toLower(myMisc.myrandstringFunc(7))), www:$www, boTLS:$boTLS, googleAnalyticsTrackingID:"", urlIcon16:"", urlIcon200:"", aPassword:$aPassword, vPassword:"", boDefault:true }
-    RETURN sd`;
-  var Val={www:www, boTLS:boTLS, aPassword:"", vPassword:"", strSiteName:strSiteName?strSiteName:null};
-  var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err) return [err];
+  //var strCql=`
+    //MERGE (sd:Site {boDefault:true}) ON CREATE SET sd+={ name:coalesce($strSiteName, toLower(myMisc.myrandstringFunc(7))), www:$www, boTLS:$boTLS, googleAnalyticsTrackingID:"", urlIcon16:"", urlIcon200:"", aPassword:$aPassword, vPassword:"", boDefault:true }
+    //RETURN sd`;
+  //var Val={www:www, boTLS:boTLS, aPassword:"", vPassword:"", strSiteName:strSiteName?strSiteName:null};
+  //var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val); if(err) return [err];
 
   return [null];
 }
@@ -221,6 +221,258 @@ deletePageByMultIDNeo=function*(flow, tx, objArg){
     DETACH DELETE iOrphan`;
   var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err]; 
 
+  return [null];
+}
+
+var strSetUpTestDB=`
+MATCH (s:Site { www:'example.com' })-[:hasPage]->(p:Page)
+OPTIONAL MATCH (p)-[h:hasRevision]->(r:Revision) DETACH DELETE s,p,r
+
+      //----- Create parent abb
+MERGE (s:Site { www:'example.com' })
+MERGE (s)-[:hasPage]->(p:Page { nameLC:'abb', idPage:'iabb' })
+MERGE (p)-[h:hasRevision]->(r:Revision:RevisionLast {iRev:0, strEditText:'[[abcd]] abcd [[bah]] [[abcd]] abcd'})
+    RETURN s,p,r;
+    
+      //----- Create parent abc
+MERGE (s:Site { www:'example.com' })
+MERGE (s)-[:hasPage]->(p:Page { nameLC:'abc', idPage:'iabc' })
+MERGE (p)-[h:hasRevision]->(r:Revision:RevisionLast {iRev:0, strEditText:'[[abcd]] abcd [[bah]] [[abcd]] abcd'})
+    RETURN s,p,r;
+    
+      //----- Create child abcd
+MATCH (s:Site { www:'example.com' }) 
+MERGE (s)-[:hasPage]->(p:Page { nameLC:'abcd', name:'Abcd', idPage:'iabcd' })-[h:hasRevision]->(r:Revision:RevisionLast {iRev:0, strEditText:'abcd'})
+WITH s,p
+MATCH (s)-[:hasPage]->(pp:Page { nameLC:'abb' }), (s)-[:hasPage]->(pp2:Page { nameLC:'abc' })
+    RETURN s,p,pp,pp2
+    
+    
+      //----- Create child stub abce
+MATCH (s:Site { www:'example.com' }) 
+MERGE (s)-[:hasPage]->(p:Page { nameLC:'abce', name:'Abcd', idPage:'iabce' })
+WITH s,p
+MATCH (s)-[:hasPage]->(pp:Page { nameLC:'abb' }), (s)-[:hasPage]->(pp2:Page { nameLC:'abc' })
+MERGE (pp)-[:hasChild]->(p)
+MERGE (pp2)-[:hasChild]->(p)
+    RETURN s,p,pp,pp2
+    
+
+    
+      //----- View it all
+MATCH (s:Site { www:'example.com' })-[:hasPage]->(p:Page)
+OPTIONAL MATCH (p)-[h:hasRevision]->(r:Revision)
+RETURN s,p,r
+
+
+
+MATCH (s:Site { www:'example.com' })-[:hasPage]->(p:Page { nameLC:'abcd' })-[h:hasRevision]->(r:Revision)
+    RETURN r.iRev
+
+MATCH (s:Site { www:'example.com' })-[:hasPage]->(pp:Page)-[hc:hasChild]->(p:Page { idPage:'iabcd' }), (pp)-[h:hasRevision]->(r:RevisionLast)
+    RETURN pp.idPage AS idPage, r.strEditText AS strEditText
+
+   // Move parents->stub relations to the page in question
+MATCH (s:Site { www:'example.com' })-[:hasPage]->(pp:Page)-[hc:hasChild]->(ps:Page { nameLC:'abce' }), (p:Page { idPage:'iabcd' })
+    MERGE (pp)-[:hasChild]->(p)
+
+   // DETACH and DELETE the stub
+MATCH (s:Site { www:'example.com' })-[:hasPage]->(ps:Page { nameLC:'abce' })
+    DETACH DELETE ps
+
+   // Rename the page in question
+MATCH (p:Page { idPage:'iabcd' })-[h:hasRevision]->(r:Revision)
+    SET p+={nameLC:'abce', name:'Abce'}, r.tModCache=0`
+
+renamePageNeo=function*(flow, tx, objArg){
+  var www=objArg.www, strName=objArg.strName;
+  
+  var strNameLC=strName.toLowerCase(); 
+  var Val={www:www, strNameLC:strNameLC, strName:strName, idPage:objArg.idPage};
+  
+      // The new name may refer to a stub or a real page. If it is a real page then bail out.
+  var strCql=`
+    MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { nameLC:$strNameLC })-[h:hasRevision]->(r:Revision)
+    RETURN r.iRev`;
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err];
+  if(records.length){ return [null, {mess:'pageExist'}]  }
+  
+      // Get the old name.
+  var strCql=`
+    MATCH (s:Site { www:$www })-[:hasPage]->(p:Page { idPage:$idPage })
+    RETURN p.nameLC AS nameLC`;
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err];
+  var nameLCO=records[0].nameLC;
+  
+      // Get parent strEditText
+  var strCql=`
+    MATCH (s:Site { www:$www })-[:hasPage]->(pp:Page)-[hc:hasChild]->(p:Page { idPage:$idPage }), (pp)-[h:hasRevision]->(r:RevisionLast)
+    RETURN pp.idPage AS idPage, r.strEditText AS strEditText`;
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err];
+  
+  var data=Array(records.length);
+  for(var i=0;i<records.length;i++){
+    var mPa=new Parser();
+    data[i]={idPage:records[i].idPage, strEditText:mPa.renameILinkOrImage(records[i].strEditText, nameLCO, strName)};
+    //records[i].strEditText=mPa.renameILinkOrImage(records[i].strEditText, nameLCO, strName);
+  }
+  
+  var ValT={data:data};
+      // Write back to parents strEditText
+  var strCql=`
+    UNWIND {data} AS d
+    MATCH (p:Page {idPage: d.idPage})-[h:hasRevision]->(r:RevisionLast)
+    SET r.strEditText= d.strEditText, r.tModCache=0;`;
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, ValT); if(err) return [err];
+  
+      // Move parents->stub relations to the page in question
+  var strCql=`
+    MATCH (s:Site { www:$www })-[:hasPage]->(pp:Page)-[hc:hasChild]->(ps:Page { nameLC:$strNameLC }), (p:Page { idPage:$idPage })
+    MERGE (pp)-[:hasChild]->(p)`;
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err];
+  
+      // DETACH and DELETE the stub
+  var strCql=`
+    MATCH (s:Site { www:$www })-[:hasPage]->(ps:Page { nameLC:$strNameLC })
+    DETACH DELETE ps`;
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err];
+  
+
+      // Rename the page in question
+  var strCql=`
+    MATCH (p:Page { idPage:$idPage })-[h:hasRevision]->(r:Revision)
+    SET p+={nameLC:$strNameLC, name:$strName}, r.tModCache=0`;
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err];
+  
+  return [null];
+}
+
+
+
+var strSetUpTestDB=`
+MATCH (s:Site { www:'example.com' })-[:hasPage]->(p:Page)
+OPTIONAL MATCH (p)-[h:hasRevision]->(r:Revision)
+OPTIONAL MATCH (p)-[:hasImage]->(i:Image)
+DETACH DELETE s,p,r,i
+
+      //----- Create parent abb
+MERGE (s:Site { www:'example.com' })
+MERGE (s)-[:hasPage]->(p:Page { nameLC:'abb', idPage:'iabb' })
+MERGE (p)-[h:hasRevision]->(r:Revision:RevisionLast {iRev:0, strEditText:'[[image:abcd]] abcd [[image:bah]] [[image:abcd]] abcd'})
+    RETURN s,p,r;
+    
+      //----- Create parent abc
+MERGE (s:Site { www:'example.com' })
+MERGE (s)-[:hasPage]->(p:Page { nameLC:'abc', idPage:'iabc' })
+MERGE (p)-[h:hasRevision]->(r:Revision:RevisionLast {iRev:0, strEditText:'[[image:abcd]] abcd [[image:bah]] [[image:abcd]] abcd'})
+    RETURN s,p,r;
+    
+      //----- Create image abcd
+MERGE (i:Image { nameLC:'abcd', name:'Abcd', idImage:'iabcd', boGotData:TRUE })
+    RETURN i
+    
+      //----- Create image stub abce
+MERGE (i:Image { nameLC:'abce', name:'Abce', idImage:'iabce'})
+WITH i
+MATCH (s:Site { www:'example.com' })-[:hasPage]->(pp:Page { nameLC:'abb' }), (s)-[:hasPage]->(pp2:Page { nameLC:'abc' })
+MERGE (pp)-[:hasImage]->(i)
+MERGE (pp2)-[:hasImage]->(i)
+    RETURN s,i,pp,pp2
+    
+
+      //----- View it all (except any orphan image)
+MATCH (s:Site { www:'example.com' })-[:hasPage]->(p:Page)
+OPTIONAL MATCH (p)-[h:hasRevision]->(r:Revision)
+OPTIONAL MATCH (p)-[:hasImage]->(i:Image)
+RETURN s,p,i,r
+
+
+
+
+MATCH (i:Image { nameLC:'abcd' }) WHERE i.boGotData
+    RETURN i
+
+MATCH (i:Image { idImage:'iabcd' })
+    RETURN i.nameLC AS nameLC
+    
+MATCH (pp:Page)-[hc:hasImage]->(i:Image { idImage:'iabcd' }), (pp)-[h:hasRevision]->(r:RevisionLast)
+    RETURN pp.idPage AS idPage, r.strEditText AS strEditText
+    
+
+    // Move parents->stub-relations to the image in question
+MATCH (pp:Page)-[hc:hasImage]->(is:Image { nameLC:'abce' }), (i:Image { idImage:'iabcd' })
+    MERGE (pp)-[:hasImage]->(i)
+    
+
+   // DETACH and DELETE the stub
+MATCH (is:Image { nameLC:'abce' })
+    DETACH DELETE is
+    
+   // Rename the image in question
+MATCH (i:Image { idImage:'iabcd'})
+    SET i+={nameLC:'abce', name:'Abce', tMod:timestamp()/1000}`
+
+
+renameImageNeo=function*(flow, tx, objArg){
+  var www=objArg.www, strName=objArg.strName;
+  
+  var strNameLC=strName.toLowerCase(); 
+  var Val={www:www, strNameLC:strNameLC, strName:strName, idImage:objArg.idImage};
+  
+      // The new name may refer to a stub or a real image. If it is a real image then bail out.
+  var strCql=`
+    MATCH (i:Image { nameLC:$strNameLC }) WHERE i.boGotData
+    RETURN i`;
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err];
+  if(records.length){ return [null, {mess:'imageExist'}]  }
+  
+      // Get the old name.
+  var strCql=`
+    MATCH (i:Image { idImage:$idImage })
+    RETURN i.nameLC AS nameLC`;
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err];
+  var nameLCO=records[0].nameLC;
+  
+      // Get parent strEditText
+  var strCql=`
+    MATCH (pp:Page)-[hc:hasImage]->(i:Image { idImage:$idImage }), (pp)-[h:hasRevision]->(r:RevisionLast)
+    RETURN pp.idPage AS idPage, r.strEditText AS strEditText`;
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err];
+  
+  var data=Array(records.length);
+  for(var i=0;i<records.length;i++){
+    var mPa=new Parser();
+    data[i]={idPage:records[i].idPage, strEditText:mPa.renameILinkOrImage(records[i].strEditText, '','', nameLCO, strName)};
+    //records[i].strEditText=mPa.renameILinkOrImage(records[i].strEditText, nameLCO, strName);
+  }
+  
+  var ValT={data:data};
+      // Write back to parents strEditText
+  var strCql=`
+    UNWIND {data} AS d
+    MATCH (p:Page {idPage: d.idPage})-[h:hasRevision]->(r:RevisionLast)
+    SET r.strEditText= d.strEditText, r.tModCache=0;`;
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, ValT); if(err) return [err];
+  
+      // Move parents->stub-relations to the image in question
+  var strCql=`
+    MATCH (pp:Page)-[hc:hasImage]->(is:Image { nameLC:$strNameLC }), (i:Image { idImage:$idImage })
+    MERGE (pp)-[:hasImage]->(i)`;
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err];
+  
+      // DETACH and DELETE the stub
+  var strCql=`
+    MATCH (is:Image { nameLC:$strNameLC })
+    DETACH DELETE is`;
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err];
+  
+
+      // Rename the image in question
+  var strCql=`
+    MATCH (i:Image { idImage:$idImage })
+    SET i+={nameLC:$strNameLC, name:$strName, tMod:timestamp()/1000}`;
+  var [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err];
+  
   return [null];
 }
 
@@ -508,7 +760,7 @@ saveByAddNeo=function*(flow, tx, objArg){
       //----- Create Revision
     MATCH (s:Site { name:$strSiteName })-[:hasPage]->(p:Page { nameLC:$strNameLC }) 
     CREATE (p)-[h:hasRevision]->(r:Revision:RevisionLast {iRev:$iRev})
-    SET r.tMod=$tNow, r.tModCache=$tNow, r.strEditText=$strEditText, r.strHtmlText=$strHtmlText, r.size=$size, r.hash=$hash, r.summary=$summary, r.signature=$signature
+    SET r.tMod=$tNow, r.tModCache=$tNow, r.strEditText=$strEditText, r.strHtmlText=$strHtmlText, r.size=$size, r.hash=$hash, r.summary=$summary, r.signature=$signature, r.boOther=TRUE
     SET p.lastRev=$iRev`;
   var objCql=splitCql(strCqlOrg);
 
@@ -694,17 +946,16 @@ getInfoNDataNeo=function*(flow, tx, objArg){
     MATCH (rd:RedirectDomain { www:$www })  
     RETURN rd.url AS url
     
-      //----- MATCH siteDefault, MERGE site and check Redirect
+      //----- MATCH siteDefault
     MATCH (sd:Site {boDefault:true}) // ON CREATE SET sd+={ name:toLower(myMisc.myrandstringFunc(7)), www:$www, boTLS:$boTLS, googleAnalyticsTrackingID:"", urlIcon16:"", urlIcon200:"", aPassword:"", vPassword:"", boDefault:true }
-    WITH sd
+    RETURN sd
     
-      //-- MERGE site and check Redirect
-    MERGE (s:Site { www:$www }) ON CREATE SET s+={ name:toLower(myMisc.myrandstringFunc(7)), www:$www, boTLS:$boTLS, googleAnalyticsTrackingID:"", urlIcon16:"", urlIcon200:"", aPassword:"", vPassword:"", boDefault:false }
-    WITH sd,s
+      //----- MATCH site and check Redirect
+    MATCH (s:Site { www:$www }) // ON CREATE SET s+={ name:toLower(myMisc.myrandstringFunc(7)), www:$www, boTLS:$boTLS, googleAnalyticsTrackingID:"", urlIcon16:"", urlIcon200:"", aPassword:"", vPassword:"", boDefault:false }
+    WITH s
     OPTIONAL MATCH (s)-[:hasRedirect]->(r:Redirect { nameLC:$strNameLC })
     SET r.nAccess=r.nAccess+1, r.tLastAccess=timestamp()/1000
-    RETURN sd, s, r.url AS url
-
+    RETURN s, r.url AS url
 
         //----- getPage and getNRev
     OPTIONAL MATCH (s:Site { name:$strSiteName })-[:hasPage]->(p:Page { nameLC:$strNameLC })
@@ -712,7 +963,6 @@ getInfoNDataNeo=function*(flow, tx, objArg){
     WITH p
     OPTIONAL MATCH (p)-[h:hasRevision]->(r:Revision)
     RETURN p, COUNT(r) AS nRev
-    
     
       //----- Get templates
     MATCH (:Site { name:$strSiteName })-[:hasPage]->(:Page { nameLC:$strNameLC })-[:hasChild]->(t:Page)-[h:hasRevision]->(r:RevisionLast) WHERE t.nameLC=~ 'template:.*'
@@ -724,15 +974,19 @@ getInfoNDataNeo=function*(flow, tx, objArg){
   var strCql=objCql['Check if RedirectDomain'], [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err];
   if(records[0]) {  extend(Ou, {mess:'redirectDomain', urlRedirect:records[0].url}); return [null,Ou]; }
 
-
+  var Val={};
+  var strCql=objCql['MATCH siteDefault'], [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err];
+  if(records.length==0) { extend(Ou, {mess:'noDefaultSite'}); return [null,Ou]; }
+  Ou.siteDefault=records[0].sd;
+  
   var {boErrAlreadyTalk, strTalkName}=calcTalkName(strName), strTalkNameLC=strTalkName.toLowerCase();
   var Val={www:www, strNameLC:strNameLC, boTLS:boTLS};
-  var strCql=objCql['MATCH siteDefault, MERGE site and check Redirect'], [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err];
-  if(records.length==0) { extend(Ou, {mess:'noDefaultSite'}); return [null,Ou]; }
-  var rec=records[0], site=rec.s,  urlRedirect=rec.url;  Ou.siteDefault=rec.sd;
-
+  var strCql=objCql['MATCH site and check Redirect'], [err, records]= yield* neo4jTxRun(flow, tx, strCql, Val); if(err) return [err];
+  if(records.length==0) { extend(Ou, {mess:'wwwNotFound'}); return [null,Ou]; }
+  var site=records[0].s,  urlRedirect=records[0].url;
+  
   if(urlRedirect) { extend(Ou, {mess:'redirect', urlRedirect:urlRedirect}); return [null,Ou]; }
-  if(!site) { extend(Ou, {mess:'wwwNotFound'}); return [null,Ou]; }
+  //if(!site) { extend(Ou, {mess:'wwwNotFound'}); return [null,Ou]; }
   if(boTLS!=site.boTLS)  { extend(Ou, {mess:'redirectTLS', boTLS:site.boTLS});  return [null,Ou]; }  // Redirect to correct boTLS
   var strSiteName=site.name;    extend(Ou, {siteName:strSiteName});
   Ou.site=site;
@@ -991,8 +1245,7 @@ getExistingSubNeo=function*(flow, tx, objArg){
 
 
 readPageFile=function*(flow,leafDir,strIDPage){
-  var leafDataDir='mmmWikiData';
-  var fsPage=path.join(__dirname, '..', leafDataDir, leafDir, strIDPage+'.txt'); 
+  var fsPage=path.join(__dirname, '..', 'mmmWikiBU', leafDir, strIDPage+'.txt'); 
   var err, buf=[];
   fs.readFile(fsPage, function(errT, bufT) { err=errT; buf=bufT; flow.next();  });   yield;  if(err) return [err];
   var strData=buf.toString();
@@ -1001,8 +1254,7 @@ readPageFile=function*(flow,leafDir,strIDPage){
 }
 //ENOENT
 writePageFile=function*(flow, leafDir, strIDPage, strData){
-  var leafDataDir='mmmWikiData';
-  var fsPage=path.join(__dirname, '..', leafDataDir, leafDir, strIDPage+'.txt'); 
+  var fsPage=path.join(__dirname, '..', 'mmmWikiBU', leafDir, strIDPage+'.txt'); 
   var err;
   fs.writeFile(fsPage, strData, function(errT){ err=errT;  flow.next();  });   yield;  if(err) return [err];
   

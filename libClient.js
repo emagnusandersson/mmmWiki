@@ -327,7 +327,8 @@ function popupHover(elArea,elBubble){
     }
     if(x<scrollX) x=scrollX;
     if(y<scrollY) y=scrollY;
-    elBubble.style.top=y+'px'; elBubble.style.left=x+'px';
+    //elBubble.style.top=y+'px'; elBubble.style.left=x+'px';
+    elBubble.css({top:y+'px', left:x+'px'});
     //if(boRight) {elBubble.style.left=x+'px'; elBubble.style.right='';} else {elBubble.style.left=''; elBubble.style.right=x+'px'; }
     //if(boBottom) {elBubble.style.top=y+'px'; elBubble.style.bottom='';} else {elBubble.style.top=''; elBubble.style.bottom=y+'px'; } 
   };
@@ -371,8 +372,6 @@ function popupHoverJQ($area,$bubble){
 
 
 
-
-
 /*******************************************************************************************************************
  * menuExtend (Display a menu under (or above) a button (when button is clicked))       (mousedown, drag, mouseup-on-option)
  *******************************************************************************************************************/
@@ -391,8 +390,8 @@ var menuExtend=function(el, elItems){
     el.childNodes.forEach(function(elA){ elA.classList.add('menuItem');});
     el.childNodes.forEach(function(elA){ elA.style.background='';});
     
-    var elAncestor=elButton.offsetParent || elHtml;
-    elAncestor.append(el);
+    //var elAncestor=elButton.offsetParent || elHtml;
+    elBody.append(el);
 
     var x,y;
 
@@ -403,26 +402,27 @@ var menuExtend=function(el, elItems){
     var winEdgeX=scrollX+winW, winEdgeY=scrollY+winH; 
     
     var boDown, boRight, boYFits=1;
-    var distEdgeButtLeft=xButt-scrollX, distEdgeButtRight=winEdgeX-(xButt+butW);
-    var distEdgeButtTop=yButt-scrollY, distEdgeButtBottom=winEdgeY-(yButt+butH);
-    if(distEdgeButtLeft<distEdgeButtRight) {boRight=1;}  else {boRight=0;} 
+    var margLeft=xButt-scrollX, margRight=winEdgeX-(xButt+butW);
+    var margTop=yButt-scrollY, margBottom=winEdgeY-(yButt+butH);
+    if(margLeft<margRight) {boRight=1;}  else {boRight=0;} 
     var hExtraMargin=boAndroid&&boChrome?55:5;
-    if(distEdgeButtBottom>el.offsetHeight+hExtraMargin) {boDown=1;} 
-    else if(distEdgeButtTop>el.offsetHeight+5) {boDown=0;} 
+    if(margBottom>el.offsetHeight+hExtraMargin) {boDown=1;} 
+    else if(margTop>el.offsetHeight+5) {boDown=0;} 
     else {boDown=1; boYFits=0; }
     
-    var xButtAnc=elButton.offsetLeft, yButtAnc=elButton.offsetTop; 
+    //var xButtAnc=elButton.offsetLeft, yButtAnc=elButton.offsetTop; 
 
     var cssEl;
-    if(boRight) {x=xButtAnc; cssEl={left:Number(x)+'px',right:''};}
-    else { x=elAncestor.clientWidth-(xButtAnc+elButton.offsetWidth); cssEl={left:'',right:Number(x)+'px'};}
+    if(boRight) {x=xButt; cssEl={left:Number(x)+'px',right:''};}
+    else { x=elBody.clientWidth-xButt-elButton.offsetWidth; cssEl={left:'',right:Number(x)+'px'};}
     el.css(cssEl);
     if(boYFits){
-      if(boDown) {y=yButtAnc+elButton.offsetHeight; cssEl={top:Number(y)+'px',bottom:''};}
-      else { y=elAncestor.clientHeight-yButtAnc; cssEl={top:'',bottom:Number(y)+'px'};}
+      if(boDown) {y=yButt+elButton.offsetHeight; cssEl={top:Number(y)+'px',bottom:''};}
+      else { y=yButt-el.offsetHeight; cssEl={top:Number(y)+'px',bottom:''};}
     }else{
-      var posAncestor=findPos(elAncestor);
-      y=scrollY-posAncestor.y; y=boIOS?Math.max(0,y):y; cssEl={top:Number(y)+'px',bottom:''};
+      //var posAncestor=findPos(elAncestor);
+      y=scrollY; //-posAncestor.y;
+      y=boIOS?Math.max(0,y):y; cssEl={top:Number(y)+'px',bottom:''};
     }
     el.css(cssEl);
   }

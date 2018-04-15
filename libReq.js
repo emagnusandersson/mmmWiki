@@ -77,7 +77,7 @@ app.reqBU=function*(strArg) {
         // The "NodeZip"-library assumes you want the local time written in the zip-file, I want UTC time (too be able to compare times even thought timezone and daylight-savings-time has changed).
       var unixSkew= file.tMod +(new Date(file.tMod*1000)).getTimezoneOffset()*60;
       var objArg={date:new Date(unixSkew*1000), comment:file.hash}; 
-      if(file.id in objDocIdToInd) ; else debugger; 
+      if(file.id in objDocIdToInd) ; else {  res.out500(new Error('id not in mongo'));   return;  }
       var data=doc[objDocIdToInd[file.id]].data.buffer;
       zipfile.file(file.strName, data, objArg);
     } 
@@ -96,8 +96,7 @@ app.reqBU=function*(strArg) {
   
   if(boServ){
     var outFileName=type+'.zip';
-    var leafDataDir='mmmWikiData';
-    var fsPage=path.join(__dirname, '..', leafDataDir, 'BU', outFileName); 
+    var fsPage=path.join(__dirname, '..', 'mmmWikiBU', outFileName); 
     var err;  fs.writeFile(fsPage, outdata, 'binary', function(errT){ err=errT;  flow.next();  });   yield;  if(err) { res.out500(err); return;}
     res.out200('OK');
   }else{
@@ -106,6 +105,8 @@ app.reqBU=function*(strArg) {
     res.writeHead(200,objHead);
     res.end(outdata,'binary');
   }
+  
+  var redisVar='mmmWiki_tLastBU', strTmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,unixNow()]);
 }
 
 
@@ -177,7 +178,7 @@ app.reqBUMeta=function*(strArg) {
   var Val={};
   var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err){res.out500(err); return; }
   
-  var StrFile=['"tCreated","tMod","tLastAccess","nAccess","name","nameLC","url"'];
+  var StrFile=['"tCreated","tMod","tLastAccess","nAccess","siteName","nameLC","url"'];
   for(var k=0;k<records.length;k++){
     var r=records[k], StrRow=[r.tCreated, r.tMod, r.tLastAccess, r.nAccess, myEscapeB(r.siteName), myEscapeB(r.nameLC), myEscapeB(r.url)];
     StrFile.push(StrRow.join(','));
@@ -193,9 +194,7 @@ app.reqBUMeta=function*(strArg) {
  
     // Output data  
   if(strArg=='Serv'){
-    //var outFileName='meta.zip';
-    var leafDataDir='mmmWikiData';
-    var fsBU=path.join(__dirname, '..', leafDataDir, 'BU'); 
+    var fsBU=path.join(__dirname, '..', 'mmmWikiBU'); 
     for(var i=0;i<StrData.length;i++){ 
       var fsTmp=path.join(fsBU, StrFileName[i]), err;  fs.writeFile(fsTmp, StrData[i], function(errT){ err=errT;  flow.next();  });   yield;     if(err) { console.log(err); res.out500(err); }
     }  //, 'binary'
@@ -527,6 +526,9 @@ app.reqIndex=function*() {
 
   for(var key in GRet)  Str.push(key+"="+JSON.stringify(GRet[key])+";");
 
+  var strDBType=(typeof mysql!='undefined')?'mysql':'neo4j';
+  Str.push("strDBType="+JSON.stringify(strDBType)+";");
+  
   Str.push("strBTC="+JSON.stringify(strBTC)+";");
   Str.push("ppStoredButt="+JSON.stringify(ppStoredButt)+";");
   Str.push("strReCaptchaSiteKey="+JSON.stringify(strReCaptchaSiteKey)+";");
@@ -974,7 +976,7 @@ app.reqMonitor=function*(){
   if(!objOthersActivity){  //  && boPageBUNeeded===null && boImageBUNeeded===null
     
     var strCql=` 
-      MATCH (s:Site)-[:hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE p.boOther
+      MATCH (s:Site)-[:hasPage]->(p:Page)-[h:hasRevision]->(r:RevisionLast) WHERE r.boOther
       RETURN s.name AS siteName, p.name AS pageName`;
     var Val={};
     var [err, records]= yield* neo4jRun(flow, sessionNeo4j, strCql, Val);  if(err) { res.out500(err); return; }

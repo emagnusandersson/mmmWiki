@@ -13,12 +13,32 @@ require('./libServerGeneral.js');
 require('./libServer.js');
 require('./libNeo4j.js');
 //require('./libNeo4jImage.js');
+var argv = require('minimist')(process.argv.slice(2));
 
 app=(typeof window==='undefined')?global:window;
 
 require('./parser.js'); 
 require('./parserTable.js'); 
 
+helpTextExit=function(){
+  var arr=[];
+  arr.push('USAGE testNeo4j [OPTION]...');
+  arr.push('  -h, --help                          Display this text');
+  
+  console.log(arr.join('\n'));
+  process.exit(0);
+}
+if(argv.h || argv.help) {helpTextExit(); return;}
+
+var strGenerator=argv.gen||'setNewCache';
+var www=argv.www||'localhost:5000';
+var strName=argv.page||'start';
+var strEditText=argv.data||'abc,link:starta,link:startb';
+
+var strGenerator=argv.gen||'renameImageNeo';
+var www=argv.www||'example.com';
+var strName=argv.page||'abce';
+var strEditText=argv.data||'abc,link:starta,link:startb';
 
 process.on('exit', function (){
   console.log('Goodbye!');
@@ -28,35 +48,36 @@ process.on('exit', function (){
 var driver = neo4j.driver("bolt://localhost", neo4j.auth.basic("neo4j", "jh10k"));
 sessionNeo4j = driver.session();
 
-// node --inspect --debug-brk testNeo4j.js --gengetInfoNDataNeo
-// node --inspect --debug-brk testNeo4j.js --gensaveByReplaceNeo --dataabc,link:starta,link:startd
-// node --inspect --debug-brk testNeo4j.js --gensaveByAddNeo  --pagestart --dataabclink:template:ttt,link:starta,mm,link:template:tttt,
-// node --inspect --debug-brk testNeo4j.js --gensaveByAddNeo  --pagestart --dataabclink:template:tt,link:template:ttt,link:starta,mm,link:template:tttt,
-// node --inspect --debug-brk testNeo4j.js --gensaveByAddNeo  --pagetemplate:tt --dataabc
-// node --inspect --debug-brk testNeo4j.js --gensaveByAddNeo  --pagetemplate:ttt --dataabc
+// node --inspect-brk testNeo4j.js --gengetInfoNDataNeo
+// node --inspect-brk testNeo4j.js --gensaveByReplaceNeo --dataabc,link:starta,link:startd
+// node --inspect-brk testNeo4j.js --gensaveByAddNeo  --pagestart --dataabclink:template:ttt,link:starta,mm,link:template:tttt,
+// node --inspect-brk testNeo4j.js --gensaveByAddNeo  --pagestart --dataabclink:template:tt,link:template:ttt,link:starta,mm,link:template:tttt,
+// node --inspect-brk testNeo4j.js --gensaveByAddNeo  --pagetemplate:tt --dataabc
+// node --inspect-brk testNeo4j.js --gensaveByAddNeo  --pagetemplate:ttt --dataabc
+// node --inspect-brk testNeo4j.js
 
-var myArg=process.argv.slice(2);
-for(var i=0;i<myArg.length;i++){
-  var Match=RegExp("^(-{1,2})([^-\\s]+)$").exec(myArg[i]);
-  if(Match[1]=='-') {
-    var tmp=Match[2][0];
-    if(tmp=='p') port=Match[2].substr(1);
-    else if(tmp=='h') helpTextExit();
-  }else if(Match[1]=='--') {
-    var tmpArg=Match[2]; 
-    var MatchA=/gen(.*)/.exec(tmpArg);  if(MatchA) strGenerator=MatchA[1];
-    var MatchA=/www(.*)/.exec(tmpArg);  if(MatchA) www=MatchA[1];
-    var MatchA=/page(.*)/.exec(tmpArg);  if(MatchA) strName=MatchA[1];
-    var MatchA=/data(.*)/.exec(tmpArg);  if(MatchA) strEditText=MatchA[1];
+//var myArg=process.argv.slice(2);
+//for(var i=0;i<myArg.length;i++){
+  //var Match=RegExp("^(-{1,2})([^-\\s]+)$").exec(myArg[i]);
+  //if(Match[1]=='-') {
+    //var tmp=Match[2][0];
+    //if(tmp=='p') port=Match[2].substr(1);
+    //else if(tmp=='h') helpTextExit();
+  //}else if(Match[1]=='--') {
+    //var tmpArg=Match[2]; 
+    //var MatchA=/gen(.*)/.exec(tmpArg);  if(MatchA) strGenerator=MatchA[1];
+    //var MatchA=/www(.*)/.exec(tmpArg);  if(MatchA) www=MatchA[1];
+    //var MatchA=/page(.*)/.exec(tmpArg);  if(MatchA) strName=MatchA[1];
+    //var MatchA=/data(.*)/.exec(tmpArg);  if(MatchA) strEditText=MatchA[1];
     
-    else if(tmp=='help') helpTextExit();
-  }
-}
+    //else if(tmp=='help') helpTextExit();
+  //}
+//}
 
-if(typeof strGenerator=='undefined') strGenerator='setNewCache';
-if(typeof www=='undefined') www='localhost:5000';
-if(typeof strName=='undefined') strName='start';
-if(typeof strEditText=='undefined') strEditText='abc,link:starta,link:startb';
+//if(typeof strGenerator=='undefined') strGenerator='setNewCache';
+//if(typeof www=='undefined') www='localhost:5000';
+//if(typeof strName=='undefined') strName='start';
+//if(typeof strEditText=='undefined') strEditText='abc,link:starta,link:startb';
 boTLS=false;
 
 //var regLink=new RegExp('link:([a-zA-Z:]+)','g'); 
@@ -80,13 +101,15 @@ generatorWrap=function*(){
   var urlMongo = 'mongodb://localhost:27017';
   var dbMongoParent=null;
   var err;  MongoClient.connect(urlMongo, function(errT, dbT) { err=errT; dbMongoParent=dbT; flow.next(); }); yield;   if(err) {console.error(err); return; }
-  dbMongo = dbMongoParent.db('myproject');
+  dbMongo = dbMongoParent.db('mmmWiki');
   
   if(boStartTX){
     var tx=sessionNeo4j.beginTransaction();
     
     if(strGenerator=='deletePageNeo'){  var objT=yield* app[strGenerator](flow, tx, objArg);
     }else if(strGenerator=='deletePageByMultIDNeo'){ extend(objArg,{IdPage:['Z91YJJD0bSx9r0QA','So9yR8W2iy2hHgAO']});   var objT=yield* app[strGenerator](flow, tx, objArg);
+    }else if(strGenerator=='renamePageNeo'){ extend(objArg,{idPage:'iabcd'});   var objT=yield* app[strGenerator](flow, tx, objArg);
+    }else if(strGenerator=='renameImageNeo'){ extend(objArg,{idImage:'iabcd'});   var objT=yield* app[strGenerator](flow, tx, objArg);
     }else if(strGenerator=='saveWhenUploadingNeo'){ extend(objArg,{fileName:"talk:start.txt"});  var objT=yield* app[strGenerator](flow, tx, objArg);
     }else if(strGenerator=='saveByReplaceNeo'){ extend(objArg,{boVLoggedIn:0,tModBrowser:(new Date).toUnix()});   var objT=yield* app[strGenerator](flow, tx, objArg); 
     }else if(strGenerator=='saveByAddNeo'){ var objT=yield* app[strGenerator](flow, tx, objArg); 

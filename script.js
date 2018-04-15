@@ -5,24 +5,23 @@ tls=require('tls');
 url = require("url");
 path = require("path");
 fs = require("fs");
-mysql =  require('mysql');
+//mysql =  require('mysql');
 gm =  require('gm').subClass({ imageMagick: true });
 im = require('imagemagick');
 temporary = require('tmp');
 util =  require('util');
 concat = require('concat-stream');
 requestMod = require('request');
-through = require('through')
+//through = require('through')
 querystring = require('querystring');
 //async = require('async');
 formidable = require("formidable");
-NodeRSA = require('node-rsa');
+//NodeRSA = require('node-rsa');
 crypto = require('crypto');
-tls=require('tls');
-atob = require('atob');
-childProcess = require('child_process');
+//atob = require('atob');
+//childProcess = require('child_process');
 zlib = require('zlib');
-imageSize = require('image-size');
+//imageSize = require('image-size');
 //Fiber = require('fibers');
 //Future = require('fibers/future');
 NodeZip=require('node-zip');
@@ -54,6 +53,7 @@ boLocal=strInfrastructure=='local';
 boDO=strInfrastructure=='do'; 
 
 
+StrValidLoadMeta=['site.csv', 'page.csv', 'image.csv', 'redirect.csv'];
 
 helpTextExit=function(){
   var arr=[];
@@ -61,25 +61,39 @@ helpTextExit=function(){
   arr.push('  -h, --help                          Display this text');
   arr.push('  -p, --port [PORT]                   Port number (default: 5000)');
   
-  arr.push('  --loadFrBUFolder [FILE] Load from BU folder.');
-  arr.push('    FILE= a single file of any of the following formats:');
-  arr.push('          txt-file with wiki-text');
-  arr.push('          image-file (acceptable formats: jpg, jpeg, png, gif, svg)');
-  arr.push('          zip-file containing one or multiple files of the above formats.');
-  arr.push('    If FILE is left empty then all files in the BU folder are loaded.');
+  arr.push('  --loadFrBU [FILE[+FILE...]] Load from BU folder.');
+  arr.push('    FILE can be any of page.zip, image.zip, '+StrValidLoadMeta.join(', ')+'');
+  arr.push('    NOTE!!! the order in which the files are supplied matters. Check the website for this program for valid combinations.');
+  //arr.push('    FILE= A file of any of the following formats:');
+  //arr.push('          txt-file with wiki-text');
+  //arr.push('          image-file (acceptable formats: jpg, jpeg, png, gif, svg)');
+  //arr.push('          zip-file containing one or multiple files of the above formats.');
+  //arr.push('          Any of "'+StrValidLoadMeta.join('", "')+'" "');
+  //arr.push('    If FILE is left empty then all files in the BU folder are loaded.');
   
-  arr.push('  -c, --createSiteDefault [DOMAIN]    Create a default site with the domain name DOMAIN');
-  arr.push('');
-  arr.push('  If --createSiteDefault is set then the following options can also be used:');
+  //arr.push('  -c, --createSiteDefault [DOMAIN]    Create a default site with the domain name DOMAIN');
+  //arr.push('');
+  //arr.push('  If --createSiteDefault is set then the following options can also be used:');
   //arr.push('  --vPassword[VPASSWORD]: VPASSWORD=administrator (view) password (for reading). Default:123.');
   //arr.push('  --aPassword[APASSWORD]: APASSWORD=administrator password for writing etc. Default:123');
-  arr.push('  --strSiteName [strSiteName]         Name of the created site (default:"default")');
-  arr.push('  --boTLS [BOTLS]                     If TLS is going to be used on the created site (default:false)');
+  //arr.push('  --strSiteName [strSiteName]         Name of the created site (default:"default")');
+  //arr.push('  --boTLS [BOTLS]                     If TLS is going to be used on the created site (default:false)');
+  //arr.push('  --unzipMeta Unzip any meta file (ending with "..._meta.zip") in the BU folder.');
+  //arr.push('  --loadMetaFrBU [TYPE[+TYPE...]] Load CSV file TYPE.csv from BU folder.');
+  //arr.push('    TYPE is any of "'+StrValidLoadMeta.join('", "')+'" or "all"');
+  //arr.push('    or any combination of them separated with a "+"');
+  //arr.push('    "all" coresponds to "'+StrValidLoadMeta.join('+')+'"');
+  //arr.push('    The CSV files are loaded in the order they are specified.');
+  //arr.push('        Ex: node script --loadMetaFrBU site.csv+page.csv');
+  //arr.push('           This will load site.csv then page.csv.');
+  arr.push('  --deleteAll Delete all. (A command supplied for your conviniance) WARNING this will delete everything on your neo4j-db and the mongodb-db called "mmmWiki").');
+  arr.push('    Dont use this command if you have other stuff on your neo4j-db');
   
 
   console.log(arr.join('\n'));
   process.exit(0);
 }
+
 
     // Set up redisClient
 var urlRedis;
@@ -165,7 +179,7 @@ var flow=( function*(){
   var urlMongo = 'mongodb://localhost:27017';
   var dbMongoParent=null;
   var err;  MongoClient.connect(urlMongo, function(errT, dbT) { err=errT; dbMongoParent=dbT; flow.next(); }); yield;   if(err) {console.error(err); return; }
-  dbMongo = dbMongoParent.db('myproject');
+  dbMongo = dbMongoParent.db('mmmWiki');
   
   //setUpMysqlPool();
 
@@ -174,23 +188,25 @@ var flow=( function*(){
   
   SiteName=[strAppName]; // To make the code analog to my other programs :-)
 
-    // loadPageZip or load
-  if(typeof argv.loadFrBUFolder!='undefined'){
-    yield* loadFrBUFolder(flow, argv.loadFrBUFolder);
-    process.exit(0); return;
-  }
+
+  var err, buf;  fs.readFile('./loadMMMWiki.cyp', function(errT, bufT) {  err=errT; buf=bufT;  flow.next(); });   yield;  if(err) return [err];
+  var strCqlOrg=buf.toString(); objCqlFilter=splitCql(strCqlOrg); 
+  
+    // Load fr BU-folder
+  if(typeof argv.loadFrBU!='undefined'){    yield* loadFrBU(flow, argv.loadFrBU);   process.exit(0); return;   }
+  if(typeof argv.deleteAll!='undefined'){  yield* deleteAll(flow);  process.exit(0); return;   }
 
     // Do db-query if --createSiteDefault was set in the arguments
-  if(argv.createSiteDefault || argv.c){
-    var www=argv.c || argv.createSiteDefault;
-    if(typeof www!='string') {console.log( "c or createSiteDefault should be followed with the domain name you want to create."); process.exit(-1); return; }
-    var tTmp=new Date().getTime();
-    var o={boTLS:argv.boTLS||false, www:www||'localhost', strSiteName:argv.strSiteName||'default'};
-    var [err]=yield* app.setUpNeo(flow, o);  if(err) {console.error(err); process.exit(-1); return; }
+  //if(argv.createSiteDefault || argv.c){
+    //var www=argv.c || argv.createSiteDefault;
+    //if(typeof www!='string') {console.log( "c or createSiteDefault should be followed with the domain name you want to create."); process.exit(-1); return; }
+    //var tTmp=new Date().getTime();
+    //var o={boTLS:argv.boTLS||false, www:www||'localhost', strSiteName:argv.strSiteName||'default'};
+    //var [err]=yield* app.setUpNeo(flow, o);  if(err) {console.error(err); process.exit(-1); return; }
   
-    console.log('Time elapsed: '+(new Date().getTime()-tTmp)/1000+' s'); 
-    process.exit(0);
-  }
+    //console.log('Time elapsed: '+(new Date().getTime()-tTmp)/1000+' s'); 
+    //process.exit(0);
+  //}
 
   tIndexMod=new Date(); tIndexMod.setMilliseconds(0);
 

@@ -61,13 +61,79 @@ Parser.prototype.preParse = function(callback) {
   var text=this.text;
   text = text.replace(RegExp(STARTCHARSTR,'g'),''); //Remove any possible STARTCHAR's
   text = text.replace(RegExp(ENDCHARSTR,'g'),'');  //Remove any possible ENDCHAR's
-  text = text.replace(RegExp("<!--[\\s\\S]*?-->",'g'),''); //in javascript there is no modifier to make "." mathch '\n', but one can use "[\s\S]" instead
-  //text = text.replace(/(<!--[\s\S]*?-->)/g,replaceCommentCB); //in javascript there is no modifier to make "." mathch '\n', but one can use "[\s\S]" instead
+  //text = text.replace(RegExp("<!--[\\s\\S]*?-->",'g'),''); //in javascript there is no modifier to make "." match '\n', but one can use "[\s\S]" instead
+  text = text.replace(RegExp("<!--[\\s\\S]*?-->",'g'),thisChanged(this.replaceCommentCB,this)); //in javascript there is no modifier to make "." mathch '\n', but one can use "[\s\S]" instead
   text = text.replace(RegExp("<style>([\\s\\S]*?)<\/style>",'ig'),thisChanged(this.replaceStyleCB,this)); //Replace style with temporary markups and sanitize content
-  text = text.replace(RegExp("\{\{(.*?)\}\}",'g'),thisChanged(this.replaceTemplateCB,this)); 
+  text = text.replace(RegExp("\{\{(.*?)\}\}",'g'),thisChanged(this.replaceTemplateCB,this));
   this.text=text;  callback(null,0);
 }
 
+Parser.prototype.renameILinkOrImage = function(text, strILink='', strILinkN, strImage='', strImageN) {
+  this.strILink=strILink;  this.strILinkN=strILinkN;  this.strImage=strImage;  this.strImageN=strImageN;
+  text = text.replace(RegExp(STARTCHARSTR,'g'),''); //Remove any possible STARTCHAR's
+  text = text.replace(RegExp(ENDCHARSTR,'g'),'');  //Remove any possible ENDCHAR's
+  text = text.replace(RegExp("<!--[\\s\\S]*?-->",'g'),thisChanged(this.replaceCommentCB,this)); //in javascript there is no modifier to make "." match '\n', but one can use "[\s\S]" instead
+  text = text.replace(RegExp("<nowiki>([\\s\\S]*?)<\/nowiki>",'ig'),thisChanged(this.replaceNoWikiCB,this)); 
+  text = text.replace(RegExp("<htmlsection>([\\s\\S]*?)<\/htmlsection>",'ig'),thisChanged(this.replaceHtmlSectionCB,this)); 
+  text = text.replace(RegExp("<pre>([\\s\\S]*?)<\/pre>",'ig'),thisChanged(this.replacePreCB,this)); 
+    //Replace pre-sections (<pre></pre>) with temporary markups (although not "spacePre" (see below))
+  
+  text=text.replace(/([^\[])\[([^\[])/g, '$1' +STARTCHAR +'singleLBracket' +ENDCHAR +'$2');   //Temporary markups of single left brackets. If you know any better way to handle brackets, doublebrackets etc. you can change all this. Especially how to handle single brackets in linktext etc, at the same time as handling links in imagecaptions.
+  text=text.replace(/([^\]])\]([^\]])/g,'$1' +STARTCHAR +'singleRBracket' +ENDCHAR +'$2');    //Temporary markups of single right brackets.  
+  text = text.replace(/\[\[([^\[\]]+?)\]\]/g ,thisChanged(this.replaceILinkRenameCB,this));  //Replace internal links with temporary markups.
+
+  text = text.replace(/\[\[ *image *:(.+?)\]\]/ig,thisChanged(this.replaceImageRenameCB,this));   //Replace images with temporary markups.
+  
+  
+  text = text.replace(RegExp(STARTCHARSTR +'img(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/img(\\1)' +ENDCHARSTR,'g'), thisChanged(this.putBackImageRenameCB,this)); //Put back Images   
+  text = text.replace(RegExp(STARTCHARSTR +'iLink(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/iLink(\\1)' +ENDCHARSTR,'g') ,thisChanged(this.putBackILinkRenameCB,this)); //Put back Internal links
+
+  //
+  // Put back all the removed stuff
+  //
+  
+  text = text.replace(RegExp(STARTCHARSTR+'singleLBracket'+ENDCHARSTR,'g'),'['); //Put back single left brackets
+  text = text.replace(RegExp(STARTCHARSTR+'singleRBracket'+ENDCHARSTR,'g'),']'); //Put back single right brackets
+  
+  text = text.replace(RegExp(STARTCHARSTR +'pre(\\d+)\/' +ENDCHARSTR,'g'),thisChanged(this.putBackPreCB,this));     
+  text = text.replace(RegExp(STARTCHARSTR +'htmlsection_(\\d+)' +ENDCHARSTR,'g'),thisChanged(this.putBackHtmlSectionCB,this));  //Put back html sections
+  text = text.replace(RegExp(STARTCHARSTR +'nowiki_(\\d+)' +ENDCHARSTR,'g'),thisChanged(this.putBackNoWikiCB,this));  //Put back nowiki sections
+     
+  text = text.replace(RegExp(STARTCHARSTR +'comment(\\d+)'+ENDCHARSTR,'g'),thisChanged(this.putBackCommentCB,this));     
+
+  return text;
+}
+
+    // ILink
+Parser.prototype.replaceILinkRenameCB=function(m,n){ 
+  var i=this.arrILink.length;
+  if(n.match(/^ *(image *:)|(category *:)/i) ) { return m; }
+  var parts=n.split('|'), nParts=parts.length;
+  var innerText; if(nParts>1)  innerText=parts[1];  else innerText='';
+  var pageLikeWritten=parts[0].trim(); //pageLikeWritten, needed when there is no innerText
+  if(this.strILink==pageLikeWritten.toLowerCase()) pageLikeWritten=this.strILinkN;
+  this.arrILink[i]=[pageLikeWritten, 0];
+  return STARTCHAR +'iLink' +i +ENDCHAR +innerText +STARTCHAR +'/iLink' +i +ENDCHAR;
+}
+Parser.prototype.putBackILinkRenameCB=function(m,n,o){
+  var pageLikeWritten=this.arrILink[n][0], text=o.length?'|'+o:'';
+  return '[[' +pageLikeWritten +text +']]';
+}
+
+    // images
+Parser.prototype.replaceImageRenameCB=function(m,n){ 
+  var i=this.arrImageLink.length;
+  var parts=n.split('|');
+  var name=parts[0].trim(), partsTmp=parts.slice(1);
+  if(this.strImage==name.toLowerCase()) name=this.strImageN;
+  this.arrImageLink[i]=name;
+  return STARTCHAR +'img' +i +ENDCHAR +partsTmp.join('|') +STARTCHAR +'/img' +i +ENDCHAR; 
+}
+Parser.prototype.putBackImageRenameCB=function(m,i,o){
+  var name=this.arrImageLink[i];
+  if(o.length) o='|'+o;
+  return '[[image:' +name +o +']]';
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Parser.prototype.parse = function(callback) {
@@ -129,8 +195,7 @@ Parser.prototype.parse = function(callback) {
   text = text.replace(/\[\[ *((?:wikipedia)|(?:wiktionary)) *:([^\n]+?)\]\]/ig,thisChanged(this.replaceInterWikiLinkCB,this));  //Replace interwiki links with temporary markups.
   text = text.replace(/\[\[([^\[\]]+?)\]\]/g ,thisChanged(this.replaceILinkCB,this));  //Replace internal links with temporary markups.
 
-    //Replace internal links with temporary markups. 
-  text = text.replace(/\[\[ *image *:(.+?)\]\]/ig,thisChanged(this.replaceImageCB,this));   //Replace images with temporary markups  
+  text = text.replace(/\[\[ *image *:(.+?)\]\]/ig,thisChanged(this.replaceImageCB,this));   //Replace images with temporary markups.
     // Gallery resp horizontallist. They are a bit similar, the difference is that:
     //   *gallery items has fixed width
     //   *horizontallist items has dynamic width
@@ -466,7 +531,8 @@ Parser.prototype.putBackExternalLinkCB=function(m,n,o){
 }
 
     // comments
-Parser.prototype.replaceCommentCB=function(m,n){  var i=this.arrComment.length;  this.arrComment[i]=n;  return STARTCHAR+'comment'+i+ENDCHAR;  }
+Parser.prototype.replaceCommentCB=function(m){
+    var i=this.arrComment.length;  this.arrComment[i]=m;  return STARTCHAR+'comment'+i+ENDCHAR;  }
 Parser.prototype.putBackCommentCB=function(m,n){  return this.arrComment[n];  }
 
     // nowiki

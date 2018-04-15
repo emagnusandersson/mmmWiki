@@ -11,7 +11,7 @@
 ==Creating lists==
 ===page===
 //----- List.page.column
-s.boTLS AS boTLS, s.name AS siteName, s.www AS www, p.name AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, p.tCreated AS tCreated, r.tMod AS tMod, r.tModCache AS tModCache, r.iRev AS lastRev, p.boOther AS boOther, p.idPage AS idPage, r.size AS size, p.nChild AS nChild, p.nImage AS nImage, p.tLastAccess AS tLastAccess, p.nAccess AS nAccess
+s.boTLS AS boTLS, s.name AS siteName, s.www AS www, p.name AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, p.tCreated AS tCreated, r.tMod AS tMod, r.tModCache AS tModCache, r.iRev AS lastRev, r.boOther AS boOther, p.idPage AS idPage, r.size AS size, p.nChild AS nChild, p.nImage AS nImage, p.tLastAccess AS tLastAccess, p.nAccess AS nAccess
 //-----
 // Different query depending on parentfilter: null, nullRemoved, all
 // Because of "relationship uniqueness" the "nullRemoved"-query needs a separate MATCH for "ppcount"
