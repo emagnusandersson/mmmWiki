@@ -27,8 +27,10 @@ myQueryGen=function*(flow, sql, Val, pool){
       else { console.log('No \'code\' in err'); return [err]; }
     }
   
+    //console.log('connection.threadId: ' + connection.threadId);
     connection.query(sql, Val, function(errT, resultsT, fieldsT) { err=errT; results=resultsT; fields=fieldsT; flow.next();}); yield;
     connection.release();
+//connection.destroy();
     if(err) {
       console.log('Error when making mysql query, attemptCounter: '+i);
       if(typeof err=='object' && 'code' in err) {
@@ -49,9 +51,7 @@ MyNeo4j=function(){
   var chars = ['\\"', '\\\'', '\\\\'],   tmpStr='[' +chars.join("") +']';  this.regEscape=new RegExp(tmpStr, 'g');
   this.funEscape=function(m){ return "\\"+m;  }
 }
-MyNeo4j.prototype.escape=function(str){  return str.replace(this.regEscape,this.funEscape);    }
-
-
+MyNeo4j.prototype.escape=function(str){  if(typeof str=='string') str=str.replace(this.regEscape,this.funEscape);  return str;  }
 
 ErrorClient=class extends Error {
   constructor(message) {
@@ -212,9 +212,9 @@ readFileToCache=function*(strFileName) {
   var type, Match=regFileType.exec(strFileName);    if(Match && Match.length>1) type=Match[1]; else type='txt';
   var boZip=regZip.test(type),  boUglify=regUglify.test(type);
   var err, buf;
-  fs.readFile(strFileName, function(errT, bufT) {  err=errT; buf=bufT;  flow.next();   });  yield;
-  if(!err) {    yield* CacheUri.set.call(this, '/'+strFileName, buf, type, boZip, boUglify);    }
-  return err;
+  fs.readFile(strFileName, function(errT, bufT) {  err=errT; buf=bufT;  flow.next();   });  yield;  if(err) return [err];
+  var [err]=yield* CacheUri.set.call(this, '/'+strFileName, buf, type, boZip, boUglify);  if(err) return [err];
+  return [null];  
 }
 
 CacheUriT=function(){
@@ -230,12 +230,13 @@ CacheUriT=function(){
       var bufI=buf;
       var gzip = zlib.createGzip();
       var err;
-      zlib.gzip(bufI, function(errT, bufT) { err=errT; buf=bufT; selfA.flow.next(); });  yield; 
-      if(err){  console.log(err);  process.exit(); return;}
+      zlib.gzip(bufI, function(errT, bufT) { err=errT; buf=bufT; selfA.flow.next(); });  yield;
+      if(err) return [err];
+      //if(err){  console.log(err);  process.exit(); return;}
     }
     self[key]={buf:buf,type:type,eTag:eTag,boZip:boZip,boUglify:boUglify};
+    return [null];
   }
-  
 }
 
 

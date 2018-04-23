@@ -249,6 +249,8 @@ tbody,thead {border-width:inherit;border-style:inherit }
 .boxShadowOn {box-shadow: 0 0 0 0.2em lightgreen inset;background-color:#eee; color:limegreen}
 .boxShadowOff {box-shadow: 0 0 0 0.2em darkgrey inset;background-color: #ddd}
 
+.eye {font-family:courier; font-size:90%; letter-spacing:-.5em; transform:translate(0px, 0em) rotate(90deg); display:block;width:1.1em;text-align:start}
+
 button, select { box-sizing:border-box; height:2.5em; font-size:0.8em; margin:0.5 0.5; padding:0 0.2em; font-size: inherit;vertical-align:middle;background-color:#eee;border-radius:0.4em}
 button.flexWidth{} /*height:1.8em;padding-left:0.7em;padding-right:0.7em*/
 button.fixWidth{} /*width:2em*/
@@ -260,61 +262,63 @@ button.fixWidth{} /*width:2em*/
 .redirectTab td, .siteTab td { background-color: #ccc;}
 
 
-.pageList p > span, .imageList p > span{  vertical-align:top; display:inline-block}
-.pageList span[name=cb], .imageList span[name=cb] { margin-left:0.5em; width:1.4em;}
-.pageList span[name=cb] > input, .imageList span[name=cb] > input { transform:scale(1.5,1.5);}
+.pageList p { overflow:hidden;background: #ccc; line-height:2em}
+.imageList p { background: #ddd; line-height:3em}
+
+.listHead span{  vertical-align:top; display:inline-block}
+.listHead {margin:.5em 0 0; } /* position:sticky; position:-webkit-sticky; top:57px; z-index:1 */
+.listHead span {cursor:pointer}
+.listHead img {transform:scale(1.5,1.5);margin:0.3em auto;display:block}
+
+
+  /* parentRow, pageHead, pageList, imageHead and imageList */
 .pageList span[name=execute] , .imageList span[name=execute] { min-width:1.2em; margin-left:0.5em;}
-.pageList span[name=execute] > button, .imageList span[name=execute] > button { width:1.2em;padding:0em;}
 .pageList span[name=date], .imageList span[name=date] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
-.pageList span[name=boOR], .pageList span[name=boOW], .pageList span[name=boSiteMap] { margin-left:0.3em; width:.7em;}
-.listBody span[name=boOR], .listBody span[name=boOW], .listBody span[name=boSiteMap] {font-family:courier}
-.imageList span[name=image] { margin-left:0.5em; width:50px;}
-.imageList span[name=image] > img { vertical-align: middle;margin-right:0.1em; max-width:50px; max-height:50px}
-
 .pageList span[name=size], .imageList span[name=size] { min-width:2em; float: right;text-align:right}
-   /* Right aligned buttons */
+.pageList span[name=execute] > button, .imageList span[name=execute] > button { width:1.2em;padding:0em;}
+
+  /* parentRow, pageHead and pageList */
 .pageList span[name=nChild], .pageList span[name=nImage] { min-width:1.5em; float: right;}
+.pageList span[name=boOR], .pageList span[name=boOW], .pageList span[name=boSiteMap] { margin-left:0.3em; width:.7em;font-family:courier}
+.pageList span[name=siteName] { margin-right:0.5em}
+
 .pageList span[name=nChild] > button, .pageList span[name=nImage] > button { padding:0; min-width:1.4em}
-.pageList span[name=nImage] > button { background:lightblue}
-
-   /* Parent buttons */
-.pageList span[name=nParent], .imageList span[name=nParent], .imageList span[name=nParentI] { min-width:1.5em;}
-.pageList span[name=nParent] > button, .imageList span[name=nParent] > button, .imageList span[name=nParentI] > button { padding:0; min-width:1.4em}
-
-.divMenuTop button { padding:0; min-width:1.4em}
-
-    /* Arrow buttons */
-.pageList span[name=nChild] button, .pageList span[name=nImage] button, .pageList span[name=nParent] button, .imageList span[name=nParent] button, .imageList span[name=nParentI] button, .divMenuTop button { background-position: center; background-repeat: no-repeat; background-size: 100% 100%; border: 0;border-radius: 0;background-color: transparent;}
-
-.pageList span[name=nParent] button, .imageList span[name=nParent] button {background-image: url("buttonLeft1.png");}
-.imageList span[name=nParentI] button {background-image: url("buttonLeftBlue1.png");}
-/*
-, .divMenuTop button
-*/
-
 .pageList span[name=nChild] button {background-image: url("buttonRight1.png");}
 .pageList span[name=nImage] button {background-image: url("buttonRightBlue1.png");}
 
-
-.pageList span[name=siteName] { margin-right:0.5em}
-.listHead {margin:.5em 0 0; position:sticky; position:-webkit-sticky; top:57px; z-index:1} /* */
-.listHead span[name=siteName] { margin-left:1em}
-.listHead span[name=link] { margin-left:2em}
-.listHead span {cursor:pointer}
-.listHead img {transform:scale(1.5,1.5);margin:0.3em auto;display:block}
+  /* parentRow, pageList and imageList */
 .pageList span[name=link] > a, .imageList span[name=link] > a { word-break:break-word; vertical-align:top}
-/*.imageList img { vertical-align:top}*/
+
+  /* pageHead, pageList, imageHead and imageList */
+.pageList span[name=nParent], .imageList span[name=nParent], .imageList span[name=nParentI] { min-width:1.5em;}
+.pageList span[name=nParent] > button, .imageList span[name=nParent] > button, .imageList span[name=nParentI] > button { padding:0; min-width:1.4em}
+.pageList span[name=nParent] button, .imageList span[name=nParent] button {background-image: url("buttonLeft1.png");}
+.imageList span[name=nParentI] button {background-image: url("buttonLeftBlue1.png");}
+.pageList span[name=cb], .imageList span[name=cb] { margin-left:0.5em; width:1.4em;}
 
 .pageList span[name=version] {  margin-left:0.5em; margin-right:0.5em; float: right}
-.imageList span[name=boOther] {  margin-left:0.5em; margin-right:0.5em; float: right}
+.imageList span[name=boOther] {  margin-left:0.5em; margin-right:0.5em; float: right; }
+  
+  /* pageList and imageList */
+.pageList span[name=cb] > input, .imageList span[name=cb] > input { transform:scale(1.5,1.5);}
 .listBody span[name=version], .listBody span[name=boOther] { background:red; }
+  /* imageHead and imageList */
+.imageList span[name=image] { margin-left:0.5em; width:50px;}
+.imageList span[name=image] > img { vertical-align: middle;margin-right:0.1em; max-width:50px; max-height:50px}
+
+
+    /* Arrow buttons */
+.pageList span[name=nChild] button, .pageList span[name=nImage] button, .pageList span[name=nParent] button, .imageList span[name=nParent] button, .imageList span[name=nParentI] button { background-position: center; background-repeat: no-repeat; background-size: 100% 100%; border: 0;border-radius: 0;background-color: transparent;}
+
+
+
+.listHead span[name=siteName] { margin-left:1em}
+.listHead span[name=link] { margin-left:2em}
 .listHead span[name=version], .listHead span[name=boOther] { min-width:1.5em;}
 .listHead span[name=execute] { visibility:hidden}
 .listHead span[name=image] { visibility:hidden}
 
 
-.pageList p { overflow:hidden;background: #ccc; line-height:2em}
-.imageList p { background: #ddd; line-height:3em}
 
 /*.menuItem:nth-child(odd) {background:#ccc}*/
 /*.menuItem {line-height:2}*/

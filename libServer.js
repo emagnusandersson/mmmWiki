@@ -186,37 +186,36 @@ createSaveByReplaceSQL=function(siteName, wwwSite, strName, strEditText, strHtml
   var [strSubQ,arrSubV]=createSubStr(arrSub);
   var strSubImageQ=createSubImageStr(StrSubImage);
   var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  Sql.push("START TRANSACTION; TRUNCATE "+tmpSubNew+"; "+strSubQ);
+  Sql.push("TRUNCATE "+tmpSubNew+"; "+strSubQ); // START TRANSACTION; 
   Sql.push("TRUNCATE "+tmpSubNewImage+"; "+strSubImageQ);
-  Sql.push("CALL "+strDBPrefix+"saveByReplace(?,?,?,?,?,?); COMMIT;");
+  Sql.push("CALL "+strDBPrefix+"saveByReplace(?,?,?,?,?,?);");  //  COMMIT;
   var sql=Sql.join('\n'); 
   var Val=array_merge(arrSubV, StrSubImage, [siteName, wwwSite, strName, strEditText, strHtmlText, eTag]);
-  return {sql:sql,Val:Val,nEndingResults:2};
+  return {sql:sql,Val:Val,nEndingResults:1};
 }
 
 createSaveByAddSQL=function(wwwSite, strName, summary, signature, strEditText, strHtmlText, eTag, arrSub, StrSubImage){ 
   var [strSubQ,arrSubV]=createSubStr(arrSub);
   var strSubImageQ=createSubImageStr(StrSubImage);
   var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  Sql.push("START TRANSACTION; TRUNCATE "+tmpSubNew+"; "+strSubQ);
+  Sql.push("TRUNCATE "+tmpSubNew+"; "+strSubQ); // START TRANSACTION; 
   Sql.push("TRUNCATE "+tmpSubNewImage+"; "+strSubImageQ);
-  Sql.push("CALL "+strDBPrefix+"saveByAdd(?,?,?,?,?,?,?); COMMIT;");
+  Sql.push("CALL "+strDBPrefix+"saveByAdd(?,?,?,?,?,?,?);"); //  COMMIT;
   var sql=Sql.join('\n');
   var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, summary, signature, strEditText, strHtmlText, eTag]);
-  return {sql:sql,Val:Val,nEndingResults:2};
+  return {sql:sql,Val:Val,nEndingResults:1};
 }
 
 createSetNewCacheSQL=function(wwwSite, strName, rev, strHtmlText, eTag, arrSub, StrSubImage){
   var [strSubQ,arrSubV]=createSubStr(arrSub);
   var strSubImageQ=createSubImageStr(StrSubImage);
   var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  Sql.push("START TRANSACTION;");
-  Sql.push("TRUNCATE "+tmpSubNew+"; "+strSubQ);
+  Sql.push("TRUNCATE "+tmpSubNew+"; "+strSubQ); // START TRANSACTION; 
   Sql.push("TRUNCATE "+tmpSubNewImage+"; "+strSubImageQ);
-  Sql.push("CALL "+strDBPrefix+"setNewCache(?,?,?,?,?); COMMIT;");
+  Sql.push("CALL "+strDBPrefix+"setNewCache(?,?,?,?,?);"); //  COMMIT;
   var sql=Sql.join('\n');
   var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, rev, strHtmlText, eTag]);
-  return {sql:sql,Val:Val,nEndingResults:2}; 
+  return {sql:sql,Val:Val,nEndingResults:1}; 
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -272,13 +271,9 @@ setSetting=function*(inObj){
 
 
 writeCacheDynamicJS=function*() {
-  /*for(var key in Site){
-    var buf=createWWWJS(key);
-    var keyCache=key+'/'+leafSiteSpecific;
-    CacheUri.set(keyCache, buf, 'js', true, true);
-  }*/
   var buf=createCommonJS();
-  yield* CacheUri.set.call(this, '/'+leafCommon, buf, 'js', true, true);
+  var [err]=yield* CacheUri.set.call(this, '/'+leafCommon, buf, 'js', true, true);   if(err) return [err];
+  return [null];
 }
 
 /*

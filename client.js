@@ -12,8 +12,14 @@ MmmWikiFiltExtention={
   getParentsOn:function(){
     var tmpFilt=this[this.iParent];  return tmpFilt[1];
   },
+  getParentsOff:function(){
+    var tmpFilt=this[this.iParent];  return tmpFilt[0];
+  },
   getNParentsOn:function(){
     var tmpFilt=this[this.iParent];  return tmpFilt[1].length;
+  },
+  getNParentsOff:function(){
+    var tmpFilt=this[this.iParent];  return tmpFilt[0].length;
   },
   getSingleParent:function(){
     var tmpFilt=this[this.iParent]; if(tmpFilt[1].length==1 && tmpFilt[2]==1) return tmpFilt[1][0];     else return false;
@@ -389,7 +395,12 @@ adminDivExtend=function($el){
 adminMoreDivExtend=function($el){
   $el.toString=function(){return 'adminMoreDiv';}
   $el.setUp=function(){
-    majax(oAJAX,[['getLastTMod',{},function(data){  $aBUFilesToComp.prop('title', swedTime(data.tLastMod) );  }]]);  
+    var funRet=function(data){
+      var boBUNeeded=data.tLastMod>data.tLastBU, strTmp='tLastBU: '+swedTime(data.tLastBU)+', tLastMod: '+swedTime(data.tLastMod);
+      $aBUFilesToComp.prop('title', strTmp).css({'background':boBUNeeded?'red':''});
+    }
+    majax(oAJAX,[['getLastTModNTLastBU',{},funRet]]);  
+    //majax(oAJAX,[['isBUNeeded',{},function(data){  $aBUFilesToComp.prop('title', swedTime(data.tLastMod) );  }]]);  
   }
   var strPublicRead='<span style="display:inline-block">'+charPublicRead+'</span>';
   var $imgH=$imgHelp.clone().css({'margin-left':'.5em','margin-right':'0.5em'}); popupHoverJQ($imgH,$('<div>').html(strPublicRead+' = public read access<br>'+charPublicWrite+' = public write access<br>'+charPromote+' = promote = include the page in sitemap.xml etc. (encourage search engines to list the page)'));
@@ -427,12 +438,12 @@ adminMoreDivExtend=function($el){
   var $statLink=$('<a>').prop({href:'stat.html'}).append('stat');
   var $pageListButton=$('<button>').append('List').addClass('fixWidth').click(function(){
     //var idTmp=objPage.idPage; if(isNaN(idTmp)) idTmp=null;
-    var idTmp=objPage.idPage; if(typeof idTmp!='string' || idTmp.length==0) idTmp=null;
+    var idTmp=objPage.idPage; if(typeof idTmp=='string' && idTmp.length==0) idTmp=null;
     $pageFilterDiv.Filt.setSingleParent(idTmp);  $pageList.histPush(); $pageList.loadTab();  $pageList.setVis();
   });    
   var $imageListButton=$('<button>').append('List').addClass('fixWidth').click(function(){
     //var idTmp=objPage.idPage; if(isNaN(idTmp)) idTmp=null;
-    var idTmp=objPage.idPage; if(typeof idTmp!='string' || idTmp.length==0) idTmp=null;
+    var idTmp=objPage.idPage; if(typeof idTmp=='string' && idTmp.length==0) idTmp=null;
     $imageFilterDiv.Filt.setSingleParent(idTmp);   $imageList.histPush();  $imageList.loadTab();  $imageList.setVis();  // $pageFilterDiv.Filt.filtClear();
   });
 
@@ -480,8 +491,9 @@ adminMoreDivExtend=function($el){
   var $menuF=$('<div>').append($uploadAdminDiv).css(objBottomLine);
   var $menuG=$('<div>').append($siteButton,$redirectButton).css(objBottomLine);
   var $menuH=$('<div>').append("<b>Save to server-BU-Folder: </b>", $butBUPageServ,$butBUImageServ,$butBUMetaServ).css(objBottomLine);
-  var $menuI=$('<div>').append("<b>Load from server-BU-Folder: </b>", $butLoadFromServerP, $butLoadFromServerI);
-  var $Menu=$([]).push($menuA,$menuB0, $menuB,$menuC,$menuE,$menuF,$menuG, $menuH, $menuI).css({margin:'0.5em 0'}); //,$menuD
+  var $menuI=$('<div>').append("<b>Load from server-BU-Folder: </b>", $butLoadFromServerP, $butLoadFromServerI).css(objBottomLine);
+  var $menuJ=$('<div>').append('DB: '+strDBType);
+  var $Menu=$([]).push($menuA,$menuB0, $menuB,$menuC,$menuE,$menuF,$menuG, $menuH, $menuI, $menuJ).css({margin:'0.5em 0'}); //,$menuD
 
   $el.$divCont=$('<div>').append($Menu);
   $el.$divCont.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'1em auto'});
@@ -913,7 +925,7 @@ diffBackUpDivExtend=function($el){
   var saveFun=function(){
     getBlobURL(function(blobURL) {
       var aSave = document.createElement("a");
-      var outFileName=calcBUFileName(wwwCommon,'image','zip'); // Todo: wwwCommon-variable should change after siteTabView changes
+      var outFileName=calcBUFileName(objSiteDefault.www,'image','zip'); // Todo: wwwCommon-variable should change after siteTabView changes
       aSave.download = outFileName;
       aSave.href = blobURL;
       var event = document.createEvent("MouseEvents");
@@ -1103,7 +1115,7 @@ uploadAdminDivExtend=function($el){
   var flowVerify;
   $inpFile.change(function(e) {
     flowVerify=verifyFun.call(this,e);  flowVerify.next();
-  }).click(function(){$uploadButton.prop("disabled",true);});
+  }).click(function(){$inpFile[0].value=""; $uploadButton.prop("disabled",true);});
   $uploadButton.click(sendFun);
 
   return $el;
@@ -1333,6 +1345,24 @@ var headExtend=function($el, $tableDiv, StrName, BoAscDefault, Label, strTR='tr'
   return $el;
 }
 
+
+
+
+  // Methods of clicked button
+var clickSetParentFilter=function(){
+  var idPage=$(this).parent().parent().data('idPage');  $pageFilterDiv.Filt.setSingleParent(idPage); $pageList.histPush(); $pageList.loadTab();
+  if(!$pageList.is(":visible")) $pageList.setVis();
+}
+var clickSetParentFilterI=function(){
+  //changeHist({$view:$imageList});
+  $imageList.setVis();
+  var idPage=$(this).parent().parent().data('idPage');   $imageFilterDiv.Filt.setSingleParent(idPage); $imageList.histPush(); $imageList.loadTab(); 
+  if(!$imageList.is(":visible")) $imageList.setVis();
+}
+
+var PageRowLabel={nParent:'Parents / Alternatve parents', cb:'Select',date:'Last Modified',boOR:'Public read access', boOW:'Public write access', boSiteMap:'Promote (include in Sitemap.xml etc)', nImage:'Images', nChild:'Child pages', version:'Supplied by user / mult versions'};
+  
+  
 pageListExtend=function($el){ 
 "use strict"
   $el.toString=function(){return 'pageList';}
@@ -1340,18 +1370,18 @@ pageListExtend=function($el){
     var $rows=$tbody.children('p');
     for(var i=$rows.length; i<File.length;i++){
       var $r=$('<p>');
-      var $cb=$('<input type=checkbox>').click(cbClick); //.css({visibility:'hidden'});//.hide();
+      var $cb=$('<input type=checkbox>').click(cbClick);
       //$cb.css({'margin-top':'0em','margin-bottom':'0em'});  //,'vertical-align':'bottom'
       //if(boAndroid) $cb.css({'-webkit-transform':'scale(2,2)'}); else $cb.css({width:'1.4em',height:'1.4em'});
-      var $buttonNParent=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'page','page');});
+      var $buttonNParent=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'page');});  // ,'page'
       var $tdNParent=$('<span>').append($buttonNParent).attr('name','nParent').prop('title','Parents');
       var $tdCB=$('<span>').data('valSort',0).append($cb).attr('name','cb'); //.css({'margin-left':'0.15em'});
       //var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
-      var $buttonExecute=$('<button>').append(charFlash).on(strMenuExecuteEvent,buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"}) 
-      var $tdExecute=$('<span>').data('valSort',0).append($buttonExecute).attr('name','execute'); 
-      var $tdR=$('<span>').attr('name','boOR').html(charPublicRead).prop('title',Label.boOR), $tdW=$('<span>').attr('name','boOW').html(charPublicWrite).prop('title',Label.boOW), $tdP=$('<span>').attr('name','boSiteMap').html(charPromote).css({'margin-right':'0.15em'}).prop('title',Label.boSiteMap);
+      var $buttonExecute=$('<button>').append(charFlash).on(strMenuOpenEvent,$menuPageSingle.buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"});
+      var $tdExecute=$('<span>').data('valSort',0).append($buttonExecute).attr('name','execute');
+      var $tdR=$('<span>').attr('name','boOR').html(charPublicRead).prop('title',PageRowLabel.boOR), $tdW=$('<span>').attr('name','boOW').html(charPublicWrite).prop('title',PageRowLabel.boOW), $tdP=$('<span>').attr('name','boSiteMap').html(charPromote).css({'margin-right':'0.15em'}).prop('title',PageRowLabel.boSiteMap);
       var $tdVer=$('<span>').attr('name','version'); //.css({'margin-left':'0.15em'});
-      var $tdDate=$('<span>').attr('name','date').prop('title',Label.date);
+      var $tdDate=$('<span>').attr('name','date').prop('title',PageRowLabel.date);
       var $tdSite=$('<span>').attr('name','siteName'); //.hide();
       var $aLink=$('<a>').prop({target:"_blank"});
       var $tdLink=$('<span>').attr('name','link').append($aLink); //.hide();
@@ -1373,16 +1403,17 @@ pageListExtend=function($el){
   }
   var cbClick=function(){
     var $cb=$(this), boOn=Number($cb.prop('checked'));    $cb.parent().data('valSort',boOn);
-    var boOn=isAnyOn();    $allButton.text(boOn?'None':'All');    $executeButton.toggle(boOn);
+    var boOn=isAnyOn();    $allButton.text(boOn?'None':'All');    $buttonExecuteMult.toggle(boOn);
   }
   var fileArray2Div=function(){
     var nRT=File.length;
     var $rows=$tbody.children('p');   $rows.slice(nRT).hide();
-    $myRows=$rows.slice(0,nRT); 
+    var $myRows=$rows.slice(0,nRT); 
     //if($myRows.length==0) { return; }
     $myRows.show();
     $myRows.each(function(i,r){ 
-      var $r=$(r).data({idPage:File[i].idPage, iFlip:i, pageName:File[i].pageName, nParent:File[i].nParent, idParent:File[i].idParent, nameParent:File[i].nameParent}); 
+      //var $r=$(r).data({idPage:File[i].idPage, iFlip:i, pageName:File[i].pageName, nParent:File[i].nParent, idParent:File[i].idParent, nameParent:File[i].nameParent}); 
+      var $r=$(r); $r.data(File[i]);  $r.data({iFlip:i}); 
       $r.attr({idPage:File[i].idPage});
       var f=File[i];      
       var nParent=File[i].nParent, $buttonTmp=$r.children('span[name=nParent]').data('valSort',nParent).children('button');
@@ -1399,17 +1430,17 @@ pageListExtend=function($el){
         //$buttonTmp.prop("disabled",boHide).css({opacity:boHide?0.5:''});
         $buttonTmp.children('span:eq(0)').html(nParent); 
       $r.children('span[name=cb]').data('valSort',0).children('input').prop({'checked':false}); 
-      var tmp=File[i].boOR; $r.children('span[name=boOR]').data('valSort',tmp).css({visibility:tmp==1?'':'hidden'}); 
-      var tmp=File[i].boOW; $r.children('span[name=boOW]').data('valSort',tmp).css({visibility:tmp==1?'':'hidden'}); 
-      var tmp=File[i].boSiteMap; $r.children('span[name=boSiteMap]').data('valSort',tmp).css({visibility:tmp==1?'':'hidden'}); 
+      var tmp=File[i].boOR; $r.children('span[name=boOR]').data('valSort',tmp).visibilityToggle(tmp); 
+      var tmp=File[i].boOW; $r.children('span[name=boOW]').data('valSort',tmp).visibilityToggle(tmp);
+      var tmp=File[i].boSiteMap; $r.children('span[name=boSiteMap]').data('valSort',tmp).visibilityToggle(tmp);
       var strVersion=''; if(Boolean(File[i].boOther)) strVersion='v'+(Number(File[i].lastRev)+1);   
       //$r.children('span[name=version]').toggle(Boolean(File[i].boOther)).html(strVersion);
       $r.children('span[name=version]').data('valSort',strVersion).visibilityToggle(Boolean(File[i].boOther)).html(strVersion);
       var tmp=File[i].tMod; $r.children('span[name=date]').data('valSort',-tmp.valueOf()).html(mySwedDate(tmp)).prop('title','Last Mod:\n'+UTC2JS(tmp));    
       var size=File[i].size, sizeDisp=size, pre=''; if(size>=1024) {sizeDisp=Math.round(size/1024); pre='k';} if(size>=1048576) { sizeDisp=Math.round(size/1048576); pre='M';}
       var $tmp=$r.children('span[name=size]').data('valSort',size).html(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; $tmp.prop('title',strTitle);   //$tmp.css({weight:pre=='M'?'bold':'',color:pre==''?'grey':''}); 
-      var tmp=File[i].nChild, $buttonTmp=$r.children('span[name=nChild]').data('valSort',tmp).children('button'); $buttonTmp.children('span:eq(0)').html(tmp); $buttonTmp.css({visibility:tmp?'':'hidden'});   
-      var tmp=File[i].nImage; $r.children('span[name=nImage]').data('valSort',tmp).children('button').html(tmp).css({visibility:tmp?'':'hidden'});  
+      var tmp=File[i].nChild, $buttonTmp=$r.children('span[name=nChild]').data('valSort',tmp).children('button'); $buttonTmp.children('span:eq(0)').html(tmp); $buttonTmp.visibilityToggle(tmp);    
+      var tmp=File[i].nImage; $r.children('span[name=nImage]').data('valSort',tmp).children('button').html(tmp).visibilityToggle(tmp); //  
       var tmp=File[i].siteName; $r.children('span[name=siteName]').data('valSort',tmp).text(tmp).prop('title',File[i].www);
       var tmp=File[i].pageName, strS=Number(File[i].boTLS)?'s':''; $r.children('span[name=link]').data('valSort',tmp).children('a').prop({href:'http'+strS+'://'+File[i].www+'/'+tmp}).text(tmp);    
     });
@@ -1417,54 +1448,25 @@ pageListExtend=function($el){
   }
   $el.setCBStat=function(boOn){
     boOn=Boolean(boOn);$allButton.html('All');
-    $executeButton.toggle(false);
-    //if(typeof $myRows=='undefined') return;
+    $buttonExecuteMult.toggle(false);
     $tbody.find('span input').prop({'checked':false});
   }
-  var restExecuteButton=function(){   $allButton.html('All');  $executeButton.hide();  }
+  var restExecuteButton=function(){   $allButton.html('All');  $buttonExecuteMult.hide();  }
   $el.loadTab=function(){
     var oF=$pageFilterDiv.gatherFiltData();
     var vec=[['setUpPageListCond',oF],['getPageList',1,getListRet],['getPageHist',1,histRet]]; 
     //var boSingleParentFilter=$pageFilterDiv.Filt.checkIfSingleParent();
-    var boWhite=$pageFilterDiv.Filt.isWhite();
-    var StrParentsOn=$pageFilterDiv.Filt.getParentsOn();
-    var nParentsOn=$pageFilterDiv.Filt.getNParentsOn();
-    if(boWhite){
-      if(nParentsOn==1) {
-        var idParent=$pageFilterDiv.Filt.getSingleParent();
-        //var siteName=$pageFilterDiv.Filt.getSingleSite();
-        //vec.push(['getExtraPageStat',{idPage:idParent},getExtraPageStatRet]);  // If filtering for single parent then also get the "grandparents"
-        vec.push(['getParent',{idPage:idParent},getParentRet],['getSingleParentExtraStuff',{idPage:idParent},getSingleParentExtraStuffRet]);  // If filtering for single parent then also get the "grandparents"
-
-        var boOrphan=idParent==null;
-        if(boOrphan) $spanSingleFilter.html('orphans (roots)').css({color:'grey'}); else $spanSingleFilter.empty().append($aSingleFilter).css({color:''});
-        $buttPI.prop('title',boOrphan?'Orphan images':'Images');
-      }else {
-        $spanGrandParent.setUpClear(); $spanGrandParentI.setUpClear();
-        var strTmp='('+nParentsOn+' parents on)';
-        var StrTmp=StrParentsOn.slice(0,5), indT=StrTmp.indexOf(null); if(indT!=-1) StrTmp[indT]='(orphans)';
-        var strTitle=StrTmp.join('\n');
-        $spanSingleFilter.html(strTmp).css({color:'grey'}).prop('title',strTitle);
-      }
-    }else{
-      $spanGrandParent.setUpClear(); $spanGrandParentI.setUpClear();
-      $spanSingleFilter.html('').css({color:'grey'}).prop('title','');
+    var boWhite=$pageFilterDiv.Filt.isWhite(),     nParentsOn=$pageFilterDiv.Filt.getNParentsOn();
+    if(boWhite && nParentsOn==1){
+      var idParent=$pageFilterDiv.Filt.getSingleParent();
+      //var siteName=$pageFilterDiv.Filt.getSingleSite();
+      vec.push(['getParent',{idPage:idParent},function(data){$divRowParent.getParentRet(data);}],
+         ['getSingleParentExtraStuff',{idPage:idParent},function(data){$divRowParent.getSingleParentExtraStuffRet(data);}]);  // If filtering for single parent then also get the "grandparents"
     }
-    //$spanSingleFilter.toggle(boSingleParentFilter);
-    $buttPI.toggle(nParentsOn==1);
+    $divRowParent.setUpPreAJAX(idParent);
     majax(oAJAX,vec);
     setMess('... fetching pages ... ',5,true);
     $head.clearArrow(); restExecuteButton();
-  }
-  var getParentRet=function(data){
-    if('tab' in data) { var Parent=tabNStrCol2ArrObj(data); $spanGrandParent.setUp(Parent);   $spanGrandParentI.setUp(Parent); }
-  }
-  var getSingleParentExtraStuffRet=function(data){
-    if('nImage' in data) {      $buttPI.empty().append(data.nImage);    }
-    if('pageName' in data) {
-      var strS=Number(data.boTLS)?'s':'', strUrl='http'+strS+'://'+data.www+'/'+data.pageName, text=data.pageName; if(data.nSame>1) text=data.siteName+':'+text;
-      $aSingleFilter.prop('href',strUrl).html(text);
-    }
   }
   var getListRet=function(data){
     var nCur;  //, TabTmp, StrCol;
@@ -1474,8 +1476,7 @@ pageListExtend=function($el){
     condAddRows(); fileArray2Div();
   }
   var histRet=function(data){
-    var tmp, HistPHP;
-    var HistPHP=data.Hist||[];
+    var tmp, HistPHP=data.Hist||[];
     
       // If there are pages with the same "pageName" (on different sites) then use siteName:pageName (when the page is listed). 
     ParentName=[]; if('ParentName' in data) ParentName=tabNStrCol2ArrObj(data.ParentName);  
@@ -1495,43 +1496,22 @@ pageListExtend=function($el){
     //$pageList.setCBStat(0);
   }
   
-    // Methods of clicked button
-  var clickSetParentFilter=function(){
-    var idPage=$(this).parent().parent().data('idPage');  $pageFilterDiv.Filt.setSingleParent(idPage); $pageList.histPush(); $pageList.loadTab();
-  }
-  var clickSetParentFilterI=function(){
-    //changeHist({$view:$imageList});
-    $imageList.setVis();
-    var idPage=$(this).parent().parent().data('idPage');   $imageFilterDiv.Filt.setSingleParent(idPage); $imageList.histPush(); $imageList.loadTab(); 
-  }
-  
-    // Methods of resp row
-  var getRenameData=function(){
-    var $r=$(this), iTab=$r.index(), idPage=$r.data('idPage'), strName=$r.data('pageName');    return [iTab,idPage,strName];  }
-  var changeModOfSingle=function(strName,boVal){
-    var $r=$(this), $span=$r.children('span[name='+strName+']'), boValO=$span.data('valSort');
-    if(typeof boVal=='undefined') boVal=1-boValO;
- 
-    var o={File:[$r.data('idPage')]}; o[strName]=boVal;
-    var vec=[['myChMod',o]];   majax(oAJAX,vec);
-    $span.data('valSort',Number(boVal)).css({visibility:boVal?'':'hidden'});
-  }
-  
   var getChecked=function(){
     var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')'), $checked=$Tr.find('input:checked'), FileTmp=[]; $checked.each(function(){var tmp=$(this).parent().parent().data('idPage'); FileTmp.push(tmp);});
     return FileTmp;
   }
   var changeModOfChecked=function(strName,boVal){
     var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')');
-    $Tr.find('input:checked').each(function(i){var $cb=$(this); $cb.parent().parent().children('span[name='+strName+']').data('valSort',Number(boVal)).css({visibility:boVal?'':'hidden'}); });
+    $Tr.find('input:checked').each(function(i){var $cb=$(this); $cb.parent().parent().children('span[name='+strName+']').data('valSort',Number(boVal)).visibilityToggle(boVal); });
   }
-  $el.changeName=function(iTab,strNewName){
-    var $r=$myRows.eq(iTab);
-    var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')');
-    var $r=$Tr.eq(iTab), iFlip=$r.data('iFlip');
-    File[iFlip].pageName=strNewName;
-    var www=File[iFlip].www, strS=Number(File[iFlip].boTLS)?'s':'';
-    $r.data('pageName',strNewName).children('span[name=link]').data('valSort',strNewName).children('a').prop({href:'http'+strS+'://'+www+'/'+strNewName}).text(strNewName);
+  $el.changeName=function(r,strNewName){
+    var $r=$(r);
+    if($r.data('iFlip')!==null){
+      var iFlip=$r.data('iFlip');
+      File[iFlip].pageName=strNewName;
+      var www=File[iFlip].www, strS=Number(File[iFlip].boTLS)?'s':'';
+      $r.data('pageName',strNewName); var $td=$r.children('span[name=link]').data('valSort',strNewName); $td.children('a').prop({href:'http'+strS+'://'+www+'/'+strNewName}).text(strNewName);
+    }
   }
   $el.deleteF=function(FileDelete, histBackFun){
     var oF=$pageFilterDiv.gatherFiltData();    
@@ -1561,19 +1541,19 @@ pageListExtend=function($el){
     $span.html(text);
   }
 
-  var $myRows; 
-  var $tbody=$el.$tbody=$("<div>").addClass('listBody');
+  //var $myRows;
+  var $tbody=$el.$tbody=$("<div>").addClass('pageList listBody'); //.addClass('listBody')
   $el.$table=$("<div>").append($tbody).css({width:'100%',position:'relative'});
-  $el.$divCont=$("<div>").append($el.$table).css({margin:'3em auto 1em','text-align':'left',display:'inline-block'});//
+  $el.$divCont=$("<div>").append($el.$table).css({margin:'0em auto 1em','text-align':'left',display:'inline-block'});//
   //$el.$divCont.on('mouseover','button[name=nChild]',function(){console.log('gg');});
 
   var StrCol=['nParent','cb','execute','date','boOR','boOW','boSiteMap','size','nImage','nChild','version','siteName', 'link'], BoAscDefault={cb:0,boOR:0,boOW:0,boSiteMap:0,nImage:0,nChild:0,nParent:0,version:0,size:0};
-  var Label={nParent:'Parents / Alternatve parents', cb:'Select',date:'Last Modified',boOR:'Public read access', boOW:'Public write access', boSiteMap:'Promote (include in Sitemap.xml etc)', nImage:'Images', nChild:'Child pages', version:'Supplied by user / mult versions'};
   //var $spanFill=$('<span>').css({height:'calc(1.5*8px + 0.6em)'});
   //var $headFill=$('<p>').append().css({background:'white',margin:'0px',height:'calc(12px + 1.2em)'});
-  var $head=headExtend($('<p>'),$el,StrCol,BoAscDefault,Label,'p','span');
+  var $head=headExtend($('<p>'),$el,StrCol,BoAscDefault,PageRowLabel,'p','span').addClass('pageList');
   $head.css({background:'white', width:'inherit',height:'calc(12px + 1.2em)'});     // , position:'sticky', top:'57px', 'z-index':'1', margin:'0px'
-  $el.$table.prepend($head); //,$headFill
+  $el.$headW=$('<div>').append($head).css({background:'white', width:'inherit', position:'sticky', top:'0px', 'z-index':'1', margin:'0px'});     
+  $el.$table.prepend($el.$headW); //,$headFill
 
 
     // menuA
@@ -1582,10 +1562,9 @@ pageListExtend=function($el){
     var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')');
     $Tr.find('input').prop({'checked':boOn});
     $allButton.text(boOn?'None':'All');
-    $executeButton.toggle(boOn);
+    $buttonExecuteMult.toggle(boOn);
   });
 
-  var strMenuExecuteEvent='mousedown'; if(boTouch) strMenuExecuteEvent='click';
   var strEvent='mouseup'; if(boTouch) strEvent='click';
 
 
@@ -1593,30 +1572,6 @@ pageListExtend=function($el){
   var strPublicWrite=charPublicWrite+' (pulic write)';
   var strPromote=charPromote+' (promote)';
 
-    // menuSingle
-  var $buttonDownload=$('<div>').html('Download');
-  var $buttonRename=$('<div>').append('Rename').on(strEvent,function(){
-    var $b=$(this).parent().data('$button'), $r=$b.parent().parent(),  FileTmp=[$r.data('idPage')],  arrTmp=getRenameData.call($r[0]); arrTmp.unshift('page'); $renamePop.openFunc.apply(null,arrTmp);    });
-  var $buttonRTog=$('<div>').append('Toggle '+strPublicRead).on(strEvent,function(){  var $b=$(this).parent().data('$button'), $r=$b.parent().parent();   changeModOfSingle.call($r[0],'boOR');   });
-  var $buttonWTog=$('<div>').append('Toggle '+strPublicWrite).on(strEvent,function(){  var $b=$(this).parent().data('$button'), $r=$b.parent().parent();  changeModOfSingle.call($r[0],'boOW');    });
-  var $buttonPTog=$('<div>').append('Toggle '+strPromote).on(strEvent,function(){  var $b=$(this).parent().data('$button'), $r=$b.parent().parent();   changeModOfSingle.call($r[0],'boSiteMap');   });
-  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){
-    var $b=$(this).parent().data('$button'), $r=$b.parent().parent(),  FileTmp=[$r.data('idPage')], strLab='Are sure you want to delete this page'; 
-    $areYouSurePop.openFunc(strLab,function(histBackFun){$el.deleteF(FileTmp, histBackFun);}); });
-
-
-  
-  //var $itemSingle=$([]).push($buttonGoToParent, $buttonRename, $buttonROn, $buttonROff, $buttonWOn, $buttonWOff, $buttonPOn, $buttonPOff, $buttonDelete);
-  var $itemSingle=$([]).push($buttonRename, $buttonRTog, $buttonWTog, $buttonPTog, $buttonDelete);
-  //var $menuSingle=menuExtend($('<div>')).css({'text-align':'left'});
-  var $menuSingle=$('<div>').css({'text-align':'left'});  menuExtend($menuSingle[0]);
-  var buttonExeSingleClick=function(e){ 
-    var $button=$(this); 
-    $menuSingle.data('$button',$button);
-    //$menuSingle.openFunc(e,$button,$itemSingle);
-    var fragItems=jQueryObjToFragment($itemSingle);
-    $menuSingle[0].openFunc(e,this,fragItems);
-  }
 
     // menuMult
   var $buttonDownload=$('<div>').html('Download');
@@ -1626,10 +1581,12 @@ pageListExtend=function($el){
   var $buttonWOff=$('<div>').append(strPublicWrite+' off').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOW:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOW',0);   });
   var $buttonPOn=$('<div>').append(strPromote+' on').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boSiteMap:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boSiteMap',1);   });
   var $buttonPOff=$('<div>').append(strPromote+' off').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boSiteMap:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boSiteMap',0);   });
-  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){   var FileTmp=getChecked(), strLab='Are sure you want to delete these pages';   $areYouSurePop.openFunc(strLab,function(histBackFun){$el.deleteF(FileTmp, histBackFun);}); });
+  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){
+    var FileTmp=getChecked(), strLab='Are sure you want to delete these pages';   $areYouSurePop.openFunc(strLab, function(){$el.deleteF(FileTmp, doHistBack);}, doHistBack);
+  });
   
   //var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});   
-  var $executeButton=$('<button>').append(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
+  var $buttonExecuteMult=$('<button>').append(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
   var $itemMulti=$([]).push($buttonROn, $buttonROff, $buttonWOn, $buttonWOff, $buttonPOn, $buttonPOff, $buttonDelete);
   //var $menuMult=menuExtend($('<div>')).css({'text-align':'left'});
   var $menuMult=$('<div>').css({'text-align':'left'});  menuExtend($menuMult[0]);
@@ -1640,127 +1597,95 @@ pageListExtend=function($el){
     var fragItems=jQueryObjToFragment($itemMulti);
     $menuMult[0].openFunc(e,this,fragItems);
   }
-  $executeButton.on(strMenuExecuteEvent,buttonExeMultClick); 
-
+  $buttonExecuteMult.on(strMenuOpenEvent,buttonExeMultClick); 
   
+
   var File=[]; $el.nRowVisible=0;
 
   //var $buttonBack=$('<button>').append('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(doHistBack);
   var $spanTmp=$('<span>').append(strFastBackSymbol).css({'font-size':'0.7em'});
   var $buttonFastBack=$('<button>').append($spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){history.fastBack($adminMoreDiv);});
   //var $spanLabel=$('<span>').append('Pages').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var $buttPI=$('<button>').css({'line-height':'normal','min-width':'1.4em', 'background-image':'url("stylesheets/buttonRightBlue1.png")'}).click(function(){  
-    var idParent=$pageFilterDiv.Filt.getSingleParent();
-    $imageFilterDiv.Filt.setSingleParent(idParent);   $imageList.histPush(); $imageList.loadTab(); $imageList.setVis();
-  }); //background:'lightblue',
-  var $buttPIW=$('<span>').append($buttPI).css({'float':'right','margin-right':'0.6em'});
+
   var $tmpImg=$('<img>').prop({src:uFilter}).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
   $el.$filterInfoWrap=$('<span>');
   var $buttFilter=$('<button>').append($tmpImg,' (',$el.$filterInfoWrap,')').addClass('flexWidth').css({'float':'right','margin-right':'0.2em'}).click(function(){ doHistPush({$view:$pageFilterDiv}); $pageFilterDiv.setVis();});
   var $buttClear=$('<button>').append('C').click(function(){$pageFilterDiv.Filt.filtClear(); $pageList.histPush(); $pageList.loadTab()}).css({'float':'right','margin-right':'1em'});
   var $spanTmp=$('<span>').append('(orphans)').css({'font-size':'0.8em'});
   var $buttOrphan=$('<button>').append($spanTmp).click(function(){$pageFilterDiv.Filt.setSingleParent(null);  $pageList.histPush(); $pageList.loadTab()}).css({'float':'right','margin-right':'1em'});
-  //var $spanGrandParent=new SpanGrandParent(); $spanGrandParent.css({'margin-right':'0em'});
-  var $spanGrandParent=new SpanGrandParent('page','page').css({'margin-right':'0.6em'});
-  var $spanGrandParentI=new SpanGrandParent('page','image');
-  var $aSingleFilter=$('<a>').prop({target:"_blank"}).css({'font-weight':'bold'}), $spanSingleFilter=$('<span>').css({'margin-right':'0.5em', 'margin-top':'0.7em'});  //.hide()
-  //var $spanSingleFilterW=$('<span>').append();
 
-  var $menuA=$('<div>').append($buttonFastBack, $allButton, $executeButton, $buttFilter, $buttClear, $buttOrphan);  // $buttonBack, 
+  var $menuA=$('<div>').append($buttonFastBack, $allButton, $buttonExecuteMult, $buttFilter, $buttClear, $buttOrphan);  // $buttonBack, 
   $menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
-  var $menuTop=$('<div>').append($spanGrandParent, $spanSingleFilter, $buttPIW).addClass('divMenuTop');  // , $spanGrandParentI     
-  $menuTop.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em', 'line-height':'2.7em'});
 
-  $el.addClass('pageList');
-  $el.$fixedTop=$('<div>').append($menuTop).css(cssFixedTop);
+  //$el.addClass('pageList');
+  //$el.$fixedTop=$('<div>').append($divRowParent).css(cssFixedTop);
   $el.$fixedDiv=$('<div>').append($menuA).css(cssFixed);
   $el.css({'text-align':'center'});
-  $el.append($el.$divCont,$el.$fixedTop,$el.$fixedDiv);
+  $el.append($el.$divCont,$el.$fixedDiv);  //,$el.$fixedTop
   return $el;
 }
 
 
-
-
-renamePopExtend=function($el){
-"use strict"
-  $el.toString=function(){return 'renamePop';}
-  var save=function(){ 
-    resetMess();  
-    var strNewName=$inpName.val().trim(); $inpName.val(strNewName); if(strNewName.length==0) {setMess('name can not be empty',5); return; }
-    strNewName.replace(RegExp(' ','g'),'_');
-    var o1={strNewName:strNewName,id:idDB};
-    var vec=[['rename'+ucfirst(strType),o1,saveRet]];   majax(oAJAX,vec);
-
-    setMess('',null,true);  
-  }
-  var saveRet=function(data){
-    var boOK=false;
-    var tmp=data.boOK;   if(typeof tmp!="undefined")  boOK=tmp;
-    if(iTab!==null){
-      var $par=strType=='page'?$pageList:$imageList;
-      if(boOK) { $par.changeName(iTab, $inpName.val()); doHistBack();}  
-    }
-  }
-  $el.openFunc=function(strTypeT,iTabT,idDBT,strName){
-    strType=strTypeT; iTab=iTabT; idDB=idDBT; $type.html(strType); $inpName.val(strName).focus();
-    doHistPush({$view:$renamePop});
-    $el.setVis();
-  }
-  $el.setVis=function(){
-    $el.show();   return true;
-  }
-
-  var iTab, idDB, strType='';
+var pageListRowMethods={
+  changeModOfSingle:function(strName,boVal){
+    var $r=$(this);  //, boValO=$span.data('valSort');
+    var boValO=$r.data(strName);
+    if(typeof boVal=='undefined') boVal=1-boValO;
  
-  var $type=$('<span>'); 
-  var $head=$('<h3>').append('Rename ',$type);
-  var $nameLab=$('<div>').append('New name: ');
-  var $inpName=$('<input>').css({display:'block',width:'100%'}).keypress( function(e){ if(e.which==13) {save();return false;}} );
-
-  var $saveButton=$('<button>').append('Save').click(save).css({'margin-top':'1em'});
-  var $cancelButton=$('<button>').append('Cancel').click(doHistBack).css({'margin-top':'1em'});
-  $el.append($head,$nameLab,$inpName,$cancelButton,$saveButton); //.css({padding:'0.1em'}); 
-
-  var $blanket=$('<div>').addClass("blanket");
-  var $centerDiv=$('<div>').addClass("Center").append($head,$nameLab,$inpName,$cancelButton,$saveButton).css({height:'12em', 'min-width':'17em', 'max-width':'30em', padding: '0.3em 0.5em 1.2em 1.2em'});
-  if(boIE) $centerDiv.css({'width':'20em'}); 
-  $el.addClass("Center-Container").append($centerDiv,$blanket); 
-  
-  return $el;
-}
-
-calcStrLen=function(Str, lenFix){ return Str.length*lenFix+Str.join().length;}
-
-
-var goToParentMethod=function(strTypeCur, strTypeGoal){
-  var $b=$(this), $r=$b.parent().parent(), nParent=$r.data('nParent'), idParent=$r.data('idParent');
-  var FiltGoal=strTypeGoal=='page'?$pageFilterDiv.Filt:$imageFilterDiv.Filt;
-  var $listGoal=strTypeGoal=='page'?$pageList:$imageList;
-  if(nParent<=1){
-    FiltGoal.setSingleParent(idParent);  $listGoal.histPush(); $listGoal.loadTab(); if(strTypeGoal!=strTypeCur) {    $listGoal.setVis(); }
-  } else {
-    if(strTypeCur=='page'){      var strGetParentFunc='getParent', objTmp={idPage:$r.data('idPage')};    }else{      var strGetParentFunc='getParentOfImage', objTmp={idImage:$r.data('idImage')};    }
-    var vec=[[strGetParentFunc,objTmp,function(data){
-      /*var Parent=[], StrCol=data.StrCol||[], TabTmp=data.tab||[]; 
-      for(var i=0;i<TabTmp.length;i++){
-        for(var j=0;j<StrCol.length;j++){  var name=StrCol[j]; Parent[i][name]=TabTmp[i][j];  }
-      }*/
-      var Parent=[]; if('tab' in data) Parent=tabNStrCol2ArrObj(data);  
-      $grandParentSelPop.openFunc(Parent,strTypeCur,strTypeGoal);
-    }]];
-    majax(oAJAX,vec);     
+    var o={File:[$r.data('idPage')]}; o[strName]=boVal;
+    var vec=[['myChMod',o]];   majax(oAJAX,vec);
+    $r.data(strName,boVal);
+    var $span=$r.children('span[name='+strName+']');  $span.data('valSort',Number(boVal)).visibilityToggle(boVal);
   }
 }
 
-var SpanGrandParent=function(strTypeCur, strTypeGoal){
+var menuPageSingleExtend=function($menuSingle){
+  var strPublicRead='<span style="display:inline-block">'+charPublicRead+'</span> (pulic read)';
+  var strPublicWrite=charPublicWrite+' (pulic write)';
+  var strPromote=charPromote+' (promote)';
+  
+  var strEvent='mouseup'; if(boTouch) strEvent='click';
+
+        // menuSingle
+  var $buttonDownload=$('<div>').html('Download');
+  var $buttonRename=$('<div>').append('Rename').on(strEvent,function(){
+    $renamePop.openFunc('page', this.parentElement.r);
+  });
+  var $buttonRTog=$('<div>').append('Toggle '+strPublicRead).on(strEvent,function(){  pageListRowMethods.changeModOfSingle.call(this.parentElement.r,'boOR');   });
+  var $buttonWTog=$('<div>').append('Toggle '+strPublicWrite).on(strEvent,function(){  pageListRowMethods.changeModOfSingle.call(this.parentElement.r,'boOW');    });
+  var $buttonPTog=$('<div>').append('Toggle '+strPromote).on(strEvent,function(){  pageListRowMethods.changeModOfSingle.call(this.parentElement.r,'boSiteMap');   });
+  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){
+    var r=this.parentElement.r,  FileTmp=[$(r).data('idPage')], strLab='Are sure you want to delete this page'; 
+    $areYouSurePop.openFunc(strLab, function(){$pageList.deleteF(FileTmp, doHistBack);}, doHistBack);
+  });
+  
+  var $itemSingle=$([]).push($buttonRename, $buttonRTog, $buttonWTog, $buttonPTog, $buttonDelete);
+  $menuSingle.css({'text-align':'left'});  menuExtend($menuSingle[0]);
+  $menuSingle.buttonExeSingleClick=function(e){ 
+    var $button=$(this); 
+    $menuSingle[0].r=$button[0].parentElement.parentElement;
+    var fragItems=jQueryObjToFragment($itemSingle);
+    $menuSingle[0].openFunc(e,this,fragItems);
+  }
+  return $menuSingle;
+}
+
+
+
+   //
+   // SpanGrandParent, DivRowParentT
+   //
+
+var SpanGrandParent=function(){
   var $el=$('<span>'); $.extend($el,SpanGrandParent.tmpPrototype);
-  $el.boSame=strTypeCur==strTypeGoal;
-  $el.strTypeCur=strTypeCur;  $el.strTypeGoal=strTypeGoal;
-  $el.strColor=$el.strTypeGoal=='page'?'':'Blue';
   $el.GrandParent=[];
-  $el.$buttPop=$('<button>').css({'background-image':'url("stylesheets/buttonLeft'+$el.strColor+'1.png")'}).click(function(){$grandParentSelPop.openFunc($el.GrandParent,strTypeCur,strTypeGoal);}).hide();
-  $el.$buttOrphan=$('<button>').append('(orphans)').css({'background-image':'url("stylesheets/buttonLeft'+$el.strColor+'3.png")'}).click(function(){ $el.clickFunc(null); }).hide();
+  $el.$buttPop=$('<button>').css({'background-image':'url("stylesheets/buttonLeft1.png")'}).click(function(){
+    //var strTypeCur=$el.parent().parent()==$imageList?'image':'page';
+    var strTypeCur=$imageList.is(':visible')?'image':'page';
+    //$el[0].parentElement.parentElement.parentElement.parentElement.parentElement==$imageList[0]
+    $grandParentSelPop.openFunc($el.GrandParent,strTypeCur,'page');
+  }).hide();
+  $el.$buttOrphan=$('<button>').append('(orphans)').css({'background-image':'url("stylesheets/buttonLeft3.png")'}).click(function(){ $el.clickFunc(null); }).hide();
   $el.$spanButt=$('<span>').on('click','button',function(){var ind=$(this).data('ind'); $el.clickFunc($el.GrandParent[ind]);});
 
   $el.append($el.$buttPop, $el.$buttOrphan, $el.$spanButt); //  'Up: ',    .click(function(){$el.clickFunc();}); 
@@ -1769,34 +1694,122 @@ var SpanGrandParent=function(strTypeCur, strTypeGoal){
 SpanGrandParent.tmpPrototype={};
 SpanGrandParent.tmpPrototype.setUpClear=function(){   this.$spanButt.empty(); this.$buttPop.hide();  this.$buttOrphan.hide();  }
 SpanGrandParent.tmpPrototype.setUp=function(GrandParent){
+  var strTypeCur=$imageList.is(':visible')?'image':'page';
   this.GrandParent=GrandParent; 
-  var len=GrandParent.length;
-  var boPop=len>2; this.$buttPop.toggle(boPop).html(len);
-  //this.$buttOrphan.toggle(!len);
+  var nGrandParent=GrandParent.length, lenMax=10;;
+  var boPop=nGrandParent>2; this.$buttPop.toggle(boPop).html(nGrandParent);
+  //this.$buttOrphan.toggle(!nGrandParent);
   this.$spanButt.empty();
   if(!boPop){
-    for(var i=0;i<len;i++){
-      var lenMax=10
+    for(var i=0;i<nGrandParent;i++){
       var str=GrandParent[i].pageName; if(str.length>lenMax) str=str.substr(0,lenMax-2)+'...';
       var $butt=$('<button>').append(str).prop('title',GrandParent[i].pageName).data({ind:i});       this.$spanButt.append($butt);
-      var intSize=1; if(str.length>6) intSize=3;  else if(str.length>3) intSize=2;
-      $butt.css({'background-image':'url("stylesheets/buttonLeft'+this.strColor+intSize+'.png")'});
+      var intSize=1; if(str.length>6) intSize=3;  else if(str.length>3) intSize=2; // Determine size of background image
+      $butt.css({'background-image':'url("stylesheets/buttonLeft'+intSize+'.png")'}); //+this.strColor
     }
-    //if(len>1) this.$spanButt.prepend('(').append(')');
   }
-  var $filterDiv=this.strTypeCur=='page'?$pageFilterDiv:$imageFilterDiv;
-  //var On=$filterDiv.Filt[0][1], boOrphanFiltering=Boolean(On.length==1 && On[0]==null), boShow=!boOrphanFiltering && len==0;  this.$buttOrphan.toggle(boShow); // this.toggle(boShow);
-  //var On=$filterDiv.Filt[0][1], boOrphanFiltering=Boolean(On.length==1 && On[0]==null), boShow=!boOrphanFiltering && len==0;  this.$buttOrphan.toggle(boShow); // this.toggle(boShow);
-  var On=$filterDiv.Filt.getParentsOn(), boOrphanFiltering=Boolean(On.length==1 && On[0]==null), boShow=!boOrphanFiltering && len==0;  this.$buttOrphan.toggle(boShow); // this.toggle(boShow);
+  var $filterDiv=strTypeCur=='page'?$pageFilterDiv:$imageFilterDiv;
+  var On=$filterDiv.Filt.getParentsOn(), boOrphanFiltering=Boolean(On.length==1 && On[0]==null), boShow=!boOrphanFiltering && nGrandParent==0;  this.$buttOrphan.toggle(boShow); // this.toggle(boShow);
 
 }
 SpanGrandParent.tmpPrototype.clickFunc=function(parent){ 
-  var strListGoal=this.strTypeGoal+'List';
-  var $filterDivGoal=this.strTypeGoal=='page'?$pageFilterDiv:$imageFilterDiv;
-  var idTmp=null; if(parent) idTmp=parent.idPage; $filterDivGoal.Filt.setSingleParent(idTmp); 
-  var $listGoal=this.strTypeGoal=='page'?$pageList:$imageList;
-  $listGoal.histPush(); $listGoal.loadTab();    if(!this.boSame) { $listGoal.setVis(); }  
-  //changeHist({$view:$pageList}); $pageList.loadTab(); $pageList.setVis();  
+  var idTmp=parent?parent.idPage:null;   $pageFilterDiv.Filt.setSingleParent(idTmp); 
+  $pageList.histPush(); $pageList.loadTab();    if(!$pageList.is(':visible')) { $pageList.setVis(); }  
+}
+   
+var DivRowParentT=function(){
+  var $el=$('<div>'); $.extend($el,DivRowParentT.tmpPrototype);
+  
+  $el.$spanGrandParent=new SpanGrandParent('page','page').css({'margin-right':'0.6em'}).attr('name','nParent');
+
+  var $buttonExecute=$('<button>').append(charFlash).on(strMenuOpenEvent, $menuPageSingle.buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"}) 
+  $el.$tdExecute=$('<span>').data('valSort',0).append($buttonExecute).attr('name','execute'); 
+  $el.$tdR=$('<span>').attr('name','boOR').html(charPublicRead).prop('title',PageRowLabel.boOR); $el.$tdW=$('<span>').attr('name','boOW').html(charPublicWrite).prop('title',PageRowLabel.boOW); $el.$tdP=$('<span>').attr('name','boSiteMap').html(charPromote).css({'margin-right':'0.15em'}).prop('title',PageRowLabel.boSiteMap);
+  $el.$tdVer=$('<span>').attr('name','version').css({'min-width':'1.5em', background:'red', 'float':'right'}); //.css({'margin-left':'0.15em'});
+  $el.$tdDate=$('<span>').attr('name','date').prop('title',PageRowLabel.date);
+  $el.$tdSite=$('<span>').attr('name','siteName');
+  $el.$tdOrphan=$('<span>').css({color:'grey'});
+  $el.$aLink=$('<a>').prop({target:"_blank"});
+  $el.$tdLink=$('<span>').attr('name','link').append($el.$aLink);
+  $el.$tdSize=$('<span>').attr('name','size').css({'float':'right'});
+  $el.$buttonNChild=$('<button>').append('<span></span>').click(clickSetParentFilter);//.css({'background-image':'url("stylesheets/buttonRight1.png")'})
+  $el.$buttonNImage=$('<button>').click(clickSetParentFilterI).prop('title','Images');//.css({'background-image':'url("stylesheets/buttonRightBlue1.png")'})
+  $el.$tdNChild=$('<span>').append($el.$buttonNChild).attr('name','nChild');//.css({'float':'right'}); 
+  $el.$tdNImage=$('<span>').append($el.$buttonNImage).attr('name','nImage');//.css({'float':'right'});  
+  
+  $el.append($el.$spanGrandParent, $el.$tdExecute, $el.$tdDate, $el.$tdR, $el.$tdW, $el.$tdP, $el.$tdSize, $el.$tdNImage, $el.$tdNChild, $el.$tdVer, $el.$tdSite, $el.$tdOrphan, $el.$tdLink);
+  
+  $el.css({'line-height':'2.7em'});  // ,'max-width':menuMaxWidth+'px'
+  $el.addClass('pageList');
+  return $el;
+}
+DivRowParentT.tmpPrototype={};
+DivRowParentT.tmpPrototype.setUpPreAJAX=function(idParent){  
+  var boWhite=$pageFilterDiv.Filt.isWhite();
+  var nParentsOn=$pageFilterDiv.Filt.getNParentsOn();
+  var nParentsOff=$pageFilterDiv.Filt.getNParentsOff();
+  if(!boWhite || nParentsOn!=1){
+    this.$spanGrandParent.setUpClear();
+    this.children().hide();  this.$tdOrphan.show();
+  
+    if(boWhite) { var strTmp='('+nParentsOn+' parents on)', StrTmp=$pageFilterDiv.Filt.getParentsOn(); } 
+    else { 
+      if(nParentsOff){ var strTmp='('+nParentsOff+' parents off)', StrTmp=$pageFilterDiv.Filt.getParentsOff(); }
+      else {var strTmp='(No parent filter)', StrTmp=[];}
+    }
+    var StrTmp=StrTmp.slice(0,5), indT=StrTmp.indexOf(null); if(indT!=-1) StrTmp[indT]='(orphans)';
+    var strTitle=StrTmp.join('\n');
+    this.$tdOrphan.html(strTmp).css({color:'grey'}).prop('title',strTitle);
+    return;
+  } 
+}
+DivRowParentT.tmpPrototype.getParentRet=function(data){
+  if('tab' in data) { var Parent=tabNStrCol2ArrObj(data); this.$spanGrandParent.setUp(Parent);  } 
+}
+DivRowParentT.tmpPrototype.getSingleParentExtraStuffRet=function(data){
+  var boImageList=$imageList.is(':visible'), boPageList=!boImageList;
+  this.$buttonNChild.html(data.nSub).prop("disabled",!boImageList).visibilityToggle(data.nSub);
+  this.$buttonNImage.html(data.nImage).prop("disabled",boImageList).visibilityToggle(data.nImage);
+  
+  if(data.idPage==null) {
+    this.children().hide();  this.$tdOrphan.show();  this.$tdNChild.show(); this.$tdNImage.show();
+    this.$tdOrphan.html('orphans'+(boPageList?' (roots)':'')); this.$aLink.html('');
+  } else {
+    this.children().show();
+    this.$tdOrphan.html('');
+    this.data(data);  this.data({iFlip:null}); 
+    
+    var strS=Number(data.boTLS)?'s':'', strUrl='http'+strS+'://'+data.www+'/'+data.pageName, text=data.siteName+':'+data.pageName; //if(data.nSame>1) text=data.siteName+':'+text;
+    var size=data.size, sizeDisp=size, pre=''; if(size>=1024) {sizeDisp=Math.round(size/1024); pre='k';} if(size>=1048576) { sizeDisp=Math.round(size/1048576); pre='M';}
+      this.$tdSize.html(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; this.$tdSize.prop('title',strTitle); 
+    var strVersion=Boolean(data.boOther)?'v'+(Number(data.lastRev)+1):'';  
+      this.$tdVer.visibilityToggle(Boolean(data.boOther)).html(strVersion);
+    this.$tdR.visibilityToggle(Boolean(data.boOR)); this.$tdW.visibilityToggle(Boolean(data.boOW)); this.$tdP.visibilityToggle(Boolean(data.boSiteMap));
+    var tmp=data.tMod; 
+      this.$tdDate.html(mySwedDate(tmp)).prop('title','Last Mod:\n'+UTC2JS(tmp));   
+    var tmp=data.siteName; this.$tdSite.text(tmp).prop('title',data.www); 
+    var tmp=data.pageName, strS=Number(data.boTLS)?'s':'';   this.$aLink.prop({href:'http'+strS+'://'+data.www+'/'+tmp}).text(tmp);   
+  }
+}
+
+
+
+  // Method of $buttonNParent
+var goToParentMethod=function(strTypeGoal){  //strTypeCur,
+  var $b=$(this), $r=$b.parent().parent(), nParent=$r.data('nParent'), idParent=$r.data('idParent');
+  var FiltGoal=strTypeGoal=='page'?$pageFilterDiv.Filt:$imageFilterDiv.Filt;
+  var $listGoal=strTypeGoal=='page'?$pageList:$imageList;
+  var strTypeCur=$imageList.is(':visible')?'image':'page';
+  if(nParent<=1){ // ... go directly to parent 
+    FiltGoal.setSingleParent(idParent);  $listGoal.histPush(); $listGoal.loadTab(); if(strTypeGoal!=strTypeCur) {    $listGoal.setVis(); }
+  } else { // .. else open popup
+    if(strTypeCur=='page'){      var strGetParentFunc='getParent', objTmp={idPage:$r.data('idPage')};    }else{      var strGetParentFunc='getParentOfImage', objTmp={idImage:$r.data('idImage')};    }
+    var vec=[[strGetParentFunc,objTmp,function(data){
+      var Parent=[]; if('tab' in data) Parent=tabNStrCol2ArrObj(data);  
+      $grandParentSelPop.openFunc(Parent,strTypeCur,strTypeGoal);
+    }]];
+    majax(oAJAX,vec);     
+  }
 }
 
 
@@ -1817,7 +1830,6 @@ var grandParentSelPopExtend=function($el){
     //history.go(-1);
   }
 
-
   $el.openFunc=function(GrandParent, strTypeCurrent, strTypeGoalT){
     strTypeGoal=strTypeGoalT;
     var FiltT=strTypeCurrent=='page'?$pageFilterDiv.Filt:$imageFilterDiv.Filt;
@@ -1827,11 +1839,15 @@ var grandParentSelPopExtend=function($el){
     $div.empty();
     var len=GrandParent.length, tmpS=len==1?'':'s';
     $head.html(len+' parent'+tmpS+':');
+    //var boEqual=1; for(var i=0;i<len;i++) { if(GrandParent[i].siteName!=GrandParent[0].siteName) boEqual=0; }
     for(var i=0;i<len;i++) {  
-      var idPage=GrandParent[i].idPage, name=GrandParent[i].pageName;
+      var idPage=GrandParent[i].idPage, name=GrandParent[i].pageName, siteName=GrandParent[i].siteName;
       var boCur=idPage===idParent;
-      var $but=$('<button>').css({display:'block'}).data({idPage:idPage}).html(name).click(buttonPress).prop('disabled', boCur); 
-      $div.append($but);
+      var $but=$('<button>').data({idPage:idPage}).html(name).click(buttonPress).prop('disabled', boCur); 
+      var $r=$('<p>').css({display:'block'}).append($but);
+      //if(!boEqual) $r.prepend(siteName+' ');
+      if(strTypeCurrent=='image') $r.prepend(siteName+' ');
+      $div.append($r);
     }
     doHistPush({$view:$grandParentSelPop});
     $el.setVis();  
@@ -1859,34 +1875,81 @@ var grandParentSelPopExtend=function($el){
   if(boIE) $centerDiv.css({'width':'20em'}); 
   $el.addClass("Center-Container").append($centerDiv,$blanket); 
   
+  return $el;
+}
 
+
+renamePopExtend=function($el){
+"use strict"
+  $el.toString=function(){return 'renamePop';}
+  var save=function(){ 
+    resetMess();  
+    var strNewName=$inpName.val().trim(); $inpName.val(strNewName); if(strNewName.length==0) {setMess('name can not be empty',5); return; }
+    strNewName.replace(RegExp(' ','g'),'_');
+    var o1={strNewName:strNewName,id:id};
+    var vec=[['rename'+ucfirst(strType),o1,saveRet]];   majax(oAJAX,vec);
+
+    setMess('',null,true);  
+  }
+  var saveRet=function(data){
+    var boOK=false;
+    var tmp=data.boOK;   if(typeof tmp!="undefined")  boOK=tmp;
+    if(row!==null){
+      var $par=strType=='page'?$pageList:$imageList;
+      if(boOK) { $par.changeName(row, $inpName.val()); doHistBack();}  
+    }
+  }
+  $el.openFunc=function(strTypeT,rowT){
+    strType=strTypeT; row=rowT;
+    var $r=$(rowT), strName=$r.data(strType+'Name');  id=$r.data('id'+ucfirst(strType));
+    $type.html(strType); $inpName.val(strName).focus();
+    doHistPush({$view:$renamePop});
+    $el.setVis();
+  }
+  $el.setVis=function(){
+    $el.show();   return true;
+  }
+
+  var row, id, strType='';
+ 
+  var $type=$('<span>'); 
+  var $head=$('<h3>').append('Rename ',$type);
+  var $nameLab=$('<div>').append('New name: ');
+  var $inpName=$('<input>').css({display:'block',width:'100%'}).keypress( function(e){ if(e.which==13) {save();return false;}} );
+
+  var $saveButton=$('<button>').append('Save').click(save).css({'margin-top':'1em'});
+  var $cancelButton=$('<button>').append('Cancel').click(doHistBack).css({'margin-top':'1em'});
+  $el.append($head,$nameLab,$inpName,$cancelButton,$saveButton); //.css({padding:'0.1em'}); 
+
+  var $blanket=$('<div>').addClass("blanket");
+  var $centerDiv=$('<div>').addClass("Center").append($head,$nameLab,$inpName,$cancelButton,$saveButton).css({height:'12em', 'min-width':'17em', 'max-width':'30em', padding: '0.3em 0.5em 1.2em 1.2em'});
+  if(boIE) $centerDiv.css({'width':'20em'}); 
+  $el.addClass("Center-Container").append($centerDiv,$blanket); 
+  
   return $el;
 }
 
 areYouSurePopExtend=function($el){
 "use strict"
   $el.toString=function(){return 'areYouSurePop';}
-  var continueA=function(){ 
-    //continueCB();   //doHistBack();
-    continueCBLoc(doHistBack);   //doHistBack();
-  }
-  $el.openFunc=function(strLab,continueCB){ // continueCB(histBackFun): called when the user clicks the continue button. It takes a callback-argument which closes the areYouSurePop.
+  $el.openFunc=function(strLab, continueClick, cancelClick){ // continueClick(finFun): called when the user clicks the continue button. It takes a callback-argument which closes the areYouSurePop.
     $labPageName.html(strLab);
     doHistPush({$view:$areYouSurePop});
     $el.setVis();
-    continueCBLoc=continueCB;
+    continueClickLoc=continueClick;
+    cancelClickLoc=cancelClick;
   }
   $el.setVis=function(){
     $el.show(); return 1;
   }
  
-  var continueCBLoc;
+  var continueClickLoc, cancelClickLoc;
   //$el=popUpExtend($el);  
   //$el.css({'max-width':'20em', padding: '1.2em 0.5em 1.2em 1.2em'}); 
 
   var $labPageName=$('<div>');
-  var $buttonCancel=$('<button>').append('Cancel').click(doHistBack).css({'margin-top':'1em'});
-  var $buttonContinue=$('<button>').append('Yes').click(continueA).css({'margin-top':'1em'});
+  var $buttonCancel=$('<button>').append('Cancel').click(cancelClickLoc).css({'margin-top':'1em'});
+  var $buttonContinue=$('<button>').append('Yes').click(function(){  continueClickLoc();  }).css({'margin-top':'1em'});
   var $divBottom=$('<div>').append($buttonCancel,$buttonContinue);
   //$el.append($labPageName,$divBottom);
 
@@ -1924,16 +1987,16 @@ imageListExtend=function($el){
     var $rows=$tbody.children('p');
     for(var i=$rows.length; i<File.length;i++){
       var $r=$('<p>');
-      var $cb=$('<input type=checkbox>').click(cbClick); //.css({visibility:'hidden'});//.hide();
+      var $cb=$('<input type=checkbox>').click(cbClick);
       //$cb.css({'margin-top':'0em','margin-bottom':'0em'}); //'vertical-align':'bottom'
       //if(boAndroid) $cb.css({'-webkit-transform':'scale(2,2)'}); else $cb.css({width:'1.4em',height:'1.4em'});
-      var $buttonNParent=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'image','page');});
+      var $buttonNParent=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'page');});  //,'image'
       var $tdNParent=$('<span>').append($buttonNParent).attr('name','nParent').prop('title','Parents'); 
-      var $buttonNParentI=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'image','image');});
+      var $buttonNParentI=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'image');});  // ,'image'
       var $tdNParentI=$('<span>').append($buttonNParentI).attr('name','nParentI').prop('title','Parents'); 
       var $tdCB=$('<span>').data('valSort',0).append($cb).attr('name','cb');
       //var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'}); 
-      var $buttonExecute=$('<button>').append(charFlash).on(strMenuExecuteEvent,buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"});
+      var $buttonExecute=$('<button>').append(charFlash).on(strMenuOpenEvent,buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"});
       var $tdExecute=$('<span>').data('valSort',0).append($buttonExecute).attr('name','execute'); 
       var $tdDate=$('<span>').attr('name','date').prop('title',Label.date);  //.css({margin:'auto 0.3em'})
       var $img=$('<img>').click(imageClick);//.css({'margin-right':'0.1em','max-width':'50px','max-height':'50px'});
@@ -1956,16 +2019,17 @@ imageListExtend=function($el){
   }
   var cbClick=function(){
     var $cb=$(this), boOn=Number($cb.prop('checked'));    $cb.parent().data('valSort',boOn);
-    var boOn=isAnyOn();    $allButton.text(boOn?'None':'All');    $executeButton.toggle(boOn);
+    var boOn=isAnyOn();    $allButton.text(boOn?'None':'All');    $buttonExecuteMult.toggle(boOn);
   }
   var fileArray2Div=function(){
     var nRT=File.length;
     var $rows=$tbody.children('p');   $rows.slice(nRT).hide();
-    $myRows=$rows.slice(0,nRT); 
+    var $myRows=$rows.slice(0,nRT); 
     //if($myRows.length==0) return;
     $myRows.show();
     $myRows.each(function(i,r){ 
-      var $r=$(r).data({idImage:File[i].idImage, iFlip:i, imageName:File[i].imageName, nParent:File[i].nParent, idParent:File[i].idParent, nameParent:File[i].nameParent}); 
+      //var $r=$(r).data({idImage:File[i].idImage, iFlip:i, imageName:File[i].imageName, nParent:File[i].nParent, idParent:File[i].idParent, nameParent:File[i].nameParent}); 
+      var $r=$(r); $r.data(File[i]);  $r.data({iFlip:i}); 
       var nParent=File[i].nParent;
       //var $buttonTmp=$r.children('span[name=nParent]').data('valSort',nParent).children('button');
       var $buttonITmp=$r.children('span[name=nParentI]').data('valSort',nParent).children('button');
@@ -1992,47 +2056,31 @@ imageListExtend=function($el){
   }
   $el.setCBStat=function(boOn){
     boOn=Boolean(boOn);$allButton.html('All');
-    $executeButton.toggle(false);
-    if(typeof $myRows=='undefined') return;
+    $buttonExecuteMult.toggle(false);
+    //if(typeof $myRows=='undefined') return;
     var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')');
     $Tr.find('input').prop({'checked':false});
   }
-  var restExecuteButton=function(){   $allButton.html('All');  $executeButton.hide();  }
+  var restExecuteButton=function(){   $allButton.html('All');  $buttonExecuteMult.hide();  }
   $el.loadTab=function(){
     var oF=$imageFilterDiv.gatherFiltData();
     var vec=[['setUpImageListCond',oF],['getImageList',1,getListRet],['getImageHist',1,histRet]];
     //var boSingleParentFilter=$imageFilterDiv.Filt.checkIfSingleParent();
-    var boWhite=$imageFilterDiv.Filt.isWhite();
-    var StrParentsOn=$imageFilterDiv.Filt.getParentsOn();
-    var nParentsOn=$imageFilterDiv.Filt.getNParentsOn();
-    if(boWhite){
-      if(nParentsOn==1) {
-        var idParent=$imageFilterDiv.Filt.getSingleParent();
-        //vec.push(['getExtraPageStat',{idPage:idParent},getExtraPageStatRet]);  // If filtering for single parent then also get the "grandparents"
-        vec.push(['getParent',{idPage:idParent},getParentRet],['getSingleParentExtraStuff',{idPage:idParent},getSingleParentExtraStuffRet]);  // If filtering for single parent then also get the "grandparents"
-        var boOrphan=idParent===null;
-        if(boOrphan) $spanSingleFilter.html('(orphans)').css({color:'grey'}); else $spanSingleFilter.empty().append($aSingleFilter).css({color:''});
-        $buttPI.prop('title',boOrphan?'Orphan pages':'Children');
-      }else {
-        $spanGrandParent.setUpClear(); $spanGrandParentI.setUpClear();
-        var strTmp='('+nParentsOn+' parents on)';
-        var StrTmp=StrParentsOn.slice(0,5), indT=StrTmp.indexOf(null); if(indT!=-1) StrTmp[indT]='(orphans)';
-        var strTitle=StrTmp.join('\n');
-        $spanSingleFilter.html(strTmp).css({color:'grey'}).prop('title',strTitle);
-        
-      }
-    }else{
-      $spanGrandParent.setUpClear(); $spanGrandParentI.setUpClear();
-      $spanSingleFilter.html('').css({color:'grey'}).prop('title','');
+    var boWhite=$imageFilterDiv.Filt.isWhite(),     nParentsOn=$imageFilterDiv.Filt.getNParentsOn();
+    
+    if(boWhite && nParentsOn==1){
+      var idParent=$imageFilterDiv.Filt.getSingleParent();
+      //var siteName=$imageFilterDiv.Filt.getSingleSite();
+      vec.push(['getParent',{idPage:idParent},function(data){$divRowParent.getParentRet(data);}],
+         ['getSingleParentExtraStuff',{idPage:idParent},function(data){$divRowParent.getSingleParentExtraStuffRet(data);}]);  // If filtering for single parent then also get the "grandparents"
     }
-    //$spanSingleFilter.toggle(boSingleParentFilter);
-    $buttPI.toggle(nParentsOn==1);
+    $divRowParent.setUpPreAJAX(idParent);
     majax(oAJAX,vec);
     setMess('... fetching image list ... ',5,true);
     $head.clearArrow(); restExecuteButton();
   }
   var getParentRet=function(data){
-    if('tab' in data) { var Parent=tabNStrCol2ArrObj(data); $spanGrandParent.setUp(Parent);   $spanGrandParentI.setUp(Parent); }
+    if('tab' in data) { var Parent=tabNStrCol2ArrObj(data); $spanGrandParent.setUp(Parent);  } 
   }
   var getSingleParentExtraStuffRet=function(data){
     if('nSub' in data) {      $buttPI.empty().append(data.nSub);    }
@@ -2044,22 +2092,14 @@ imageListExtend=function($el){
   var getListRet=function(data){
     var nCur;  //, TabTmp, StrCol=[];
     var tmp=data.NFilt;   if(typeof tmp!="undefined") { $imageFilterDiv.setNFilt(tmp); } 
-    /*
-    File.length=0;
-    var tmp=data.StrCol;   if(typeof tmp!="undefined")  StrCol=tmp;
-    var tmp=data.tab;   if(typeof tmp!="undefined")  TabTmp=tmp;
-    for(var i=0;i<TabTmp.length;i++){
-      if(typeof File[i] =='undefined') File[i]={};
-      for(var j=0;j<StrCol.length;j++){  var name=StrCol[j]; File[i][name]=TabTmp[i][j];  }
-    }*/
     File.length=0;
     if('tab' in data) File=tabNStrCol2ArrObj(data);
     $el.nRowVisible=File.length;
     condAddRows(); fileArray2Div();
   }
   var histRet=function(data){
-    var tmp, HistPHP;
-    tmp=data.Hist;   if(typeof tmp=="undefined") tmp=[];     HistPHP=tmp;
+    var tmp, HistPHP=data.Hist||[];
+    
     ParentName=[]; if('ParentName' in data) ParentName=tabNStrCol2ArrObj(data.ParentName);  
     IndParentName={}; var objOne={}, objMult={};
     for(var i=0;i<ParentName.length;i++) {
@@ -2076,36 +2116,36 @@ imageListExtend=function($el){
     $imageFilterDiv.update();         
     //$imageList.setCBStat(0); 
   }
-  var getChecked=function(){
-    var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')'), $checked=$Tr.find('input:checked'), FileTmp=[]; $checked.each(function(){var tmp=$(this).parent().parent().data('idImage'); FileTmp.push(tmp);});
-    return FileTmp;
-  }
-  
-    // Methods of resp row
-  var getRenameData=function(){
-    var $r=$(this), iTab=$r.index(), idImage=$r.data('idImage'), strName=$r.data('imageName');    return [iTab,idImage,strName];  }
+
   var changeModOfSingleI=function(strName,boVal){
-    var $r=$(this), $span=$r.children('span[name='+strName+']'), boValO=$span.data('valSort');
+    var $r=$(this);  //, boValO=$span.data('valSort');
+    var boValO=$r.data(strName);
     if(typeof boVal=='undefined') boVal=1-boValO;
  
     var o={File:[$r.data('idImage')]}; o[strName]=boVal;
     var vec=[['myChModImage',o]];   majax(oAJAX,vec);
-    $span.data('valSort',Number(boVal)).css({visibility:boVal?'':'hidden'}); 
+    $r.data(strName,boVal);
+    var $span=$r.children('span[name='+strName+']'); $span.data('valSort',Number(boVal)).visibilityToggle(boVal); 
   }
   
-  
-  $el.changeName=function(iTab,strNewName){
-    var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')');
-    var $r=$Tr.eq(iTab), iFlip=$r.data('iFlip');
+  var getChecked=function(){
+    var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')'), $checked=$Tr.find('input:checked'), FileTmp=[]; $checked.each(function(){var tmp=$(this).parent().parent().data('idImage'); FileTmp.push(tmp);});
+    return FileTmp;
+  }
+ 
+  $el.changeName=function(r,strNewName){
+    var $r=$(r), iFlip=$r.data('iFlip');
     File[iFlip].imageName=strNewName;
-    $r.data('imageName',strNewName).children('span[name=link]').data('valSort',strNewName).children('a').prop({href:uCommon+'/'+strNewName}).text(strNewName);
+    $r.data('imageName',strNewName); var $td=$r.children('span[name=link]').data('valSort',strNewName); $td.children('a').prop({href:uCommon+'/'+strNewName}).text(strNewName);
   }
+  
   $el.deleteF=function(FileDelete, histBackFun){
     var oF=$imageFilterDiv.gatherFiltData();    
     //var vec=[['deleteImage',{File:FileDelete}],['setUpImageListCond',oF],['getImageList',1,getListRet],['getImageHist',1,histRet]];
     var vec=[['deleteImage',{File:FileDelete}, histBackFun]];
     restExecuteButton();  majax(oAJAX,vec);
   }
+  
   
   var funPopped=function(statePopped){ 
     $imageFilterDiv.frStored(statePopped);
@@ -2128,52 +2168,52 @@ imageListExtend=function($el){
   }
 
 
-  var $myRows;
-  var $tbody=$el.$tbody=$("<div>").addClass('listBody');
+  //var $myRows;
+  var $tbody=$el.$tbody=$("<div>").addClass('imageList listBody');  //.addClass('listBody');
   $el.$table=$("<div>").append($tbody).css({width:'100%',position:'relative'});
-  $el.$divCont=$("<div>").append($el.$table).css({'margin':'3em auto 1em','text-align':'left',display:'inline-block'});//
+  $el.$divCont=$("<div>").append($el.$table).css({margin:'0em auto 1em','text-align':'left',display:'inline-block'});//
+  
   
   var strTmp='Parents / Alternatve parents';
   var StrCol=['nParentI','cb','execute','date','image','size','boOther','link'], BoAscDefault={cb:0,boOther:0,size:0}, Label={nParent:strTmp, nParentI:strTmp, cb:'Select',date:'Created',boOther:'Supplied by user'}; //'nParent',
   //var $headFill=$('<p>').append().css({background:'white',margin:'0px',height:'calc(12px + 1.2em)'});
-  var $head=headExtend($('<p>'),$el,StrCol,BoAscDefault,Label,'p','span');
-  $head.css({background:'white', width:'inherit',height:'calc(12px + 1.2em)'}); // , position:'sticky', top:'57px', 'z-index':'1', margin:'0px'
-  $el.$table.prepend($head); //,$headFill
+  var $head=headExtend($('<p>'),$el,StrCol,BoAscDefault,Label,'p','span').addClass('imageList');
+  $head.css({background:'white', width:'inherit',height:'calc(12px + 1.2em)'});     // , position:'sticky', top:'57px', 'z-index':'1', margin:'0px'
+  $el.$headW=$('<div>').append($head).css({background:'white', width:'inherit', position:'sticky', top:'0px', 'z-index':'1', margin:'0px'});     
+  $el.$table.prepend($el.$headW); //,$headFill
 
-
+  
     // menuA
-  var $allButton=$('<button>').append('All').addClass('fixWidth').css({'margin-right':'1em'}).click(function(){  //, 'margin-left':'0.8em'
+  var $allButton=$('<button>').append('All').addClass('fixWidth').css({'margin-right':'1em'}).click(function(){  //'margin-left':'0.8em'
     var boOn=$allButton.text()=='All';
     var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')');
-    $Tr.find('input').prop({'checked':boOn}); 
+    $Tr.find('input').prop({'checked':boOn});
     $allButton.text(boOn?'None':'All');
-    $executeButton.toggle(boOn);
+    $buttonExecuteMult.toggle(boOn);
   });
 
-  var strMenuExecuteEvent='mousedown'; if(boTouch) strMenuExecuteEvent='click';
   var strEvent='mouseup'; if(boTouch) strEvent='click';
-
 
 
     // menuSingle
   var $buttonDownload=$('<div>').html('Download');
   var $buttonRename=$('<div>').append('Rename').on(strEvent,function(){
-    var $b=$(this).parent().data('$button'), $r=$b.parent().parent(),  arrTmp=getRenameData.call($r[0]); arrTmp.unshift('image'); $renamePop.openFunc.apply(null,arrTmp);
+    $renamePop.openFunc('image', this.parentElement.r);
   });
   var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){
-     var $b=$(this).parent().data('$button'), $r=$b.parent().parent(),  FileTmp=[$r.data('idImage')], strLab='Are sure you want to delete this image'; 
-    $areYouSurePop.openFunc(strLab,function(histBackFun){$el.deleteF(FileTmp, histBackFun);});
+    var r=this.parentElement.r,  FileTmp=[$(r).data('idImage')], strLab='Are sure you want to delete this page'; 
+    $areYouSurePop.openFunc(strLab, function(){$el.deleteF(FileTmp, doHistBack);}, doHistBack);
   });
-  var $buttonBoOtherTog=$('<div>').append('Toggle boOther').on(strEvent,function(){ var $b=$(this).parent().data('$button'), $r=$b.parent().parent();   changeModOfSingleI.call($r[0],'boOther'); });
+  var $buttonBoOtherTog=$('<div>').append('Toggle boOther').on(strEvent,function(){ changeModOfSingleI.call(this.parentElement.r,'boOther');   });
+  
   
   //var $itemSingle=$([]).push($buttonGoToParent, $buttonRename, $buttonDelete);
   var $itemSingle=$([]).push($buttonRename, $buttonDelete, $buttonBoOtherTog);
   //var $menuSingle=menuExtend($('<div>')).css({'text-align':'left'});
   var $menuSingle=$('<div>').css({'text-align':'left'});  menuExtend($menuSingle[0]);
   var buttonExeSingleClick=function(e){ 
-    var $button=$(this); //, $r=$button.parent().parent(), nParent=$r.data('nParent'), strParent=$r.data('nameParent');
-    $menuSingle.data('$button',$button);
-    //$menuSingle.openFunc(e,$button,$itemSingle);
+    var $button=$(this); 
+    $menuSingle[0].r=$button[0].parentElement.parentElement;
     var fragItems=jQueryObjToFragment($itemSingle);
     $menuSingle[0].openFunc(e,this,fragItems);
   }
@@ -2181,10 +2221,12 @@ imageListExtend=function($el){
 
     // menuMult
   var $buttonDownload=$('<div>').html('Download');
-  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){  var FileTmp=getChecked(), strLab='Deleting '+FileTmp.length+' image(s).';   $areYouSurePop.openFunc(strLab,function(histBackFun){$el.deleteF(FileTmp, histBackFun);}); });
+  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){
+    var FileTmp=getChecked(), strLab='Deleting '+FileTmp.length+' image(s).';   $areYouSurePop.openFunc(strLab, function(){$el.deleteF(FileTmp, doHistBack);}, doHistBack);
+  });
   
   //var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
-  var $executeButton=$('<button>').append(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
+  var $buttonExecuteMult=$('<button>').append(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
   var $itemMulti=$([]).push( $buttonDelete);
   //var $menuMult=menuExtend($('<div>')).css({'text-align':'left'});
   var $menuMult=$('<div>').css({'text-align':'left'});  menuExtend($menuMult[0]);
@@ -2195,9 +2237,12 @@ imageListExtend=function($el){
     $menuMult[0].openFunc(e,this,fragItems);
     //$menuMult.openFunc(e,$button,$itemMulti);
   }
-  $executeButton.on(strMenuExecuteEvent,buttonExeMultClick);
+  $buttonExecuteMult.on(strMenuOpenEvent,buttonExeMultClick);
 
 
+  //$el.$buttonExecuteParent=$('<button>').append(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"});
+  //var $divRowParent=new DivRowParentT($el);
+  //$headW.prepend($divRowParent);
 
 
   var File=[]; $el.nRowVisible=0;
@@ -2206,32 +2251,22 @@ imageListExtend=function($el){
   var $spanTmp=$('<span>').append(strFastBackSymbol).css({'font-size':'0.7em'});
   var $buttonFastBack=$('<button>').append($spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){history.fastBack($adminMoreDiv);});
   //var $spanLabel=$('<span>').append('Images').css({'float':'right',margin:'0.2em 0 0 0'}); 
-  var $buttPI=$('<button>').css({'line-height':'normal','min-width':'1.4em', 'background-image':'url("stylesheets/buttonRight1.png")'}).click(function(){  //.append($tmpImg)
-    var idParent=$imageFilterDiv.Filt.getSingleParent();
-    $pageFilterDiv.Filt.setSingleParent(idParent);
-    $pageList.histPush(); $pageList.loadTab(); $pageList.setVis();
-  });
-  var $buttPIW=$('<span>').append($buttPI).css({'float':'right','margin-right':'0.6em'});
+  
   var $tmpImg=$('<img>').prop({src:uFilter}).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
   $el.$filterInfoWrap=$('<span>');
   var $buttFilter=$('<button>').append($tmpImg,' (',$el.$filterInfoWrap,')').addClass('flexWidth').css({'float':'right','margin-right':'0.2em'}).click(function(){ doHistPush({$view:$imageFilterDiv}); $imageFilterDiv.setVis();});
   var $buttClear=$('<button>').append('C').click(function(){$imageFilterDiv.Filt.filtClear(); $imageList.histPush(); $imageList.loadTab()}).css({'float':'right','margin-right':'1em'});
   var $spanTmp=$('<span>').append('(orphans)').css({'font-size':'0.8em'});
   var $buttOrphan=$('<button>').append($spanTmp).click(function(){$imageFilterDiv.Filt.setSingleParent(null);  $imageList.histPush(); $imageList.loadTab()}).css({'float':'right','margin-right':'1em'});
-  var $spanGrandParent=new SpanGrandParent('image','page').css({'margin-left':'0.6em'});
-  var $spanGrandParentI=new SpanGrandParent('image','image').css({'margin-right':'0.6em', 'margin-left':'0.6em'});
-  var $aSingleFilter=$('<a>').prop({target:"_blank"}).css({'font-weight':'bold'}), $spanSingleFilter=$('<span>').css({'margin-right':'0.5em', 'margin-top':'0.7em'});  //.hide()
-  //var $spanSingleFilterW=$('<span>').append();
-  var $menuA=$('<div>').append($buttonFastBack, $allButton, $executeButton, $buttFilter, $buttClear, $buttOrphan);  // $buttonBack, 
-  $menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
-  var $menuTop=$('<div>').append($spanGrandParentI, $spanSingleFilter, $buttPIW).addClass('divMenuTop'); // 'Parent Filter: ', $spanGrandParent, 
-  $menuTop.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em', 'line-height':'2.7em'});
 
-  $el.addClass('imageList');
-  $el.$fixedTop=$('<div>').append($menuTop).css(cssFixedTop).css({'background':'lightblue'});
+  var $menuA=$('<div>').append($buttonFastBack, $allButton, $buttonExecuteMult, $buttFilter, $buttClear, $buttOrphan);  // $buttonBack, 
+  $menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
+
+  //$el.addClass('imageList');
+  //$el.$fixedTop=$('<div>').append($divRowParent).css(cssFixedTop).css({'background':'lightblue'});
   $el.$fixedDiv=$('<div>').append($menuA).css(cssFixed).css({'background':'lightblue'});
   $el.css({'text-align':'center'});
-  $el.append($el.$divCont,$el.$fixedTop,$el.$fixedDiv);
+  $el.append($el.$divCont,$el.$fixedDiv);  //,$el.$fixedTop
   return $el;
 }
 
@@ -3493,6 +3528,9 @@ setUp1=function(){
     }
   } 
 
+  strMenuOpenEvent=boTouch?'click':'mousedown';
+
+
   if(boIOS  || boIE) charBackSymbol='◄'; else charBackSymbol='◀';
   strFastBackSymbol=charBackSymbol+charBackSymbol;
   charFlash='⚡';//⚡↯
@@ -3556,11 +3594,13 @@ setUp1=function(){
 
   KeyColPage=Object.keys(PropPage);  KeyColImage=Object.keys(PropImage);
 
+  if(typeof objSite=='undefined') objSite={boTLS:boTLS, www:wwwSite};
+  if(typeof objSiteDefault=='undefined') objSiteDefault={boTLS:boTLSCommon, www:wwwCommon}; 
 
   //colsFlip=array_flip(KeyCol);
   //StrOrderFiltFlip=array_flip(StrOrderFilt);
-  var strScheme='http'+(boTLS?'s':''),    strSchemeLong=strScheme+'://';    uSite=strSchemeLong+wwwSite;
-  var strScheme='http'+(boTLSCommon?'s':''),    strSchemeLong=strScheme+'://';       uCommon=strSchemeLong+wwwCommon;
+  var strScheme='http'+(objSite.boTLS?'s':''),    strSchemeLong=strScheme+'://';    uSite=strSchemeLong+objSite.www;
+  var strScheme='http'+(objSiteDefault.boTLS?'s':''),    strSchemeLong=strScheme+'://';       uCommon=strSchemeLong+objSiteDefault.www;
   uBE=uSite+"/"+leafBE;
   uCanonical=uSite+'/'+queredPage;
   if(queredPage=='start') uCanonical=uSite;
@@ -3738,11 +3778,13 @@ setUp1=function(){
 
   $adminMoreDiv=adminMoreDivExtend($('<div>'));
   $uploadUserDiv=uploadUserDivExtend($('<div>')); //$body.append($uploadUserDiv);
+  
+  $menuPageSingle=menuPageSingleExtend($('<div>'));
+  $grandParentSelPop=grandParentSelPopExtend($('<div>'));
+  $divRowParent=new DivRowParentT();
   $pageList=pageListExtend($('<div>'));
   $imageList=imageListExtend($('<div>'));
-  
   $renamePop=renamePopExtend($('<div>'));
-  $grandParentSelPop=grandParentSelPopExtend($('<div>'));
   $areYouSurePop=areYouSurePopExtend($('<div>'));
 
 
@@ -3839,6 +3881,7 @@ setUp1=function(){
   $pageList.setVis=function(){
     var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();
     $tmp.setCBStat(0); 
+    $tmp.$headW.prepend($divRowParent);
     $tmp.$divCont.css({'margin-bottom':285+'px'});
     fillScreenF(false);
     return true;
@@ -3846,6 +3889,7 @@ setUp1=function(){
   $imageList.setVis=function(){
     var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();
     //$tmp.setCBStat(0);
+    $tmp.$headW.prepend($divRowParent);
     $tmp.$divCont.css({'margin-bottom':285+'px'});
     fillScreenF(false);
     return true;
@@ -3970,11 +4014,11 @@ setUp1=function(){
     else if($diffDiv.$divCont.is(':visible')){$diffDiv.$divCont.css({'margin-bottom':$diffDiv.$fixedDiv.height()+'px'});}
     else if($pageList.$divCont.is(':visible')){
       $pageList.$divCont.css({'margin-bottom':$pageList.$fixedDiv.height()+'px'});
-      $pageList.$divCont.css({'margin-top':$pageList.$fixedTop.height()+'px'});
+      //$pageList.$divCont.css({'margin-top':$pageList.$fixedTop.height()+'px'});
     }
     else if($imageList.$divCont.is(':visible')){
       $imageList.$divCont.css({'margin-bottom':$imageList.$fixedDiv.height()+'px'});
-      $imageList.$divCont.css({'margin-top':$imageList.$fixedTop.height()+'px'});
+      //$imageList.$divCont.css({'margin-top':$imageList.$fixedTop.height()+'px'});
     }
     else if($redirectTab.$divCont.is(':visible')){$redirectTab.$divCont.css({'margin-bottom':$redirectTab.$fixedDiv.height()+'px'});}
     else if($siteTab.$divCont.is(':visible')){$siteTab.$divCont.css({'margin-bottom':$siteTab.$fixedDiv.height()+'px'});}

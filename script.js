@@ -12,15 +12,14 @@ temporary = require('tmp');
 util =  require('util');
 concat = require('concat-stream');
 requestMod = require('request');
-through = require('through')
+//through = require('through')
 querystring = require('querystring');
 //async = require('async');
 formidable = require("formidable");
-NodeRSA = require('node-rsa');
+//NodeRSA = require('node-rsa');
 crypto = require('crypto');
-tls=require('tls');
-atob = require('atob');
-childProcess = require('child_process');
+//atob = require('atob');
+//childProcess = require('child_process');
 zlib = require('zlib');
 imageSize = require('image-size');
 //Fiber = require('fibers');
@@ -111,7 +110,7 @@ var flow=( function*(){
 
   var strConfig;
   if(boHeroku){ 
-    if(!process.env.jsConfig) { console.error('jsConfig-environment-variable is not set'); process.exit(1);}
+    if(!process.env.jsConfig) { console.error(new Error('jsConfig-environment-variable is not set')); return;}  //process.exit(1);
     strConfig=process.env.jsConfig||'';
   }
   else{
@@ -189,7 +188,7 @@ var flow=( function*(){
       if(StrFile.indexOf(filename)!=-1){
         console.log(filename+' changed: '+ev);
         var flowWatch=( function*(){ 
-          var err=yield* readFileToCache.call({flow:flowWatch}, filename); if(err) console.error(err);
+          var [err]=yield* readFileToCache.call({flow:flowWatch}, filename); if(err) {console.error(err); return; }
         })(); flowWatch.next();
       }
     });
@@ -199,7 +198,7 @@ var flow=( function*(){
       if(StrFile.indexOf(filename)!=-1){
         console.log(filename+' changed: '+ev);
         var flowWatch=( function*(){ 
-          var err=yield* readFileToCache.call({flow:flowWatch}, 'stylesheets/'+filename); if(err) console.error(err);
+          var [err]=yield* readFileToCache.call({flow:flowWatch}, 'stylesheets/'+filename); if(err) {console.error(err); return; }
         })(); flowWatch.next();
       }
     });
@@ -208,9 +207,9 @@ var flow=( function*(){
   CacheUri=new CacheUriT();
   for(var i=0;i<StrFilePreCache.length;i++) {
     var filename=StrFilePreCache[i];
-    var err=yield* readFileToCache.call({flow:flow}, filename); if(err) {  console.error(err);  return;}
+    var [err]=yield* readFileToCache.call({flow:flow}, filename); if(err) {  console.error(err.message);  return;}
   }
-  yield* writeCacheDynamicJS.call({flow:flow});
+  var [err]=yield* writeCacheDynamicJS.call({flow:flow});   if(err) {  console.error(err.message);  return;}
   
 
   handler=function(req, res){
@@ -225,8 +224,7 @@ var flow=( function*(){
 
 
       var ipClient=getIP(req);
-      var redisVarSession=sessionID+'_Main';
-      var redisVarCounter=sessionID+'_Counter', redisVarCounterIP=ipClient+'_Counter'; 
+      var redisVarSession=sessionID+'_Main', redisVarCounter=sessionID+'_Counter', redisVarCounterIP=ipClient+'_Counter'; 
 
 
         // get intCount

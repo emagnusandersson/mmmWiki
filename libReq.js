@@ -99,6 +99,7 @@ app.reqBU=function*(strArg) {
     res.writeHead(200,objHead);
     res.end(outdata,'binary');
   }
+  var redisVar='mmmWiki_tLastBU', strTmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,unixNow()]);
 }
 
 
@@ -357,6 +358,7 @@ SELECT now() AS tModCache`;
     
       // setNewCacheSQL
     var {sql, Val, nEndingResults}=createSetNewCacheSQL(req.wwwSite, queredPage, rev, strHtmlText, eTag, arrSub, StrSubImage); 
+    sql="START TRANSACTION; "+sql+" COMMIT;";
     var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) {  res.out500(err); return; }
     var iRowLast=results.length-nEndingResults-1;
     var rowA=results[iRowLast][0];
@@ -465,7 +467,8 @@ SELECT now() AS tModCache`;
   Str.push("function indexAssign(){");
 
   var objPage={boOR:boOR, boOW:boOW, boSiteMap:boSiteMap, idPage:idPage};
-
+  var strDBType=(typeof mysql!='undefined')?'mysql':'neo4j';
+  
   Str.push("\
 tMod="+JSON.stringify(tMod.toUnix())+";\n\
 objPage="+JSON.stringify(objPage)+";\n\
@@ -482,6 +485,7 @@ wwwCommon="+JSON.stringify(wwwCommon)+";\n\
 wwwSite="+JSON.stringify(wwwSite)+";\n\
 queredPage="+JSON.stringify(queredPage)+";\n\
 strReCaptchaSiteKey="+JSON.stringify(strReCaptchaSiteKey)+";\n\
+strDBType="+JSON.stringify(strDBType)+";\n\
 ");
   if(!boOR){
     Str.push("\
@@ -517,7 +521,7 @@ app.reqStatic=function*() {
   var keyCache=pathName; //if(pathName==='/'+leafSiteSpecific) keyCache=req.strSite+keyCache; 
   if(!(keyCache in CacheUri)){
     var filename=pathName.substr(1);    
-    var err=yield* readFileToCache.call({flow:req.flow}, filename);
+    var [err]=yield* readFileToCache.call({flow:req.flow}, filename);
     if(err) {
       if(err.code=='ENOENT') {res.out404(); return;}
       if('Referer' in req.headers) console.log('Referer:'+req.headers.Referer);
@@ -537,8 +541,6 @@ app.reqStatic=function*() {
   res.write(buf); //, this.encWrite
   res.end();
 }
-
-
 
 
 /******************************************************************************
@@ -755,12 +757,14 @@ app.reqMediaImageThumb=function*(){
   var eTagThumb=md5(strDataThumb);
 
     // Store in thumbTab
-  var Sql=["CALL "+strDBPrefix+"storeThumb(?,?,?,?,?,@tCreated);"];
+  var Sql=[];
+  Sql.push("START TRANSACTION;");
+  Sql.push("CALL "+strDBPrefix+"storeThumb(?,?,?,?,?);");
   var Val=[idImage,wNew,hNew,strDataThumb,eTagThumb];
-  Sql.push("SELECT @tCreated;");
+  Sql.push("COMMIT;");
   var sql=Sql.join('\n');
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
-  var thumbTime=new Date(results[1]['@tCreated']);
+  var thumbTime=new Date(results[1][0].tCreated*1000);
   if(bo301ToOrg) { res.out301Loc(nameCanonical); return; }
 
     // Echo to buffer
@@ -1334,13 +1338,13 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
     // Stored procedures  
     //
 
-  SqlFunctionDrop.push("DROP FUNCTION IF EXISTS isTemplate");
+  SqlFunctionDrop.push(`DROP FUNCTION IF EXISTS isTemplate`);
   SqlFunction.push(`CREATE FUNCTION isTemplate(Iname varchar(128)) RETURNS TINYINT DETERMINISTIC
       BEGIN
         RETURN Iname REGEXP '^template(_talk)?:';
       END`);
 
-  SqlFunctionDrop.push("DROP FUNCTION IF EXISTS isTalk");
+  SqlFunctionDrop.push(`DROP FUNCTION IF EXISTS isTalk`);
   SqlFunction.push(`CREATE FUNCTION isTalk(Iname varchar(128)) RETURNS TINYINT DETERMINISTIC
       BEGIN
         RETURN Iname REGEXP '^(template_)?talk:';
@@ -1348,17 +1352,110 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
        
 
 
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS calcTalkName");
-  SqlFunction.push("CREATE PROCEDURE calcTalkName(Iname varchar(128), OUT OtalkName varchar(128), OUT VboErrAlreadyTalk INT) \n\
-    proc_label:BEGIN \n\
-        DECLARE VboTalk, VboTemplate INT; \n\
-        DECLARE Vname varchar(128); \n\
-        SET VboErrAlreadyTalk=0, OtalkName=''; \n\
-        #CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); \n\
-        SET VboTalk=isTalk(Iname);   SET VboTemplate=isTemplate(Iname); \n\
-        IF VboTalk THEN SET VboErrAlreadyTalk=1; LEAVE proc_label; END IF; \n\
-        IF VboTemplate THEN SET OtalkName=CONCAT('template_talk:',SUBSTR(Iname,10));  ELSE SET OtalkName=CONCAT('talk:',Iname); END IF; \n\
-      END");
+  SqlFunctionDrop.push(`DROP PROCEDURE IF EXISTS calcTalkName`);
+  SqlFunction.push(`CREATE PROCEDURE calcTalkName(Iname varchar(128), OUT OtalkName varchar(128), OUT VboErrAlreadyTalk INT)
+    proc_label:BEGIN
+        DECLARE VboTalk, VboTemplate INT;
+        DECLARE Vname varchar(128);
+        SET VboErrAlreadyTalk=0, OtalkName='';
+        #CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate);
+        SET VboTalk=isTalk(Iname);   SET VboTemplate=isTemplate(Iname);
+        IF VboTalk THEN SET VboErrAlreadyTalk=1; LEAVE proc_label; END IF;
+        IF VboTemplate THEN SET OtalkName=CONCAT('template_talk:',SUBSTR(Iname,10));  ELSE SET OtalkName=CONCAT('talk:',Iname); END IF;
+      END`);
+      
+      
+  SqlFunctionDrop.push(`DROP PROCEDURE IF EXISTS `+strDBPrefix+`renamePage`);
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`renamePage(IidPage int(4), IpageNameStub varchar(128))
+    proc_label:BEGIN
+        SET @VidPage=IidPage, @VpageNameStub=IpageNameStub;
+        SELECT COUNT(*) INTO @Vc FROM `+pageTab+` WHERE pageName=@VpageNameStub;
+        IF @Vc THEN COMMIT; SELECT 'nameExist' AS err; LEAVE proc_label; END IF;
+        
+        SELECT idSite, pageName INTO @VidSite, @VpageNameCur FROM `+pageTab+` WHERE idPage=@VidPage;
+        
+        SELECT @VpageNameCur AS nameO;  -- output
+        
+        -- DROP TABLE IF EXISTS tmpParentCur;
+        CREATE TEMPORARY TABLE IF NOT EXISTS tmpParentCur ( idPage int(4) NOT NULL, idFile int(4) NOT NULL) ENGINE=INNODB COLLATE utf8_general_ci;
+        TRUNCATE tmpParentCur;
+        -- INSERT INTO tmpParentCur SELECT idPage FROM `+subTab+` WHERE idSite=@VidSite AND pageName=@VpageNameCur;  -- page parents
+        INSERT INTO tmpParentCur SELECT s.idPage, p.idFile FROM `+subTab+` s JOIN `+pageLastSlimView+` p ON s.idPage=p.idPage WHERE s.idSite=@VidSite AND s.pageName=@VpageNameCur;  -- page parents
+        -- SELECT * FROM tmpParentCur;
+        
+        SELECT t.idPage, t.idFile, data FROM tmpParentCur t JOIN `+fileTab+` f ON f.idFile=t.idFile WHERE 1;  -- output
+
+        -- DROP TABLE IF EXISTS tmpParentAll;
+        CREATE TEMPORARY TABLE IF NOT EXISTS tmpParentAll ( idPage int(4) NOT NULL ) ENGINE=INNODB COLLATE utf8_general_ci;
+        TRUNCATE tmpParentAll;
+        INSERT INTO tmpParentAll
+          SELECT idPage FROM `+subTab+` WHERE idSite=@VidSite AND pageName=@VpageNameStub  -- stub parents
+            UNION
+          SELECT idPage FROM tmpParentCur; -- page parents
+        -- SELECT * FROM tmpParentAll;
+
+        REPLACE INTO `+subTab+` SELECT idPage, @VidSite, @VpageNameStub, 1 FROM tmpParentAll;
+          
+        SELECT COUNT(*) INTO @VnParent FROM tmpParentAll WHERE 1;
+
+        DELETE FROM `+subTab+` WHERE idSite=@VidSite AND pageName=@VpageNameCur;
+
+          -- Set up nParentTab appropriately
+        IF @VnParent THEN
+          INSERT INTO `+nParentTab+` (idSite, pageName, nParent) VALUES (@VidSite, @VpageNameStub, @VnParent) ON DUPLICATE KEY UPDATE nParent=@VnParent;
+        ELSE
+          DELETE FROM `+nParentTab+` WHERE idSite=@VidSite AND pageName=@VpageNameStub;
+        END IF;
+        
+        UPDATE `+pageTab+` SET pageName=@VpageNameStub WHERE idPage=@VidPage;
+      END`);
+      
+  SqlFunctionDrop.push(`DROP PROCEDURE IF EXISTS `+strDBPrefix+`renameImage`);
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`renameImage(IidImage int(4), IimageNameStub varchar(128))
+    proc_label:BEGIN
+        SET @VidImage=IidImage, @VimageNameStub=IimageNameStub;
+        SELECT COUNT(*) INTO @Vc FROM `+imageTab+` WHERE imageName=@VimageNameStub;
+        IF @Vc THEN COMMIT; SELECT 'nameExist' AS err; LEAVE proc_label; END IF;
+        
+        SELECT imageName INTO @VimageNameCur FROM `+imageTab+` WHERE idImage=@VidImage;
+        
+        SELECT @VimageNameCur AS nameO;  -- output
+        
+        -- DROP TABLE IF EXISTS tmpParentCur;
+        CREATE TEMPORARY TABLE IF NOT EXISTS tmpParentCur ( idPage int(4) NOT NULL, idFile int(4) NOT NULL) ENGINE=INNODB COLLATE utf8_general_ci;
+        TRUNCATE tmpParentCur;
+        -- INSERT INTO tmpParentCur SELECT idPage FROM `+subImageTab+` WHERE imageName=@VimageNameCur;  -- image parents
+        INSERT INTO tmpParentCur SELECT s.idPage, p.idFile FROM `+subImageTab+` s JOIN `+pageLastSlimView+` p ON s.idPage=p.idPage WHERE s.imageName=@VimageNameCur;  -- image parents
+        -- SELECT * FROM tmpParentCur;
+        
+        SELECT t.idPage, t.idFile, data FROM tmpParentCur t JOIN `+fileTab+` f ON f.idFile=t.idFile WHERE 1;  -- output
+
+        -- DROP TABLE IF EXISTS tmpParentAll;
+        CREATE TEMPORARY TABLE IF NOT EXISTS tmpParentAll ( idPage int(4) NOT NULL ) ENGINE=INNODB COLLATE utf8_general_ci;
+        TRUNCATE tmpParentAll;
+        INSERT INTO tmpParentAll
+          SELECT idPage FROM `+subImageTab+` WHERE imageName=@VimageNameStub  -- stub parents
+            UNION
+          SELECT idPage FROM tmpParentCur; -- image parents
+        -- SELECT * FROM tmpParentAll;
+
+        REPLACE INTO `+subImageTab+` SELECT idPage, @VimageNameStub FROM tmpParentAll;
+          
+        SELECT COUNT(*) INTO @VnParent FROM tmpParentAll WHERE 1;
+
+        DELETE FROM `+subImageTab+` WHERE imageName=@VimageNameCur;
+
+          -- Set up nParentITab appropriately
+        IF @VnParent THEN
+          INSERT INTO `+nParentITab+` (imageName, nParent) VALUES (@VimageNameStub, @VnParent) ON DUPLICATE KEY UPDATE nParent=@VnParent;
+        ELSE
+          DELETE FROM `+nParentITab+` WHERE imageName=@VimageNameStub;
+        END IF;
+        
+        UPDATE `+imageTab+` SET imageName=@VimageNameStub WHERE idImage=@VidImage;
+      END`);
+      
+        
   SqlFunctionDrop.push(`DROP PROCEDURE IF EXISTS `+strDBPrefix+`deletePage`);
   SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`deletePage(Iwww varchar(128), Iname varchar(128))
       BEGIN
@@ -1366,9 +1463,9 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
         START TRANSACTION;
         SELECT idSite, idPage INTO VidSite, VidPage FROM `+pageTab+` WHERE pageName=Iname;
         #CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate);
-        SET VboTemplate=isTemplate(Iname); \n\
+        SET VboTemplate=isTemplate(Iname);
         CALL `+strDBPrefix+`markStaleParentsOfPage(VidSite, Iname, 0, VboTemplate);
-        #DROP TEMPORARY TABLE IF EXISTS tmp;
+        DROP TEMPORARY TABLE IF EXISTS tmp;
         #CREATE TEMPORARY TABLE tmp AS 
         #  SELECT idFile, idFileCache FROM `+versionTab+` WHERE idPage=VidPage;
         CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4), idFileCache INT(4));
@@ -1402,10 +1499,10 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
         START TRANSACTION;
         SELECT idSite, pageName INTO VidSite, Vname FROM `+pageTab+` WHERE idPage=IidPage;
         #CALL testIfTalkOrTemplate(Vname, VboTalk, VboTemplate);
-        SET VboTemplate=isTemplate(Vname); \n\
+        SET VboTemplate=isTemplate(Vname);
         CALL `+strDBPrefix+`markStaleParentsOfPage(VidSite, Vname, 0, VboTemplate);
         SET VidPage=IidPage;
-        #DROP TEMPORARY TABLE IF EXISTS tmp;
+        DROP TEMPORARY TABLE IF EXISTS tmp;
         #CREATE TEMPORARY TABLE tmp AS 
         #  SELECT idFile, idFileCache FROM `+versionTab+` WHERE idPage=VidPage;
         CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4), idFileCache INT(4));
@@ -1434,9 +1531,9 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
   SqlFunctionDrop.push(`DROP PROCEDURE IF EXISTS `+strDBPrefix+`deletePageIDMult`);
   SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`deletePageIDMult()
       BEGIN
-        START TRANSACTION;
         CALL `+strDBPrefix+`markStaleParentsOfPageMult(0);
         
+        DROP TABLE IF EXISTS tmp;
         CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4), idFileCache INT(4));
         TRUNCATE tmp; INSERT INTO tmp SELECT idFile, idFileCache FROM `+versionTab+` v JOIN arrPageID arr ON v.idPage=arr.idPage;
         DELETE v FROM `+versionTab+` v JOIN arrPageID arr ON v.idPage=arr.idPage WHERE 1;
@@ -1453,8 +1550,6 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
           -- Recalculate nParentITab
         TRUNCATE `+nParentITab+`;
         INSERT INTO `+nParentITab+` SELECT imageName, COUNT(idPage IS NOT NULL) AS nParent FROM `+subImageTab+` GROUP BY imageName;
-
-        COMMIT;
       END`);
   //SqlFunction.push("CALL "+strDBPrefix+"deletePage('www.common.com','mmm')");
 
@@ -1466,7 +1561,7 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
         SELECT COUNT(*) INTO Vn FROM "+versionTab+" WHERE idPage=IidPage AND rev!=0; \n\
         IF Vn=0 THEN LEAVE proc_label; END IF;                # Quick exit. \n\
         SELECT idSite INTO VidSite FROM "+pageTab+" WHERE idPage=IidPage; \n\
-        #DROP TEMPORARY TABLE IF EXISTS tmp; \n\
+        DROP TEMPORARY TABLE IF EXISTS tmp; \n\
         #CREATE TEMPORARY TABLE tmp AS  \n\
         #  SELECT idFile, idFileCache FROM "+versionTab+" WHERE idPage=IidPage AND rev!=0; \n\
         CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4), idFileCache INT(4)); \n\
@@ -1478,14 +1573,15 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
       END");
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"deleteImage");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"deleteImage(IidImage int(4)) \n\
+  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"deleteImageID");
+  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"deleteImageID(IidImage int(4)) \n\
       BEGIN \n\
         DECLARE VidImage,VidFile INT; \n\
         DECLARE Vname VARCHAR(128); \n\
         START TRANSACTION; \n\
         #SELECT idImage, idFile INTO VidImage, VidFile FROM "+imageTab+" WHERE imageName=Iname; \n\
         SELECT idImage, idFile, imageName INTO VidImage, VidFile, Vname FROM "+imageTab+" WHERE idImage=IidImage; \n\
-        #DROP TEMPORARY TABLE IF EXISTS tmp; \n\
+        DROP TEMPORARY TABLE IF EXISTS tmp; \n\
         #CREATE TEMPORARY TABLE tmp AS  \n\
         #  SELECT idFile FROM "+thumbTab+" WHERE idImage=VidImage; \n\
         CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4)); \n\
@@ -1494,19 +1590,34 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
         DELETE f FROM "+fileTab+" f JOIN tmp t ON t.idFile=f.idFile WHERE 1; \n\
         DELETE FROM "+imageTab+" WHERE idImage=VidImage; \n\
         DELETE FROM "+fileTab+" WHERE idFile=VidFile; \n\
-        DELETE FROM "+subImageTab+" WHERE imageName=Vname; \n\
-        #CALL "+strDBPrefix+"markStaleParentsOfImage(Vname); \n\
+        # DELETE FROM "+subImageTab+" WHERE imageName=Vname; \n\
         COMMIT; \n\
       END");
   //SqlFunction.push("CALL "+strDBPrefix+"deleteImage('mmm')");
+  
+  SqlFunctionDrop.push(`DROP PROCEDURE IF EXISTS `+strDBPrefix+`deleteImageIDMult`);
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`deleteImageIDMult()
+      BEGIN
+        DROP TABLE IF EXISTS tmp;
+        CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4));
+        TRUNCATE tmp; INSERT INTO tmp SELECT idFile FROM `+thumbTab+` t JOIN arrImageID arr ON t.idImage=arr.idImage;
+        DELETE t FROM `+thumbTab+` t JOIN arrImageID arr ON t.idImage=arr.idImage WHERE 1;
+        DELETE f FROM `+fileTab+` f JOIN tmp ON tmp.idFile=f.idFile WHERE 1;
+        
+        TRUNCATE tmp; INSERT INTO tmp SELECT idFile FROM `+imageTab+` i JOIN arrImageID arr ON i.idImage=arr.idImage;
+        
+        DELETE i FROM `+imageTab+` i JOIN arrImageID arr ON i.idImage=arr.idImage WHERE 1;
+        DELETE f FROM `+fileTab+` f JOIN tmp ON tmp.idFile=f.idFile WHERE 1;
+      END`);
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"deleteThumb");
   SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"deleteThumb(IidImage INT(4)) \n\
       BEGIN \n\
         START TRANSACTION; \n\
-        #DROP TEMPORARY TABLE IF EXISTS tmp; \n\
+        DROP TEMPORARY TABLE IF EXISTS tmp; \n\
         #CREATE TEMPORARY TABLE tmp AS  \n\
         #  SELECT idFile FROM "+thumbTab+" WHERE idImage=IidImage; \n\
+        DROP TABLE IF EXISTS tmp; \n\
         CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4)); \n\
         TRUNCATE tmp; INSERT INTO tmp SELECT idFile FROM "+thumbTab+" WHERE idImage=IidImage; \n\
         DELETE FROM "+thumbTab+" WHERE idImage=IidImage; \n\
@@ -1533,7 +1644,7 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
  SET v.tModCache=FROM_UNIXTIME(1) WHERE s.idSite=IidSite AND s.pageName=Iname AND (s.boOnWhenCached!=IboOn OR IboTemplate); \n\
       END");
       
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"markStaleParentsOfPageMult");
+  SqlFunctionDrop.push(`DROP PROCEDURE IF EXISTS `+strDBPrefix+`markStaleParentsOfPageMult`);
   SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`markStaleParentsOfPageMult(IboOn TINYINT)
       BEGIN
         UPDATE `+versionTab+` v JOIN `+subTab+` s ON v.idPage=s.idPage JOIN `+pageTab+` p ON s.idSite=p.idSite AND s.pageName=p.pageName JOIN arrPageID arr ON p.idPage=arr.idPage
@@ -1888,7 +1999,7 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
       proc_label:BEGIN \n\
         DECLARE VidImage, VidFile, Vc, Vlen INT; \n\
   \n\
-        START TRANSACTION; \n\
+        #START TRANSACTION; \n\
         SELECT idImage, idFile, count(*) INTO VidImage,VidFile,Vc FROM "+imageTab+" WHERE imageName=Iname; \n\
         SET OboOk=1, Vlen=LENGTH(Idata); \n\
         IF Vc=0 THEN \n\
@@ -1902,15 +2013,15 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
           #DELETE FROM "+thumbTab+" WHERE idImage=VidImage; \n\
           CALL "+strDBPrefix+"deleteThumb(VidImage); \n\
         END IF; \n\
-        COMMIT; \n\
+        #COMMIT; \n\
       END");
 
-
+  // , OUT OtCreated INT
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"storeThumb");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"storeThumb(IidImage INT, Iwidth INT, Iheight INT, Idata MEDIUMBLOB, IeTag varchar(32), OUT OtCreated INT) \n\
+  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"storeThumb(IidImage INT, Iwidth INT, Iheight INT, Idata MEDIUMBLOB, IeTag varchar(32)) \n\
       BEGIN \n\
         DECLARE VidFile, Vc INT; \n\
-        START TRANSACTION; \n\
+        #START TRANSACTION; \n\
         SELECT idFile, count(*) INTO VidFile,Vc FROM "+thumbTab+" WHERE idImage=IidImage AND width=Iwidth AND height=Iheight; \n\
         IF Vc=0 THEN \n\
           INSERT INTO "+fileTab+" (data) VALUES (Idata); \n\
@@ -1920,8 +2031,9 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
           UPDATE "+thumbTab+" SET tCreated=now(),eTag=IeTag WHERE idImage=IidImage AND width=Iwidth AND height=Iheight; \n\
           UPDATE "+fileTab+" SET data=Idata WHERE idFile=VidFile; \n\
         END IF; \n\
-        SET OtCreated=UNIX_TIMESTAMP(now()); \n\
-        COMMIT; \n\
+        #SET OtCreated=UNIX_TIMESTAMP(now()); \n\
+        SELECT UNIX_TIMESTAMP(now()) AS tCreated; \n\
+        #COMMIT; \n\
       END");
   //SqlFunction.push("CALL "+strDBPrefix+"storeImage('abc.jpg',1,'01234','0123456789abcdef0123456789abcdef',@boOK)"); 
   //SqlFunction.push("SELECT @boOK"); tmp=sth.fetch(PDO.FETCH_NUM); var_dump(tmp);
@@ -1934,7 +2046,7 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
   SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"storeVideo(Iname varchar(128), Idata MEDIUMBLOB, IeTag varchar(32)) \n\
       proc_label:BEGIN \n\
         DECLARE VidVideo, VidFile, Vc, Vlen INT; \n\
-        START TRANSACTION; \n\
+        #START TRANSACTION; \n\
         SELECT idVideo, idFile, count(*) INTO VidVideo,VidFile,Vc FROM "+videoTab+" WHERE name=Iname; \n\
         SET Vlen=LENGTH(Idata); \n\
         IF Vc=0 THEN \n\
@@ -1945,7 +2057,7 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
           UPDATE "+videoTab+" SET name=Iname,tCreated=now(),eTag=IeTag,size=Vlen WHERE idVideo=VidVideo; \n\
           UPDATE "+fileTab+" SET data=Idata WHERE idFile=VidFile; \n\
         END IF; \n\
-        COMMIT; \n\
+        #COMMIT; \n\
       END");
   //SqlFunction.push("CALL "+strDBPrefix+"storeVideo('abc.mp4','012345','0123456789abcdef0123456789abcdef')");
 

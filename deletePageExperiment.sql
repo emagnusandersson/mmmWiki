@@ -4,6 +4,7 @@
         START TRANSACTION;
         CALL `+strDBPrefix+`markStaleParentsOfPageMult(0);
         
+        DROP TABLE IF EXISTS tmp;
         CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4), idFileCache INT(4));
         TRUNCATE tmp; INSERT INTO tmp SELECT idFile, idFileCache FROM `+versionTab+` v JOIN arrPageID arr ON v.idPage=arr.idPage;
         DELETE v FROM `+versionTab+` v JOIN arrPageID arr ON v.idPage=arr.idPage WHERE 1;
@@ -37,7 +38,48 @@ CREATE PROCEDURE `+strDBPrefix+`markStaleParentsOfPageMult(IboOn TINYINT)
 
 CREATE TABLE IF NOT EXISTS arrPageID (idPage int(128) NOT NULL);
 TRUNCATE arrPageID;
-INSERT INTO arrPageID VALUES ('maple', 1), ('Oak', 1), ('Pine', 1), ('Spruce', 1), ('Birch', 1);
+INSERT INTO arrPageID VALUES (786), (787), (788), (789), (790);
 DROP TABLE arrPageID;
 
 CALL mmmWikideletePageIDMulti();
+
+--
+-- image
+--
+
+  CREATE PROCEDURE `+strDBPrefix+`deleteImageIDMult()
+      BEGIN
+        
+        DROP TABLE IF EXISTS tmp;
+        CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4));
+        TRUNCATE tmp; INSERT INTO tmp SELECT idFile FROM `+thumbTab+` t JOIN arrImageID arr ON t.idImage=arr.idImage;
+        DELETE t FROM `+thumbTab+` t JOIN arrImageID arr ON t.idImage=arr.idImage WHERE 1;
+        DELETE f FROM `+fileTab+` f JOIN tmp ON tmp.idFile=f.idFile WHERE 1;
+        
+        TRUNCATE tmp; INSERT INTO tmp SELECT idFile FROM `+imageTab+` i JOIN arrImageID arr ON i.idImage=arr.idImage;
+        
+        DELETE i FROM `+imageTab+` i JOIN arrImageID arr ON i.idImage=arr.idImage WHERE 1;
+        DELETE f FROM `+fileTab+` f JOIN tmp ON tmp.idFile=f.idFile WHERE 1;
+      
+      END
+
+START TRANSACTION;
+CREATE TABLE IF NOT EXISTS arrImageID (idImage int(128) NOT NULL);
+TRUNCATE arrImageID;
+INSERT INTO arrImageID VALUES (786), (787), (788), (789), (790);
+COMMIT;
+DROP TABLE arrImageID;
+
+CALL mmmWikideleteImageIDMult();
+
+
+        DROP TABLE IF EXISTS tmp;
+        CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4));
+        TRUNCATE tmp; INSERT INTO tmp SELECT idFile FROM mmmWiki_thumb t JOIN arrImageID arr ON t.idImage=arr.idImage;
+        DELETE t FROM mmmWiki_thumb t JOIN arrImageID arr ON t.idImage=arr.idImage WHERE 1;
+        DELETE f FROM mmmWiki_file f JOIN tmp ON tmp.idFile=f.idFile WHERE 1;
+        
+        TRUNCATE tmp; INSERT INTO tmp SELECT idFile FROM mmmWiki_image i JOIN arrImageID arr ON i.idImage=arr.idImage;
+        
+        DELETE i FROM mmmWiki_image i JOIN arrImageID arr ON i.idImage=arr.idImage WHERE 1;
+        DELETE f FROM mmmWiki_file f JOIN tmp ON tmp.idFile=f.idFile WHERE 1;

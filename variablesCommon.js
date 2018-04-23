@@ -117,6 +117,18 @@ GROUP BY p.idPage ) aaa\n\
 GROUP BY bin ORDER BY "+strOrder+";";
 }   // , p.siteName, p.pageName pp.idPage, 
 
+PropPage.parent.histF=function(name, strTableRef,strCond,strOrder){
+  return `SELECT pp.idPage AS bin, count(*) AS groupCount FROM 
+`+pageLastView+` p 
+LEFT JOIN (
+  `+subTab+` s 
+  JOIN `+pageTab+` pp ON pp.idPage=s.idPage
+) ON s.idSite=p.idSite AND s.pageName=p.pageName 
+`+strCond+`
+GROUP BY bin ORDER BY `+strOrder+`;`;
+}
+
+
 var tmpF=function(name){ return "COUNT(DISTINCT p.idSite, p.pageName, p."+name+")";}
 var StrTmp=['siteName','size','boOR','boOW','boSiteMap','boTalk','boTemplate','boOther','tMod','tModCache'];
 for(var i=0;i<StrTmp.length;i++){  var name=StrTmp[i]; PropPage[name].binValueF=tmpF; }
@@ -170,33 +182,38 @@ PropImage.size.pre = PropImage.tCreated.pre = PropImage.boOther.pre = 'i.';
 
 PropImage.parentSite.relaxCountExp=function(name){ return "count(DISTINCT i.idImage)"; }  
 PropImage.parent.relaxCountExp=function(name){ return "count(DISTINCT i.idImage, i.imageName)"; }  
-/*
-PropImage.parent.histF=function(name, strTableRef,strCond,strOrder){
-  return "SELECT aaa.tmpBinName AS bin, count(*) AS groupCount FROM \n\
-(SELECT i.*, pp.pageName AS tmpBinName FROM \n\
-"+strTableRef+" \n\
-"+strCond+"\n\
-GROUP BY i.idImage, i.imageName ) aaa\n\
-GROUP BY bin ORDER BY "+strOrder+";";
-}*/
+
+
+
 PropImage.parentSite.histF=function(name, strTableRef,strCond,strOrder){
-  return "SELECT aaa.tmpBinName AS bin, count(*) AS groupCount FROM \n\
-(SELECT i.*, pp.siteName AS tmpBinName FROM \n\
-"+strTableRef+" \n\
-"+strCond+"\n\
-GROUP BY i.idImage ) aaa\n\
-GROUP BY bin ORDER BY "+strOrder+";";
+  return `SELECT pp.siteName AS bin, count(*) AS groupCount FROM 
+`+imageTab+` i 
+LEFT JOIN (
+  `+subImageTab+` s 
+  JOIN `+pageWWWView+` pp ON pp.idPage=s.idPage
+) ON s.imageName=i.imageName 
+`+strCond+`
+GROUP BY bin ORDER BY `+strOrder+`;`;
 }
-//, pp.siteName
+
 PropImage.parent.histF=function(name, strTableRef,strCond,strOrder){
-  return "SELECT aaa.tmpBinName AS bin, count(*) AS groupCount FROM \n\
-(SELECT i.*, pp.idPage AS tmpBinName FROM \n\
-"+strTableRef+" \n\
-"+strCond+"\n\
-GROUP BY  i.idImage) aaa\n\
-GROUP BY bin ORDER BY "+strOrder+";";
-} // CONCAT(pp.siteName,':',   , i.imageName
-//, pp.idPage 
+  return `SELECT pp.idPage AS bin, count(*) AS groupCount FROM 
+`+strTableRef+`  
+`+strCond+`
+GROUP BY bin ORDER BY `+strOrder+`;`;
+}
+
+PropImage.parent.histF=function(name, strTableRef,strCond,strOrder){
+  return `SELECT pp.idPage AS bin, count(*) AS groupCount FROM 
+`+imageTab+` i 
+LEFT JOIN (
+  `+subImageTab+` s 
+  JOIN `+pageWWWView+` pp ON pp.idPage=s.idPage
+) ON s.imageName=i.imageName 
+`+strCond+`
+GROUP BY bin ORDER BY `+strOrder+`;`;
+}
+
 var tmpF=function(name){ return "COUNT(DISTINCT i.imageName, i."+name+")";}
 var StrTmp=['size','tCreated','boOther'];
 for(var i=0;i<StrTmp.length;i++){  var name=StrTmp[i]; PropImage[name].binValueF=tmpF; }
@@ -306,6 +323,13 @@ strTableRefPage="("+pageLastView+" p) \n\
 LEFT JOIN "+subTab+" s ON s.idSite=p.idSite AND s.pageName=p.pageName \n\
 LEFT JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage\n\
 LEFT JOIN ("+nParentTab+" np) ON p.pageName=np.pageName AND p.idSite=np.idSite";
+
+
+strTableRefPage="("+pageLastView+" p) \n\
+LEFT JOIN "+subTab+" s ON s.idSite=p.idSite AND s.pageName=p.pageName \n\
+LEFT JOIN ("+pageTab+" pp) ON pp.idPage=s.idPage\n\
+LEFT JOIN ("+nParentTab+" np) ON p.pageName=np.pageName AND p.idSite=np.idSite";
+
 // Starting with the list of pages
 // The 1:st join: adds idPage of parent (The table is expanded if there are multiple parents)
 // The 2:nd join: adds pageName of parent(s)
@@ -334,12 +358,17 @@ LEFT JOIN "+subImageTab+" s ON s.imageName=i.imageName \n\
 LEFT JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage \n\
 LEFT JOIN ("+nParentITab+" np) ON i.imageName=np.imageName";
 
+strTableRefImage=imageTab+" i \n\
+LEFT JOIN "+subImageTab+" s ON s.imageName=i.imageName \n\
+LEFT JOIN ("+pageWWWView+" pp) ON pp.idPage=s.idPage \n\
+LEFT JOIN ("+nParentITab+" np) ON i.imageName=np.imageName";
+
 
 
 strTableRefPageHist="("+pageLastView+" p) \n\
 LEFT JOIN (\n\
   "+subTab+" s \n\
-  JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage\n\
+  JOIN "+pageTab+" pp ON pp.idPage=s.idPage\n\
 ) ON s.idSite=p.idSite AND s.pageName=p.pageName";
 // The query inside the parantheses creates a table with all parent-child relations: pp.siteName, pp.pageName (parent) <-> s.siteName, s.pageName (child). 
 // Should be used with a COUNT(DISTINCT p.idSite, p.pageName, XXX)  
@@ -348,7 +377,7 @@ LEFT JOIN (\n\
 strTableRefImageHist=imageTab+" i \n\
 LEFT JOIN (\n\
   "+subImageTab+" s \n\
-  JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage\n\
+  JOIN "+pageWWWView+" pp ON pp.idPage=s.idPage\n\
 ) ON s.imageName=i.imageName";
 // The query inside the parantheses creates a table with all parent-child relations: pp.siteName, pp.pageName (parent) <-> s.imageName (child). 
 // Should be used with COUNT(DISTINCT i.imageName, XXX) 

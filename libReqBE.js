@@ -115,7 +115,7 @@ ReqBE.prototype.go=function*(){
 
            // Arrays of functions
     // Functions that changes something must check and refresh CSRF-code
-  var arrCSRF=['myChMod', 'myChModImage', 'saveByAdd', 'saveByReplace', 'uploadUser', 'uploadAdmin', 'uploadAdminServ', 'getPageInfo', 'getImageInfo', 'getLastTMod', 'setUpPageListCond','getPageList','getPageHist', 'setUpImageListCond','getImageList','getImageHist', 'getParent','getParentOfImage','getSingleParentExtraStuff', 'deletePage','deleteImage','renamePage','renameImage', 'redirectTabGet','redirectTabSet','redirectTabDelete', 'redirectTabResetNAccess', 'siteTabGet', 'siteTabSet', 'siteTabDelete', 'siteTabSetDefault'];
+  var arrCSRF=['myChMod', 'myChModImage', 'saveByAdd', 'saveByReplace', 'uploadUser', 'uploadAdmin', 'uploadAdminServ', 'getPageInfo', 'getImageInfo', 'getLastTModNTLastBU', 'setUpPageListCond','getPageList','getPageHist', 'setUpImageListCond','getImageList','getImageHist', 'getParent','getParentOfImage','getSingleParentExtraStuff', 'deletePage','deleteImage','renamePage','renameImage', 'redirectTabGet','redirectTabSet','redirectTabDelete', 'redirectTabResetNAccess', 'siteTabGet', 'siteTabSet', 'siteTabDelete', 'siteTabSetDefault'];
   var arrNoCSRF=['specSetup','vLogin','aLogin','aLogout','pageLoad','pageCompare','getPreview'];  
   allowed=arrCSRF.concat(arrNoCSRF);
 
@@ -268,9 +268,11 @@ ReqBE.prototype.deletePage=function*(inObj){
   
   var Sql=[], len=File.length;
   if(len>=3){ // This way is quicker if many pages are to be deleted
+    Sql.push("START TRANSACTION;");
     Sql.push("CREATE TEMPORARY TABLE IF NOT EXISTS arrPageID (idPage varchar(128) NOT NULL);");
     Sql.push("TRUNCATE arrPageID; INSERT INTO arrPageID VALUES "+array_fill(len,'(?)').join(', ')+';');
     Sql.push("CALL "+strDBPrefix+"deletePageIDMult();"); 
+    Sql.push("COMMIT;");
     var sql=Sql.join('\n');
   }else{
     var sql=array_fill(File.length, "CALL "+strDBPrefix+"deletePageID(?);").join('\n'); 
@@ -289,9 +291,22 @@ ReqBE.prototype.deleteImage=function*(inObj){
   if(!this.boALoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
 
   if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else { return [new ErrorClient('deleteImage: no files')]; }
-  var sql=array_fill(File.length, "CALL "+strDBPrefix+"deleteImage(?);").join('\n');
+  
+  var Sql=[], len=File.length;
+  if(len>=3){ // This way is quicker if many pages are to be deleted
+    Sql.push("START TRANSACTION;");
+    Sql.push("CREATE TEMPORARY TABLE IF NOT EXISTS arrImageID (idImage varchar(128) NOT NULL);");
+    Sql.push("TRUNCATE arrImageID; INSERT INTO arrImageID VALUES "+array_fill(len,'(?)').join(', ')+';');
+    Sql.push("CALL "+strDBPrefix+"deleteImageIDMult();"); 
+    Sql.push("COMMIT;");
+    var sql=Sql.join('\n');
+  }else{
+    var sql=array_fill(File.length, "CALL "+strDBPrefix+"deleteImageID(?);").join('\n'); 
+  }
+  
+  //var sql=array_fill(File.length, "CALL "+strDBPrefix+"deleteImage(?);").join('\n');
   var Val=File;
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err]; 
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
   this.mes('images deleted');   
   return [null, [Ou]];
   
@@ -369,8 +384,9 @@ SELECT now() AS tModCache`;
     
       // setNewCacheSQL
     var {sql, Val, nEndingResults}=createSetNewCacheSQL(req.wwwSite, queredPage, rev, strHtmlText, eTag, arrSub, StrSubImage);
+    sql="START TRANSACTION; "+sql+" COMMIT;";
     var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
-    var iRowLast=results.length-nEndingResults-1;
+    var iRowLast=results.length-nEndingResults-2;
     var rowA=results[iRowLast][0];
     var mess=rowA.mess;       if(mess!='done') { return [new Error(mess)]; }
     tModCache=new Date(rowA.tModCache*1000);
@@ -487,8 +503,9 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   
       // saveByReplace
   var {sql, Val, nEndingResults}=createSaveByReplaceSQL('', req.wwwSite, this.queredPage, strEditText, strHtmlText, eTag, arrSub, StrSubImage); 
+  sql="START TRANSACTION; "+sql+" COMMIT;";
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
-  var iRowLast=results.length-nEndingResults-1;
+  var iRowLast=results.length-nEndingResults-2;
   var rowA=results[iRowLast][0], tMod=new Date(rowA.tMod*1000), tModCache=new Date(rowA.tModCache*1000);
   var mess=rowA.mess;//if(typeof results[iRowLast][0]=='object')
   
@@ -558,8 +575,9 @@ ReqBE.prototype.saveByAdd=function*(inObj){
   
       // saveByAddSQL
   var {sql, Val, nEndingResults}=createSaveByAddSQL(req.wwwSite, this.queredPage, summary, signature, strEditText, strHtmlText, eTag, arrSub, StrSubImage);
+  sql="START TRANSACTION; "+sql+" COMMIT;";
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
-  var iRowLast=results.length-nEndingResults-1;
+  var iRowLast=results.length-nEndingResults-2;
   var mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
   
 
@@ -580,24 +598,6 @@ ReqBE.prototype.saveByAdd=function*(inObj){
 
   return [null, [0]];
 }
-
-
-ReqBE.prototype.renamePage=function*(inObj){ 
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
-  var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
-  var sql="UPDATE "+pageTab+" SET pageName=? WHERE idPage=?";
-  var strNewName=inObj.strNewName.replace(RegExp(' ','g'),'_');
-  var Val=[strNewName, inObj.id];
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
-  var c=results.affectedRows, boOK, mestmp; 
-  if(c==1) { boOK=1; mestmp="1 page renamed"; } else {boOK=0; mestmp=c+" pages renamed!?"; }
-  this.mes(mestmp);
-  Ou.boOK=boOK;      
-  return [null, [Ou]];
-}
-
 ReqBE.prototype.renameImage=function*(inObj){ 
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
@@ -611,9 +611,87 @@ ReqBE.prototype.renameImage=function*(inObj){
   this.mes(mestmp);
   Ou.boOK=boOK;      
   return [null, [Ou]];
-  
 }
 
+ReqBE.prototype.renamePage=function*(inObj){ 
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
+  var Ou={};
+  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+  
+  var Sql=[];
+  Sql.push("START TRANSACTION;");
+  Sql.push("CALL "+strDBPrefix+"renamePage(?, ?);");
+  var sql=Sql.join('\n');
+  var strNewName=inObj.strNewName.replace(RegExp(' ','g'),'_');
+  var Val=[inObj.id, strNewName];
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
+  if(results[1][0].err=='nameExist') { return [new ErrorClient('nameExist')]; }
+  var nameLCO=results[1][0].nameO.toLowerCase(), records=results[2];
+  
+  var nRec=records.length;
+  var Sql=[], Val=[];
+  for(var i=0;i<nRec;i++){
+    var strEditText=records[i].data.toString();
+    var mPa=new Parser(), strEditText=mPa.renameILinkOrImage(strEditText, nameLCO, strNewName);
+    Val.push(records[i].idFile, strEditText);
+  }
+  var tmp=array_fill(nRec, "(?,?)").join(',');
+  Sql.push("INSERT INTO "+fileTab+" (idFile, data) VALUES "+tmp+" ON DUPLICATE KEY UPDATE data=VALUES(data);");
+  
+  for(var i=0;i<nRec;i++){ Val.push(records[i].idFile); }
+  var tmp=array_fill(nRec, "?").join(',');
+  Sql.push("UPDATE "+versionTab+" SET tModCache=FROM_UNIXTIME(1) WHERE idFile IN ("+tmp+");");
+  Sql.push("COMMIT;");
+  var sql=Sql.join('\n');
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
+  var c=results[0].affectedRows/2;
+  var boOK=1, mestmp='Links in '+c+" pages renamed.";
+  
+  this.mes(mestmp);
+  Ou.boOK=boOK;      
+  return [null, [Ou]];
+}
+
+ReqBE.prototype.renameImage=function*(inObj){ 
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
+  var Ou={};
+  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+  
+  var Sql=[];
+  Sql.push("START TRANSACTION;");
+  Sql.push("CALL "+strDBPrefix+"renameImage(?, ?);");
+  var sql=Sql.join('\n');
+  var strNewName=inObj.strNewName.replace(RegExp(' ','g'),'_');
+  var Val=[inObj.id, strNewName];
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
+  if(results[1][0].err=='nameExist') { return [new ErrorClient('nameExist')]; }
+  var nameLCO=results[1][0].nameO.toLowerCase(), records=results[2];
+  
+  var nRec=records.length;
+  var Sql=[], Val=[];
+  for(var i=0;i<nRec;i++){
+    var strEditText=records[i].data.toString();
+    var mPa=new Parser(), strEditText=mPa.renameILinkOrImage(strEditText, '', '', nameLCO, strNewName);
+    Val.push(records[i].idFile, strEditText);
+  }
+  var tmp=array_fill(nRec, "(?,?)").join(',');
+  Sql.push("INSERT INTO "+fileTab+" (idFile, data) VALUES "+tmp+" ON DUPLICATE KEY UPDATE data=VALUES(data);");
+  
+  for(var i=0;i<nRec;i++){ Val.push(records[i].idFile); }
+  var tmp=array_fill(nRec, "?").join(',');
+  Sql.push("UPDATE "+versionTab+" SET tModCache=FROM_UNIXTIME(1) WHERE idFile IN ("+tmp+");");
+  Sql.push("COMMIT;");
+  var sql=Sql.join('\n');
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
+  var c=results[0].affectedRows/2;
+  var boOK=1, mestmp='Image urls in '+c+" pages renamed.";
+  
+  this.mes(mestmp);
+  Ou.boOK=boOK;      
+  return [null, [Ou]];
+}
 
 ReqBE.prototype.specSetup=function*(inObj){
   var req=this.req, res=this.res;
@@ -635,7 +713,7 @@ ReqBE.prototype.setUpPageListCond=function*(inObj){
 ReqBE.prototype.getParent=function*(inObj){
   var req=this.req, res=this.res;
   //var Ou={}, sql="SELECT p.pageName FROM "+pageTab+" p JOIN "+subTab+" s ON s.idPage=p.idPage WHERE s.pageName=?;",   Val=[inObj.pageName];
-  var Ou={}, sql="SELECT p.boTLS, p.www, p.idPage, p.pageName FROM "+pageWWWView+" p JOIN "+subTab+" s ON s.idPage=p.idPage JOIN "+pageTab+" c ON s.pageName=c.pageName WHERE c.idPage=?;",   Val=[inObj.idPage];
+  var Ou={}, sql="SELECT p.boTLS, p.siteName, p.www, p.idPage, p.pageName FROM "+pageWWWView+" p JOIN "+subTab+" s ON s.idPage=p.idPage JOIN "+pageTab+" c ON s.pageName=c.pageName WHERE c.idPage=?;",   Val=[inObj.idPage];
   var flow=req.flow
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
   Ou=arrObj2TabNStrCol(results);
@@ -645,7 +723,7 @@ ReqBE.prototype.getParent=function*(inObj){
 ReqBE.prototype.getParentOfImage=function*(inObj){
   var req=this.req, res=this.res;
   //var Ou={}, sql="SELECT p.pageName FROM "+pageTab+" p JOIN "+subImageTab+" s ON s.idPage=p.idPage WHERE s.imageName=?;",   Val=[inObj.imageName];
-  var Ou={}, sql="SELECT p.boTLS, p.www, p.idPage, p.pageName FROM "+pageWWWView+" p JOIN "+subImageTab+" s ON s.idPage=p.idPage JOIN "+imageTab+" c ON s.imageName=c.imageName  WHERE c.idImage=?;",   Val=[inObj.idImage];
+  var Ou={}, sql="SELECT p.boTLS, p.siteName, p.www, p.idPage, p.pageName FROM "+pageWWWView+" p JOIN "+subImageTab+" s ON s.idPage=p.idPage JOIN "+imageTab+" c ON s.imageName=c.imageName  WHERE c.idImage=?;",   Val=[inObj.idImage];
   var flow=req.flow;
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
   Ou=arrObj2TabNStrCol(results);
@@ -663,7 +741,8 @@ ReqBE.prototype.getSingleParentExtraStuff=function*(inObj){
   } else {
     Sql.push("SELECT COUNT(*) AS nSub FROM "+pageTab+" p JOIN "+subTab+" s ON s.idPage=p.idPage WHERE p.idPage=?;");   
     Sql.push("SELECT COUNT(*) AS nImage FROM "+pageTab+" p JOIN "+subImageTab+" s ON s.idPage=p.idPage WHERE p.idPage=?;"); 
-    Sql.push("SELECT boTLS, siteName, www, pageName FROM "+pageWWWView+" p WHERE p.idPage=?;"); 
+    //Sql.push("SELECT boTLS, siteName, www, pageName, idPage, boOR, boOW, boSiteMap FROM "+pageWWWView+" p WHERE p.idPage=?;"); 
+    Sql.push("SELECT boTLS, siteName, www, pageName, idPage, boOR, boOW, boSiteMap, size, tMod, boOther, lastRev FROM "+pageLastView+" p WHERE p.idPage=?;"); 
     Sql.push("SELECT COUNT(*) AS nSame FROM "+pageTab+" pA JOIN "+pageTab+" pB ON pA.pageName=pB.pageName WHERE pB.idPage=?;"); // nSame is >1 if multiple sites have the same pageName 
     Val.push(inObj.idPage, inObj.idPage, inObj.idPage, inObj.idPage);
   }  
@@ -674,7 +753,7 @@ ReqBE.prototype.getSingleParentExtraStuff=function*(inObj){
   if(inObj.idPage!==null) { extend(Ou, results[2][0]); extend(Ou, results[3][0]); }
   return [null, [Ou]];
 }
-
+    // nAccess, tCreated, tLastAccess;
 
 ReqBE.prototype.getPageList=function*(inObj) {
   var req=this.req, res=this.res;
@@ -777,7 +856,7 @@ ReqBE.prototype.getImageHist=function*(inObj){
   return [null, [Ou]];
 }
 
-ReqBE.prototype.getPageInfo=function*(inObj){
+ReqBE.prototype.getPageInfo=function*(inObj){  // Used by uploadAdminDiv
   var req=this.req, res=this.res, Ou={}
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
@@ -803,7 +882,7 @@ ReqBE.prototype.getPageInfo=function*(inObj){
 }
 
 
-ReqBE.prototype.getImageInfo=function*(inObj){
+ReqBE.prototype.getImageInfo=function*(inObj){  // Used by diffBackUpDiv, uploadAdminDiv, uploadUserDiv
   var req=this.req, res=this.res, Ou={}
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
@@ -824,7 +903,8 @@ ReqBE.prototype.getImageInfo=function*(inObj){
   return [null, [Ou]];
 }
 
-ReqBE.prototype.getLastTMod=function*(inObj){  // To be displayed in adminMore
+
+ReqBE.prototype.getLastTModNTLastBU=function*(inObj){
   var req=this.req, res=this.res, flow=req.flow, Ou={};
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
 
@@ -832,9 +912,12 @@ ReqBE.prototype.getLastTMod=function*(inObj){  // To be displayed in adminMore
   var Val={};
   var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
   Ou.tLastMod=results[0].tLastMod;
+  
+  var redisVar='mmmWiki_tLastBU', strTmp=yield* wrapRedisSendCommand.call(req, 'get',[redisVar]);
+  Ou.tLastBU=strTmp;
+  
   return [null, [Ou]];
 }
-
 
 ////////////////////////////////////////////////////////////////////////
 // RedirectTab
@@ -1007,14 +1090,16 @@ app.storeFile=function*(fileName, type, data, flow){
     
           // saveByReplace
     var {sql, Val, nEndingResults}=createSaveByReplaceSQL(siteName, '', pageName, strEditText, strHtmlText, '', arrSub, StrSubImage);
-    console.log(strEditText.length+', '+strHtmlText.length+', nSub:'+arrSub.length+', nsubImage:'+StrSubImage.length);
-    console.time('dbOperations');
-    sql="SET autocommit=0;"+sql;  // +"SET autocommit=1;";
+    //console.time('dbOperations');
+    var tStart=new Date();
+    //sql="SET autocommit=0;"+sql+" SET autocommit=1;";
     var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
     var iRowLast=results.length-nEndingResults-1;
     var mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
     if(mess!='done' && mess!='deleting') { console.log(mess); return [new ErrorClient('Error: '+mess+' ('+fileName+')')]; }
-    console.timeEnd('dbOperations');
+    var tDBOperations=(new Date())-tStart;
+    console.log('  html:'+strHtmlText.length+', nSub:'+arrSub.length+', nsubImage:'+StrSubImage.length+', tDBOperations:'+tDBOperations+'ms');
+    //console.timeEnd('dbOperations');
 
   }else if(regImg.test(type)){
     var eTag=md5(data); 
@@ -1041,6 +1126,11 @@ app.storeFileMult=function*(flow, File){
   var n=FileOrg.length;
   var tmp=n+" files."; console.log(tmp); 
   var FileTalk=[]; for(var i=FileOrg.length-1;i>=0;i--){ if(regBoTalk.test(FileOrg[i].name)) { var item=mySplice1(FileOrg,i);  FileTalk.push(item);  }  } FileOrg=FileTalk.concat(FileOrg);
+  
+  var sql="START TRANSACTION;", Val=[];
+  var sql="SET autocommit=0;", Val=[];
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
+  
   for(var i=0;i<FileOrg.length;i++){
     var fileOrg=FileOrg[i], tmpname=fileOrg.path;
     var err, buf;
@@ -1060,7 +1150,7 @@ app.storeFileMult=function*(flow, File){
         var Match=RegExp('\\.(\\w{1,3})$').exec(fileName);
         var type=Match[1].toLowerCase(), bufT=new Buffer(fileInZip._data,'binary');//b.toString();
 
-        console.log(j+'/'+Key.length+' '+fileName+' '+bufT.length);
+        console.log(j+'/'+Key.length+' '+fileName+' '+bufT.length+' [byte]');
         var [err]=yield* storeFile.call({}, fileName, type, bufT, flow);  if(err) return [err];
       } 
 
@@ -1073,6 +1163,11 @@ app.storeFileMult=function*(flow, File){
       var [err]=yield* storeFile.call({}, fileName, type, dataOrg, flow);  if(err) return [err];
     } 
   }
+  
+  //var sql="COMMIT;", Val=[];
+  var sql="SET autocommit=1; COMMIT;", Val=[];
+  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
+  
   return [null];
 }
 
@@ -1161,11 +1256,13 @@ ReqBE.prototype.uploadUser=function*(inObj){
     var eTag=md5(data);
     //var dim=imageSize(data);  console.log(fileName+', w/h: '+dim.width+' / '+dim.height);
     var sql="CALL "+strDBPrefix+"storeImage(?,?,?,?,@boOK)";
+    sql="START TRANSACTION; "+sql+" COMMIT;";
     var Val=[fileName,1,data,eTag];
     var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
   }else if(regVid.test(type)){ 
     var eTag=md5(data);
     var sql="CALL "+strDBPrefix+"storeVideo(?,?,?)";
+    sql="START TRANSACTION; "+sql+" COMMIT;";
     var Val=[fileName,data,eTag];
     var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
   }
