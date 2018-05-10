@@ -396,7 +396,7 @@ adminMoreDivExtend=function($el){
   $el.toString=function(){return 'adminMoreDiv';}
   $el.setUp=function(){
     var funRet=function(data){
-      var boBUNeeded=data.tLastMod>data.tLastBU, strTmp='tLastBU: '+swedTime(data.tLastBU)+', tLastMod: '+swedTime(data.tLastMod);
+      var boBUNeeded=data.tLastMod>data.tLastBU, strTmp='tLastBU: '+swedTime(data.tLastBU)+', tLastMod: '+swedTime(data.tLastMod)+' ('+data.pageName+')';
       $aBUFilesToComp.prop('title', strTmp).css({'background':boBUNeeded?'red':''});
     }
     majax(oAJAX,[['getLastTModNTLastBU',{},funRet]]);  
@@ -473,6 +473,7 @@ adminMoreDivExtend=function($el){
 
   var $butLoadFromServerP=$('<button>').append('page.zip').click(function(){   var vec=[['uploadAdminServ',{file:'page.zip'}]];   majax(oAJAX,vec);    });
   var $butLoadFromServerI=$('<button>').append('image.zip').click(function(){   var vec=[['uploadAdminServ',{file:'image.zip'}]];   majax(oAJAX,vec);    });
+  var $butLoadFromServerM=$('<button>').append('meta').click(function(){   var vec=[['loadMeta',{}]];   majax(oAJAX,vec);    });
   
   var $siteButton=$('<button>').append('Site table').addClass('fixWidth').click(function(){    doHistPush({$view:$siteTab}); $siteTab.setVis();   });
   var $redirectButton=$('<button>').append('Redirect table').addClass('fixWidth').click(function(){   doHistPush({$view:$redirectTab}); $redirectTab.setVis();   });
@@ -491,7 +492,7 @@ adminMoreDivExtend=function($el){
   var $menuF=$('<div>').append($uploadAdminDiv).css(objBottomLine);
   var $menuG=$('<div>').append($siteButton,$redirectButton).css(objBottomLine);
   var $menuH=$('<div>').append("<b>Save to server-BU-Folder: </b>", $butBUPageServ,$butBUImageServ,$butBUMetaServ).css(objBottomLine);
-  var $menuI=$('<div>').append("<b>Load from server-BU-Folder: </b>", $butLoadFromServerP, $butLoadFromServerI).css(objBottomLine);
+  var $menuI=$('<div>').append("<b>Load from server-BU-Folder: </b>", $butLoadFromServerP, $butLoadFromServerI, $butLoadFromServerM).css(objBottomLine);
   var $menuJ=$('<div>').append('DB: '+strDBType);
   var $Menu=$([]).push($menuA,$menuB0, $menuB,$menuC,$menuE,$menuF,$menuG, $menuH, $menuI, $menuJ).css({margin:'0.5em 0'}); //,$menuD
 

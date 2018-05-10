@@ -19,8 +19,9 @@
     "mysql": "^2.15.0",
     "node-zip": "1.1.x",
     "redis": "2.8.x",
-    "request": "^2.85.0",
-    "tmp": "0.0.33"
+    "request": "^2.86.0",
+    "tmp": "0.0.33",
+    "papaparse": "x"
   },
   "devDependencies": {},
   "private": true,

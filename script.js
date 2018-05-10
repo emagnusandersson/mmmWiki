@@ -27,6 +27,10 @@ imageSize = require('image-size');
 NodeZip=require('node-zip');
 //redis = require("then-redis");
 redis = require("redis");
+//csvParse = require('csv-parse/lib/sync');
+//fastCSV = require('fast-csv');
+//csvtojson=require('csvtojson');
+papaparse = require('papaparse');
 //captchapng = require('captchapng');
 //Neo4j = require('neo4j-transactions');
 var argv = require('minimist')(process.argv.slice(2));
@@ -49,7 +53,10 @@ boLocal=strInfrastructure=='local';
 boDO=strInfrastructure=='do'; 
 
 
-StrValidSqlCalls=['createTable', 'dropTable', 'createView', 'dropView', 'createFunction', 'dropFunction', 'truncate', 'createDummy', 'createDummies'];
+//StrValidSqlCalls=['createTable', 'dropTable', 'createView', 'dropView', 'createFunction', 'dropFunction', 'truncate', 'createDummy', 'createDummies'];
+StrValidSqlCalls=['createTable', 'dropTable', 'createView', 'dropView', 'createFunction', 'dropFunction', 'truncate'];
+
+StrValidLoadMeta=['site.csv', 'page.csv', 'image.csv', 'redirect.csv'];  // ValidLoadMeta calls
 
 helpTextExit=function(){
   var arr=[];
@@ -58,15 +65,22 @@ helpTextExit=function(){
   arr.push('  -p, --port [PORT]   Port number (default: 5000)');
   arr.push('  --sql [SQL_ACTION]  Run a sql action.');
   arr.push('    SQL_ACTION='+StrValidSqlCalls.join('|'));
-  arr.push('  --loadFrBUFolder [FILE] Load from BU folder.');
-  arr.push('    FILE= a single file of any of the following formats:');
-  arr.push('          txt-file with wiki-text');
-  arr.push('          image-file (acceptable formats: jpg, jpeg, png, gif, svg)');
-  arr.push('          zip-file containing one or multiple files of the above formats.');
-  arr.push('    If FILE is left empty then all files in the BU folder are loaded.');
+
+  arr.push('  --loadFrBU [FILE[+FILE...]] Load from BU folder.');
+  arr.push('    FILE can be any of page.zip, image.zip, '+StrValidLoadMeta.join(', ')+'');
+  //arr.push('    FILE= A file of any of the following formats:');
+  //arr.push('          txt-file with wiki-text');
+  //arr.push('          image-file (acceptable formats: jpg, jpeg, png, gif, svg)');
+  //arr.push('          zip-file containing one or multiple files of the above formats.');
+  //arr.push('          zip-file containing one or multiple files of the above formats.');
+  //arr.push('          Any of "'+StrValidLoadMeta.join('", "')+'" "');
+  arr.push('    NOTE!!! the order in which the files are supplied matters. Check the website for this program for valid combinations.');
   console.log(arr.join('\n'));
   process.exit(0);
 }
+
+
+
 
     // Set up redisClient
 var urlRedis;
@@ -146,16 +160,20 @@ var flow=( function*(){
   
   SiteName=[strDBPrefix]; // To make the code analog to my other programs :-)
 
-    // loadPageZip or load
-  if(typeof argv.loadFrBUFolder!='undefined'){
-    yield* loadFrBUFolder(flow, argv.loadFrBUFolder);
-    process.exit(0); return;
-  }
+      // Load fr BU-folder
+  if(typeof argv.loadFrBU!='undefined'){    yield* loadFrBU(flow, argv.loadFrBU);   process.exit(0); return;   }
+  //if(typeof argv.loadDataFrBU!='undefined' || typeof argv.loadMetaFrBU!='undefined'){
+    //var obj={myMySql:new MyMySql(mysqlPool)};
+    //if(typeof argv.loadDataFrBU!='undefined' ){   yield* loadDataFrBU.call(obj, flow, argv.loadDataFrBU); }
+    //else if(typeof argv.loadMetaFrBU!='undefined'){   yield* loadMetaFrBU.call(obj, flow, argv.loadMetaFrBU); }
+    //obj.myMySql.fin(); 
+    //process.exit(0); return;
+  //}
     // Do db-query if --sql XXXX was set in the argument
   if(typeof argv.sql!='undefined'){
     if(typeof argv.sql!='string') {console.log('sql argument is not a string'); process.exit(-1); return; }
     var tTmp=new Date().getTime();
-    var objSetupSql=new SetupSql(); yield* objSetupSql.doQuery(argv.sql,flow);
+    var SetupSql=new SetupSqlT(); yield* SetupSql.doQuery(argv.sql,flow);
     console.log('Time elapsed: '+(new Date().getTime()-tTmp)/1000+' s'); 
     process.exit(0);
   }
@@ -274,24 +292,27 @@ var flow=( function*(){
       var strScheme='http'+(boTLS?'s':''),   strSchemeLong=strScheme+'://';
       //req.strSite=strSite; req.site=site;
       req.wwwSite=wwwSite;
-      req.sessionID=sessionID; req.objUrl=objUrl;    req.boTLS=boTLS;  req.strSchemeLong=strSchemeLong;    req.pathName=pathName;   
+      req.sessionID=sessionID; req.objUrl=objUrl;    req.boTLS=boTLS;  req.strSchemeLong=strSchemeLong;    req.pathName=pathName; 
+      
+       
 
       var objReqRes={req:req, res:res};
       if(pathName.substr(0,5)=='/sql/'){
-        if(!boDbg && !boAllowSql){ res.out200('Set boAllowSql=1 (or boDbg=1) in the config.js-file');  return }
-        var reqSql=new ReqSql(req, res),  objSetupSql=new SetupSql();
-        req.pathNameWOPrefix=pathName.substr(5);
-        if(req.pathNameWOPrefix=='zip'){       reqSql.createZip(objSetupSql);     }
-        else {  reqSql.toBrowser(objSetupSql); }             
+        //if(!boDbg && !boAllowSql){ res.out200('Set boAllowSql=1 (or boDbg=1) in the config.js-file');  return }
+        //var reqSql=new ReqSql(req, res),  SetupSql=new SetupSqlT();
+        //req.pathNameWOPrefix=pathName.substr(5);
+        //if(req.pathNameWOPrefix=='zip'){       reqSql.createZip(SetupSql);     }
+        //else {  reqSql.toBrowser(SetupSql); }
       }
       else {
         if(levelMaintenance){res.outCode(503, "Down for maintenance, try again in a little while."); return;}
-        if(pathName=='/'+leafBE){ var reqBE=new ReqBE(req, res);  yield* reqBE.go();    }
+        objReqRes.myMySql=new MyMySql(mysqlPool);
+        if(pathName=='/'+leafBE){ var reqBE=new ReqBE(objReqRes);  yield* reqBE.go();    }
         //else if(pathName.indexOf('/image/')==0){  yield* reqImage.call(objReqRes);   } //RegExp('^/image/').test(pathName)
         //else if(pathName=='/captcha.png'){    yield* reqCaptcha.call(objReqRes);    }
         else if(regexpLib.test(pathName) || regexpLooseJS.test(pathName) || regexpPakoJS.test(pathName) || pathName=='/conversion.html'){    yield* reqStatic.call(objReqRes);   }
-        else if(regexpImage.test(pathName)){  yield* reqMediaImage.call(objReqRes);   }
-        else if(regexpVideo.test(pathName)){   yield* reqMediaVideo.call(objReqRes);   }
+        else if(regexpImage.test(pathName)){    yield* reqMediaImage.call(objReqRes);    }
+        else if(regexpVideo.test(pathName)){  yield* reqMediaVideo.call(objReqRes);    }
         else if(pathName=='/monitor.html'){   yield* reqMonitor.call(objReqRes);  }
         else if(pathName.toLowerCase()=='/sitemap.xml'){  yield* reqSiteMap.call(objReqRes);  }
         else if(pathName=='/robots.txt'){  yield* reqRobots.call(objReqRes);  }
@@ -308,6 +329,7 @@ var flow=( function*(){
         else if(pathName=='/timeZoneTest'){var dateTrash=new Date();  res.end(''+dateTrash.getTimezoneOffset());}
         else if(pathName=='/'+googleSiteVerification) res.end('google-site-verification: '+googleSiteVerification);
         else { yield* reqIndex.call(objReqRes);   }
+        objReqRes.myMySql.fin(); 
       }
     })(); req.flow.next();
   }

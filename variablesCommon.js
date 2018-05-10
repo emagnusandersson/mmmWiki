@@ -270,11 +270,10 @@ objOthersActivityDefault={nEdit:0, pageName:'',  nImage:0, imageName:''};
 // tLastBackup=0; tLastEdit=0; tImageLastBackup=0; tImageLastChange=0;
 
 
-tmpSubNew='tmpSubNew';
-//sqlTmpSubNewCreate="CREATE TEMPORARY TABLE IF NOT EXISTS "+tmpSubNew+" (www varchar(128) NOT NULL, pageName varchar(128) NOT NULL,  boOn TINYINT(1) NOT NULL,  UNIQUE KEY (www,pageName));";
-sqlTmpSubNewCreate="CREATE TEMPORARY TABLE IF NOT EXISTS "+tmpSubNew+" (pageName varchar(128) NOT NULL,  boOn TINYINT(1) NOT NULL)";  //,  UNIQUE KEY (pageName)
-tmpSubNewImage='tmpSubNewImage';
-sqlTmpSubNewImageCreate="CREATE TEMPORARY TABLE IF NOT EXISTS "+tmpSubNewImage+" (imageName varchar(128) NOT NULL)";  //,  UNIQUE KEY (imageName)
+//tmpSubNew='tmpSubNew';
+sqlTmpSubNewCreate="CREATE TEMPORARY TABLE IF NOT EXISTS tmpSubNew (pageName varchar(128) NOT NULL,  boOn TINYINT(1) NOT NULL)";  //,  UNIQUE KEY (pageName)
+//tmpSubNewImage='tmpSubNewImage';
+sqlTmpSubNewImageCreate="CREATE TEMPORARY TABLE IF NOT EXISTS tmpSubNewImage (imageName varchar(128) NOT NULL)";  //,  UNIQUE KEY (imageName)
 
 
 strDBPrefix='mmmWiki';

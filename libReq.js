@@ -68,7 +68,7 @@ app.reqBU=function*(strArg) {
 
   //var dateTrash=new Date();
   var Val=arrName;
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) {  res.out500(err); return; }
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) {  res.out500(err); return; }
   
   var File=results[0]; //console.log('len:'+ File.length);
   var zipfile = new NodeZip();
@@ -88,8 +88,7 @@ app.reqBU=function*(strArg) {
   
   if(boServ){
     var outFileName=type+'.zip';
-    var leafDataDir='mmmWikiData';
-    var fsPage=path.join(__dirname, '..', leafDataDir, 'BU', outFileName); 
+    var fsPage=path.join(__dirname, '..', 'mmmWikiBU', outFileName); 
     var err;  fs.writeFile(fsPage, outdata, 'binary', function(errT){ err=errT;  flow.next();  });   yield;
     if(err) { console.log(err); res.out500(err); }
     res.out200('OK');
@@ -125,7 +124,7 @@ app.reqBUMeta=function*(strArg) {
   Sql.push("SELECT www AS wwwCommon FROM "+siteTab+" WHERE boDefault=1;");
   var sql=Sql.join('\n');
   var Val=[];
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) {  res.out500(err); return; }
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) {  res.out500(err); return; }
   
   //var matPage=results[0], matImage=results[1], matVideo=results[2], matRedirect=results[3], matWWWCommon=results[4];
   var matSite=results[0], matPage=results[1], matImage=results[2], matVideo=results[3], matRedirect=results[4], matWWWCommon=results[5];
@@ -175,9 +174,7 @@ app.reqBUMeta=function*(strArg) {
 
     // Output data 
   if(strArg=='Serv'){
-    //var outFileName='meta.zip';
-    var leafDataDir='mmmWikiData';
-    var fsBU=path.join(__dirname, '..', leafDataDir, 'BU'); 
+    var fsBU=path.join(__dirname, '..', 'mmmWikiBU'); 
     for(var i=0;i<StrData.length;i++){ 
       var fsTmp=path.join(fsBU, StrFileName[i]), err;  fs.writeFile(fsTmp, StrData[i], function(errT){ err=errT;  flow.next();  });   yield;     if(err) { console.log(err); res.out500(err); }
     }  //, 'binary'
@@ -210,7 +207,7 @@ app.reqBUMetaSQL=function*() {
   Sql.push("SELECT www AS wwwCommon FROM "+siteTab+" WHERE boDefault=1;");
   var sql=Sql.join('\n');
   var Val=[];
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {  res.out500(err); return; }
 
   var matPage=results[0], matImage=results[1], matVideo=results[2], matRedirect=results[3], matWWWCommon=results[4];
 
@@ -298,7 +295,7 @@ app.reqIndex=function*() {
 
     // getInfoNData
   //var [err,rowA]=yield* getInfoNData.call(this); if(err) { res.out500(err); return;   }
-  var arg={boFront:1, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:queredPage, rev:rev, eTagIn:eTagIn, requesterCacheTime:requesterCacheTime}
+  var arg={boFront:1, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:queredPage, rev:rev, eTagIn:eTagIn, requesterCacheTime:requesterCacheTime, myMySql:this.myMySql}
   var [err, Ou]=yield* getInfoNData(flow, arg); if(err) { res.out500(err); return;   }
   var {mess, version, rev, eTag, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
   
@@ -345,7 +342,7 @@ app.reqIndex=function*() {
     var sql=`UPDATE `+pageLastView+` SET tModCache=now(), eTag=? WHERE www=? AND pageName=?;  
 SELECT now() AS tModCache`;
     var Val=[eTag, req.wwwSite, queredPage];
-    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) return [err];
+    var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
     var rowA=results[1][0];
     tModCache=new Date(rowA.tModCache*1000);
     res.setHeader("Cache-Control", "must-revalidate");  res.setHeader('Last-Modified',tModCache.toUTCString());  res.setHeader('ETag',eTag);
@@ -353,14 +350,14 @@ SELECT now() AS tModCache`;
   else if(mess=='serverCacheStale'){
     eTag=randomHash();
       // parse
-    var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW};
+    var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW, myMySql:this.myMySql};
     var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) { res.out500(err); return; }
     
       // setNewCacheSQL
     var {sql, Val, nEndingResults}=createSetNewCacheSQL(req.wwwSite, queredPage, rev, strHtmlText, eTag, arrSub, StrSubImage); 
     sql="START TRANSACTION; "+sql+" COMMIT;";
-    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) {  res.out500(err); return; }
-    var iRowLast=results.length-nEndingResults-1;
+    var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) {  res.out500(err); return; }
+    var iRowLast=results.length-nEndingResults-2;
     var rowA=results[iRowLast][0];
     var mess=rowA.mess;       if(mess!='done') {res.out500(mess);  return; }
     tModCache=new Date(rowA.tModCache*1000);
@@ -608,7 +605,7 @@ app.reqMediaImage=function*(){
     // Get info from imageTab
   var sql="SELECT idImage, UNIX_TIMESTAMP(tCreated) AS tCreated, idFile, eTag, imageName FROM "+imageTab+" WHERE imageName=?";
   var Val=[nameOrg];
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {  res.out500(err); return; }
   var c=results.length;    if(c==0) {res.out404('Not Found'); return;}
   //var tmp=results[0];
   //var idImage=tmp.idImage, orgTime=new Date(tmp.tCreated*1000), idFileOrg=tmp.idFile, eTagOrg=tmp.eTag, nameCanonical=tmp.imageName;
@@ -638,7 +635,7 @@ app.reqMediaImage=function*(){
 
   var sql="SELECT data FROM "+fileTab+" WHERE idFile=?";
   var Val=[idFileOrg];
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {  res.out500(err); return; }
   var c=results.length;    if(c!=1) {res.out500('c!=1');return;}
   var {data}=results[0];
   var eTagOrg=md5(data);  res.setHeader('Last-Modified', maxModTime.toUTCString());    res.setHeader('ETag', eTagOrg); res.setHeader('Content-Length',data.length);
@@ -660,7 +657,7 @@ app.reqMediaImageThumb=function*(){
   else{ strDim="(width=? OR height=?)"; arrDim=[wMax,hMax]; }
   var sql="SELECT UNIX_TIMESTAMP(tCreated) AS tCreated, idFile,eTag FROM "+thumbTab+" WHERE idImage=? AND "+strDim;
   var Val=array_merge([idImage],arrDim);
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {  res.out500(err); return; }
   var c=results.length;
   var tmp=results[0];
   var thumbTime=false, idFileThumb, eTagThumb; if(c){ thumbTime=new Date(tmp.tCreated*1000); idFileThumb=tmp.idFile; eTagThumb=tmp.eTag;  }
@@ -676,7 +673,7 @@ app.reqMediaImageThumb=function*(){
   if(thumbTime!==false && thumbTime>=maxModTime) {  
     var sql="SELECT data FROM "+fileTab+" WHERE idFile=?";
     var Val=[idFileThumb];
-    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+    var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {  res.out500(err); return; }
     var c=results.length;    if(c!=1) {res.out500('c!=1');return;}
     var {data}=results[0];
     
@@ -700,7 +697,7 @@ app.reqMediaImageThumb=function*(){
     // Fetch original data from db
   var sql="SELECT data FROM "+fileTab+" WHERE idFile=?";
   var Val=[idFileOrg];
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {  res.out500(err); return; }
   var c=results.length;    if(c!=1) {res.out500('c!=1');return;}
   var {data:strDataOrg}=results[0];
        
@@ -763,7 +760,7 @@ app.reqMediaImageThumb=function*(){
   var Val=[idImage,wNew,hNew,strDataThumb,eTagThumb];
   Sql.push("COMMIT;");
   var sql=Sql.join('\n');
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {  res.out500(err); return; }
   var thumbTime=new Date(results[1][0].tCreated*1000);
   if(bo301ToOrg) { res.out301Loc(nameCanonical); return; }
 
@@ -797,7 +794,7 @@ app.reqMediaVideo=function*(){
     // Get info from videoTab
   var sql="SELECT idVideo, UNIX_TIMESTAMP(tCreated) AS tCreated, idFile, eTag, size, name FROM "+videoTab+" WHERE name=?";
   var Val=[nameOrg];
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {  res.out500(err); return; }
   var c=results.length; if(c==0) {res.out404('Not Found'); return;}
   //var tmp=results[0];
   //var idVideo=tmp.idVideo, orgTime=new Date(tmp.tCreated*1000), idFileOrg=tmp.idFile, eTagOrg=tmp.eTag, total=tmp.size, nameCanonical=tmp.name;
@@ -826,7 +823,7 @@ app.reqMediaVideo=function*(){
   //var sql="SELECT data FROM "+fileTab+" WHERE idFile=?";
   var sql="SELECT substr(data, "+(start+1)+", "+chunksize+") AS data FROM "+fileTab+" WHERE idFile=?";
   var Val=[idFileOrg];
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {  res.out500(err); return; }
   var c=results.length; if(c==0) {res.out404('Not Found');  return;}
   var c=results.length; if(c!=1) {res.out500('c!=1'); return;}
   var {data:buf}=results[0];
@@ -865,7 +862,7 @@ app.reqSiteMap=function*() {
   //var sql="SELECT pageName, boOR, boOW, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther FROM "+pageLastView+" WHERE !(pageName REGEXP '^template:.*') AND boOR=1 AND boSiteMap=1";
   var sql="SELECT boTLS, pageName, boOR, boOW, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther FROM "+pageLastView+" WHERE www=? AND !(pageName REGEXP '^template:.*') AND boOR=1 AND boSiteMap=1";
   var Val=[wwwSite];
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {  res.out500(err); return; }
   var Str=[];
   Str.push('<?xml version="1.0" encoding="UTF-8"?>');
   Str.push('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
@@ -901,7 +898,7 @@ app.reqRobots=function*() {
   //var sql="SELECT pageName, boOR, boOW, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther FROM "+pageLastView+" WHERE !(pageName REGEXP '^template:.*') AND boOR=1 AND boSiteMap=1";
   var sql="SELECT boTLS, pageName, boOR, boOW, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther FROM "+pageLastView+" WHERE www=? AND !(pageName REGEXP '^template:.*') AND boOR=1 AND boSiteMap=1"; 
   var Val=[req.wwwSite];
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {  res.out500(err); return; }
   var Str=[];
   Str.push("User-agent: Google"); 
   Str.push("Disallow: /");
@@ -936,7 +933,7 @@ app.reqMonitor=function*(){
 
 
     var sql=Sql.join('\n'), Val=[];
-    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+    var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {  res.out500(err); return; }
 
     var resP=results[0], nEdit=results[1][0].n, pageName=nEdit==1?resP[0].siteName+':'+resP[0].pageName:nEdit;
     var resI=results[2], nImage=results[3][0].n, imageName=nImage==1?resI[0].imageName:nImage;
@@ -981,7 +978,7 @@ app.reqStat=function*(){
    LEFT JOIN "+videoTab+" vid ON f.idFile=vid.idFile");
 
   var sql=Sql.join('\n'), Val=[];
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool); if(err) {  res.out500(err); return; }
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {  res.out500(err); return; }
     
   var nVersion=results[0][0].n, nImage=results[1][0].n, nThumb=results[2][0].n, nVideo=results[3][0].n, nFile=results[4][0].n, resT=results[5];
 
@@ -1062,11 +1059,11 @@ app.reqStat=function*(){
 
 
 /******************************************************************************
- * SetupSql
+ * SetupSqlT
  ******************************************************************************/
-app.SetupSql=function(){
+app.SetupSqlT=function(){
 }
-app.SetupSql.prototype.createTable=function(boDropOnly){
+app.SetupSqlT.prototype.createTable=function(boDropOnly){
   
   var SqlTabDrop=[], SqlTab=[];
   eval(extractLoc(TableName,'TableName'));
@@ -1286,7 +1283,7 @@ app.SetupSql.prototype.createTable=function(boDropOnly){
   else return array_merge(SqlTabDrop, SqlTab);
 }
 
-app.SetupSql.prototype.createView=function(boDropOnly){
+app.SetupSqlT.prototype.createView=function(boDropOnly){
   var SqlViewDrop=[], SqlView=[];
   eval(extractLoc(TableName,'TableName'));
   eval(extractLoc(ViewName,'ViewName'));
@@ -1317,7 +1314,7 @@ SELECT r.idSite, st.siteName, st.www, r.pageName, url, r.tCreated, nAccess, tLas
 }
 
 
-app.SetupSql.prototype.createFunction=function(boDropOnly){
+app.SetupSqlT.prototype.createFunction=function(boDropOnly){
   
   var SqlFunctionDrop=[], SqlFunction=[];
   
@@ -1376,18 +1373,18 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
         
         SELECT @VpageNameCur AS nameO;  -- output
         
-        -- DROP TABLE IF EXISTS tmpParentCur;
+        DROP TABLE IF EXISTS tmpParentCur;
         CREATE TEMPORARY TABLE IF NOT EXISTS tmpParentCur ( idPage int(4) NOT NULL, idFile int(4) NOT NULL) ENGINE=INNODB COLLATE utf8_general_ci;
-        TRUNCATE tmpParentCur;
+        #TRUNCATE tmpParentCur;
         -- INSERT INTO tmpParentCur SELECT idPage FROM `+subTab+` WHERE idSite=@VidSite AND pageName=@VpageNameCur;  -- page parents
         INSERT INTO tmpParentCur SELECT s.idPage, p.idFile FROM `+subTab+` s JOIN `+pageLastSlimView+` p ON s.idPage=p.idPage WHERE s.idSite=@VidSite AND s.pageName=@VpageNameCur;  -- page parents
         -- SELECT * FROM tmpParentCur;
         
         SELECT t.idPage, t.idFile, data FROM tmpParentCur t JOIN `+fileTab+` f ON f.idFile=t.idFile WHERE 1;  -- output
 
-        -- DROP TABLE IF EXISTS tmpParentAll;
+        DROP TABLE IF EXISTS tmpParentAll;
         CREATE TEMPORARY TABLE IF NOT EXISTS tmpParentAll ( idPage int(4) NOT NULL ) ENGINE=INNODB COLLATE utf8_general_ci;
-        TRUNCATE tmpParentAll;
+        #TRUNCATE tmpParentAll;
         INSERT INTO tmpParentAll
           SELECT idPage FROM `+subTab+` WHERE idSite=@VidSite AND pageName=@VpageNameStub  -- stub parents
             UNION
@@ -1421,18 +1418,18 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
         
         SELECT @VimageNameCur AS nameO;  -- output
         
-        -- DROP TABLE IF EXISTS tmpParentCur;
+        DROP TABLE IF EXISTS tmpParentCur;
         CREATE TEMPORARY TABLE IF NOT EXISTS tmpParentCur ( idPage int(4) NOT NULL, idFile int(4) NOT NULL) ENGINE=INNODB COLLATE utf8_general_ci;
-        TRUNCATE tmpParentCur;
+        #TRUNCATE tmpParentCur;
         -- INSERT INTO tmpParentCur SELECT idPage FROM `+subImageTab+` WHERE imageName=@VimageNameCur;  -- image parents
         INSERT INTO tmpParentCur SELECT s.idPage, p.idFile FROM `+subImageTab+` s JOIN `+pageLastSlimView+` p ON s.idPage=p.idPage WHERE s.imageName=@VimageNameCur;  -- image parents
         -- SELECT * FROM tmpParentCur;
         
         SELECT t.idPage, t.idFile, data FROM tmpParentCur t JOIN `+fileTab+` f ON f.idFile=t.idFile WHERE 1;  -- output
 
-        -- DROP TABLE IF EXISTS tmpParentAll;
+        DROP TABLE IF EXISTS tmpParentAll;
         CREATE TEMPORARY TABLE IF NOT EXISTS tmpParentAll ( idPage int(4) NOT NULL ) ENGINE=INNODB COLLATE utf8_general_ci;
-        TRUNCATE tmpParentAll;
+        #TRUNCATE tmpParentAll;
         INSERT INTO tmpParentAll
           SELECT idPage FROM `+subImageTab+` WHERE imageName=@VimageNameStub  -- stub parents
             UNION
@@ -1469,7 +1466,7 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
         #CREATE TEMPORARY TABLE tmp AS 
         #  SELECT idFile, idFileCache FROM `+versionTab+` WHERE idPage=VidPage;
         CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4), idFileCache INT(4));
-        TRUNCATE tmp; INSERT INTO tmp SELECT idFile, idFileCache FROM `+versionTab+` WHERE idPage=VidPage;
+        INSERT INTO tmp SELECT idFile, idFileCache FROM `+versionTab+` WHERE idPage=VidPage;
         DELETE FROM `+versionTab+` WHERE idPage=VidPage;
         DELETE f FROM `+fileTab+` f JOIN tmp t ON t.idFile=f.idFile WHERE 1;
         DELETE f FROM `+fileTab+` f JOIN tmp t ON t.idFileCache=f.idFile WHERE 1;
@@ -1506,7 +1503,7 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
         #CREATE TEMPORARY TABLE tmp AS 
         #  SELECT idFile, idFileCache FROM `+versionTab+` WHERE idPage=VidPage;
         CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4), idFileCache INT(4));
-        TRUNCATE tmp; INSERT INTO tmp SELECT idFile, idFileCache FROM `+versionTab+` WHERE idPage=VidPage;
+        INSERT INTO tmp SELECT idFile, idFileCache FROM `+versionTab+` WHERE idPage=VidPage;
         DELETE FROM `+versionTab+` WHERE idPage=VidPage;
         DELETE f FROM `+fileTab+` f JOIN tmp t ON t.idFile=f.idFile WHERE 1;
         DELETE f FROM `+fileTab+` f JOIN tmp t ON t.idFileCache=f.idFile WHERE 1;
@@ -1535,7 +1532,7 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
         
         DROP TABLE IF EXISTS tmp;
         CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4), idFileCache INT(4));
-        TRUNCATE tmp; INSERT INTO tmp SELECT idFile, idFileCache FROM `+versionTab+` v JOIN arrPageID arr ON v.idPage=arr.idPage;
+        INSERT INTO tmp SELECT idFile, idFileCache FROM `+versionTab+` v JOIN arrPageID arr ON v.idPage=arr.idPage;
         DELETE v FROM `+versionTab+` v JOIN arrPageID arr ON v.idPage=arr.idPage WHERE 1;
         DELETE f FROM `+fileTab+` f JOIN tmp t ON t.idFile=f.idFile WHERE 1;
         DELETE f FROM `+fileTab+` f JOIN tmp t ON t.idFileCache=f.idFile WHERE 1;
@@ -1562,10 +1559,10 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
         IF Vn=0 THEN LEAVE proc_label; END IF;                # Quick exit. \n\
         SELECT idSite INTO VidSite FROM "+pageTab+" WHERE idPage=IidPage; \n\
         DROP TEMPORARY TABLE IF EXISTS tmp; \n\
-        #CREATE TEMPORARY TABLE tmp AS  \n\
-        #  SELECT idFile, idFileCache FROM "+versionTab+" WHERE idPage=IidPage AND rev!=0; \n\
-        CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4), idFileCache INT(4)); \n\
-        TRUNCATE tmp; INSERT INTO tmp SELECT idFile, idFileCache FROM "+versionTab+" WHERE idPage=IidPage AND rev!=0; \n\
+        CREATE TEMPORARY TABLE tmp AS  \n\
+          SELECT idFile, idFileCache FROM "+versionTab+" WHERE idPage=IidPage AND rev!=0; \n\
+        #CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4), idFileCache INT(4)); \n\
+        #INSERT INTO tmp SELECT idFile, idFileCache FROM "+versionTab+" WHERE idPage=IidPage AND rev!=0; \n\
         DELETE FROM "+versionTab+" WHERE idPage=IidPage AND rev!=0; \n\
         DELETE f FROM "+fileTab+" f JOIN tmp t ON t.idFile=f.idFile; \n\
         DELETE f FROM "+fileTab+" f JOIN tmp t ON t.idFileCache=f.idFile; \n\
@@ -1582,10 +1579,10 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
         #SELECT idImage, idFile INTO VidImage, VidFile FROM "+imageTab+" WHERE imageName=Iname; \n\
         SELECT idImage, idFile, imageName INTO VidImage, VidFile, Vname FROM "+imageTab+" WHERE idImage=IidImage; \n\
         DROP TEMPORARY TABLE IF EXISTS tmp; \n\
-        #CREATE TEMPORARY TABLE tmp AS  \n\
-        #  SELECT idFile FROM "+thumbTab+" WHERE idImage=VidImage; \n\
-        CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4)); \n\
-        TRUNCATE tmp; INSERT INTO tmp SELECT idFile FROM "+thumbTab+" WHERE idImage=VidImage; \n\
+        CREATE TEMPORARY TABLE tmp AS  \n\
+          SELECT idFile FROM "+thumbTab+" WHERE idImage=VidImage; \n\
+        #CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4)); \n\
+        #INSERT INTO tmp SELECT idFile FROM "+thumbTab+" WHERE idImage=VidImage; \n\
         DELETE FROM "+thumbTab+" WHERE idImage=VidImage; \n\
         DELETE f FROM "+fileTab+" f JOIN tmp t ON t.idFile=f.idFile WHERE 1; \n\
         DELETE FROM "+imageTab+" WHERE idImage=VidImage; \n\
@@ -1600,7 +1597,7 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
       BEGIN
         DROP TABLE IF EXISTS tmp;
         CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4));
-        TRUNCATE tmp; INSERT INTO tmp SELECT idFile FROM `+thumbTab+` t JOIN arrImageID arr ON t.idImage=arr.idImage;
+        INSERT INTO tmp SELECT idFile FROM `+thumbTab+` t JOIN arrImageID arr ON t.idImage=arr.idImage;
         DELETE t FROM `+thumbTab+` t JOIN arrImageID arr ON t.idImage=arr.idImage WHERE 1;
         DELETE f FROM `+fileTab+` f JOIN tmp ON tmp.idFile=f.idFile WHERE 1;
         
@@ -1617,9 +1614,8 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
         DROP TEMPORARY TABLE IF EXISTS tmp; \n\
         #CREATE TEMPORARY TABLE tmp AS  \n\
         #  SELECT idFile FROM "+thumbTab+" WHERE idImage=IidImage; \n\
-        DROP TABLE IF EXISTS tmp; \n\
         CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4)); \n\
-        TRUNCATE tmp; INSERT INTO tmp SELECT idFile FROM "+thumbTab+" WHERE idImage=IidImage; \n\
+        INSERT INTO tmp SELECT idFile FROM "+thumbTab+" WHERE idImage=IidImage; \n\
         DELETE FROM "+thumbTab+" WHERE idImage=IidImage; \n\
         DELETE f FROM "+fileTab+" f JOIN tmp t ON f.idFile=t.idFile; \n\
         COMMIT; \n\
@@ -1700,11 +1696,11 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
 
           # Replace subpages
         DELETE FROM `+subTab+` WHERE idPage=IidPage;
-        INSERT INTO `+subTab+` (idPage, idSite, pageName, boOnWhenCached) SELECT IidPage, VidSite, t.pageName, boOn FROM `+tmpSubNew+` t;
+        INSERT INTO `+subTab+` (idPage, idSite, pageName, boOnWhenCached) SELECT IidPage, VidSite, t.pageName, boOn FROM tmpSubNew t;
 
           # Replace images
         DELETE FROM `+subImageTab+` WHERE idPage=IidPage;
-        INSERT INTO `+subImageTab+` (idPage, `+subImageTab+`.imageName) SELECT IidPage, t.imageName FROM `+tmpSubNewImage+` t;
+        INSERT INTO `+subImageTab+` (idPage, `+subImageTab+`.imageName) SELECT IidPage, t.imageName FROM tmpSubNewImage t;
 
       END`);
 
@@ -1770,22 +1766,22 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
 
     var tmpUrl="localhost:"+port;
     SqlFunction.push("START TRANSACTION");
-    SqlFunction.push("TRUNCATE "+tmpSubNew); SqlFunction.push("INSERT INTO "+tmpSubNew+" VALUES ('mm',0),('nn',0),('oo',0)");
+    SqlFunction.push("TRUNCATE tmpSubNew"); SqlFunction.push("INSERT INTO tmpSubNew VALUES ('mm',0),('nn',0),('oo',0)");
     SqlFunction.push("CALL "+strDBPrefix+"saveByReplace('','"+tmpUrl+"','tmp','abc','ABC','0123456789abcdef0123456789abcdef')",'');
     SqlFunction.push("COMMIT");
 
     SqlFunction.push("START TRANSACTION");
-    SqlFunction.push("TRUNCATE "+tmpSubNew); SqlFunction.push("INSERT INTO "+tmpSubNew+" VALUES ('mm',0),('nn',0),('oo',0)");
+    SqlFunction.push("TRUNCATE tmpSubNew"); SqlFunction.push("INSERT INTO tmpSubNew VALUES ('mm',0),('nn',0),('oo',0)");
     SqlFunction.push("CALL "+strDBPrefix+"saveByReplace('','"+tmpUrl+"','mmm','abc','ABC','0123456789abcdef0123456789abcdef')",'');
     SqlFunction.push("COMMIT");
 
     SqlFunction.push("START TRANSACTION");
-    SqlFunction.push("TRUNCATE "+tmpSubNew); SqlFunction.push("INSERT INTO "+tmpSubNew+" VALUES ('pp',0),('mmm',1),('oo',0)");
+    SqlFunction.push("TRUNCATE tmpSubNew"); SqlFunction.push("INSERT INTO tmpSubNew VALUES ('pp',0),('mmm',1),('oo',0)");
     SqlFunction.push("CALL "+strDBPrefix+"saveByReplace('','"+tmpUrl+"','template:nnn','abd','ABD','0123456789abcdef0123456789abcdef')",'');
     SqlFunction.push("COMMIT");
 
     SqlFunction.push("START TRANSACTION");
-    SqlFunction.push("TRUNCATE "+tmpSubNew); SqlFunction.push("INSERT INTO "+tmpSubNew+" VALUES ('pp',0),('qq',0),('oo',0)");
+    SqlFunction.push("TRUNCATE tmpSubNew"); SqlFunction.push("INSERT INTO tmpSubNew VALUES ('pp',0),('qq',0),('oo',0)");
     SqlFunction.push("CALL "+strDBPrefix+"saveByReplace('','"+tmpUrl+"','mmm','abcd','ABCD','0123456789abcdef0123456789abcdef')",'');
     SqlFunction.push("COMMIT");
   }
@@ -1825,7 +1821,7 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
   if(0){
     SqlFunction.push("START TRANSACTION");
     var tmpUrl="localhost:"+port;
-    SqlFunction.push("TRUNCATE "+tmpSubNew); SqlFunction.push("INSERT INTO "+tmpSubNew+" VALUES ('rr',0),('ss',1),('tt',0)");
+    SqlFunction.push("TRUNCATE tmpSubNew"); SqlFunction.push("INSERT INTO tmpSubNew VALUES ('rr',0),('ss',1),('tt',0)");
     SqlFunction.push("CALL "+strDBPrefix+"saveByAdd('"+tmpUrl+"','mmm','myEdit','Nisse','abe12','ABE12','0123456789abcdef0123456789abcdef')",'');
     SqlFunction.push("COMMIT");
   }
@@ -1866,7 +1862,7 @@ app.SetupSql.prototype.createFunction=function(boDropOnly){
   if(0){
     SqlFunction.push("START TRANSACTION");
     var tmpUrl="localhost:"+port;
-    SqlFunction.push("TRUNCATE "+tmpSubNew); SqlFunction.push("INSERT INTO "+tmpSubNew+" VALUES ('rrr',0),('sss',1),('ttt',0)");
+    SqlFunction.push("TRUNCATE tmpSubNew"); SqlFunction.push("INSERT INTO tmpSubNew VALUES ('rrr',0),('sss',1),('ttt',0)");
     SqlFunction.push("CALL "+strDBPrefix+"setNewCache('"+tmpUrl+"','mmm',1,'XX','0123456789abcdef0123456789abcdef')",'');
     SqlFunction.push("COMMIT");
   }
@@ -2149,7 +2145,7 @@ RENAME TABLE "+siteTab+" TO "+siteTab+"_dup,\n\
   return array_merge(SqlA, SqlB)
 }
 
-app.SetupSql.prototype.funcGen=function(boDropOnly){
+app.SetupSqlT.prototype.funcGen=function(boDropOnly){
   var SqlFunction=[], SqlFunctionDrop=[];
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS copyTable");
   SqlFunction.push("CREATE PROCEDURE copyTable(INameN varchar(128),IName varchar(128)) \n\
@@ -2164,7 +2160,7 @@ app.SetupSql.prototype.funcGen=function(boDropOnly){
 }
 
 
-app.SetupSql.prototype.createDummies=function(){
+app.SetupSqlT.prototype.createDummies=function(){
   
   var SqlDummies=[];
 
@@ -2205,12 +2201,12 @@ app.SetupSql.prototype.createDummies=function(){
   return SqlDummies;
 }
 
-app.SetupSql.prototype.createDummy=function(){
+app.SetupSqlT.prototype.createDummy=function(){
   var SqlDummy=[];
   if(typeof addExtraSqlF!='undefined') addExtraSqlF(SqlDummy,strDBPrefix,PropPage,this.engine,this.collate);
   return SqlDummy;
 }
-app.SetupSql.prototype.truncate=function(){
+app.SetupSqlT.prototype.truncate=function(){
   
   var SqlTableTruncate=[];
 
@@ -2230,7 +2226,7 @@ app.SetupSql.prototype.truncate=function(){
   
   return SqlTableTruncate;
 }
-/*app.SetupSql.prototype.renameToTmp=function(){
+/*app.SetupSqlT.prototype.renameToTmp=function(){
   var SqlTableRename=[];
   var StrTabName=object_values(TableName);
   var SqlTmp=[];
@@ -2245,7 +2241,7 @@ app.SetupSql.prototype.truncate=function(){
 
 
   // Called when --sql command line option is used
-app.SetupSql.prototype.doQuery=function*(strCreateSql, flow){
+app.SetupSqlT.prototype.doQuery=function*(strCreateSql, flow){
   //var StrValidSqlCalls=['createTable', 'dropTable', 'createView', 'dropView', 'createFunction', 'dropFunction', 'truncate', 'createDummy', 'createDummies'];
   if(StrValidSqlCalls.indexOf(strCreateSql)==-1){var tmp=strCreateSql+' is not valid input, try any of these: '+StrValidSqlCalls.join(', '); console.log(tmp); return; }
   var Match=RegExp("^(drop|create)?(.*?)$").exec(strCreateSql);
@@ -2255,10 +2251,13 @@ app.SetupSql.prototype.doQuery=function*(strCreateSql, flow){
   if(Match[1]=='drop') { boDropOnly=true; strMeth='create'+strMeth;}
   else if(Match[1]=='create')  { strMeth='create'+strMeth; }
   
+  this.myMySql=new MyMySql(mysqlPool);
+  
   var SqlA=this[strMeth](boDropOnly); 
   var strDelim=';', sql=SqlA.join(strDelim+'\n')+strDelim, Val=[];
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val);
   var tmp=createMessTextOfMultQuery(SqlA, err, results);  console.log(tmp);
+  this.myMySql.fin();
   if(err){ debugger;  return; }
   
 }
@@ -2272,7 +2271,7 @@ var createMessTextOfMultQuery=function(Sql, err, results){
     StrMess.push('err.index: '+err.index+', err: '+err);
     if(nSql==nResults){
       var tmp=Sql.slice(bound(err.index-1,0,nSql), bound(err.index+2,0,nSql)),  sql=tmp.join('\n');
-      StrMess.push('Since "Sql" and "results" seem correctly aligned (has the same size), then here, in the middle, is printed the query with the corresponding index (surounded by the preceding and following query to get a context):\n'+sql); 
+      StrMess.push('Since "Sql" and "results" seem correctly aligned (has the same size), then 3 queries are printed (the preceding, the indexed, and following query (to get a context)):\n'+sql); 
     }
   }
   return StrMess.join('\n');
@@ -2286,14 +2285,14 @@ app.ReqSql=function(req, res){
   this.req=req; this.res=res;
   this.StrType=['table', 'fun', 'dropTable', 'dropFun', 'truncate', 'dummy', 'dummies']; 
 }
-app.ReqSql.prototype.createZip=function(objSetupSql){
+app.ReqSql.prototype.createZip=function(SetupSql){
   var res=this.res, StrType=this.StrType;
 
   var zipfile = new NodeZip();
   for(var i=0;i<StrType.length;i++) {
     var strType=StrType[i], SqlA;
     var Match=RegExp("^(drop)?(.*)$").exec(strType), boDropOnly=Match[1]=='drop';
-    var SqlA=objSetupSql[Match[2].toLowerCase()]( boDropOnly);
+    var SqlA=SetupSql[Match[2].toLowerCase()]( boDropOnly);
     var strDelim=';;', sql='-- DELIMITER '+strDelim+'\n'      +SqlA.join(strDelim+'\n')+strDelim      +'\n-- DELIMITER ;\n';
     zipfile.file(strType+".sql", sql, {date:new Date(), compression:'DEFLATE'});
   }
@@ -2308,13 +2307,13 @@ app.ReqSql.prototype.createZip=function(objSetupSql){
   res.writeHead(200,objHead);
   res.end(outdata,'binary');
 }
-ReqSql.prototype.toBrowser=function(objSetupSql){
+ReqSql.prototype.toBrowser=function(SetupSql){
   var req=this.req, res=this.res, StrType=this.StrType;
   var Match=RegExp("^(drop)?(.*?)(All)?$").exec(req.pathNameWOPrefix), boDropOnly=Match[1]=='drop', strMeth=Match[2].toLowerCase();
   var StrValidMeth=['table', 'fun', 'truncate',  'dummy', 'dummies'];
-  //var objTmp=Object.getPrototypeOf(objSetupSql);
+  //var objTmp=Object.getPrototypeOf(SetupSql);
   if(StrValidMeth.indexOf(strMeth)!=-1){
-    var SqlA=objSetupSql[strMeth](boDropOnly);  
+    var SqlA=SetupSql[strMeth](boDropOnly);  
     var strDelim=';;', sql='-- DELIMITER '+strDelim+'\n'      +SqlA.join(strDelim+'\n')+strDelim      +'\n-- DELIMITER ;\n';
     res.out200(sql);
   }else{ var tmp=req.pathNameWOPrefix+' is not valid input, try: '+this.StrType; console.log(tmp); res.out404(tmp); }

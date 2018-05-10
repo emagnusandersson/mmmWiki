@@ -81,7 +81,7 @@ parse=function*(flow, arg) {
     var strQ=array_fill(len,'?').join(', ');
     var sql="SELECT pageName, data FROM "+pageLastView+" p JOIN "+fileTab+" f WHERE f.idFile=p.idFile AND "+sqlSiteQuery+" AND pageName IN ("+strQ+")";
     var Val=[siteArg].concat(StrTemplate);
-    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return [err, []]; 
+    var [err, results]=yield* arg.myMySql.query(flow, sql, Val);  if(err) return [err, []]; 
      
     for(var i=0;i<results.length;i++){ var tmpR=results[i]; objTemplate[tmpR.pageName]=tmpR.data; }
   }
@@ -99,7 +99,7 @@ parse=function*(flow, arg) {
     var strQ=array_fill(len,'?').join(', ');
     var sql="SELECT pageName FROM "+pageLastView+" WHERE pageName IN ("+strQ+") AND "+sqlSiteQuery+"";
     var Val=StrSub.concat(siteArg);
-    var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return [err, []]; 
+    var [err, results]=yield* arg.myMySql.query(flow, sql, Val);  if(err) return [err, []]; 
     
     for(var i=0;i<results.length;i++){ var tmpR=results[i]; objExistingSub[tmpR.pageName]=1; }
   }
@@ -119,7 +119,7 @@ parse=function*(flow, arg) {
 getInfoNData=function*(flow, arg) {
   var sql="CALL "+strDBPrefix+"getInfoNData(?, ?, ?, ?, ?, ?, ?);"; 
   var Val=[arg.boFront, arg.boTLS, arg.wwwSite, arg.queredPage, arg.rev, arg.eTagIn, arg.requesterCacheTime/1000];
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return [err];
+  var [err, results]=yield* arg.myMySql.query(flow, sql, Val);  if(err) return [err];
   var len=results.length, iRowLast=len-2; 
   var objDB=results[iRowLast][0];
   //if('strEditText' in objDB) objDB.strEditText=objDB.strEditText?objDB.strEditText.toString():'';
@@ -158,7 +158,7 @@ getInfoNData=function*(flow, arg) {
 
 getInfo=function*(flow, arg) {
   var sql="CALL "+strDBPrefix+"getInfo(?,?);", Val=[arg.wwwSite, arg.queredPage];
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return [err];
+  var [err, results]=yield* arg.myMySql.query(flow, sql, Val);  if(err) return [err];
   var objDB={};
   if(results[0].length==0) { objDB.mess='noSuchPage'; }
   else {
@@ -174,11 +174,11 @@ getInfo=function*(flow, arg) {
 createSubStr=function(arrSub){ // arrSub = [[name,boExist], [name,boExist] ....]   (assigned by setArrSub (in parser.js)) 
   var arrSubQ=[],  arrSubV=[];
   for(var i=0;i<arrSub.length;i++){ var v=arrSub[i]; arrSubQ.push('(?,?)'); [].push.apply(arrSubV,v); }  //arrSubV.push(v[0], v[1], v[2])
-  var strSubQ=''; if(arrSubQ.length) strSubQ="INSERT INTO "+tmpSubNew+" VALUES "+arrSubQ.join(', ')+';';
+  var strSubQ=''; if(arrSubQ.length) strSubQ="INSERT INTO tmpSubNew VALUES "+arrSubQ.join(', ')+';';
   return [strSubQ,arrSubV];
 }
 createSubImageStr=function(StrT){
-  var len=StrT.length,  strSubQ=''; if(len) strSubQ="INSERT INTO "+tmpSubNewImage+" VALUES "+array_fill(len,'(?)').join(', ')+';';
+  var len=StrT.length,  strSubQ=''; if(len) strSubQ="INSERT INTO tmpSubNewImage VALUES "+array_fill(len,'(?)').join(', ')+';';
   return strSubQ;
 }
 
@@ -186,8 +186,8 @@ createSaveByReplaceSQL=function(siteName, wwwSite, strName, strEditText, strHtml
   var [strSubQ,arrSubV]=createSubStr(arrSub);
   var strSubImageQ=createSubImageStr(StrSubImage);
   var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  Sql.push("TRUNCATE "+tmpSubNew+"; "+strSubQ); // START TRANSACTION; 
-  Sql.push("TRUNCATE "+tmpSubNewImage+"; "+strSubImageQ);
+  Sql.push("TRUNCATE tmpSubNew; "+strSubQ); // START TRANSACTION; 
+  Sql.push("TRUNCATE tmpSubNewImage; "+strSubImageQ);
   Sql.push("CALL "+strDBPrefix+"saveByReplace(?,?,?,?,?,?);");  //  COMMIT;
   var sql=Sql.join('\n'); 
   var Val=array_merge(arrSubV, StrSubImage, [siteName, wwwSite, strName, strEditText, strHtmlText, eTag]);
@@ -198,8 +198,8 @@ createSaveByAddSQL=function(wwwSite, strName, summary, signature, strEditText, s
   var [strSubQ,arrSubV]=createSubStr(arrSub);
   var strSubImageQ=createSubImageStr(StrSubImage);
   var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  Sql.push("TRUNCATE "+tmpSubNew+"; "+strSubQ); // START TRANSACTION; 
-  Sql.push("TRUNCATE "+tmpSubNewImage+"; "+strSubImageQ);
+  Sql.push("TRUNCATE tmpSubNew; "+strSubQ); // START TRANSACTION; 
+  Sql.push("TRUNCATE tmpSubNewImage; "+strSubImageQ);
   Sql.push("CALL "+strDBPrefix+"saveByAdd(?,?,?,?,?,?,?);"); //  COMMIT;
   var sql=Sql.join('\n');
   var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, summary, signature, strEditText, strHtmlText, eTag]);
@@ -210,8 +210,8 @@ createSetNewCacheSQL=function(wwwSite, strName, rev, strHtmlText, eTag, arrSub, 
   var [strSubQ,arrSubV]=createSubStr(arrSub);
   var strSubImageQ=createSubImageStr(StrSubImage);
   var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  Sql.push("TRUNCATE "+tmpSubNew+"; "+strSubQ); // START TRANSACTION; 
-  Sql.push("TRUNCATE "+tmpSubNewImage+"; "+strSubImageQ);
+  Sql.push("TRUNCATE tmpSubNew; "+strSubQ); // START TRANSACTION; 
+  Sql.push("TRUNCATE tmpSubNewImage; "+strSubImageQ);
   Sql.push("CALL "+strDBPrefix+"setNewCache(?,?,?,?,?);"); //  COMMIT;
   var sql=Sql.join('\n');
   var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, rev, strHtmlText, eTag]);

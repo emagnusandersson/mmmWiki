@@ -115,6 +115,16 @@ arrValMerge=function(arr,val){  var indOf=arr.indexOf(val); if(indOf==-1) arr.pu
 //arrValRemove=function(arr,val){  var indOf=arr.indexOf(val); if(indOf!=-1) arr.splice(indOf,1); }
 arrValRemove=function(arr,val){  var indOf=arr.indexOf(val); if(indOf!=-1) mySplice1(arr,indOf); }
 
+
+
+arrArrange=function(arrV,arrI){
+  var n=arrI.length, arrNew;
+  if(typeof arrV=='string') arrNew=''; else arrNew=Array(n);
+  //for(var i=0;i<arrI.length;i++){    arrNew.push(arrV[arrI[i]]);    }
+  for(var i=0;i<arrI.length;i++){    arrNew[i]=arrV[arrI[i]];    }
+  return arrNew;
+}
+
 //
 // Str (Array of Strings)
 //

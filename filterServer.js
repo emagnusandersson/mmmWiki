@@ -112,7 +112,7 @@ getHist=function*(flow, mysqlPool, arg){
   }
   var sql=Sql.join('\n'), Val=[]; //set GLOBAL max_heap_table_size=128*1024*1024, GLOBAL tmp_table_size=128*1024*1024
 //debugger
-  var [err, results]=yield* myQueryGen(flow, sql, Val, mysqlPool);  if(err) return [err];
+  var [err, results]=yield* arg.myMySql.query(flow, sql, Val);  if(err) return [err];
   var NInRelaxedCond=[], Hist=[];
   for(var i=0;i<results.length;i++){
     var [kind,ii]=TypeNInd[i]; 

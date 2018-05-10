@@ -45,7 +45,86 @@ myQueryGen=function*(flow, sql, Val, pool){
   }
   return [err, results, fields];
 }
+myQueryGen=function*(flow, sql, Val, pool, connection=null){ 
+  var err, results, fields;
+  for(var i=0;i<nDBRetry;i++){
+    if(connection){
+      connection.query(sql, Val, function(errT, resultsT, fieldsT) { err=errT; results=resultsT; fields=fieldsT; flow.next();}); yield;
+      if(err==null){ break;}
+      else{
+        console.log('Error when making mysql query, attemptCounter: '+i);
+        if(typeof err=='object' && 'code' in err) {
+          console.log('err.code: '+err.code); debugger
+          if(err.code!='PROTOCOL_CONNECTION_LOST' && err.code!='ECONNREFUSED') { console.log('Can\'t handle: err.code: '+err.code); break; }
+        }
+        else { console.log('No \'code\' in err'); break; }
+      }
+    }
+    pool.getConnection(function(errT, connectionT) { err=errT; connection=connectionT; flow.next(); }); yield;
+    if(err) {
+      connection=null;
+      console.log('Error when getting mysql connection, attemptCounter: '+i);
+      if(typeof err=='object' && 'code' in err) {
+        console.log('err.code: '+err.code);
+        if(err.code=='PROTOCOL_CONNECTION_LOST' || err.code=='ECONNREFUSED' || err.code=='ECONNRESET'){
+          setTimeout(function(){ flow.next();}, 2000); yield;  
+        } else { console.log('Can\'t handle: err.code: '+err.code); break; }
+      }
+      else { console.log('No \'code\' in err'); break; }
+    }
+    else{  console.log('connection.threadId: ' + connection.threadId);     }
+  }
+  return [err, results, fields, connection];
+}
+myQueryOneGen=function*(flow, sql, Val, pool){ 
+  var [err, results, fields]=yield* myQueryGen(flow, sql, Val, pool);
+  connection.release();
+  //connection.destroy();
+  return [err, results, fields];
+}
+MyMySql=function(pool){
+  this.pool=pool;
+  this.connection=null;
+}
+MyMySql.prototype.query=function*(flow, sql, Val, boLast=false){
+  var [err, results, fields, connection]=yield* myQueryGen(flow, sql, Val, this.pool, this.connection);
+  this.connection=connection;
+  return [err, results, fields];
+}
+MyMySql.prototype.fin=function(){
+  if(this.connection) {
+    //this.connection.release();
+    this.connection.destroy();
+    this.connection=null;
+  };
+}
 
+myGetConnectionGen=function*(flow, sql, Val, pool){ 
+  var err, connection, results, fields;
+  for(var i=0;i<nDBRetry;i++){
+    pool.getConnection(function(errT, connectionT) { err=errT; connection=connectionT; flow.next(); }); yield;
+    if(err) {
+      console.log('Error when getting mysql connection, attemptCounter: '+i);
+      if(typeof err=='object' && 'code' in err) {
+        console.log('err.code: '+err.code);
+        if(err.code=='PROTOCOL_CONNECTION_LOST' || err.code=='ECONNREFUSED' || err.code=='ECONNRESET'){
+          setTimeout(function(){ flow.next();}, 2000); yield;  continue;
+        } else { console.log('Can\'t handle: err.code: '+err.code); return [err]; }
+      }
+      else { console.log('No \'code\' in err'); return [err]; }
+    }
+  }
+  return [err, connection];
+}
+
+myQueryW=function*(flow, connection, sql, Val){ 
+  var err, results, fields;
+  connection.query(sql, Val, function(errT, resultsT, fieldsT) { err=errT; results=resultsT; fields=fieldsT; flow.next();}); yield;
+  //connection.release();
+  //connection.destroy();
+  
+  return [err, results, fields];
+}
 
 MyNeo4j=function(){
   var chars = ['\\"', '\\\'', '\\\\'],   tmpStr='[' +chars.join("") +']';  this.regEscape=new RegExp(tmpStr, 'g');
