@@ -1,15 +1,14 @@
 "use strict"
 
+
+
 /******************************************************************************
  * ReqBE
  ******************************************************************************/
 var ReqBE=app.ReqBE=function(objReqRes){
   Object.assign(this, objReqRes);
-  //this.req=req; this.res=res;
   this.Str=[];
 }
-
-
 
   // Method "mesO" and "mesEO" are only called from "go". Method "mes" can be called from any method.
 ReqBE.prototype.mes=function(str){ this.Str.push(str); }
@@ -27,7 +26,7 @@ ReqBE.prototype.mesO=function(e){
   this.GRet.strMessageText=this.Str.join(', '); 
   
     // mmmWiki specific
-  var GRet=this.GRet;    if('tMod' in GRet) GRet.tMod=GRet.tMod.toUnix();    if('tModCache' in GRet) GRet.tModCache=GRet.tModCache.toUnix();
+  var GRet=this.GRet;    if('tMod' in GRet && GRet.tMod instanceof Date ) GRet.tMod=GRet.tMod.toUnix();
   
   this.res.end(JSON.stringify(this.Out));
 }
@@ -49,7 +48,7 @@ ReqBE.prototype.mesEO=function(e){
   this.GRet.strMessageText=this.Str.join(', ');
   
     // mmmWiki specific
-  var GRet=this.GRet;    if('tMod' in GRet) GRet.tMod=GRet.tMod.toUnix();    if('tModCache' in GRet) GRet.tModCache=GRet.tModCache.toUnix();
+  var GRet=this.GRet;    if('tMod' in GRet && GRet.tMod instanceof Date) GRet.tMod=GRet.tMod.toUnix();
   
   this.res.writeHead(500, {"Content-Type": "text/plain"}); 
   this.res.end(JSON.stringify(this.Out));
@@ -74,7 +73,6 @@ ReqBE.prototype.go=function*(){
       form.parse(req, function(errT, fieldsT, filesT) { err=errT; fields=fieldsT; files=filesT; flow.next();  });  yield;  if(err){ this.mesEO(err);  return; } 
       
       this.File=files['fileToUpload[]'];
-      //if('captcha' in fields) this.captchaIn=fields.captcha; else this.captchaIn='';
       if('g-recaptcha-response' in fields) this.captchaIn=fields['g-recaptcha-response']; else this.captchaIn='';
       if('strName' in fields) this.strName=fields.strName; else this.strName='';
       if(!(this.File instanceof Array)) this.File=[this.File];
@@ -163,7 +161,8 @@ ReqBE.prototype.go=function*(){
   //var tmp=randomHash(); console.log(tmp); res.setHeader("Set-Cookie", "myCookieUpdatedOn304Test="+tmp);  //getCookie('myCookieUpdatedOn304Test')
 
   for(var k=0; k<Func.length; k++){
-    var [func,inObj]=Func[k],   [err, result]=yield* func.call(this, inObj);
+    var [func,inObj]=Func[k],   tmpO=yield* func.call(this, inObj);
+    if(tmpO) var [err, result]=tmpO; else { var err=undefined, result=undefined; }
     //if(typeof objT=='object') {    if('err' in objT) err=objT.err; else err=objT;    }    else if(typeof objT=='undefined') err='Error when calling BE-fun: '+k;    else err=objT;
     
     if(res.finished) { break; }
@@ -353,65 +352,83 @@ ReqBE.prototype.pageLoad=function*(inObj) {
 
 
   this.CSRFCode='';  // If Private then No CSRFCode since the page is going to be cacheable (look the same each time)
-  var version, rev; if(typeof inObj=='object' && 'version' in inObj) {  version=inObj.version;  rev=version-1 } else {  version=NaN; rev=-1; }
+  var version, rev; if(typeof inObj=='object' && 'version' in inObj) {  version=inObj.version;  rev=version-1; } else {  version=NaN; rev=-1; }
   var eTagIn='', requesterCacheTime=new Date(0);
   if(req.method=='GET') {eTagIn=getETag(req.headers); requesterCacheTime=getRequesterTime(req.headers); }
-
-
-    // getInfoNData
-  //var [err,rowA]=yield* getInfoNData.call(this); if(err) return [err];
-  var arg={boFront:0, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:queredPage, rev:rev, eTagIn:eTagIn, requesterCacheTime:requesterCacheTime, myMySql:this.myMySql}
-  var [err, Ou]=yield* getInfoNData(flow, arg); if(err) return [err];
-  var {mess, version, rev, eTag, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
   
-  if(typeof tMod=='undefined') tMod=new Date(0);
-  if(typeof tModCache=='undefined') tModCache=new Date(0);
-  var arrVersionCompared=[null,1];
+  var Sql=[];
+  Sql.push("CALL "+strDBPrefix+"getInfoNDataBE(?, ?, ?, ?, ?);"); 
+  var sql=Sql.join('\n');
+  var Val=[req.wwwSite, queredPage, rev, eTagIn, requesterCacheTime/1000];
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) return [err];
   
-  if(mess=='IwwwNotFound'){ res.out404('No wiki there'); return [];  }
-  else if(mess=='304') { res.out304(); return []; }
-  else if(mess=='noSuchRev') {return [new ErrorClient(mess)];  }
-  else if(mess=='noSuchPage'){ res.out404(); return [];   }
-  else if(mess=='serverCacheOK'){
-    eTag=randomHash();
-    var sql=`UPDATE `+pageLastView+` SET tModCache=now(), eTag=? WHERE www=? AND pageName=?;  
-SELECT now() AS tModCache`;
-    var Val=[eTag, req.wwwSite, queredPage];
-    var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
-    var rowA=results[1][0];
-    tModCache=new Date(rowA.tModCache*1000);
-    var tmp=boOR?'':', private';
-    res.setHeader("Cache-Control", "must-revalidate"+tmp);  res.setHeader('Last-Modified',tModCache.toUTCString());  res.setHeader('ETag',eTag);
+  //if(results.length==1) { res.out500("Weird, getInfoNDataBE should have returned one at least one result plus the 'added' result that stored procedures allways add."); return;   } 
+  if(results[0].length==0) { 
+    res.setHeader("Cache-Control", "must-revalidate");  res.setHeader('Last-Modified',(new Date(0)).toUTCString());  res.setHeader('ETag','');
+    res.out404("no such page");
+    return [];
   }
-  else if(mess=='serverCacheStale'){
-    eTag=randomHash();
-      // parse
-    var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW, myMySql:this.myMySql};
-    var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) return [err];
+  var objPage=results[0][0];
+  if(!objPage.boOR && !this.boVLoggedIn) {  res.outCode(401, "Unauthorized"); return []; }
+  var boTalkExist=results[1][0].boTalkExist;
+  if(results[2].length==0)  return [new Error('no versions?!?')];
+  if(rev>=results[2].length) {
+    res.setHeader("Cache-Control", "must-revalidate");  res.setHeader('Last-Modified',(new Date(0)).toUTCString());  res.setHeader('ETag','');
+    res.outCode(400, "no such version");
+    return [];
+  }
+  if(rev==-1) rev=results[2].length-1;    version=rev+1;
+  var matVersion=makeMatVersion(results[2]);
+  var objRev=Object.assign({},results[2][rev]);
+    objRev.tMod=new Date(objRev.tMod*1000);
+    objRev.tModCache=new Date(objRev.tModCache*1000);
+  var boValidServerCache=results[3][0].boValidServerCache;
+  var boValidReqCache=results[4][0].boValidReqCache;
+  if(boValidReqCache) { res.out304(); return []; }
+  else{
+    var strEditText=results[5][0].strEditText.toString();
+    let {boOR,boOW,boSiteMap}=objPage;
+    let {tMod}=objRev;
+    if(boValidServerCache) {
+      var strHtmlText=results[6][0].strHtmlText.toString();
+      var objTemplateE=createObjTemplateE(results[7]);
+      var eTag=md5(strHtmlText +JSON.stringify(objTemplateE) +tMod +boOR +boOW +boSiteMap +boTalkExist +JSON.stringify(matVersion));
+      
+      var sql=`UPDATE `+versionTab+` SET tModCache=now(), eTag=? WHERE idPage=? AND rev=?;     SELECT UNIX_TIMESTAMP(now()) AS tModCache`;
+      var Val=[eTag, objPage.idPage, rev];
+      var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err]
+      var rowA=results[1][0];
+      var tModCache=new Date(rowA.tModCache*1000);
+    }else {
+        // parse
+      var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW, myMySql:this.myMySql};
+      var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) return [err]
+      
+      var eTag=md5(strHtmlText +JSON.stringify(objTemplateE) +tMod +boOR +boOW +boSiteMap +boTalkExist +JSON.stringify(matVersion));
+      
+      var Sql=[];
+        // setNewCacheSQL
+      var {sql, Val, nEndingResults}=createSetNewCacheSQL(req.wwwSite, queredPage, rev, strHtmlText, eTag, arrSub, StrSubImage);
+      Sql.push("START TRANSACTION; "+sql+" COMMIT;");
+      var sql=Sql.join('\n');
+      var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err]
+      var iRowLast=results.length-nEndingResults-2;
+      var rowA=results[iRowLast][0];
+      var tModCache=new Date(rowA.tModCache*1000);
+       
+    }
+
+    GRet.objPage=copySome({},objPage, ['boOR','boOW', 'boSiteMap', 'idPage']);
+    GRet.objRev=copySome({},objRev, ['tMod']);
     
-      // setNewCacheSQL
-    var {sql, Val, nEndingResults}=createSetNewCacheSQL(req.wwwSite, queredPage, rev, strHtmlText, eTag, arrSub, StrSubImage);
-    sql="START TRANSACTION; "+sql+" COMMIT;";
-    var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
-    var iRowLast=results.length-nEndingResults-2;
-    var rowA=results[iRowLast][0];
-    var mess=rowA.mess;       if(mess!='done') { return [new Error(mess)]; }
-    tModCache=new Date(rowA.tModCache*1000);
-     
-    var tmp=boOR?'':', private';
+    extend(GRet, {strDiffText:'', arrVersionCompared:[null, version], strHtmlText:strHtmlText, objTemplateE:objTemplateE, strEditText:strEditText, boTalkExist:boTalkExist, matVersion:matVersion});
+    var tmp=objPage.boOR?'':', private';
     res.setHeader("Cache-Control", "must-revalidate"+tmp);  res.setHeader('Last-Modified',tModCache.toUTCString());  res.setHeader('ETag',eTag);
-  }
-  else { return [new ErrorClient(mess)];  }
-  
-  var matVersion=makeMatVersion(Version); 
-  
-  
-  //'redir', 'noSuchPage', 'redirCase', 'private', '304', 'serverCacheStale', 'serverCacheOK'
-  //this.myAsyncPageLoad.Func.push(         thisChangedWArg(this.pageLoadC, this)        ); 
-  //this.pageLoadC.call(this);
-  extend(GRet, {strDiffText:'', arrVersionCompared:arrVersionCompared, strHtmlText:strHtmlText, objTemplateE:objTemplateE, strEditText:strEditText, boTalkExist:boTalkExist, matVersion:matVersion, boOR:boOR, boOW:boOW, boSiteMap:boSiteMap, idPage:idPage, tMod:tMod, tModCache:tModCache});
+  } 
+
   return [null, [Ou]];
 }
+
 
 
 ReqBE.prototype.pageCompare=function*(inObj){ 
@@ -425,26 +442,21 @@ ReqBE.prototype.pageCompare=function*(inObj){
   var rev=versionOld-1;
 
 
-      // getInfoNData Old
-  //var [err,rowA]=yield* getInfoNData.call(this); if(err) return [err];
-  var arg={boFront:0, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:this.queredPage, rev:rev, eTagIn:eTagIn, requesterCacheTime:requesterCacheTime, myMySql:this.myMySql}
-  var [err, Ou]=yield* getInfoNData(flow, arg); if(err) return [err];
-  var {mess, version, rev, eTag, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
+  var Sql=[], Val=[];
+  Sql.push("SELECT SQL_CALC_FOUND_ROWS boOR, boOW, @idPage:=idPage FROM "+pageWWWView+" WHERE www=? AND pageName=?;");
+  Sql.push("SELECT data AS strEditTextOld FROM "+versionTab+" v JOIN "+fileTab+" f on v.idFile=f.idFile WHERE v.idPage=@idPage AND v.rev=?;");
+  Sql.push("SELECT data AS strEditText FROM "+versionTab+" v JOIN "+fileTab+" f on v.idFile=f.idFile WHERE v.idPage=@idPage AND v.rev=?;");
+  Val.push(req.wwwSite, this.queredPage, versionOld-1, version-1);
+  var sql=Sql.join('\n');
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) return [err];
+  var boOR=results[0][0].boOR,  boOW=results[0][0].boOW;
   
-  var nVersion=Version.length; 
-  if(nVersion==0){return [new ErrorClient('Page does not exist')]; } 
-  if(!boOR && !this.boVLoggedIn){return [new ErrorClient('Not logged in')]; }
-
-  var strEditTextOld=strEditText;
-
-      // getInfoNData 
-  var rev=version-1;
-  //var [err,rowA]=yield* getInfoNData.call(this); if(err) return [err];
-  var arg={boFront:0, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:this.queredPage, rev:rev, eTagIn:eTagIn, requesterCacheTime:requesterCacheTime, myMySql:this.myMySql}
-  var [err, Ou]=yield* getInfoNData(flow, arg); if(err) return [err];
-  var {mess, version, rev, eTag, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
+  if(boOR===false && !this.boVLoggedIn){return [new ErrorClient('Not logged in')]; }
+  if(boOR===null){return [new ErrorClient('Page does not exist')]; } 
   
-  var matVersion=makeMatVersion(Version);
+  var strEditTextOld=results[1][0].strEditTextOld.toString();
+  var strEditText=results[2][0].strEditText.toString();
+  
   
     // parse 
   var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW, myMySql:this.myMySql};
@@ -458,7 +470,7 @@ ReqBE.prototype.pageCompare=function*(inObj){
   } else this.mes("v "+version);
 
   
-  extend(GRet,{strDiffText:strDiffText, arrVersionCompared:[versionOld,version], strHtmlText:strHtmlText, objTemplateE:objTemplateE, strEditText:strEditText, boTalkExist:boTalkExist, matVersion:matVersion, boOR:boOR, boOW:boOW, boSiteMap:boSiteMap, idPage:idPage, tMod:tMod, tModCache:tModCache});
+  extend(GRet,{strDiffText:strDiffText, arrVersionCompared:[versionOld,version], strHtmlText:strHtmlText, strEditText:strEditText});
   return [null, [0]];
 }
 
@@ -485,19 +497,20 @@ ReqBE.prototype.getPreview=function*(inObj){
 ReqBE.prototype.saveByReplace=function*(inObj){   
   var req=this.req, res=this.res;
   var Ou={}, GRet=this.GRet, flow=req.flow;
-
-    // getInfo
-  var arg={wwwSite:req.wwwSite, queredPage:this.queredPage, myMySql:this.myMySql}
-  var [err,Ou]=yield* getInfo(flow, arg); if(err) return [err];
-  var {mess, boTLS, boOR, boOW, boSiteMap, tMod, tModCache}=Ou;
   
-  if(mess=='IwwwNotFound'){ res.out404('No wiki there'); return [];   }
-  else if(mess=='pageExist'){
+    // getInfo
+  var sql="SELECT boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tMod) AS tMod FROM "+pageLastView+" WHERE www=? AND pageName=?";
+  var Val=[req.wwwSite, this.queredPage];
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) return [err];
+  var row=results[0];
+
+  if(row){
+    var boOR=row.boOR, boOW=row.boOW, boSiteMap=row.boSiteMap, tMod=new Date(row.tMod*1000);
     if(!boOR && !this.boVLoggedIn) {return [new ErrorClient('Not logged in')]; }
     if(!this.boALoggedIn) {return [new ErrorClient('Not logged in as admin')]; } 
     if(this.tModBrowser<tMod) { return [new ErrorClient("tMod from the version on your browser: "+this.tModBrowser+" < tMod on the version on the server: "+tMod+", "+messPreventBecauseOfNewerVersions)];  }
-  }else if(mess=='noSuchPage'){
-    boOW=1; boOR=1; boSiteMap=1;  
+  }else {
+    var boOW=1, boOW=1, boSiteMap=1;
   }
   
   var strEditText=inObj.strEditText;
@@ -506,36 +519,65 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW, myMySql:this.myMySql};
   var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) return [err];
   
-  var eTag=randomHash();
+  var eTag='trash'; //randomHash();
   
       // saveByReplace
-  var {sql, Val, nEndingResults}=createSaveByReplaceSQL('', req.wwwSite, this.queredPage, strEditText, strHtmlText, eTag, arrSub, StrSubImage); 
-  sql="START TRANSACTION; "+sql+" COMMIT;";
+  //var {sql, Val, nEndingResults}=createSaveByReplaceSQL('', req.wwwSite, this.queredPage, strEditText, strHtmlText, eTag, arrSub, StrSubImage); 
+  //sql="START TRANSACTION; "+sql+" COMMIT;";
+  //var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
+  //var iRowLast=results.length-nEndingResults-2;
+  //var rowA=results[iRowLast][0], tMod=new Date(rowA.tMod*1000);
+  //var mess=rowA.mess;//if(typeof results[iRowLast][0]=='object')
+  
+  
+      // saveByReplace
+  var Sql=[];
+  var [strSubQ,arrSubV]=createSubStr(arrSub);
+  var strSubImageQ=createSubImageStr(StrSubImage);
+  Sql.push("START TRANSACTION;", sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';');
+  Sql.push("TRUNCATE tmpSubNew; "+strSubQ,   "TRUNCATE tmpSubNewImage; "+strSubImageQ);
+  Sql.push("CALL "+strDBPrefix+"saveByReplace(?,?,?,?,?,?);",    "COMMIT"); 
+  var sql=Sql.join('\n'); 
+  var Val=array_merge(arrSubV, StrSubImage, ['', req.wwwSite, this.queredPage, strEditText, strHtmlText, eTag]);
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
-  var iRowLast=results.length-nEndingResults-2;
-  var rowA=results[iRowLast][0], tMod=new Date(rowA.tMod*1000), tModCache=new Date(rowA.tModCache*1000);
+  var iRowLast=results.length-3;
+  var rowA=results[iRowLast][0], tMod=new Date(rowA.tMod*1000);
   var mess=rowA.mess;//if(typeof results[iRowLast][0]=='object')
   
-      // getInfoNData
-  var rev=0, eTagIn='', requesterCacheTime=0;
-  //var [err,rowA]=yield* getInfoNData.call(this); if(err) return [err];
-  var arg={boFront:0, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:this.queredPage, rev:rev, eTagIn:eTagIn, requesterCacheTime:requesterCacheTime, myMySql:this.myMySql}
-  var [err, Ou]=yield* getInfoNData(flow, arg); if(err) return [err];
-  var {mess, version, rev, eTag, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
   
+
+
   var matVersion=[];
   if(inObj.strEditText.length>0){
-    matVersion=makeMatVersion(Version);
+      // getInfoNData
+    var Sql=[], Val=[];
+    Sql.push("SELECT SQL_CALC_FOUND_ROWS boOR, boOW, boSiteMap, @idSite:=idSite, @idPage:=idPage, UNIX_TIMESTAMP(tMod) AS tMod FROM "+pageLastView+" WHERE www=? AND pageName=?;");
+    Sql.push("SELECT SQL_CALC_FOUND_ROWS summary, signature, UNIX_TIMESTAMP(tMod) AS tMod FROM "+versionTab+" WHERE idPage=@idPage;");
+    Sql.push("SELECT pageName, boOnWhenCached FROM "+subTab+" WHERE idPage=@idPage AND pageName REGEXP '^template:';");
+    Val.push(req.wwwSite, this.queredPage);
+    var talkPage=calcTalkName(this.queredPage), boIsTalkPage=Boolean(talkPage.length);
+    if(boIsTalkPage) {Sql.push("SELECT count(idPage) AS boTalkExist FROM "+pageTab+" WHERE idSite=@idSite AND pageName=?;"); Val.push(talkPage); }
+    var sql=Sql.join('\n');
+    var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) return [err];
+    var row=results[0][0], boOR=row.boOR,  boOW=row.boOW, boSiteMap=row.boSiteMap, idPage=row.idPage, tMod=new Date(row.tMod*1000);
+    var matVersion=makeMatVersion(results[1]);
+    var objTemplateE=createObjTemplateE(results[2]);
+    var boTalkExist=boIsTalkPage?false:results[3];
+    
+    //var eTag=md5(strHtmlText +JSON.stringify(objTemplateE) +tMod +boOR +boOW +boSiteMap +boTalkExist +JSON.stringify(matVersion));
+    //var sql=`UPDATE `+pageLastView+` SET tModCache=now(), eTag=? WHERE idPage=?`;
+    //var Val=[eTag, idPage];
+    //var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
+    
     this.mes("Page overwritten");
   } else {
     strHtmlText=''; objTemplateE={};
-    idPage=NaN; rev=0; version=1; boOR=1; boOW=1; boSiteMap=1; boTalkExist=0; tMod=new Date(0); tModCache=new Date(0);
+    idPage=NaN; boOR=1; boOW=1; boSiteMap=1; tMod=new Date(0);;
     this.mes("No content, Page deleted");
   }
   
-  //boPageBUNeeded=true; 
   
-  extend(GRet,{strDiffText:'', arrVersionCompared:[null,1], strHtmlText:strHtmlText, objTemplateE:objTemplateE, strEditText:strEditText, boTalkExist:boTalkExist, matVersion:matVersion, boOR:boOR, boOW:boOW, boSiteMap:boSiteMap, idPage:idPage, tMod:tMod, tModCache:tModCache});
+  extend(GRet,{strDiffText:'', arrVersionCompared:[null,1], strHtmlText:strHtmlText, objTemplateE:objTemplateE, strEditText:strEditText, matVersion:matVersion, boOR:boOR, boOW:boOW, boSiteMap:boSiteMap, idPage:idPage, tMod:tMod});
   return [null, [0]];
 }
 
@@ -555,22 +597,20 @@ ReqBE.prototype.saveByAdd=function*(inObj){
   //console.log('Data: ', data);
   if(!data.success) return [new ErrorClient('reCaptcha test not successfull')];
   
-
     // getInfo
-  var arg={wwwSite:req.wwwSite, queredPage:this.queredPage, myMySql:this.myMySql}
-  var [err,Ou]=yield* getInfo(flow, arg); if(err) return [err];
-  var {mess, boTLS, boOR, boOW, boSiteMap, tMod, tModCache}=Ou;
+  var sql="SELECT boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tMod) AS tMod FROM "+pageLastView+" WHERE www=? AND pageName=?";
+  var Val=[req.wwwSite, this.queredPage];
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) return [err];
+  var row=results[0];
 
-
-  if(mess=='IwwwNotFound'){ res.out404('No wiki there'); return [];   }
-  else if(mess=='pageExist'){
+  if(row){
+    var boOR=row.boOR, boOW=row.boOW, boSiteMap=row.boSiteMap, tMod=new Date(row.tMod*1000);
     if(!boOR && !this.boVLoggedIn) {return [new ErrorClient('Not logged in')]; }
     if(this.tModBrowser<tMod) { return [new ErrorClient("tMod from the version on your browser: "+this.tModBrowser+" < tMod on the version on the server: "+tMod+", "+messPreventBecauseOfNewerVersions)];  }
-  }else if(mess=='noSuchPage'){
-    boOW=1; boOR=1; boSiteMap=1;  
+    if(boOW==0) {return [new ErrorClient('Not authorized')]; }  
+  }else{
+    var boOW=1, boOW=1, boSiteMap=1;
   }
-  if(boOW==0) {return [new ErrorClient('Not authorized')]; } 
-  //copySome(this,inObj,['summary', 'signature']);    
   var strEditText=inObj.strEditText, summary=inObj.summary, signature=inObj.signature;
   
     
@@ -578,7 +618,7 @@ ReqBE.prototype.saveByAdd=function*(inObj){
   var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW, myMySql:this.myMySql};
   var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) return [err];
 
-  var eTag=randomHash();
+  var eTag='trash'; //randomHash();
   
       // saveByAddSQL
   var {sql, Val, nEndingResults}=createSaveByAddSQL(req.wwwSite, this.queredPage, summary, signature, strEditText, strHtmlText, eTag, arrSub, StrSubImage);
@@ -587,21 +627,31 @@ ReqBE.prototype.saveByAdd=function*(inObj){
   var iRowLast=results.length-nEndingResults-2;
   var mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
   
-
+  
       // getInfoNData
-  var rev=-1, eTagIn='', requesterCacheTime=0;
-  //var [err,rowA]=yield* getInfoNData.call(this); if(err) return [err];
-  var arg={boFront:0, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:this.queredPage, rev:rev, eTagIn:eTagIn, requesterCacheTime:requesterCacheTime, myMySql:this.myMySql}
-  var [err, Ou]=yield* getInfoNData(flow, arg); if(err) return [err];
-  var {mess, version, rev, eTag, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
-
-
-  var matVersion=makeMatVersion(Version);
+  var Sql=[], Val=[];
+  Sql.push("SELECT SQL_CALC_FOUND_ROWS siteName, boOR, boOW, boSiteMap, @idSite:=idSite, @idPage:=idPage, UNIX_TIMESTAMP(tMod) AS tMod FROM "+pageLastView+" WHERE www=? AND pageName=?;");
+  Sql.push("SELECT SQL_CALC_FOUND_ROWS summary, signature, UNIX_TIMESTAMP(tMod) AS tMod FROM "+versionTab+" WHERE idPage=@idPage;");
+  Sql.push("SELECT pageName, boOnWhenCached FROM "+subTab+" WHERE idPage=@idPage AND pageName REGEXP '^template:';");
+  Val.push(req.wwwSite, this.queredPage);
+  var talkPage=calcTalkName(this.queredPage), boIsTalkPage=Boolean(talkPage.length);
+  if(boIsTalkPage) {Sql.push("SELECT count(idPage) AS boTalkExist FROM "+pageTab+" WHERE idSite=@idSite AND pageName=?;"); Val.push(talkPage); }
+  var sql=Sql.join('\n');
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) return [err];
+  var row=results[0][0], siteName=row.siteName, boOR=row.boOR,  boOW=row.boOW, boSiteMap=row.boSiteMap, idPage=row.idPage, tMod=new Date(row.tMod*1000);
+  var matVersion=makeMatVersion(results[1]);
+  var objTemplateE=createObjTemplateE(results[2]);
+  var boTalkExist=boIsTalkPage?false:results[3];
+  
+  //var eTag=md5(strHtmlText +JSON.stringify(objTemplateE) +tMod +boOR +boOW +boSiteMap +boTalkExist +JSON.stringify(matVersion));
+  //var sql=`UPDATE `+pageLastView+` SET tModCache=now(), eTag=? WHERE idPage=?`;
+  //var Val=[eTag, idPage];
+  //var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   
   this.mes("New version added");
   if(objOthersActivity) { objOthersActivity.nEdit++; objOthersActivity.pageName=siteName+':'+this.queredPage; }
 
-  extend(GRet,{strDiffText:'', arrVersionCompared:[null,matVersion.length], strHtmlText:strHtmlText, objTemplateE:objTemplateE, strEditText:strEditText, boTalkExist:boTalkExist, matVersion:matVersion, boOR:boOR, boOW:boOW, boSiteMap:boSiteMap, idPage:idPage, tMod:tMod, tModCache:tModCache});
+  extend(GRet,{strDiffText:'', arrVersionCompared:[null,matVersion.length], strHtmlText:strHtmlText, objTemplateE:objTemplateE, strEditText:strEditText, boTalkExist:boTalkExist, matVersion:matVersion, boOR:boOR, boOW:boOW, boSiteMap:boSiteMap, idPage:idPage, tMod:tMod});
 
   return [null, [0]];
 }
@@ -916,7 +966,9 @@ ReqBE.prototype.getLastTModNTLastBU=function*(inObj){
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
 
   //var sql='SELECT UNIX_TIMESTAMP(MAX(tMod)) AS tLastMod FROM '+versionTab;
-  var sql='SELECT pageName, UNIX_TIMESTAMP(MAX(tMod)) AS tLastMod FROM '+pageTab+' p JOIN '+versionTab+' v USING (idPage)';
+  //var sql='SELECT pageName, UNIX_TIMESTAMP(MAX(tMod)) AS tLastMod FROM '+pageTab+' p JOIN '+versionTab+' v USING (idPage)';
+  var sql='SELECT pageName, UNIX_TIMESTAMP(tMod) AS tLastMod FROM '+pageTab+' p JOIN '+versionTab+' v USING (idPage) WHERE  tMod=(SELECT MAX(tMod) FROM '+versionTab+')';
+
   var Val={};
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   if(results[0]) copySome(Ou, results[0], ['pageName', 'tLastMod']);
@@ -1094,10 +1146,10 @@ app.storeFile=function*(fileName, type, data, flow){
     var arg={strEditText:strEditText, boOW:boOW, siteName:siteName, myMySql:this.myMySql};
     var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) return [err];
 
-    var eTag=randomHash();
+    var eTag='upload'; //randomHash();
     
           // saveByReplace
-    var {sql, Val, nEndingResults}=createSaveByReplaceSQL(siteName, '', pageName, strEditText, strHtmlText, '', arrSub, StrSubImage);
+    var {sql, Val, nEndingResults}=createSaveByReplaceSQL(siteName, '', pageName, strEditText, strHtmlText, eTag, arrSub, StrSubImage);
     //console.time('dbOperations');
     var tStart=new Date();
     //sql="SET autocommit=0;"+sql+" SET autocommit=1;";
@@ -1112,12 +1164,12 @@ app.storeFile=function*(fileName, type, data, flow){
   }else if(regImg.test(type)){
     var eTag=md5(data); 
     //var dim=imageSize(data);  console.log(fileName+', w/h: '+dim.width+' / '+dim.height);
-    var sql="CALL "+strDBPrefix+"storeImage(?,?,?,?,@boOK)";
+    var sql="CALL "+strDBPrefix+"storeImage(?,?,?,?,@boOK);";
     var Val=[fileName,0,data,eTag];
     var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   }else if(regVid.test(type)){ 
     var eTag=md5(data);
-    var sql="CALL "+strDBPrefix+"storeVideo(?,?,?)";
+    var sql="CALL "+strDBPrefix+"storeVideo(?,?,?);";
     var Val=[fileName,data,eTag];
     var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   }
@@ -1201,7 +1253,7 @@ ReqBE.prototype.uploadAdminServ=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
-  this.mesO("Working... (check server console for progress) ");
+  this.mes("Working... (check server console for progress) ");
   var [err]=yield* loadDataFrBU.call(this, flow, inObj.file); if(err) return [err];
   return [null, [0]];
 }
@@ -1212,7 +1264,7 @@ ReqBE.prototype.uploadAdmin=function*(inObj){
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
   if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
-  this.mesO("Working... (check server console for progress) ");
+  this.mes("Working... (check server console for progress) ");
   var [err]=yield* storeFileMult.call(this, flow, this.File); if(err) return [err];
   return [null, [0]];
 }
@@ -1263,13 +1315,13 @@ ReqBE.prototype.uploadUser=function*(inObj){
 
     var eTag=md5(data);
     //var dim=imageSize(data);  console.log(fileName+', w/h: '+dim.width+' / '+dim.height);
-    var sql="CALL "+strDBPrefix+"storeImage(?,?,?,?,@boOK)";
+    var sql="CALL "+strDBPrefix+"storeImage(?,?,?,?,@boOK);";
     sql="START TRANSACTION; "+sql+" COMMIT;";
     var Val=[fileName,1,data,eTag];
     var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   }else if(regVid.test(type)){ 
     var eTag=md5(data);
-    var sql="CALL "+strDBPrefix+"storeVideo(?,?,?)";
+    var sql="CALL "+strDBPrefix+"storeVideo(?,?,?);";
     sql="START TRANSACTION; "+sql+" COMMIT;";
     var Val=[fileName,data,eTag];
     var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
@@ -1368,7 +1420,7 @@ app.loadFrBU=function*(flow, strFileArg){
     for(var i=0;i<StrFile.length;i++){
       var strFile=StrFile[i];
       //if(strFile=='all') { StrFile=StrValidLoadMeta.concat([]); break; }
-      if(StrValidLoadMeta.indexOf(strFile)==-1 && StrValidZip.indexOf(strFile)==-1) {helpTextExit(); return;}
+      if(StrValidLoadMeta.indexOf(strFile)==-1 && StrValidZip.indexOf(strFile)==-1) {helpTextExit(); return [];}
     }
   }
   var obj={myMySql:new MyMySql(mysqlPool)};
@@ -1384,5 +1436,4 @@ app.loadFrBU=function*(flow, strFileArg){
   
   return [null, [0]];
 }
-
 

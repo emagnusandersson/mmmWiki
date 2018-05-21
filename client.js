@@ -185,8 +185,11 @@ vLoginDivExtend=function($el){
   }
   var vPassF=function(){  
     var tmp=SHA1($vPass.val()+strSalt);
-    var vec=[['vLogin',{pass:tmp}],['pageLoad',1]];   majax(oAJAX,vec); 
+    var vec=[['vLogin',{pass:tmp},pageLoadF]];   majax(oAJAX,vec);  
     $vPass.val('');
+  }
+  var pageLoadF=function(){
+    var vec=[['pageLoad',1]];   majax(oAJAXCacheable,vec);
   }
   var $vPass=$('<input type=password>').keypress( function(e){ if(e.which==13) {vPassF();return false;} });     
   var $vPassButt=$('<button>').append('Login').click(vPassF);
@@ -267,11 +270,11 @@ pageViewExtend=function($el){
   $el.$spanNR=$('<span>').css({margin:'0em 0.1em'});
   var $nextButton=$('<button>').append('⇧').addClass('fixWidth').click(function(){
     var iVer=arrVersionCompared[1]+1; if(iVer>nVersion) iVer=1;
-    var vec=[['pageLoad',{version:iVer}]];   majax(oAJAX,vec); 
+    var vec=[['pageLoad',{version:iVer}]];   majax(oAJAXCacheable,vec); 
   });
   var $prevButton=$('<button>').append('⇩').addClass('fixWidth').css({'margin-left':'0.8em'}).click(function(){
     var iVer=arrVersionCompared[1]-1; if(iVer<1) iVer=nVersion;
-    var vec=[['pageLoad',{version:iVer}]];   majax(oAJAX,vec); 
+    var vec=[['pageLoad',{version:iVer}]];   majax(oAJAXCacheable,vec); 
   });
   var $spanDetail=$('<span>').append('ggggggggggg').css({'margin-right':'0.5em', 'margin-left':'0.5em'});
   var $divUpper=$('<div>').append($prevButton,$el.$spanNR,$nextButton,$spanDetail,$diffButton).css({'line-height':'2em'});
@@ -480,7 +483,7 @@ adminMoreDivExtend=function($el){
 
   var $imgHRename=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverJQ($imgHRename,$('<div>').html('"Rename" will <b>not</b> rename any links to the page. (maybe something for future versions)'));  
   var $renameButton=$('<button>').append('Rename').css({'margin-left':'0.5em'}).click(function(){
-    $renamePop.openFunc('page',null,objPage.idPage,queredPage);
+    $renamePop.openFunc('page', null, objPage.idPage, queredPage);
   });
   var objBottomLine={'border-bottom':'gray solid 1px'};
   var $menuA=$('<div>').append($butModRead, $butModWrite, $butModSiteMap, $imgH, ' | ', $renameButton, $imgHRename).css(objBottomLine);
@@ -1148,7 +1151,7 @@ uploadUserDivExtend=function($el){
 
   var setMess=function(str) {$divMess.html(str);}
   var clearMess=function() {$divMess.html('');}
-  var toggleVerified=function(boT){ if(typeof boT=='undefined') boT=$divName.is('visible'); boT=Boolean(boT); $divName.toggle(boT);  $uploadButton.prop("disabled",!boT); }  //$divCaptcha.toggle(boT);
+  var toggleVerified=function(boT){ if(typeof boT=='undefined') boT=$divName.is('visible'); boT=Boolean(boT); $divName.toggle(boT);  $uploadButton.prop("disabled",!boT); }
   var verifyFun=function(){  
     clearMess();
     var arrFile=this.files;
@@ -1172,7 +1175,6 @@ uploadUserDivExtend=function($el){
     if(boFormDataOK==0) {alert("Your browser doesn't support FormData"); return; };
     var formData = new FormData();
     formData.append("type", 'single');
-    //formData.append("captcha", $inpCaptcha.val());
     formData.append("strName", $inpName.val()+$spanExtension.html());
     formData.append("fileToUpload[]", objFile);
     
@@ -1184,10 +1186,9 @@ uploadUserDivExtend=function($el){
   }
   $el.setVis=function(){
     $el.show();
-    //$imgCaptcha.prop({src:'captcha.png'});
     
-    $divName.after($divReCaptcha);
-    $divReCaptcha.setUp();
+    //$divName.after($divReCaptcha);
+    //$divReCaptcha.setUp();
     
     return true;
   }
@@ -1218,22 +1219,19 @@ uploadUserDivExtend=function($el){
   var inpNameRet=function(data){
     var boOK=data.FileInfo.length==0; $spanOK.html(boOK?'OK':'Exists').css({color:boOK?'green':'red'});  $uploadButton.prop("disabled",!boOK);    
   } 
-  var $inpName=$('<input type=text>').on('input', inpNameChange);// .keypress( function(e){ if(e.which==13) {$inpCaptcha.focus();return false;}} );//.css({width:'15em'});
+  var $inpName=$('<input type=text>').on('input', inpNameChange);
   var $spanExtension=$('<span>');
   var $spanOK=$('<span>').html('').css('margin-left', '0.3em');
   var $divNameInner=$("<div>").append($inpName, $spanExtension, $spanOK);
   var $divName=$("<div>").append('Name: ', $divNameInner).css({'margin-top':'1.2em','line-height':'2em'}).hide();
-
-  //var $imgCaptcha=$('<img>').css({'display':'block'});
-  //var $inpCaptcha=$('<input type=text name=captcha >').css({width:'6em'}).keypress( function(e){ if(e.which==13) {sendFun();return false;}} );
-  //var $divCaptcha=$("<div>").append('Enter anti-spam-letters:', $imgCaptcha, $inpCaptcha).css({'margin-top':'1.2em'}).hide();
+  
 
   var $closeButton=$('<button>').append('Close').click(doHistBack);
   var $menuBottom=$('<div>').append($closeButton, $uploadButton).css({'margin-top':'1.2em'});
 
 
   var $blanket=$('<div>').addClass("blanket");
-  var $centerDiv=$('<div>').append($head, $formFile, $progress, $divName, $divMess,$menuBottom);  // , $divCaptcha
+  var $centerDiv=$('<div>').append($head, $formFile, $progress, $divName, $divMess,$menuBottom);  
   $centerDiv.addClass("Center").css({'width':'20em', height:'26em', padding: '0.3em 0.5em 1.2em 0.6em'});
   $centerDiv.css({'box-sizing':'content-box'});
   if(boIE) $centerDiv.css({'width':'20em'}); 
@@ -1612,8 +1610,8 @@ pageListExtend=function($el){
   $el.$filterInfoWrap=$('<span>');
   var $buttFilter=$('<button>').append($tmpImg,' (',$el.$filterInfoWrap,')').addClass('flexWidth').css({'float':'right','margin-right':'0.2em'}).click(function(){ doHistPush({$view:$pageFilterDiv}); $pageFilterDiv.setVis();});
   var $buttClear=$('<button>').append('C').click(function(){$pageFilterDiv.Filt.filtClear(); $pageList.histPush(); $pageList.loadTab()}).css({'float':'right','margin-right':'1em'});
-  var $spanTmp=$('<span>').append('(orphans)').css({'font-size':'0.8em'});
-  var $buttOrphan=$('<button>').append($spanTmp).click(function(){$pageFilterDiv.Filt.setSingleParent(null);  $pageList.histPush(); $pageList.loadTab()}).css({'float':'right','margin-right':'1em'});
+  var $spanTmp=$('<span>').append('orp-<br>hans').css({'font-size':'0.8em'});
+  var $buttOrphan=$('<button>').append('orp-<br>hans').click(function(){$pageFilterDiv.Filt.setSingleParent(null);  $pageList.histPush(); $pageList.loadTab()}).css({'float':'right','margin-right':'1em'});
 
   var $menuA=$('<div>').append($buttonFastBack, $allButton, $buttonExecuteMult, $buttFilter, $buttClear, $buttOrphan);  // $buttonBack, 
   $menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
@@ -1900,9 +1898,11 @@ renamePopExtend=function($el){
       if(boOK) { $par.changeName(row, $inpName.val()); doHistBack();}  
     }
   }
-  $el.openFunc=function(strTypeT,rowT){
+  $el.openFunc=function(strTypeT, rowT, idT, strNameT){
     strType=strTypeT; row=rowT;
-    var $r=$(rowT), strName=$r.data(strType+'Name');  id=$r.data('id'+ucfirst(strType));
+    if(row!==null){
+      var $r=$(rowT), strName=$r.data(strType+'Name');  id=$r.data('id'+ucfirst(strType));
+    } else {id=idT; strName=strNameT; }
     $type.html(strType); $inpName.val(strName).focus();
     doHistPush({$view:$renamePop});
     $el.setVis();
@@ -2279,10 +2279,15 @@ imageListExtend=function($el){
 divReCaptchaExtend=function($el){
 "use strict"
   $el.setUp=function(){
-    if($el.is(':empty')){    grecaptcha.render($el[0], {sitekey:strReCaptchaSiteKey});    }
+    //if(typeof grecaptcha=='undefined') var grecaptcha={render:function(){console.log('no grecaptcha');}};
+    if(typeof grecaptcha=='undefined' || !('render' in grecaptcha)) {console.log('no grecaptcha'); return; }
+    if($el.is(':empty')){    grecaptcha.render($el[0], {sitekey:strReCaptchaSiteKey});    } else grecaptcha.reset();
   }
+  $el.addClass("g-recaptcha");
+  //$el.prop({"data-sitekey": strReCaptchaSiteKey});
   return $el;
 }
+
 
 editDivExtend=function($el){
 "use strict"
@@ -2292,7 +2297,8 @@ editDivExtend=function($el){
       $el.$fixedDiv.prepend($dragHR,$editText);
     }
     
-    $el.$spanSave.prepend($divReCaptcha);
+    //window.$divReCaptcha=divReCaptchaExtend($('<div>'));
+    //$el.$spanSave.prepend($divReCaptcha);
     $divReCaptcha.setUp();
   }
   
@@ -2304,7 +2310,7 @@ editDivExtend=function($el){
   });    
   $el.$templateButton=$templateButton;
   //var $upLoadButton=$('<button>').append('Upload image').click(function(){$uploadUserDiv.openFunc();}).css({'float':'right'});
-  var $upLoadButton=$('<button>').append('Upload image').click(function(){  doHistPush({$view:$uploadUserDiv}); $uploadUserDiv.setVis();}).css({'float':'right'});
+  var $upLoadButton=$('<button>').append('Upload<br>image').click(function(){  doHistPush({$view:$uploadUserDiv}); $uploadUserDiv.setVis();}).css({'float':'right'});
   $el.$spanLastMod=$('<span>');  
   var $spanLastModW=$('<span>').append('Last mod: ', $el.$spanLastMod).css({'float':'right',margin:'0.2em .5em 0 0'});  
   var $menuB=$('<div>').append($el.$spanSave,$templateButton,' ',$upLoadButton).addClass('fixWidth').css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'1em auto'});
@@ -2427,7 +2433,7 @@ spanSaveExtend=function($el){
     $summary.val(''); $signature.val('');
     $boLCacheObs.val(1);
   });
-  var $preview=$('<button>').append('Show preview').click(function(){
+  var $preview=$('<button>').append('Show<br>preview').click(function(){
     var vec=[['getPreview',{strEditText:$editText.val()}]];   majax(oAJAX,vec); 
   });
 
@@ -2477,7 +2483,7 @@ versionTableExtend=function($el){
   }
   function cbVersionView(){
     var iVer=$(this).parent().data('iMy');
-    var vec=[['pageLoad',{version:iVer}]];   majax(oAJAX,vec); 
+    var vec=[['pageLoad',{version:iVer}]];   majax(oAJAXCacheable,vec); 
     doHistBack();
   }
   /*
@@ -3395,8 +3401,8 @@ majax=function(oAJAX,vecIn){  // Each argument of vecIn is an array: [serverSide
   }else{
     var vecMod=$.extend(true, [], vecIn);
     for(var i=0; i<vecMod.length; i++){delete vecMod[i][2];}
-    vecMod.push(['page',queredPage],['tMod',tMod]);
-    if(oAJAX!==oAJAXCacheable){   vecMod.push(['CSRFCode',CSRFCode]);   }  
+    vecMod.push(['page',queredPage]);
+    if(oAJAX!==oAJAXCacheable){   vecMod.push(['CSRFCode',CSRFCode],['tMod',tMod]);   }  
     oOut.data=JSON.stringify(vecMod);
   }
   oOut.success=makeRetF(vecIn);    $.ajax(oOut);
@@ -3419,13 +3425,22 @@ GRet=function(data){
   tmp=data.boALoggedIn;   if(typeof tmp!="undefined") boALoggedIn=tmp;
   tmp=data.boVLoggedIn;   if(typeof tmp!="undefined") { boVLoggedIn=tmp;  }
   tmp=data.idPage;   if(typeof tmp!="undefined") { objPage.idPage=tmp;  }
-  tmp=data.tMod;   if(typeof tmp!="undefined") { tMod=tmp; $editDiv.$spanLastMod.html(mySwedDate(tMod)); }
-  //tmp=data.tModCache;   if(typeof tmp!="undefined") tModCache=tmp;
-  tmp=data.boOW;   if(typeof tmp!="undefined") { objPage.boOW=tmp; $editButton.setImg(tmp);  $editDiv.$spanSave.toggle(Boolean(tmp));}
-  tmp=data.boOR;   if(typeof tmp!="undefined") { objPage.boOR=tmp;  }
-  tmp=data.boSiteMap;   if(typeof tmp!="undefined") { objPage.boSiteMap=tmp;  }
+  tmp=data.objRev;   if(typeof tmp!="undefined") {
+    objRev=tmp; 
+    tMod=objRev.tMod; $editDiv.$spanLastMod.html(mySwedDate(tMod));
+  }
+  //tmp=data.tMod;   if(typeof tmp!="undefined") { tMod=tmp; $editDiv.$spanLastMod.html(mySwedDate(tMod)); }
+  tmp=data.objPage;   if(typeof tmp!="undefined") {
+    overwriteProperties(objPage, tmp);
+    //objPage=tmp; 
+    $editButton.setImg(objPage.boOW);  $editDiv.$spanSave.toggle(Boolean(objPage.boOW));
+    $adminMoreDiv.setMod();
+  }
+  //tmp=data.boOW;   if(typeof tmp!="undefined") { objPage.boOW=tmp; $editButton.setImg(tmp);  $editDiv.$spanSave.toggle(Boolean(tmp));}
+  //tmp=data.boOR;   if(typeof tmp!="undefined") { objPage.boOR=tmp;  }
+  //tmp=data.boSiteMap;   if(typeof tmp!="undefined") { objPage.boSiteMap=tmp;  }
 
-  $adminMoreDiv.setMod();
+  //$adminMoreDiv.setMod();
   $spanMod.setup(objPage);
   $pageView.setFixedDivColor(objPage.boOR);
 
@@ -3477,7 +3492,6 @@ boTalk:'Talk page',
 boTemplate:'Template',
 boOther:'Supplied by user',
 tMod:'Modification age',
-tModCache:'Cache age',
 tCreated:'Created'
 }
 helpBub={}
@@ -3588,16 +3602,25 @@ setUp1=function(){
 
   indexAssign();
   CSRFCode=typeof CSRFCode!=='undefined'?CSRFCode:'';  boVLoggedIn=typeof boVLoggedIn!=='undefined'?boVLoggedIn:'';     boALoggedIn=typeof boALoggedIn!=='undefined'?boALoggedIn:'';
-  nVersion=matVersion.length;
   assignCommonJS();
   //assignWWWJS();
 
 
   KeyColPage=Object.keys(PropPage);  KeyColImage=Object.keys(PropImage);
 
-  if(typeof objSite=='undefined') objSite={boTLS:boTLS, www:wwwSite};
-  if(typeof objSiteDefault=='undefined') objSiteDefault={boTLS:boTLSCommon, www:wwwCommon}; 
+  //if(typeof objSite=='undefined') objSite={boTLS:boTLS, www:wwwSite};
+  //if(typeof objSiteDefault=='undefined') objSiteDefault={boTLS:boTLSCommon, www:wwwCommon}; 
+  if(typeof boTalkExist=='undefined') boTalkExist=0; 
+  if(typeof strEditText=='undefined') strEditText='';
+  if(typeof objTemplateE=='undefined') objTemplateE={};
+  if(typeof arrVersionCompared=='undefined') arrVersionCompared=[null,1];
+  if(typeof matVersion=='undefined') matVersion=[];
+  if(typeof objPage=='undefined') objPage={boOR:1, boOW:1, boSiteMap:1, idPage:null}; 
+  if(typeof objRev=='undefined') objRev={tMod:0}; 
+  tMod=objRev.tMod;
 
+  nVersion=matVersion.length;
+  
   //colsFlip=array_flip(KeyCol);
   //StrOrderFiltFlip=array_flip(StrOrderFilt);
   var strScheme='http'+(objSite.boTLS?'s':''),    strSchemeLong=strScheme+'://';    uSite=strSchemeLong+objSite.www;
@@ -3765,12 +3788,17 @@ setUp1=function(){
 
   $dragHR=dragHRExtend($('<hr>')); $dragHR.css({height:'0.3em',background:'grey',margin:0});
   if(boTouch) $dragHR="";
-  $divReCaptcha=divReCaptchaExtend($('<div>'));
+  //$divReCaptcha=divReCaptchaExtend($('<div>'));
+  //$divReCaptcha=$('<div>');
   $editText=editTextExtend($('<textarea>'));
 
   $pageView=pageViewExtend($('<div>')); 
   $editDiv=editDivExtend($('<div>')).css({width:'100%'}); $editDiv.$spanLastMod.html(mySwedDate(tMod));
   $templateList=templateListExtend($('<div>'));
+  
+  
+  $divReCaptcha=divReCaptchaExtend($('<div>'));
+  $editDiv.$spanSave.prepend($divReCaptcha);
 
 
 

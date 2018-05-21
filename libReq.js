@@ -284,93 +284,100 @@ app.reqIndex=function*() {
   var CSRFCode='';  // If public then No CSRFCode since the page is going to be cacheable (look the same each time)
 
   //if(req.boTLS) res.setHeader("Strict-Transport-Security", "max-age="+24*3600+"; includeSubDomains");
-  var tmpS=req.boTLS?'s':'';
+  //var tmpS=req.boTLS?'s':'';
   //res.setHeader("Content-Security-Policy", "default-src http"+tmpS+": 'this'  *.google.com; img-src *");
   //res.setHeader("Content-Security-Policy", "default-src http");
   
-    
-  var version, rev; if('version' in objQS) {  version=objQS.version;  rev=version-1 } else {  version=NaN; rev=-1; }
+  var version=NaN, rev=-1;
+  //var version, rev; if('version' in objQS) {  version=objQS.version;  rev=version-1 } else {  version=NaN; rev=-1; }
   var eTagIn=getETag(req.headers), requesterCacheTime=getRequesterTime(req.headers);
  
 
     // getInfoNData
-  //var [err,rowA]=yield* getInfoNData.call(this); if(err) { res.out500(err); return;   }
-  var arg={boFront:1, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:queredPage, rev:rev, eTagIn:eTagIn, requesterCacheTime:requesterCacheTime, myMySql:this.myMySql}
-  var [err, Ou]=yield* getInfoNData(flow, arg); if(err) { res.out500(err); return;   }
-  var {mess, version, rev, eTag, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
+  //var arg={boFront:1, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:queredPage, rev:rev, eTagIn:eTagIn, requesterCacheTime:requesterCacheTime, myMySql:this.myMySql}
+  //var [err, Ou]=yield* getInfoNData(flow, arg); if(err) { res.out500(err); return;   }
+  //var {mess, version, rev, eTag, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
   
-  if(typeof tMod=='undefined') tMod=new Date(0);
-  if(typeof tModCache=='undefined') tModCache=new Date(0);
-  var arrVersionCompared=[null,rev+1];
-  
-  if(mess=='IwwwNotFound'){ res.out404('No wiki there');  return;  }
-  else if(mess=='redirect') {
-    //res.writeHead(301, {Location: strEditText}); res.end(mess);  return;
-    res.out301(Ou.urlRedir); return;
+  var Sql=[];
+  Sql.push("CALL "+strDBPrefix+"getInfoNData(?, ?, ?, ?, ?, ?);"); 
+  var sql=Sql.join('\n');
+  var Val=[req.boTLS, req.wwwSite, queredPage, rev, eTagIn, requesterCacheTime/1000];
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) {res.out500(err);  return; }
+  //if(results.length==1) { res.out500("Weird, getInfoNDataBE should have returned one at least one result plus the 'added' result that stored procedures allways add."); return;   } 
+  //if(!(results[0] instanceof Array)) { res.out500('site not found');  return;  }
+  if(results[0].length==0) { res.out500('site not found'); return;   }
+  var objSite=results[0][0]; if(!objSite){ res.out500('site not found');  return;  }
+  var tmp=results[1]; if(tmp.length) {res.out301(tmp[0].urlRedir); return;}
+  var tmp=results[2]; if(tmp.length) { res.out301(tmp[0].urlRedirDomain+'/'+queredPage); return;}
+  var objSiteDefault=results[3][0];  
+  var objPage=results[4][0]; 
+  if(!objPage){ res.statusCode=404; } // No such page 
+  else {
+    var {boRedirectCase, pageRedir}=results[5][0]; if(boRedirectCase) {res.out301(pageRedir);  return;};
+    if(!objPage.boOR){   // Private
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0"); // no-cache    
+      var CSRFCode=randomHash(); 
+      var redisVar=sessionID+'_'+queredPage+'_CSRF';
+      var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,CSRFCode]);
+      var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
+    }else {   // Public
+      var {boTalkExist}=results[6][0];
+      if(results[7].length==0) { res.out500('no versions?!?'); return;   }
+      if(rev==-1) rev=results[7].length-1;  version=rev+1;
+      var matVersion=makeMatVersion(results[7]);
+      var objRev=Object.assign({},results[7][rev]);
+        objRev.tMod=new Date(objRev.tMod*1000);
+        objRev.tModCache=new Date(objRev.tModCache*1000);
+      var boValidServerCache=results[8][0].boValidServerCache;
+      var boValidReqCache=results[9][0].boValidReqCache;
+      if(boValidReqCache) { res.out304(); return; }
+      else{
+        var strEditText=results[10][0].strEditText.toString();
+        let {boOR,boOW,boSiteMap}=objPage;
+        let {tMod}=objRev;
+        if(boValidServerCache) {
+          var strHtmlText=results[11][0].strHtmlText.toString();
+          var objTemplateE=createObjTemplateE(results[12]);
+           
+          var eTag=md5(strHtmlText +JSON.stringify(objTemplateE) +tMod +boOR +boOW +boSiteMap +boTalkExist +JSON.stringify(matVersion));
+
+          var sql=`UPDATE `+versionTab+` SET tModCache=now(), eTag=? WHERE idPage=? AND rev=?;     SELECT UNIX_TIMESTAMP(now()) AS tModCache`;
+          var Val=[eTag, objPage.idPage, rev];
+          var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
+          var rowA=results[1][0];
+          var tModCache=new Date(rowA.tModCache*1000);
+          res.setHeader("Cache-Control", "must-revalidate, public");  res.setHeader('Last-Modified',tModCache.toUTCString());  res.setHeader('ETag',eTag);        
+        } else {
+            // parse
+          var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW, myMySql:this.myMySql};
+          var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) { res.out500(err); return; }
+          
+          var eTag=md5(strHtmlText +JSON.stringify(objTemplateE) +tMod +boOR +boOW +boSiteMap +boTalkExist +JSON.stringify(matVersion));
+          
+            // setNewCacheSQL
+          var {sql, Val, nEndingResults}=createSetNewCacheSQL(req.wwwSite, queredPage, rev, strHtmlText, eTag, arrSub, StrSubImage); 
+          sql="START TRANSACTION; "+sql+" COMMIT;";
+          var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) {  res.out500(err); return; }
+          var iRowLast=results.length-nEndingResults-2;
+          var rowA=results[iRowLast][0];
+          var mess=rowA.mess;       if(mess!='done') {res.out500(mess);  return; }
+          var tModCache=new Date(rowA.tModCache*1000);
+           
+          res.setHeader("Cache-Control", "must-revalidate, public");  res.setHeader('Last-Modified',tModCache.toUTCString());  res.setHeader('ETag',eTag);
+        }
+      }
+      var arrVersionCompared=[null,rev+1];
+    }
   }
-  else if(mess=='redirectDomain') {
-    var url=urlRedir+'/'+queredPage;
-    //res.writeHead(301, {Location: url}); res.end(mess);  return;
-    res.out301(url); return;
-  }
-  else if(mess=='redirectCase') { 
-    //var strS=Number(boTLS)?'s':'';
-    //var url='http'+strS+'://'+www+'/'+pageName;
-    var url=Ou.pageName;
-    //res.writeHead(301, {Location: url}); res.end(mess+req.boTLS);  return;
-    res.out301(url);  return;
-  }
-  else if(mess=='304') { res.out304();  return; }
-  else if(mess=='noSuchRev') {res.out500(mess);  return; }
-  else if(mess=='private') { 
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0"); // no-cache
-    strHtmlText=''; objTemplateE={}; strEditText=''; boTalkExist=0; arrVersionCompared=[null,1]; Version=[]; idPage=NaN; boOR=0; boOW=1; boSiteMap=1; 
-    var CSRFCode=randomHash(); 
-    var redisVar=sessionID+'_'+queredPage+'_CSRF';
-    var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,CSRFCode]);
-    var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
-    //return; 
-  }
-  else if(mess=='noSuchPage'){
-    //eTag=md5(''); // What's produced by the server will here always be the same
-    res.statusCode=404;
-    //res.setHeader("Cache-Control", "must-revalidate");  res.setHeader('Last-Modified',tModCache.toUTCString());  res.setHeader('ETag',eTag);
-    strHtmlText=''; objTemplateE={}; strEditText=''; boTalkExist=0; arrVersionCompared=[null,1]; Version=[]; idPage=NaN; boOR=1; boOW=1; boSiteMap=1;     
-  }
-  else if(mess=='serverCacheOK'){
-    eTag=randomHash();
-    var sql=`UPDATE `+pageLastView+` SET tModCache=now(), eTag=? WHERE www=? AND pageName=?;  
-SELECT now() AS tModCache`;
-    var Val=[eTag, req.wwwSite, queredPage];
-    var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
-    var rowA=results[1][0];
-    tModCache=new Date(rowA.tModCache*1000);
-    res.setHeader("Cache-Control", "must-revalidate");  res.setHeader('Last-Modified',tModCache.toUTCString());  res.setHeader('ETag',eTag);
-  }
-  else if(mess=='serverCacheStale'){
-    eTag=randomHash();
-      // parse
-    var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW, myMySql:this.myMySql};
-    var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) { res.out500(err); return; }
-    
-      // setNewCacheSQL
-    var {sql, Val, nEndingResults}=createSetNewCacheSQL(req.wwwSite, queredPage, rev, strHtmlText, eTag, arrSub, StrSubImage); 
-    sql="START TRANSACTION; "+sql+" COMMIT;";
-    var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) {  res.out500(err); return; }
-    var iRowLast=results.length-nEndingResults-2;
-    var rowA=results[iRowLast][0];
-    var mess=rowA.mess;       if(mess!='done') {res.out500(mess);  return; }
-    tModCache=new Date(rowA.tModCache*1000);
-     
-    res.setHeader("Cache-Control", "must-revalidate");  res.setHeader('Last-Modified',tModCache.toUTCString());  res.setHeader('ETag',eTag);
-  }
-  else { res.out500('mess='+mess);  return; }
-  
-  var matVersion=makeMatVersion(Version); 
-  
-  
   var wwwSite=req.wwwSite
 
+  var ua=req.headers['user-agent']||''; ua=ua.toLowerCase();
+  var boMSIE=RegExp('msie').test(ua), boAndroid=RegExp('android').test(ua), boFireFox=RegExp('firefox').test(ua), boIOS= RegExp('iPhone|iPad|iPod','i').test(ua);
+  
+  //
+  // Head
+  //
+  
   var Str=[];
   var tmp='<!DOCTYPE html>\n\
 <html><head>\n\
@@ -378,37 +385,21 @@ SELECT now() AS tModCache`;
 <meta name="generator" content="mmmWiki">';
   Str.push(tmp);
 
-  var ua=req.headers['user-agent']||''; ua=ua.toLowerCase();
-  var boMSIE=RegExp('msie').test(ua), boAndroid=RegExp('android').test(ua), boFireFox=RegExp('firefox').test(ua), boIOS= RegExp('iPhone|iPad|iPod','i').test(ua);
-
-  var strSchemeCommon='http'+(boTLSCommon?'s':''),   strSchemeCommonLong=strSchemeCommon+'://';
-
-  Str.push('<link rel="icon" type="image/png" href="'+urlIcon16+'" />');
-
-
-  var strTmp='';  //if(boAndroid && boFireFox) {  strTmp=", width=device-width'";}    
-  var strTmpB=''; //if(boAndroid || boIOS) strTmpB=", user-scalable=no";
-
-  Str.push("<meta name='viewport' id='viewportMy' content='initial-scale=1"+strTmp+strTmpB+"'/>");
+  Str.push('<link rel="icon" type="image/png" href="'+objSite.urlIcon16+'" />');
+  Str.push("<meta name='viewport' id='viewportMy' content='initial-scale=1'/>");
 
   var boTemplate=RegExp('^template:','i').test(queredPage);
-  if(!boSiteMap || strHtmlText=='' || boTemplate){ Str.push('<meta name="robots" content="noindex">\n'); }
-
-  var strTitle;
-  if(queredPage=='start') { 
-    if(typeof strStartPageTitle!='undefined' && strStartPageTitle) strTitle=strStartPageTitle; else strTitle=wwwSite;
-  } else strTitle=queredPage.replace(RegExp('_','g'),' ');
+  if(!objPage || !objPage.boSiteMap || typeof strHtmlText=='undefined' || boTemplate){ Str.push('<meta name="robots" content="noindex">\n'); }
 
 
-  //Str.push('<meta name="description" content="'+strDescription+'"/>\n');
-  //Str.push('<meta name="keywords" content="'+strKeywords+'"/>\n');
-  var uTmp=strSchemeCommonLong+wwwSite; if(queredPage!='start') uTmp=uTmp+"/"+queredPage;  Str.push('<link rel="canonical" href="'+uTmp+'"/>\n');
+  //
+  // Including files
+  //
+        
+  var strSchemeCommon='http'+(objSiteDefault.boTLS?'s':''),   strSchemeCommonLong=strSchemeCommon+'://';
+  var uTmp=strSchemeCommonLong+objSite.www; if(queredPage!='start') uTmp=uTmp+"/"+queredPage;  Str.push('<link rel="canonical" href="'+uTmp+'"/>\n');
 
-
-
-
-  //var uCommon=''; if(wwwCommon) uCommon=req.strSchemeLong+wwwCommon;
-  var uCommon=strSchemeCommonLong+wwwCommon;
+  var uCommon=strSchemeCommonLong+objSiteDefault.www;
   //var uJQuery='https://code.jquery.com/jquery-latest.min.js';    if(boDbg) uJQuery=uCommon+'/'+flFoundOnTheInternetFolder+"/jquery-latest.js";      Str.push("<script src='"+uJQuery+"'></script>");
   //var uJQuery='https://code.jquery.com/jquery-2.1.4.min.js';    if(boDbg) uJQuery=uCommon+'/'+flFoundOnTheInternetFolder+"/jquery-2.1.4.min.js";      Str.push("<script src='"+uJQuery+"'></script>");
   var uJQuery='https://code.jquery.com/jquery-3.2.1.min.js';    if(boDbg) uJQuery=uCommon+'/'+flFoundOnTheInternetFolder+"/jquery-3.2.1.min.js";
@@ -432,12 +423,11 @@ SELECT now() AS tModCache`;
     var pathTmp='/'+StrTmp[i], vTmp=CacheUri[pathTmp].eTag; if(boDbgT) vTmp=0;    Str.push('<script src="'+uCommon+pathTmp+'?v='+vTmp+'"></script>');
   }
 
-
   Str.push('<script src="'+uCommon+'/lib/foundOnTheInternet/zip.js"></script>');
   Str.push('<script src="'+uCommon+'/lib/foundOnTheInternet/sha1.js"></script>');
 
 
-  var strTracker, tmpID=googleAnalyticsTrackingID||null;
+  var strTracker, tmpID=objSite.googleAnalyticsTrackingID||null;
   if(boDbg||!tmpID){strTracker="<script> ga=function(){};</script>";}else{ 
   strTracker="\n\
 <script type=\"text/javascript\">\n\
@@ -452,50 +442,61 @@ SELECT now() AS tModCache`;
   Str.push(strTracker);
 
   Str.push("<script src='https://www.google.com/recaptcha/api.js?render=explicit' async defer></script>");
-            
+  //Str.push("<script src='https://www.google.com/recaptcha/api.js?render=explicit' async defer></script>");
+  //Str.push("<script src='https://www.google.com/recaptcha/api.js?render="+strReCaptchaSiteKey+"' async defer></script>"); // &onload=reCaptchaCB
+  
+
+  //
+  // Body
+  //
+  
+  var strTitle;
+  if(queredPage=='start') { 
+    if(typeof strStartPageTitle!='undefined' && strStartPageTitle) strTitle=strStartPageTitle; else strTitle=wwwSite;
+  } else strTitle=queredPage.replace(RegExp('_','g'),' ');
+      
   Str.push("\
 </head>\n\
-<body style=\"margin:0\">\n\
-<title>"+strTitle+"</title>\n\
-<div id=pageText>"+strHtmlText+"</div>\n");  
+<body style=\"margin:0\">");
+
+  //Str.push('<div class="g-recaptcha" data-sitekey="'+strReCaptchaSiteKey+'"></div>');
+  Str.push("<title>"+strTitle+"</title>");
+  if(typeof strHtmlText=='undefined') var strHtmlText='';   Str.push("<div id=pageText>"+strHtmlText+"</div>\n");  
 
   Str.push("<input id='boLCacheObs' style=\"display:none\">"); //type=hidden
   Str.push("<script language=\"JavaScript\">");
   Str.push("function indexAssign(){");
 
-  var objPage={boOR:boOR, boOW:boOW, boSiteMap:boSiteMap, idPage:idPage};
+  var tmp=copySome({},objSiteDefault, ['www','boTLS']);   Str.push("objSiteDefault="+JSON.stringify(tmp)+";");
+  var tmp=copySome({},objSite, ['www','boTLS']);    Str.push("objSite="+JSON.stringify(tmp)+";");
+
+  if(typeof objPage!='undefined') {
+    var tmp=copySome({},objPage, ['boOR','boOW', 'boSiteMap', 'idPage']);   Str.push("objPage="+JSON.stringify(tmp)+";");
+    if(!objPage.boOR) {
+      Str.push("CSRFCode="+JSON.stringify(CSRFCode)+";");
+      Str.push("boVLoggedIn="+JSON.stringify(this.boVLoggedIn)+";");
+      Str.push("boALoggedIn="+JSON.stringify(this.boALoggedIn)+";");
+    }
+  }
+  Str.push("queredPage="+JSON.stringify(queredPage)+";");
+
+  if(typeof objRev!='undefined'){
+    var objRevT=copySome({},objRev, ['tMod', 'size']);
+    Str.push("objRev="+JSON.stringify(objRevT)+";");
+  }
+
+  if(typeof boTalkExist!='undefined') Str.push("boTalkExist="+JSON.stringify(boTalkExist)+";");
+  if(typeof strEditText!='undefined') Str.push("strEditText="+JSON.stringify(strEditText)+";");
+  if(typeof objTemplateE!='undefined') Str.push("objTemplateE="+JSON.stringify(objTemplateE)+";");
+  if(typeof arrVersionCompared!='undefined') Str.push("arrVersionCompared="+JSON.stringify(arrVersionCompared)+";");
+  if(typeof matVersion!='undefined') Str.push("matVersion="+JSON.stringify(matVersion)+";");
+  
   var strDBType=(typeof mysql!='undefined')?'mysql':'neo4j';
+  Str.push("strDBType="+JSON.stringify(strDBType)+";");
   
-  Str.push("\
-tMod="+JSON.stringify(tMod.toUnix())+";\n\
-objPage="+JSON.stringify(objPage)+";\n\
-boTalkExist="+JSON.stringify(boTalkExist)+";\n\
-strEditText="+JSON.stringify(strEditText)+";\n\
-objTemplateE="+JSON.stringify(objTemplateE)+";\n\
-arrVersionCompared="+JSON.stringify(arrVersionCompared)+";\n\
-matVersion="+JSON.stringify(matVersion)+";\n\
-boTLS="+JSON.stringify(req.boTLS)+";\n\
-strBTC="+JSON.stringify(strBTC)+";\n\
-ppStoredButt="+JSON.stringify(ppStoredButt)+";\n\
-boTLSCommon="+JSON.stringify(boTLSCommon)+";\n\
-wwwCommon="+JSON.stringify(wwwCommon)+";\n\
-wwwSite="+JSON.stringify(wwwSite)+";\n\
-queredPage="+JSON.stringify(queredPage)+";\n\
-strReCaptchaSiteKey="+JSON.stringify(strReCaptchaSiteKey)+";\n\
-strDBType="+JSON.stringify(strDBType)+";\n\
-");
-  if(!boOR){
-    Str.push("\
-CSRFCode="+JSON.stringify(CSRFCode)+";\n\
-boVLoggedIn="+JSON.stringify(this.boVLoggedIn)+";\n\
-boALoggedIn="+JSON.stringify(this.boALoggedIn)+";");
-  }
-  if(req.boAliasRequest){
-    Str.push("\
-boAliasRequest="+JSON.stringify(req.boAliasRequest)+";\n\
-wwwAlias="+JSON.stringify(req.wwwAlias)+";");
-  }
-  
+  Str.push("strBTC="+JSON.stringify(strBTC)+";");
+  Str.push("ppStoredButt="+JSON.stringify(ppStoredButt)+";");
+  Str.push("strReCaptchaSiteKey="+JSON.stringify(strReCaptchaSiteKey)+";");
   Str.push("}");
   Str.push("</script>");
 
@@ -503,7 +504,8 @@ wwwAlias="+JSON.stringify(req.wwwAlias)+";");
   Str.push("</body></html>");
   //var str=Str.join('\n');   res.writeHead(200, "OK", {'Content-Type': MimeType.html});
   var str=Str.join('\n');   res.setHeader('Content-Type', MimeType.html); 
-  res.end(str);    
+  res.end(str); 
+
 }
 
 
@@ -540,27 +542,6 @@ app.reqStatic=function*() {
 }
 
 
-/******************************************************************************
- * reqCaptcha
- ******************************************************************************/
-//app.reqCaptcha=function*(){
-  //var req=this.req, res=this.res;
-  //var sessionID=req.sessionID;
-  //var strCaptcha=parseInt(Math.random()*9000+1000);
-  //var redisVar=sessionID+'_captcha';
-  //var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,strCaptcha]);
-  //var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,3600]);
-  //var p = new captchapng(80,30,strCaptcha); // width,height,numeric captcha
-  //p.color(0, 0, 0, 0);  // First color: background (red, green, blue, alpha)
-  //p.color(80, 80, 80, 255); // Second color: paint (red, green, blue, alpha)
-
-  //var img = p.getBase64();
-  //var imgbase64 = new Buffer(img,'base64');
-  //res.writeHead(200, {
-      //'Content-Type': 'image/png'
-  //});
-  //res.end(imgbase64);
-//}
 
 
 
@@ -721,8 +702,11 @@ app.reqMediaImageThumb=function*(){
   }
 
   var strDataThumb=strDataOrg;
-  if(scale>=1) { scale=1;  if(wNew>100){ res.outCode(400,'Bad Request, 100px is the max width for enlargements.'); return;} } // No enlargements
-  if(scale <= 1){  
+  //if(scale>=1) { scale=1;  if(wNew>100){ res.outCode(400,'Bad Request, 100px is the max width for enlargements.'); return;} } // No enlargements
+  //if(scale>=1) { scale=1;  if(wNew>100){ res.out301Loc(nameCanonical);  return;} } // 100px is the max width for enlargements
+  if(scale>=1) {   res.out301Loc(nameCanonical);  return; } // If enlargement, then redirect to original
+  else {
+  //if(scale <= 1){  
     if(kind=='svg'){
 
       var pathTmp, err;
@@ -1324,11 +1308,6 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
 
 
     // Procedures to be deleted
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS testIfTalkOrTemplate");
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"makeNParentIDiff");
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"makeNParentDiff");
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"calcNParentI");
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"calcNParent");
 
 
     //
@@ -1569,7 +1548,6 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
    \n\
       END");
 
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"deleteImage");
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"deleteImageID");
   SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"deleteImageID(IidImage int(4)) \n\
       BEGIN \n\
@@ -1705,6 +1683,250 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
       END`);
 
 
+  //
+  // Getting info
+  //
+
+  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"getInfo");
+  //SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"getInfo(Iwww varchar(128), Iname varchar(128)) \n\
+    //BEGIN \n\
+      //SELECT boTLS, boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache FROM "+pageLastView+" WHERE www=Iwww AND pageName=Iname; \n\
+    //END");
+
+//SELECT boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache FROM "+pageTab+" p JOIN "+versionTab+" v WHERE p.idPage=v.idPage AND p.lastRev=v.rev AND pageName=Iname; \n\
+
+    
+  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"getInfoNData");
+  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"getInfoNData(IboTLS INT(1), Iwww varchar(128), Iname varchar(128), Irev INT, IeTag varchar(32), IreqDate INT) \n\
+    proc_label:BEGIN \n\
+      DECLARE VidSite, VidPage, Vc, VboTalk, VboTemplate, VboTalkExist, VidFile, VidFileCache, VboValidServerCache, VboValidReqCache INT; \n\
+      DECLARE VtMod, VtModCache INT UNSIGNED; \n\
+      DECLARE Vwww, Vname, talkPage varchar(128); \n\
+      DECLARE VeTag varchar(32); \n\
+      DECLARE strEditText, strHtmlText MEDIUMBLOB; \n\
+      DECLARE VboTLS, VboRedirectCase, VboOR INT(1); \n\
+\n\
+          # Get site \n\
+      SELECT SQL_CALC_FOUND_ROWS boDefault, @boTLS:=boTLS AS boTLS, @VidSite:=idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+" WHERE www=Iwww;#  <-- result #0 \n\
+      IF FOUND_ROWS()!=1 THEN LEAVE proc_label; END IF; \n\
+      SET VboTLS=@boTLS, VidSite=@VidSite; \n\
+\n\
+          # Check if there is a redirect for this page \n\
+      SELECT SQL_CALC_FOUND_ROWS @tmp:=url AS urlRedir FROM "+redirectTab+" WHERE idSite=VidSite AND pageName=Iname;     #  <-- result #1 \n\
+      IF FOUND_ROWS() THEN \n\
+        UPDATE "+redirectTab+" SET nAccess=nAccess+1, tLastAccess=now() WHERE idSite=VidSite AND pageName=Iname; \n\
+        LEAVE proc_label; \n\
+      END IF; \n\
+\n\
+          # Check if there is a redirect for this domain \n\
+      SELECT SQL_CALC_FOUND_ROWS @tmp:=url AS urlRedirDomain FROM "+redirectDomainTab+" WHERE www=Iwww;     #  <-- result #2 \n\
+      IF FOUND_ROWS() THEN LEAVE proc_label; END IF; \n\
+\n\
+          # Get wwwCommon \n\
+      SELECT SQL_CALC_FOUND_ROWS boTLS, www  FROM "+siteTab+" WHERE boDefault=1; #  <-- result #3 \n\
+\n\
+          # Check if page exist \n\
+      SELECT SQL_CALC_FOUND_ROWS @Vname:=pageName AS pageName, @VidPage:=idPage AS idPage, @VboOR:=boOR AS boOR, boOW, boSiteMap FROM "+pageTab+" WHERE idSite=VidSite AND pageName=Iname;  #  <-- result #4 \n\
+      IF FOUND_ROWS()=0 THEN LEAVE proc_label; END IF;   # noSuchPage \n\
+      SET Vname=@Vname, VidPage=@VidPage, VboOR=@VboOR; \n\
+\n\
+\n\       # Redirect to correct case OR correct boTLS\n\
+      SET VboRedirectCase = BINARY Vname!=Iname OR VboTLS!=IboTLS; \n\
+      SELECT VboRedirectCase AS boRedirectCase, VboTLS AS boTLS, Vwww AS www, Vname AS pageRedir;  #  <-- result #5 \n\
+      IF VboRedirectCase THEN LEAVE proc_label; END IF;   \n\
+\n\
+      IF !VboOR THEN LEAVE proc_label; END IF;   # Private\n\
+\n\
+          # Calc VboTalkExist \n\
+      SET VboTalk=isTalk(Iname), VboTemplate=isTemplate(Iname); \n\
+      IF VboTalk=0 THEN \n\
+        IF VboTemplate THEN SET talkPage=CONCAT('template_talk:',Iname); ELSE SET talkPage=CONCAT('talk:',Iname); END IF;\n\
+        SELECT count(idPage) INTO VboTalkExist FROM "+pageTab+" WHERE idSite=VidSite AND pageName=talkPage; \n\
+      END IF;\n\
+      SELECT VboTalkExist AS boTalkExist;  #  <-- result #6 \n\
+\n\
+          # Get version table \n\
+      DROP TEMPORARY TABLE IF EXISTS tmpVersionTable; \n\
+      CREATE TEMPORARY TABLE tmpVersionTable AS  \n\
+        SELECT SQL_CALC_FOUND_ROWS rev, summary, signature, idFile, idFileCache, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache, eTag FROM "+versionTab+" WHERE idPage=VidPage; \n\
+      SELECT * FROM tmpVersionTable;                                                 #  <-- result #7 \n\
+      SELECT FOUND_ROWS() INTO Vc; \n\
+      IF Vc<1 THEN LEAVE proc_label; END IF;   # no versions !? \n\
+\n\
+      IF Irev>=Vc THEN LEAVE proc_label; END IF;             # noSuchRev \n\
+\n\
+      IF Irev=-1 THEN SET Irev=Vc-1; END IF;                          # Use last rev \n\
+\n\
+          # The requested revision Irev \n\
+          # Note VtMod and VtModCache are already in unix-time\n\
+      SELECT eTag, idFile, idFileCache, tMod, tModCache INTO VeTag, VidFile, VidFileCache, VtMod, VtModCache FROM tmpVersionTable WHERE rev=Irev;   \n\
+\n\
+      SET VboValidServerCache=VtMod<=VtModCache AND LENGTH(VeTag);                                             # Calc VboValidServerCache \n\
+      SELECT VboValidServerCache AS boValidServerCache;  # <-- result #8 \n\
+\n\
+          # Calc VboValidReqCache \n\
+      SET VboValidReqCache= VboValidServerCache AND BINARY VeTag=IeTag AND VtModCache<=IreqDate;  \n\
+      SELECT VboValidReqCache AS boValidReqCache;   # <-- result #9 \n\
+      IF VboValidReqCache THEN LEAVE proc_label; END IF;                          # 304 \n\
+\n\
+      SELECT data AS strEditText FROM "+fileTab+" WHERE idFile=VidFile;                            # <-- result #10 \n\
+\n\
+      IF VboValidServerCache THEN \n\
+        SELECT data AS strHtmlText FROM "+fileTab+" WHERE idFile=VidFileCache;                                               # <-- result #11\n\
+        SELECT pageName, boOnWhenCached FROM "+subTab+" WHERE idPage=VidPage AND pageName REGEXP '^template:';       #  <-- result #12 \n\
+      END IF; \n\
+\n\
+    END");
+
+
+
+  
+  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"getInfoNDataTest");
+  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"getInfoNDataTest(IboTLS INT(1), Iwww varchar(128), Iname varchar(128), Irev INT, IeTag varchar(32), IreqDate INT) \n\
+    proc_label:BEGIN \n\
+      DECLARE VidSite, VidPage, Vc, VboTalk, VboTemplate, VboTalkExist, VidFile, VidFileCache, VboValidServerCache, VboValidReqCache INT; \n\
+      DECLARE VtMod, VtModCache INT UNSIGNED; \n\
+      DECLARE Vwww, Vname, talkPage, Vstr varchar(128); \n\
+      DECLARE VeTag varchar(32); \n\
+      DECLARE strEditText, strHtmlText MEDIUMBLOB; \n\
+      DECLARE VboTLS, VboRedirectCase, VboOR, Vbo INT(1); \n\
+\n\
+          # Get site \n\
+      SELECT SQL_CALC_FOUND_ROWS boDefault INTO Vbo FROM "+siteTab+" WHERE www=Iwww;#  <-- result #0 \n\
+      IF FOUND_ROWS()!=1 THEN LEAVE proc_label; END IF; \n\
+      SET VboTLS=@boTLS, VidSite=@VidSite; \n\
+\n\
+          # Check if there is a redirect for this page \n\
+      SELECT SQL_CALC_FOUND_ROWS @tmp:=url INTO Vstr FROM "+redirectTab+" WHERE idSite=VidSite AND pageName=Iname;     #  <-- result #1 \n\
+      IF FOUND_ROWS() THEN \n\
+        UPDATE "+redirectTab+" SET nAccess=nAccess+1, tLastAccess=now() WHERE idSite=VidSite AND pageName=Iname; \n\
+        LEAVE proc_label; \n\
+      END IF; \n\
+\n\
+          # Check if there is a redirect for this domain \n\
+      SELECT SQL_CALC_FOUND_ROWS @tmp:=url INTO Vstr FROM "+redirectDomainTab+" WHERE www=Iwww;     #  <-- result #2 \n\
+      IF FOUND_ROWS() THEN LEAVE proc_label; END IF; \n\
+\n\
+          # Get wwwCommon \n\
+      SELECT SQL_CALC_FOUND_ROWS boTLS INTO Vbo  FROM "+siteTab+" WHERE boDefault=1; #  <-- result #3 \n\
+\n\
+          # Check if page exist \n\
+      SELECT SQL_CALC_FOUND_ROWS @Vname:=pageName INTO Vstr FROM "+pageTab+" WHERE idSite=VidSite AND pageName=Iname;  #  <-- result #4 \n\
+      IF FOUND_ROWS()=0 THEN LEAVE proc_label; END IF;   # noSuchPage \n\
+      SET Vname=@Vname, VidPage=@VidPage, VboOR=@VboOR; \n\
+\n\
+\n\       # Redirect to correct case OR correct boTLS\n\
+      SET VboRedirectCase = BINARY Vname!=Iname OR VboTLS!=IboTLS; \n\
+      SELECT VboRedirectCase INTO Vbo;  #  <-- result #5 \n\
+      IF VboRedirectCase THEN LEAVE proc_label; END IF;   \n\
+\n\
+      IF !VboOR THEN LEAVE proc_label; END IF;   # Private\n\
+\n\
+          # Calc VboTalkExist \n\
+      SET VboTalk=isTalk(Iname), VboTemplate=isTemplate(Iname); \n\
+      IF VboTalk=0 THEN \n\
+        IF VboTemplate THEN SET talkPage=CONCAT('template_talk:',Iname); ELSE SET talkPage=CONCAT('talk:',Iname); END IF;\n\
+        SELECT count(idPage) INTO VboTalkExist FROM "+pageTab+" WHERE idSite=VidSite AND pageName=talkPage; \n\
+      END IF;\n\
+      SELECT VboTalkExist INTO Vbo;  #  <-- result #6 \n\
+\n\
+          # Get version table \n\
+      DROP TEMPORARY TABLE IF EXISTS tmpVersionTable; \n\
+      CREATE TEMPORARY TABLE tmpVersionTable AS  \n\
+        SELECT SQL_CALC_FOUND_ROWS rev, summary, signature, idFile, idFileCache, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache, eTag FROM "+versionTab+" WHERE idPage=VidPage; \n\
+      #SELECT * FROM tmpVersionTable;                                                 #  <-- result #7 \n\
+      SELECT FOUND_ROWS() INTO Vc; \n\
+      IF Vc<1 THEN LEAVE proc_label; END IF;   # no versions !? \n\
+\n\
+      IF Irev>=Vc THEN LEAVE proc_label; END IF;             # noSuchRev \n\
+\n\
+      IF Irev=-1 THEN SET Irev=Vc-1; END IF;                          # Use last rev \n\
+\n\
+          # The requested revision Irev \n\
+          # Note VtMod and VtModCache are already in unix-time\n\
+      SELECT eTag, idFile, idFileCache, tMod, tModCache INTO VeTag, VidFile, VidFileCache, VtMod, VtModCache FROM tmpVersionTable WHERE rev=Irev;   \n\
+\n\
+      SET VboValidServerCache=VtMod<=VtModCache AND LENGTH(VeTag);                                             # Calc VboValidServerCache \n\
+      SELECT VboValidServerCache INTO Vbo;  # <-- result #8 \n\
+\n\
+          # Calc VboValidReqCache \n\
+      SET VboValidReqCache= VboValidServerCache AND BINARY VeTag=IeTag AND VtModCache<=IreqDate;  \n\
+      SELECT VboValidReqCache INTO Vbo;   # <-- result #9 \n\
+      IF VboValidReqCache THEN LEAVE proc_label; END IF;                          # 304 \n\
+\n\
+      SELECT data INTO strEditText FROM "+fileTab+" WHERE idFile=VidFile;                            # <-- result #10 \n\
+\n\
+      IF VboValidServerCache THEN \n\
+        SELECT data INTO strHtmlText FROM "+fileTab+" WHERE idFile=VidFileCache;                                               # <-- result #11\n\
+        SELECT pageName, boOnWhenCached INTO Vstr, Vbo FROM "+subTab+" WHERE idPage=VidPage AND pageName REGEXP '^template:';       #  <-- result #12 \n\
+      END IF; \n\
+\n\
+    END");
+
+  
+  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"getInfoNDataBE");
+  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"getInfoNDataBE(Iwww varchar(128), Iname varchar(128), Irev INT, IeTag varchar(32), IreqDate INT) \n\
+    proc_label:BEGIN \n\
+      DECLARE VidSite, VidPage, Vc, VboTalk, VboTemplate, boTalkExist, VidFile, VidFileCache, VboValidServerCache, VboValidReqCache INT; \n\
+      DECLARE VtMod, VtModCache INT UNSIGNED; \n\
+      DECLARE talkPage varchar(128); \n\
+      DECLARE VeTag varchar(32); \n\
+      DECLARE strEditText, strHtmlText MEDIUMBLOB; \n\
+\n\
+          # Get VidSite \n\
+      SELECT SQL_CALC_FOUND_ROWS idSite INTO VidSite FROM "+siteTab+" WHERE www=Iwww; \n\
+\n\
+          # Check if page exist \n\
+      SELECT SQL_CALC_FOUND_ROWS pageName, @tmp:=idPage AS idPage, boOR, boOW, boSiteMap FROM "+pageTab+" WHERE idSite=VidSite AND pageName=Iname;  #  <-- result #0 \n\
+      IF FOUND_ROWS()=0 THEN LEAVE proc_label; END IF;   # noSuchPage \n\
+      SET VidPage=@tmp; \n\
+\n\
+          # Calc boTalkExist \n\
+      SET VboTalk=isTalk(Iname), VboTemplate=isTemplate(Iname); \n\
+      IF VboTalk=0 THEN \n\
+        IF VboTemplate THEN SET talkPage=CONCAT('template_talk:',Iname); ELSE SET talkPage=CONCAT('talk:',Iname); END IF;\n\
+        SELECT count(idPage) INTO boTalkExist FROM "+pageTab+" WHERE idSite=VidSite AND pageName=talkPage; \n\
+      END IF;\n\
+      SELECT boTalkExist;  #  <-- result #1 \n\
+\n\
+          # Get version table \n\
+      DROP TEMPORARY TABLE IF EXISTS tmpVersionTable; \n\
+      CREATE TEMPORARY TABLE tmpVersionTable AS  \n\
+        SELECT SQL_CALC_FOUND_ROWS rev, summary, signature, idFile, idFileCache, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache, eTag FROM "+versionTab+" WHERE idPage=VidPage; \n\
+      SELECT * FROM tmpVersionTable;                                                 #  <-- result #2 \n\
+      SELECT FOUND_ROWS() INTO Vc; \n\
+      IF Vc<1 THEN LEAVE proc_label; END IF;   # no versions !? \n\
+\n\
+      IF Irev>=Vc THEN LEAVE proc_label; END IF;             # noSuchRev \n\
+\n\
+      IF Irev=-1 THEN SET Irev=Vc-1; END IF;                          # Use last rev \n\
+\n\
+          # The requested revision Irev \n\
+          # Note VtMod and VtModCache are already in unix-time\n\
+      SELECT eTag, idFile, idFileCache, tMod, tModCache INTO VeTag, VidFile, VidFileCache, VtMod, VtModCache FROM tmpVersionTable WHERE rev=Irev;   \n\
+\n\
+      SET VboValidServerCache=VtMod<=VtModCache AND LENGTH(VeTag);                                             # Calc VboValidServerCache \n\
+      SELECT VboValidServerCache AS boValidServerCache;  # <-- result #3 \n\
+\n\
+          # Calc VboValidReqCache \n\
+      SET VboValidReqCache= VboValidServerCache AND BINARY VeTag=IeTag AND VtModCache<=IreqDate; \n\
+      SELECT VboValidReqCache AS boValidReqCache;   # <-- result #4 \n\
+      IF VboValidReqCache THEN LEAVE proc_label; END IF;                          # 304 \n\
+\n\
+      SELECT data AS strEditText FROM "+fileTab+" WHERE idFile=VidFile;                            # <-- result #5 \n\
+\n\
+      IF VboValidServerCache THEN \n\
+        SELECT data AS strHtmlText FROM "+fileTab+" WHERE idFile=VidFileCache;                                               # <-- result #6\n\
+        SELECT pageName, boOnWhenCached FROM "+subTab+" WHERE idPage=VidPage AND pageName REGEXP '^template:';       #  <-- result #7 \n\
+      END IF; \n\
+\n\
+    END");
+
+
+  //
+  // Saveing, updating cache
+  //
+
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"saveByReplace");
   SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"saveByReplace(IsiteName varchar(128), Iwww varchar(128), Iname varchar(128), Idata MEDIUMBLOB, Ihtml MEDIUMBLOB, IeTag varchar(32)) \n\
       proc_label:BEGIN \n\
@@ -1724,7 +1946,7 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
 \n\
         #CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); \n\
         SET VboTalk=isTalk(Iname);   SET VboTemplate=isTemplate(Iname); \n\
-        SET VidFile=NULL; SET VidFileCache=NULL; \n\
+        SET VidFile=NULL, VidFileCache=NULL; \n\
 \n\
         INSERT INTO "+pageTab+" (idSite, pageName, boTalk, boTemplate) VALUES (VidSite, Iname, VboTalk, VboTemplate)  \n\
           ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=Iname, boTalk=VboTalk, boTemplate=VboTemplate, lastRev=0; \n\
@@ -1756,7 +1978,7 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
         END IF; \n\
   \n\
         CALL "+strDBPrefix+"writeSubTables(VidPage); \n\
-        SELECT 'done' AS mess, now() AS tMod, now() AS tModCache; \n\
+        SELECT 'done' AS mess, UNIX_TIMESTAMP(now()) AS tMod, UNIX_TIMESTAMP(now()) AS tModCache; \n\
       END");
 
 
@@ -1815,7 +2037,7 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
   VALUES (VidPage,nversion,Isummary,Isignature,1,VidFile,now(),VidFileCache,now(),IeTag,LENGTH(Idata)); \n\
           \n\
         CALL "+strDBPrefix+"writeSubTables(VidPage); \n\
-        SELECT 'done' AS mess, now() AS tMod, now() AS tModCache; LEAVE proc_label;\n\
+        SELECT 'done' AS mess, UNIX_TIMESTAMP(now()) AS tMod, UNIX_TIMESTAMP(now()) AS tModCache; LEAVE proc_label;\n\
       END");
 
   if(0){
@@ -1832,32 +2054,25 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"setNewCache");
   SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"setNewCache(Iwww varchar(128), Iname varchar(128), Irev INT, Ihtml MEDIUMBLOB, IeTag varchar(32)) \n\
       proc_label:BEGIN \n\
-        DECLARE VidSite, VidPage, VidFile, VidFileCache, Vc INT; \n\
+        DECLARE VidSite, VidPage, VidFileCache INT; \n\
         DECLARE VboTalk, VboTemplate INT; \n\
 \n\
           # Get VidSite \n\
         SELECT SQL_CALC_FOUND_ROWS idSite INTO VidSite FROM "+siteTab+" WHERE www=Iwww; \n\
-        IF FOUND_ROWS()=0 THEN SELECT 'IwwwNotFound' AS mess; LEAVE proc_label; END IF; \n\
 \n\
-        #CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); \n\
         SET VboTalk=isTalk(Iname);   SET VboTemplate=isTemplate(Iname); \n\
         CALL "+strDBPrefix+"markStaleParentsOfPage(VidSite, Iname, 1, VboTemplate); \n\
-  \n\
-        #SELECT idPage INTO VidPage FROM "+pageTab+" WHERE pageName=Iname;      \n\
-        SELECT idPage INTO VidPage FROM "+pageWWWView+" WHERE www=Iwww AND pageName=Iname; \n\
+\n\
+        SELECT idPage INTO VidPage FROM "+pageTab+" WHERE idSite=VidSite AND pageName=Iname; \n\
         SELECT idFileCache INTO VidFileCache FROM "+versionTab+" WHERE idPage=VidPage AND rev=Irev;     \n\
         UPDATE "+fileTab+" SET data=Ihtml WHERE idFile=VidFileCache;    \n\
         UPDATE "+versionTab+" SET tModCache=now(), eTag=IeTag WHERE idPage=VidPage AND rev=Irev;  \n\
-  \n\
-            # If latest revision then also update columns in pageTab \n\
-        SELECT count(*) INTO Vc FROM "+versionTab+" WHERE idPage=VidPage; \n\
-        #IF Vc=Irev THEN \n\
-        #  UPDATE "+pageTab+" SET tMod=now(), tModCache=now() WHERE idPage=VidPage; \n\
-        #END IF; \n\
-  \n\
+\n\
+\n\
         CALL "+strDBPrefix+"writeSubTables(VidPage); \n\
-        SELECT 'done' AS mess, now() AS tModCache; \n\
+        SELECT 'done' AS mess, UNIX_TIMESTAMP(now()) AS tModCache; \n\
       END");
+
 
   if(0){
     SqlFunction.push("START TRANSACTION");
@@ -1868,111 +2083,7 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
   }
 
 
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"getInfo");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"getInfo(Iwww varchar(128), Iname varchar(128)) \n\
-    BEGIN \n\
-      SELECT boTLS, boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache FROM "+pageLastView+" WHERE www=Iwww AND pageName=Iname; \n\
-    END");
-
-//SELECT boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache FROM "+pageTab+" p JOIN "+versionTab+" v WHERE p.idPage=v.idPage AND p.lastRev=v.rev AND pageName=Iname; \n\
-      
-
-//    CREATE PROCEDURE "+strDBPrefix+"getInfoNData(IboFront INT, INOUT Iname varchar(128), INOUT Irev INT, IeTag varchar(128), IreqDate INT,       OUT urlRedir varchar(128), OUT idPage INT, OUT boOR INT, OUT boOW INT, OUT boSiteMap INT, OUT talkPage varchar(128), OUT boTalkExist INT, OUT OeTag varchar(32), OUT tModCache INT, OUT strEditText MEDIUMBLOB, OUT strHtmlText MEDIUMBLOB, OUT OboOk INT, OUT mess varchar(128)) \n\
-
-
-  SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"getInfoNData");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"getInfoNData(IboFront INT, IboTLS INT(1), Iwww varchar(128), Iname varchar(128), Irev INT, IeTag varchar(32), IreqDate INT) \n\
-    proc_label:BEGIN \n\
-      DECLARE VidSite, VidPage, VboOR, VboOW, VboSiteMap, Vc, VboTalk, VboTemplate, boTalkExist, VidFile, VidFileCache, VboValidServerCache, VboValidReqCache INT; \n\
-      DECLARE VtMod, VtModCache INT UNSIGNED; \n\
-      DECLARE VwwwCommon, Vwww, Vname, urlRedir, talkPage varchar(128); \n\
-      DECLARE OeTag, Vrand varchar(32); \n\
-      DECLARE strEditText, strHtmlText MEDIUMBLOB; \n\
-      DECLARE VboTLS, VboTLSCommon INT(1); \n\
-\n\
-          # Check if there is a redirect for this page \n\
-      IF IboFront THEN \n\
-        SELECT SQL_CALC_FOUND_ROWS url INTO urlRedir FROM "+redirectWWWView+" WHERE www=Iwww AND pageName=Iname;      \n\
-        IF FOUND_ROWS()>0 THEN \n\
-          UPDATE "+redirectWWWView+" SET nAccess=nAccess+1, tLastAccess=now() WHERE www=Iwww AND pageName=Iname; \n\
-          SELECT 'redirect' AS mess, urlRedir; LEAVE proc_label; \n\
-        END IF; \n\
-        SELECT SQL_CALC_FOUND_ROWS url INTO urlRedir FROM "+redirectDomainTab+" WHERE www=Iwww;      \n\
-        IF FOUND_ROWS()>0 THEN  SELECT 'redirectDomain' AS mess, urlRedir; LEAVE proc_label; END IF; \n\
-      END IF; \n\
-\n\
-          # Get wwwCommon \n\
-      #SELECT SQL_CALC_FOUND_ROWS www INTO VwwwCommon FROM "+siteTab+" WHERE siteName='common'; \n\
-      SELECT SQL_CALC_FOUND_ROWS boTLS, www INTO VboTLSCommon, VwwwCommon FROM "+siteTab+" WHERE boDefault=1; \n\
-      IF FOUND_ROWS()=0 THEN \n\
-        SET VboTLSCommon=IboTLS, VwwwCommon=Iwww; \n\
-        UPDATE "+siteTab+" SET boDefault=1 WHERE www=Iwww; \n\
-        IF ROW_COUNT()=0 THEN \n\
-          SET Vrand=SUBSTRING(MD5(NOW()),1,5); \n\
-          INSERT INTO "+siteTab+" (boTLS, siteName, www, tCreated, boDefault) VALUES (IboTLS, Vrand, Iwww, now(),1) ; \n\
-        END IF; \n\
-      #ELSEIF FOUND_ROWS()>1 THEN SELECT 'multDefault' AS mess; LEAVE proc_label; END IF; \n\
-      END IF; \n\
-      SELECT VboTLSCommon AS boTLSCommon, VwwwCommon AS wwwCommon;                #  <-- result #0  ['resCommon'] \n\
-\n\
-          # Get VidSite \n\
-      SELECT SQL_CALC_FOUND_ROWS boTLS, idSite INTO VboTLS, VidSite FROM "+siteTab+" WHERE www=Iwww; \n\
-      IF FOUND_ROWS()=0 THEN SELECT 'IwwwNotFound' AS mess; LEAVE proc_label; END IF; \n\
-\n\
-      SELECT * FROM "+siteTab+" WHERE www=Iwww;                #  <-- result #1 ['resCommon', 'resSite'] \n\
-\n\
-          # Check if page exist \n\
-      #SELECT SQL_CALC_FOUND_ROWS pageName, idPage, boOR, boOW, boSiteMap INTO Vname, VidPage, VboOR, VboOW, VboSiteMap FROM "+pageTab+" WHERE pageName=Iname; \n\
-      SELECT SQL_CALC_FOUND_ROWS boTLS, www, pageName, idPage, boOR, boOW, boSiteMap INTO VboTLS, Vwww, Vname, VidPage, VboOR, VboOW, VboSiteMap FROM "+pageWWWView+" WHERE www=Iwww AND pageName=Iname; \n\
-      IF FOUND_ROWS()=0 THEN SELECT 'noSuchPage' AS mess;  LEAVE proc_label; END IF; \n\
-\n\
-          # Redirect to correct case OR correct boTLS\n\
-      IF IboFront AND (BINARY Vname!=Iname OR VboTLS!=IboTLS) THEN SELECT 'redirectCase' AS mess, VboTLS AS boTLS, Vwww AS www, Vname AS pageName;  LEAVE proc_label; END IF;   \n\
-\n\
-      IF IboFront AND !VboOR THEN SELECT 'private' AS mess; LEAVE proc_label; END IF;                                  # Private\n\
-\n\
-          # Calc boTalkExist \n\
-      #CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); \n\
-      SET VboTalk=isTalk(Iname);   SET VboTemplate=isTemplate(Iname); \n\
-      IF VboTalk=0 THEN \n\
-        IF VboTemplate THEN SET talkPage=CONCAT('template_talk:',Iname); ELSE SET talkPage=CONCAT('talk:',Iname); END IF;\n\
-        SELECT count(idPage) INTO boTalkExist FROM "+pageTab+" WHERE idSite=VidSite AND pageName=talkPage; \n\
-      END IF;\n\
-\n\
-          # Get version table \n\
-      DROP TEMPORARY TABLE IF EXISTS tmpVersionTable; \n\
-      CREATE TEMPORARY TABLE tmpVersionTable AS  \n\
-        SELECT SQL_CALC_FOUND_ROWS rev, summary, signature, idFile, idFileCache, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache, eTag FROM "+versionTab+" WHERE idPage=VidPage; \n\
-      SELECT * FROM tmpVersionTable;                                                 #  <-- result #2 ['resCommon', 'resSite', 'resVersionTable'] \n\
-      SELECT FOUND_ROWS() INTO Vc; \n\
-      IF Vc<1 THEN  SELECT 'zeroVersion' AS mess, Vc AS n; LEAVE proc_label; END IF; \n\
-\n\
-      IF Irev>=Vc THEN SELECT 'noSuchRev' AS mess; LEAVE proc_label; END IF;             # noSuchRev \n\
-      IF Irev=-1 OR Irev>=Vc THEN SET Irev=Vc-1; END IF;                          # Use last rev \n\
-\n\
-          # Set some values from revision Irev \n\
-      SELECT eTag, idFile, idFileCache, tMod, tModCache INTO OeTag, VidFile, VidFileCache, VtMod, VtModCache FROM tmpVersionTable WHERE rev=Irev;  # Note VtMod and VtModCache are already in unix-time\n\
-\n\
-      SET VboValidServerCache=VtMod<=VtModCache AND LENGTH(OeTag);                                             # Calc VboValidServerCache \n\
-\n\
-      SET VboValidReqCache=VboValidServerCache AND OeTag=IeTag AND VtModCache<=IreqDate;        # Calc VboValidReqCache \n\
-\n\
-      IF VboValidReqCache THEN SELECT '304' AS mess; LEAVE proc_label; END IF;                          # 304 \n\
-\n\
-      SELECT data AS strEditText FROM "+fileTab+" WHERE idFile=VidFile;                            # <-- result #3  strEditText \n\
-\n\
-      IF !VboValidServerCache THEN \n\
-        SELECT 'serverCacheStale' AS mess, Irev AS rev, OeTag AS eTag, VidPage AS idPage, VboOR AS boOR, VboOW AS boOW, VboSiteMap AS boSiteMap, boTalkExist, VtMod AS tMod, VtModCache AS tModCache; \n\
-        LEAVE proc_label; \n\
-      END IF;         # Exit if serverCache is stale \n\
-\n\
-          # serverCacheOK \n\
-      SELECT data AS strHtmlText FROM "+fileTab+" WHERE idFile=VidFileCache;                                               # <-- result #4 resHtmlText \n\
-      SELECT pageName, boOnWhenCached FROM "+subTab+" WHERE idPage=VidPage AND pageName REGEXP '^template:';       #  <-- result #5  (resTemplateExistance) \n\
-      SELECT 'serverCacheOK' AS mess, Irev AS rev, OeTag AS eTag, VidPage AS idPage, VboOR AS boOR, VboOW AS boOW, VboSiteMap AS boSiteMap, boTalkExist, VtMod AS tMod, VtModCache AS tModCache; \n\
-\n\
-\n\
-    END");
+  
   //SqlFunction.push("SET @boFront=1, @Iwww='localhost:5000', @Iname='mmm', @Irev=-1, @eTag='', @reqDate=0"); //dumpMat(sqlToMatWHead(sth));
   //SqlFunction.push("CALL "+strDBPrefix+"getInfoNData(@boFront, @Iwww, @Iname, @Irev, @eTag, @reqDate)", '', '', '', '', '');
 

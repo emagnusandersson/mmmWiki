@@ -72,7 +72,9 @@ myQueryGen=function*(flow, sql, Val, pool, connection=null){
       }
       else { console.log('No \'code\' in err'); break; }
     }
-    else{  console.log('connection.threadId: ' + connection.threadId);     }
+    else{
+      //console.log('connection.threadId: ' + connection.threadId);
+    }
   }
   return [err, results, fields, connection];
 }
@@ -89,6 +91,7 @@ MyMySql=function(pool){
 MyMySql.prototype.query=function*(flow, sql, Val, boLast=false){
   var [err, results, fields, connection]=yield* myQueryGen(flow, sql, Val, this.pool, this.connection);
   this.connection=connection;
+  //this.connection.release(); this.connection=null;
   return [err, results, fields];
 }
 MyMySql.prototype.fin=function(){

@@ -60,8 +60,10 @@ sanitizeStyle=function(attrIn){
 //myDump=function(a,boStr){ if(typeof boStr=='undefined') boStr=1; var str='<pre>'+print_r(a,1)+'</pre>'; if(boStr) echo str; else return str;}
 //lcnotfirst=function(str){  if(count(str)>1) return str[0]+substr(str,1).toLowerCase(); else return str; }  // Make all except first lowercase
 
-
-makeMatVersion=function(Version){ //Rows are transfered: {tMod:X, summary:'bla', signature:'meh'} => [X, 'bla', 'meh']
+  // makeMatVersion: compacting things:
+  // Ex: input:  Version=[{tMod:X, summary:'bla', signature:'meh'}, {tMod:Y, summary:'blo', signature:'meehh'}]
+  //     output: t=[[X, 'bla', 'meh'], [Y, 'blo', 'meehh']]
+makeMatVersion=function(Version){ 
   var nVersion=Version.length, t=Array(nVersion);
   for(var i=0;i<nVersion;i++){    t[i]=[Version[i].tMod, Version[i].summary, Version[i].signature];   }  return t;
 }
@@ -108,67 +110,26 @@ parse=function*(flow, arg) {
   mPa.objExistingSub=objExistingSub; mPa.setArrSub();      mPa.endParse();
   var strHtmlText=mPa.text, arrSub=mPa.arrSub;
   
-  //var eTag=md5(strHtmlText +JSON.stringify(objTemplateE) +arg.tMod +arg.tModCache +arg.boOR +arg.boOW +arg.boSiteMap +arg.boTalkExist +JSON.stringify(arg.arrVersionCompared) +JSON.stringify(arg.matVersion));
+  //var eTag=md5(strHtmlText +JSON.stringify(objTemplateE) +arg.tMod +arg.boOR +arg.boOW +arg.boSiteMap +arg.boTalkExist +JSON.stringify(arg.arrVersionCompared) +JSON.stringify(arg.matVersion));
 
   //var Ou={StrTemplate:StrTemplate, objTemplateE:objTemplateE, StrSub:StrSub, StrSubImage:StrSubImage, strHtmlText:strHtmlText, arrSub:arrSub, eTag:eTag};
   var Ou=[objTemplateE, StrSubImage, strHtmlText, arrSub];
   return [null, Ou];
 }
 
-
-getInfoNData=function*(flow, arg) {
-  var sql="CALL "+strDBPrefix+"getInfoNData(?, ?, ?, ?, ?, ?, ?);"; 
-  var Val=[arg.boFront, arg.boTLS, arg.wwwSite, arg.queredPage, arg.rev, arg.eTagIn, arg.requesterCacheTime/1000];
-  var [err, results]=yield* arg.myMySql.query(flow, sql, Val);  if(err) return [err];
-  var len=results.length, iRowLast=len-2; 
-  var objDB=results[iRowLast][0];
-  //if('strEditText' in objDB) objDB.strEditText=objDB.strEditText?objDB.strEditText.toString():'';
-  //if('strHtmlText' in objDB) objDB.strHtmlText=objDB.strHtmlText?objDB.strHtmlText.toString():'';
-  if('rev' in objDB) objDB.version=objDB.rev+1;
-  if('tMod' in objDB) objDB.tMod=new Date(objDB.tMod*1000);
-  if('tModCache' in objDB) objDB.tModCache=new Date(objDB.tModCache*1000);
-
-
-  var mess=objDB.mess, nRes=0;
-  if(mess=='serverCacheOK') nRes=6;
-  else if(mess=='serverCacheStale') nRes=4;
-  else if(mess=='304' || mess=='noSuchRev' || mess=='zeroVersion' ) nRes=3; 
-  else if(mess=='noSuchPage' || mess=='redirectCase' || mess=='private' ) nRes=2; 
-  else if(mess=='IwwwNotFound') nRes=1; 
-  else if(mess=='redirect' || mess=='redirectDomain' || mess=='multDefault') nRes=0;
-
-  if(nRes>0) {  copySome(objDB,results[0][0],['boTLSCommon', 'wwwCommon']); }
-  if(nRes>1) {  copySome(objDB,results[1][0],['siteName', 'googleAnalyticsTrackingID', 'urlIcon16', 'urlIcon200', 'aPassword', 'vPassword']); }
-  if(nRes>2)    objDB.Version=results[2];
-  if(nRes>3)    objDB.strEditText=results[3][0].strEditText.toString();
-  if(nRes>4)    objDB.strHtmlText=results[4][0].strHtmlText.toString();
-  if(nRes>5) {
-    var resT=results[5], c=resT.length;
-    var obj={}; 
-    for(var i=0;i<c;i++){ 
-      var tmpR=resT[i];
-      var tmpname=tmpR.pageName.replace(RegExp('^template:'),''); obj[tmpname]=tmpR.boOnWhenCached; 
-    }
-    objDB.objTemplateE=obj;
+  // createObjTemplateE: compacting things:
+  // Ex: input:  arrOrg=[{pageName:"template:bla", boOnWhenCached:true}, {pageName:"template:blo", boOnWhenCached:false}]
+  //     output: objOut={"bla":true, "blo":false}
+createObjTemplateE=function(arrOrg){  
+  var c=arrOrg.length;
+  var objOut={}; 
+  for(var i=0;i<c;i++){ 
+    var tmpR=arrOrg[i];
+    var tmpname=tmpR.pageName.replace(RegExp('^template:'),''); objOut[tmpname]=tmpR.boOnWhenCached; 
   }
-
-  //callback(null,objDB);
-  return [null, objDB];  
+  return objOut;
 }
 
-getInfo=function*(flow, arg) {
-  var sql="CALL "+strDBPrefix+"getInfo(?,?);", Val=[arg.wwwSite, arg.queredPage];
-  var [err, results]=yield* arg.myMySql.query(flow, sql, Val);  if(err) return [err];
-  var objDB={};
-  if(results[0].length==0) { objDB.mess='noSuchPage'; }
-  else {
-    objDB=results[0][0];    objDB.mess='pageExist';
-    objDB.tMod=new Date(objDB.tMod*1000);
-    objDB.tModCache=new Date(objDB.tModCache*1000);
-  }
-  //callback(null,objDB);
-  return [null, objDB]; 
-}
 
 
 createSubStr=function(arrSub){ // arrSub = [[name,boExist], [name,boExist] ....]   (assigned by setArrSub (in parser.js)) 
@@ -329,6 +290,13 @@ StrOrderFiltImage="+JSON.stringify(StrOrderFiltImage)+";\n\
 }
 
 
-regTalkNTemplateNSite=RegExp('^(talk:|template:|template_talk:|)(?:([^:]+):)?(.+)','i')
+regTalk=RegExp('^(talk|template_talk):','i');
+regTalkNTemplateNSite=RegExp('^(talk:|template:|template_talk:|)(?:([^:]+):)?(.+)','i');
 
-
+calcTalkName=function(queredPage){
+  var talkPage='';
+  if(!regTalk.test(queredPage)){
+    if(queredPage.substr(0,9)=='template:') talkPage='template_talk:'+queredPage; else talkPage='talk:'+queredPage;
+  }
+  return talkPage;
+}

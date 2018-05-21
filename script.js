@@ -31,7 +31,6 @@ redis = require("redis");
 //fastCSV = require('fast-csv');
 //csvtojson=require('csvtojson');
 papaparse = require('papaparse');
-//captchapng = require('captchapng');
 //Neo4j = require('neo4j-transactions');
 var argv = require('minimist')(process.argv.slice(2));
 require('./lib.js');
@@ -307,9 +306,9 @@ var flow=( function*(){
       else {
         if(levelMaintenance){res.outCode(503, "Down for maintenance, try again in a little while."); return;}
         objReqRes.myMySql=new MyMySql(mysqlPool);
+        //if(pathName=='/'+leafPageLoadBE){ var reqPageLoadBE=new ReqPageLoadBE(objReqRes);  yield* reqPageLoadBE.go();    }
         if(pathName=='/'+leafBE){ var reqBE=new ReqBE(objReqRes);  yield* reqBE.go();    }
         //else if(pathName.indexOf('/image/')==0){  yield* reqImage.call(objReqRes);   } //RegExp('^/image/').test(pathName)
-        //else if(pathName=='/captcha.png'){    yield* reqCaptcha.call(objReqRes);    }
         else if(regexpLib.test(pathName) || regexpLooseJS.test(pathName) || regexpPakoJS.test(pathName) || pathName=='/conversion.html'){    yield* reqStatic.call(objReqRes);   }
         else if(regexpImage.test(pathName)){    yield* reqMediaImage.call(objReqRes);    }
         else if(regexpVideo.test(pathName)){  yield* reqMediaVideo.call(objReqRes);    }
