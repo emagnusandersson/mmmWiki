@@ -217,10 +217,11 @@ div.vPassword{
   _position:absolute;
   top:50%;
   _top:expression(eval(document.body.scrollTop+document.body.clientHeight/2));
-  left:40%;
+  left:50%;
   margin:0;
   padding:10px;
   background:lightgray;
+  transform: translate(-50%,-50%);
  }
  
 
@@ -251,7 +252,7 @@ tbody,thead {border-width:inherit;border-style:inherit }
 
 .eye {font-family:courier; font-size:90%; letter-spacing:-.5em; transform:translate(0px, 0em) rotate(90deg); display:block;width:1.1em;text-align:start}
 
-button, select { box-sizing:border-box; height:2.5em; font-size:0.8em; margin:0.5 0.5; padding:0 0.2em; font-size: inherit;vertical-align:middle;background-color:#eee;border-radius:0.4em}
+button, select { box-sizing:border-box; height:2.5em; font-size:0.8em; margin:0.5 0.5; padding:0 0.2em; font-size: inherit;vertical-align:middle;background-color:#eee;border-radius:0.4em;user-select:none}
 button.flexWidth{} /*height:1.8em;padding-left:0.7em;padding-right:0.7em*/
 button.fixWidth{} /*width:2em*/
 .rowButtonFeat  span { vertical-align:bottom}
@@ -287,7 +288,7 @@ button.fixWidth{} /*width:2em*/
 .pageList span[name=nImage] button {background-image: url("buttonRightBlue1.png");}
 
   /* parentRow, pageList and imageList */
-.pageList span[name=link] > a, .imageList span[name=link] > a { word-break:break-word; vertical-align:top}
+.pageList span[name=link] > a, .imageList span[name=link] > a { word-break:break-word} /*; vertical-align:top */
 
   /* pageHead, pageList, imageHead and imageList */
 .pageList span[name=nParent], .imageList span[name=nParent], .imageList span[name=nParentI] { min-width:1.5em;}
@@ -374,20 +375,18 @@ button.fixWidth{} /*width:2em*/
 }
 
 .Center {
-  height: 50%;
-  max-width:300px;  
-  overflow: auto;    /* Recommended in case content is larger than the container */  
-  margin: auto;    
-  position: fixed;    
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-  /* Set the bounds in which to center it, relative to its parent/container */
+  max-width:300px;
+  min-width:200px;
+  overflow: auto;  
+  margin: auto;
+  position: fixed;
+  top: 50%;
+  left: 50%;
   background-color: #eeeeee;
   box-sizing: border-box;
   border:1px solid;
   z-index: 9002;
+  transform: translate(-50%,-50%);
 }
 
 *.unselectable {

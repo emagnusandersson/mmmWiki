@@ -180,7 +180,7 @@ mySwedDate=function(tmp){
   //if(diff>3600) return Math.floor(diff/3600)+'h ago'; // After 1 hour, use Hours
   //return Math.floor(diff/60)+'min';  // Else use Minutes
 }
-swedDate=function(tmp){ if(tmp){tmp=UTC2JS(tmp);  tmp=tmp.getFullYear()+'-'+pad2(tmp.getMonth()+1)+'-'+pad2(tmp.getDate());}  return tmp;}
+swedDate=function(tmp, sep=''){ if(tmp){tmp=UTC2JS(tmp);  tmp=tmp.getFullYear()+sep+pad2(tmp.getMonth()+1)+sep+pad2(tmp.getDate());}  return tmp;}
 swedTime=function(tmp){ if(tmp){tmp=UTC2JS(tmp);  tmp=tmp.getFullYear()+'-'+pad2(tmp.getMonth()+1)+'-'+pad2(tmp.getDate())+' '+pad2(tmp.getHours())+':'+pad2(tmp.getMinutes());}  return tmp;}
 UTC2JS=function(utcTime){ var tmp=new Date(Number(utcTime)*1000);  return tmp;  }
 UTC2Readable=function(utcTime){ var tmp=new Date(Number(utcTime)*1000);   return tmp.toLocaleString();  }

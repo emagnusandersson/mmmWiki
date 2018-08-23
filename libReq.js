@@ -62,7 +62,7 @@ app.reqBU=function*(strArg) {
   } else { res.out500('Error backing up, no such type'); return; }
   //sql+=strLim;
   Sql.push(sql+strLim+';');
-  Sql.push("SELECT www AS wwwCommon FROM "+siteTab+" WHERE boDefault=1;");
+  Sql.push("SELECT siteName, www AS wwwCommon FROM "+siteTab+" WHERE boDefault=1;");
   var sql=Sql.join('\n');
   
 
@@ -93,7 +93,8 @@ app.reqBU=function*(strArg) {
     if(err) { console.log(err); res.out500(err); }
     res.out200('OK');
   }else{
-    var outFileName=calcBUFileName(results[1][0].wwwCommon,type,'zip');
+    //var outFileName=calcBUFileName(results[1][0].siteName, type, 'zip');
+    var outFileName=results[1][0].siteName+'_'+swedDate(unixNow())+'_'+type+'.zip';
     var objHead={"Content-Type": 'application/zip', "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
     res.writeHead(200,objHead);
     res.end(outdata,'binary');
@@ -121,7 +122,7 @@ app.reqBUMeta=function*(strArg) {
   Sql.push("SELECT imageName, boOther, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+imageTab+";");
   Sql.push("SELECT name, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+videoTab+";");
   Sql.push("SELECT siteName, pageName, url, UNIX_TIMESTAMP(tCreated) AS tCreated, nAccess, UNIX_TIMESTAMP(tLastAccess) AS tLastAccess, UNIX_TIMESTAMP(tMod) AS tMod FROM "+redirectWWWView+";");
-  Sql.push("SELECT www AS wwwCommon FROM "+siteTab+" WHERE boDefault=1;");
+  Sql.push("SELECT siteName, www AS wwwCommon FROM "+siteTab+" WHERE boDefault=1;");
   var sql=Sql.join('\n');
   var Val=[];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) {  res.out500(err); return; }
@@ -182,7 +183,9 @@ app.reqBUMeta=function*(strArg) {
   }else{
     for(var i=0;i<StrData.length;i++){ zipfile.file(StrFileName[i], StrData[i], {compression:'DEFLATE'}); }
     var objArg={type:'string'}, outdata = zipfile.generate(objArg);
-    var outFileName=calcBUFileName(matWWWCommon[0].wwwCommon,'meta','zip');  
+    //var outFileName=calcBUFileName(matWWWCommon[0].wwwCommon,'meta','zip');  
+    var outFileName=matWWWCommon[0].siteName+'_'+swedDate(unixNow())+'_meta.zip';
+    
     var objHead={"Content-Type": 'application/zip', "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
     res.writeHead(200,objHead);
     res.end(outdata,'binary');
@@ -204,7 +207,7 @@ app.reqBUMetaSQL=function*() {
   Sql.push("SELECT imageName, boOther, DATE_FORMAT(tCreated,GET_FORMAT(TIMESTAMP,'ISO')) AS tCreated FROM "+imageTab+";");
   Sql.push("SELECT name, DATE_FORMAT(tCreated,GET_FORMAT(TIMESTAMP,'ISO')) AS tCreated FROM "+videoTab+";");
   Sql.push("SELECT siteName, pageName, url, DATE_FORMAT(tCreated,GET_FORMAT(TIMESTAMP,'ISO')) AS tCreated, nAccess, DATE_FORMAT(tLastAccess,GET_FORMAT(TIMESTAMP,'ISO')) AS tLastAccess, DATE_FORMAT(tMod,GET_FORMAT(TIMESTAMP,'ISO')) AS tMod FROM "+redirectWWWView+";");
-  Sql.push("SELECT www AS wwwCommon FROM "+siteTab+" WHERE boDefault=1;");
+  Sql.push("SELECT siteName, www AS wwwCommon FROM "+siteTab+" WHERE boDefault=1;");
   var sql=Sql.join('\n');
   var Val=[];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {  res.out500(err); return; }
@@ -244,7 +247,8 @@ app.reqBUMetaSQL=function*() {
   var sql=SqlB.join("\n");
 
   var sql=SqlB.join("\n");
-  var outFileName=calcBUFileName(matWWWCommon[0].wwwCommon,'meta','sql');
+  //var outFileName=calcBUFileName(matWWWCommon[0].wwwCommon,'meta','sql');
+  var outFileName=matWWWCommon[0].siteName+'_'+swedDate(unixNow())+'_meta.sql';
   res.setHeader('Content-type','text/plain');
   res.setHeader('Content-Disposition','attachment; filename='+outFileName);
   res.end(sql); 
@@ -386,7 +390,7 @@ app.reqIndex=function*() {
   Str.push(tmp);
 
   Str.push('<link rel="icon" type="image/png" href="'+objSite.urlIcon16+'" />');
-  Str.push("<meta name='viewport' id='viewportMy' content='initial-scale=1'/>");
+  Str.push("<meta name='viewport' id='viewportMy' content='initial-scale=1, minimal-ui'/>");
 
   var boTemplate=RegExp('^template:','i').test(queredPage);
   if(!objPage || !objPage.boSiteMap || typeof strHtmlText=='undefined' || boTemplate){ Str.push('<meta name="robots" content="noindex">\n'); }
@@ -1723,7 +1727,7 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
       IF FOUND_ROWS() THEN LEAVE proc_label; END IF; \n\
 \n\
           # Get wwwCommon \n\
-      SELECT SQL_CALC_FOUND_ROWS boTLS, www  FROM "+siteTab+" WHERE boDefault=1; #  <-- result #3 \n\
+      SELECT SQL_CALC_FOUND_ROWS boTLS, siteName, www  FROM "+siteTab+" WHERE boDefault=1; #  <-- result #3 \n\
 \n\
           # Check if page exist \n\
       SELECT SQL_CALC_FOUND_ROWS @Vname:=pageName AS pageName, @VidPage:=idPage AS idPage, @VboOR:=boOR AS boOR, boOW, boSiteMap FROM "+pageTab+" WHERE idSite=VidSite AND pageName=Iname;  #  <-- result #4 \n\

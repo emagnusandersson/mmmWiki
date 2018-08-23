@@ -235,16 +235,17 @@ var extend=function(out) {
 
 var findPos=function(el) {
   var rect = el.getBoundingClientRect();
-  return {top:rect.top+document.body.scrollTop, left:rect.left + document.body.scrollLeft};
+  //return {top:rect.top+document.body.scrollTop, left:rect.left + document.body.scrollLeft};
+  return {top:rect.top+window.scrollY, left:rect.left + window.scrollX};
 }
-var findPos=function(el) {
-  var curleft = 0, curtop = 0;
-  while(1){
-    curleft += el.offsetLeft; curtop += el.offsetTop;
-    if(el.offsetParent) el = el.offsetParent; else break;
-  }
-  return { x: curleft, y: curtop };
-}
+//var findPosMy=function(el) {
+  //var curleft = 0, curtop = 0;
+  //while(1){
+    //curleft += el.offsetLeft; curtop += el.offsetTop;
+    //if(el.offsetParent) el = el.offsetParent; else break;
+  //}
+  //return { left: curleft, top: curtop };
+//}
 
 var removeChildren=function(myNode){
   while (myNode.firstChild) {
@@ -370,7 +371,11 @@ function popupHoverJQ($area,$bubble){
   return $area;
 }
 
-
+//document.onmousemove = function(e){
+//var x = e.pageX;
+//var y = e.pageY;
+//e.target.title = "X is "+x+" and Y is "+y;
+//};
 
 /*******************************************************************************************************************
  * menuExtend (Display a menu under (or above) a button (when button is clicked))       (mousedown, drag, mouseup-on-option)
@@ -395,19 +400,21 @@ var menuExtend=function(el, elItems){
 
     var x,y;
 
-    var winW=window.innerWidth,winH=window.innerHeight,   butW=elButton.clientWidth,butH=elButton.clientHeight,   scrollX=scrollLeft(),scrollY=scrollTop();
+    //var winW=window.innerWidth,winH=window.innerHeight;
+    var winW=document.documentElement.clientWidth,winH=document.documentElement.clientHeight,   butW=elButton.clientWidth,butH=elButton.clientHeight,   scrollX=scrollLeft(),scrollY=scrollTop();
     
-    var posBut=findPos(elButton);
-    var xButt=posBut.x, yButt=posBut.y;
+    var {left:xButt, top:yButt}=findPos(elButton);
     var winEdgeX=scrollX+winW, winEdgeY=scrollY+winH; 
     
-    var boDown, boRight, boYFits=1;
-    var margLeft=xButt-scrollX, margRight=winEdgeX-(xButt+butW);
-    var margTop=yButt-scrollY, margBottom=winEdgeY-(yButt+butH);
-    if(margLeft<margRight) {boRight=1;}  else {boRight=0;} 
+    //var margLeft=xButt-scrollX, margRight=winEdgeX-(xButt+butW);
+    //var margTop=yButt-scrollY, margBottom=winEdgeY-(yButt+butH);
+    var margLeft=xButt, margRight=winW-(xButt+butW);
+    var margTop=yButt, margBottom=winH-(yButt+butH);
+    var boRight=margRight>=margLeft; 
+    var boDown, boYFits=1;
     var hExtraMargin=boAndroid&&boChrome?55:5;
-    if(margBottom>el.offsetHeight+hExtraMargin) {boDown=1;} 
-    else if(margTop>el.offsetHeight+5) {boDown=0;} 
+    if(margBottom>el.offsetHeight+hExtraMargin) {boDown=1;} // If there is room below
+    else if(margTop>el.offsetHeight+5) {boDown=0;} // If there is room above
     else {boDown=1; boYFits=0; }
     
     //var xButtAnc=elButton.offsetLeft, yButtAnc=elButton.offsetTop; 
@@ -421,7 +428,7 @@ var menuExtend=function(el, elItems){
       else { y=yButt-el.offsetHeight; cssEl={top:Number(y)+'px',bottom:''};}
     }else{
       //var posAncestor=findPos(elAncestor);
-      y=scrollY; //-posAncestor.y;
+      y=scrollY; //-posAncestor.top;
       y=boIOS?Math.max(0,y):y; cssEl={top:Number(y)+'px',bottom:''};
     }
     el.css(cssEl);
@@ -477,7 +484,7 @@ function popupDragExtend(elBubble,strTitle,elParent){
   var mouseDownGrab= function(e){
     var e = e || window.event; if(e.which==3) return; 
     var pTmp; if(boTouch) {e.preventDefault(); pTmp=e.changedTouches[0]; }  else pTmp=e;     var mouseX=pTmp.pageX, mouseY=pTmp.pageY;
-    var posBub=findPos(elBubble), xBub=posBub.x, yBub=posBub.y;
+    var {left:xBub, top:yBub}=findPos(elBubble);
     xLoc=mouseX-xBub;yLoc=mouseY-yBub;
     wBubStart=elBubble.offsetWidth; wWinStart=window.innerWidth;
     xBubStart=xBub;
@@ -522,7 +529,7 @@ function popupDragExtend(elBubble,strTitle,elParent){
   var mouseDownNW= function(e){
     var e = e || window.event; if(e.which==3) return; 
     var pTmp; if(boTouch) {e.preventDefault(); pTmp=e.changedTouches[0]; }  else pTmp=e;     var mouseX=pTmp.pageX, mouseY=pTmp.pageY;
-    var posBub=findPos(elBubble), xBub=posBub.x, yBub=posBub.y;
+    var {left:xBub, top:yBub}=findPos(elBubble);
     xBubStart=xBub;
     xLoc=mouseX-xBub;yLoc=mouseY-yBub;
     wBubStart=elBubble.offsetWidth;
@@ -553,7 +560,7 @@ function popupDragExtend(elBubble,strTitle,elParent){
   var mouseDownNE= function(e){
     var e = e || window.event; if(e.which==3) return;
     var pTmp; if(boTouch) {e.preventDefault(); pTmp=e.changedTouches[0]; }  else pTmp=e;     var mouseX=pTmp.pageX, mouseY=pTmp.pageY;
-    var posBub=findPos(elBubble), xBub=posBub.x, yBub=posBub.y;
+    var {left:xBub, top:yBub}=findPos(elBubble);
     xMouseStart=mouseX; xBubStart=xBub; wWinStart=window.innerWidth;
     xLoc=mouseX-xBub;yLoc=mouseY-yBub;
     wBubStart=elBubble.offsetWidth;

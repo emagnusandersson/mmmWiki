@@ -16,6 +16,7 @@ simpleTags='div|span|font|code|small|sub|sup|u|h1|h2|h3|h4|h5|h6|s';
 STARTCHAR=String.fromCharCode(1);  ENDCHAR=String.fromCharCode(2);
 STARTCHARSTR='\\01';  ENDCHARSTR='\\02';
 
+
 "use strict"
 var Parser=app.Parser=function(text, boTrustEditors){
   this.boTrustEditors=boTrustEditors;
@@ -96,8 +97,8 @@ Parser.prototype.renameILinkOrImage = function(text, strILink='', strILinkN, str
   text = text.replace(RegExp(STARTCHARSTR+'singleRBracket'+ENDCHARSTR,'g'),']'); //Put back single right brackets
   
   text = text.replace(RegExp(STARTCHARSTR +'pre(\\d+)\/' +ENDCHARSTR,'g'),thisChanged(this.putBackPreCB,this));     
-  text = text.replace(RegExp(STARTCHARSTR +'htmlsection_(\\d+)' +ENDCHARSTR,'g'),thisChanged(this.putBackHtmlSectionCB,this));  //Put back html sections
-  text = text.replace(RegExp(STARTCHARSTR +'nowiki_(\\d+)' +ENDCHARSTR,'g'),thisChanged(this.putBackNoWikiCB,this));  //Put back nowiki sections
+  text = text.replace(RegExp(STARTCHARSTR +'htmlsection(\\d+)' +ENDCHARSTR,'g'),thisChanged(this.putBackHtmlSectionCB,this));  //Put back html sections
+  text = text.replace(RegExp(STARTCHARSTR +'nowiki(\\d+)' +ENDCHARSTR,'g'),thisChanged(this.putBackNoWikiCB,this));  //Put back nowiki sections
      
   text = text.replace(RegExp(STARTCHARSTR +'comment(\\d+)'+ENDCHARSTR,'g'),thisChanged(this.putBackCommentCB,this));     
 
@@ -269,6 +270,7 @@ Parser.prototype.endParse = function(callback) {
         tmptext = tmptext.replace(/^----/gm,'<hr/>'); //Translate horizontal rulers 
         tmptext = tmptext.replace(/\r?\n\s*\r?\n\s*\r?\n/g,"<p/><br/>\n"); //Translate tripple newlines to <p/><br/>
         tmptext = tmptext.replace(/\r?\n\s*\r?\n/g,"<p/>\n"); //Translate double newlines to <p/>
+        tmptext = tmptext.replace(/  \r?\n/g,"<p/>\n"); //Translate two trailing spaces => "<p/>"
         TaPa.cellContent[keyT][keyR][keyC] = tmptext;
       }
     }
@@ -300,8 +302,8 @@ Parser.prototype.endParse = function(callback) {
   
   text = text.replace(RegExp(STARTCHARSTR +'template(\\d+)\/' +ENDCHARSTR,'g'),thisChanged(this.putBackTemplateStubsCB,this)); //Put back template stubs   
   text = text.replace(RegExp(STARTCHARSTR +'pre(\\d+)\/' +ENDCHARSTR,'g'),thisChanged(this.putBackPreCB,this));     
-  text = text.replace(RegExp(STARTCHARSTR +'htmlsection_(\\d+)' +ENDCHARSTR,'g'),thisChanged(this.putBackHtmlSectionCB,this));  //Put back html sections
-  text = text.replace(RegExp(STARTCHARSTR +'nowiki_(\\d+)' +ENDCHARSTR,'g'),thisChanged(this.putBackNoWikiCB,this));  //Put back nowiki sections
+  text = text.replace(RegExp(STARTCHARSTR +'htmlsection(\\d+)' +ENDCHARSTR,'g'),thisChanged(this.putBackHtmlSectionCB,this));  //Put back html sections
+  text = text.replace(RegExp(STARTCHARSTR +'nowiki(\\d+)' +ENDCHARSTR,'g'),thisChanged(this.putBackNoWikiCB,this));  //Put back nowiki sections
     
   text = text.replace(RegExp(STARTCHARSTR +'style(\\d+)'+ENDCHARSTR,'g'),thisChanged(this.putBackStyleCB,this));    
   text = text.replace(RegExp(STARTCHARSTR +'comment(\\d+)'+ENDCHARSTR,'g'),thisChanged(this.putBackCommentCB,this));    
@@ -539,7 +541,7 @@ Parser.prototype.putBackCommentCB=function(m,n){  return this.arrComment[n];  }
 Parser.prototype.replaceNoWikiCB=function(m,n){
   var i=this.arrNoWiki.length;
   this.arrNoWiki[i]=n;
-  return STARTCHAR +'nowiki_' +i +ENDCHAR;
+  return STARTCHAR +'nowiki' +i +ENDCHAR;
 }
 Parser.prototype.putBackNoWikiCB=function(m,n){  return this.arrNoWiki[n];  }
 
@@ -571,11 +573,14 @@ Parser.prototype.putBackTemplateStubsCB=function(m,n){
 
     // htmlSection
 Parser.prototype.replaceHtmlSectionCB=function(m,n){
+  if(this.boTrustEditors==0) {return "<htmlsection-tag doesn't work unless the admin disables \"write-access\"/>";}
   var i=this.arrHtmlSection.length;
   this.arrHtmlSection.push(n);
   return STARTCHAR+'htmlsection'+i+ENDCHAR;
 }
-Parser.prototype.putBackHtmlSectionCB=function(m,n){  return this.arrHtmlSection[n];  }
+Parser.prototype.putBackHtmlSectionCB=function(m,n){
+  return this.arrHtmlSection[n];
+}
 
     // pre
 Parser.prototype.replacePreCB=function(m,n){
@@ -626,9 +631,12 @@ Parser.prototype.replaceItalicCB=function(m,n){  return STARTCHAR+'italic'+ENDCH
 Parser.prototype.putBackItalicCB=function(m,n){    return '<i>'+n+'</i>';  }
 Parser.prototype.replaceHeadingCB=function(m,n,o,p){
   var c1=n.length, c2=p.length; if(c1!==c2) return m;
-  return STARTCHAR+'heading'+c1+ENDCHAR+o+STARTCHAR+'/heading'+c1+ENDCHAR;
+  var c=c1-1; // Since "==" => h1,  "===" => h2 etc.
+  return STARTCHAR+'heading'+c+ENDCHAR+o+STARTCHAR+'/heading'+c+ENDCHAR;
 }
 Parser.prototype.putBackHeadingCB=function(m,n,o){  return "<h"+n+">"+o+"</h"+n+">";  }
+
+
   
     // iframe
 Parser.prototype.replaceIframeCB=function(m,attr,text){  

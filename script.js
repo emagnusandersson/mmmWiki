@@ -30,7 +30,7 @@ redis = require("redis");
 //csvParse = require('csv-parse/lib/sync');
 //fastCSV = require('fast-csv');
 //csvtojson=require('csvtojson');
-papaparse = require('papaparse');
+papaparse = require('papaparse');  // For parsing CSV
 //Neo4j = require('neo4j-transactions');
 var argv = require('minimist')(process.argv.slice(2));
 require('./lib.js');
