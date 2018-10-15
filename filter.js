@@ -2,7 +2,6 @@
 
 
 
-
 /*
 var rangeExtendSel=function($el,Filt,Hist,vBoHasRem,StrOrderFilt,iFeat, changeFunc){  
       // filt: 'B/BF'-features: [vOffNames,vOnNames, boWhite],     'S'-features: [iOn,iOff]

@@ -32,7 +32,7 @@ redis = require("redis");
 //csvtojson=require('csvtojson');
 papaparse = require('papaparse');  // For parsing CSV
 //Neo4j = require('neo4j-transactions');
-var argv = require('minimist')(process.argv.slice(2));
+var argv = require('minimist')(process.argv.slice(2));  // Perhaps use yargs !? (according to https://www.youtube.com/watch?v=S-_Fx4-nal8)
 require('./lib.js');
 require('./libServerGeneral.js');
 require('./libServer.js');
@@ -161,13 +161,6 @@ var flow=( function*(){
 
       // Load fr BU-folder
   if(typeof argv.loadFrBU!='undefined'){    yield* loadFrBU(flow, argv.loadFrBU);   process.exit(0); return;   }
-  //if(typeof argv.loadDataFrBU!='undefined' || typeof argv.loadMetaFrBU!='undefined'){
-    //var obj={myMySql:new MyMySql(mysqlPool)};
-    //if(typeof argv.loadDataFrBU!='undefined' ){   yield* loadDataFrBU.call(obj, flow, argv.loadDataFrBU); }
-    //else if(typeof argv.loadMetaFrBU!='undefined'){   yield* loadMetaFrBU.call(obj, flow, argv.loadMetaFrBU); }
-    //obj.myMySql.fin(); 
-    //process.exit(0); return;
-  //}
     // Do db-query if --sql XXXX was set in the argument
   if(typeof argv.sql!='undefined'){
     if(typeof argv.sql!='string') {console.log('sql argument is not a string'); process.exit(-1); return; }
@@ -179,7 +172,6 @@ var flow=( function*(){
 
   tIndexMod=new Date(); tIndexMod.setMilliseconds(0);
 
-  ETagUri={}; CacheUri={};
 
 
   regexpLib=RegExp('^/(stylesheets|lib|Site)/');
@@ -196,38 +188,21 @@ var flow=( function*(){
     StrPako[i]='bower_components/pako/dist/'+StrPako[i]+strMin+'.js';
   }
   regexpPakoJS=RegExp('^/bower_components/pako/dist/pako(|_deflate|_inflate)'); //siteSpecific
-  StrFilePreCache=['filter.js', 'lib.js', 'libClient.js', 'client.js', 'stylesheets/style.css'];
-  StrFilePreCache=StrFilePreCache.concat(StrPako);
-  if(boDbg){
-    fs.watch('.',function (ev,filename) {
-      var StrFile=['filter.js','client.js','libClient.js'];
-        //console.log(filename+' changed: '+ev);
-      if(StrFile.indexOf(filename)!=-1){
-        console.log(filename+' changed: '+ev);
-        var flowWatch=( function*(){ 
-          var [err]=yield* readFileToCache.call({flow:flowWatch}, filename); if(err) {console.error(err); return; }
-        })(); flowWatch.next();
-      }
-    });
-    fs.watch('stylesheets',function (ev,filename) {
-      var StrFile=['style.css'];
-        //console.log(filename+' changed: '+ev);
-      if(StrFile.indexOf(filename)!=-1){
-        console.log(filename+' changed: '+ev);
-        var flowWatch=( function*(){ 
-          var [err]=yield* readFileToCache.call({flow:flowWatch}, 'stylesheets/'+filename); if(err) {console.error(err); return; }
-        })(); flowWatch.next();
-      }
-    });
-  }
 
   CacheUri=new CacheUriT();
+  StrFilePreCache=['filter.js', 'lib.js', 'libClient.js', 'client.js', 'stylesheets/style.css'];
+  StrFilePreCache=StrFilePreCache.concat(StrPako);
   for(var i=0;i<StrFilePreCache.length;i++) {
     var filename=StrFilePreCache[i];
-    var [err]=yield* readFileToCache.call({flow:flow}, filename); if(err) {  console.error(err.message);  return;}
+    var [err]=yield* readFileToCache(flow, filename); if(err) {  console.error(err.message);  return;}
   }
-  var [err]=yield* writeCacheDynamicJS.call({flow:flow});   if(err) {  console.error(err.message);  return;}
+  var [err]=yield* writeCacheDynamicJS(flow);   if(err) {  console.error(err.message);  return;}
   
+  if(boDbg){
+    fs.watch('.', makeWatchCB('.', ['filter.js','client.js','libClient.js']) );
+    fs.watch('stylesheets', makeWatchCB('stylesheets', ['style.css']) );
+  }
+
 
   handler=function(req, res){
     req.flow=(function*(){

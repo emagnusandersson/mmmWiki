@@ -11,129 +11,52 @@ parseCookies=function(req) {
 }
 
 
+//
+// Mysql
+//
 
-myQueryGen=function*(flow, sql, Val, pool){ 
-  var err, connection, results, fields;
-  for(var i=0;i<nDBRetry;i++){
-    pool.getConnection(function(errT, connectionT) { err=errT; connection=connectionT; flow.next(); }); yield;
-    if(err) {
-      console.log('Error when getting mysql connection, attemptCounter: '+i);
-      if(typeof err=='object' && 'code' in err) {
-        console.log('err.code: '+err.code);
-        if(err.code=='PROTOCOL_CONNECTION_LOST' || err.code=='ECONNREFUSED' || err.code=='ECONNRESET'){
-          setTimeout(function(){ flow.next();}, 2000); yield;  continue;
-        } else { console.log('Can\'t handle: err.code: '+err.code); return [err]; }
-      }
-      else { console.log('No \'code\' in err'); return [err]; }
-    }
-  
-    //console.log('connection.threadId: ' + connection.threadId);
-    connection.query(sql, Val, function(errT, resultsT, fieldsT) { err=errT; results=resultsT; fields=fieldsT; flow.next();}); yield;
-    connection.release();
-//connection.destroy();
-    if(err) {
-      console.log('Error when making mysql query, attemptCounter: '+i);
-      if(typeof err=='object' && 'code' in err) {
-        console.log('err.code: '+err.code); debugger
-        if(err.code=='PROTOCOL_CONNECTION_LOST' || err.code=='ECONNREFUSED'){
-          setTimeout(function(){ flow.next();}, 2000); yield;   continue;
-        } else { console.log('Can\'t handle: err.code: '+err.code); break; }
-      }
-      else { console.log('No \'code\' in err'); break; }
-    }
-    else {break;}
-  }
-  return [err, results, fields];
-}
-myQueryGen=function*(flow, sql, Val, pool, connection=null){ 
-  var err, results, fields;
-  for(var i=0;i<nDBRetry;i++){
-    if(connection){
-      connection.query(sql, Val, function(errT, resultsT, fieldsT) { err=errT; results=resultsT; fields=fieldsT; flow.next();}); yield;
-      if(err==null){ break;}
-      else{
-        console.log('Error when making mysql query, attemptCounter: '+i);
-        if(typeof err=='object' && 'code' in err) {
-          console.log('err.code: '+err.code); debugger
-          if(err.code!='PROTOCOL_CONNECTION_LOST' && err.code!='ECONNREFUSED') { console.log('Can\'t handle: err.code: '+err.code); break; }
-        }
-        else { console.log('No \'code\' in err'); break; }
-      }
-    }
-    pool.getConnection(function(errT, connectionT) { err=errT; connection=connectionT; flow.next(); }); yield;
-    if(err) {
-      connection=null;
-      console.log('Error when getting mysql connection, attemptCounter: '+i);
-      if(typeof err=='object' && 'code' in err) {
-        console.log('err.code: '+err.code);
-        if(err.code=='PROTOCOL_CONNECTION_LOST' || err.code=='ECONNREFUSED' || err.code=='ECONNRESET'){
-          setTimeout(function(){ flow.next();}, 2000); yield;  
-        } else { console.log('Can\'t handle: err.code: '+err.code); break; }
-      }
-      else { console.log('No \'code\' in err'); break; }
-    }
-    else{
-      //console.log('connection.threadId: ' + connection.threadId);
-    }
-  }
-  return [err, results, fields, connection];
-}
-myQueryOneGen=function*(flow, sql, Val, pool){ 
-  var [err, results, fields]=yield* myQueryGen(flow, sql, Val, pool);
-  connection.release();
-  //connection.destroy();
-  return [err, results, fields];
-}
-MyMySql=function(pool){
-  this.pool=pool;
-  this.connection=null;
-}
-MyMySql.prototype.query=function*(flow, sql, Val, boLast=false){
-  var [err, results, fields, connection]=yield* myQueryGen(flow, sql, Val, this.pool, this.connection);
-  this.connection=connection;
-  //this.connection.release(); this.connection=null;
-  return [err, results, fields];
-}
-MyMySql.prototype.fin=function(){
-  if(this.connection) {
-    //this.connection.release();
-    this.connection.destroy();
-    this.connection=null;
-  };
-}
 
-myGetConnectionGen=function*(flow, sql, Val, pool){ 
-  var err, connection, results, fields;
-  for(var i=0;i<nDBRetry;i++){
-    pool.getConnection(function(errT, connectionT) { err=errT; connection=connectionT; flow.next(); }); yield;
-    if(err) {
-      console.log('Error when getting mysql connection, attemptCounter: '+i);
-      if(typeof err=='object' && 'code' in err) {
-        console.log('err.code: '+err.code);
-        if(err.code=='PROTOCOL_CONNECTION_LOST' || err.code=='ECONNREFUSED' || err.code=='ECONNRESET'){
-          setTimeout(function(){ flow.next();}, 2000); yield;  continue;
-        } else { console.log('Can\'t handle: err.code: '+err.code); return [err]; }
-      }
-      else { console.log('No \'code\' in err'); return [err]; }
-    }
-  }
-  return [err, connection];
+MyMySql=function(pool){ this.pool=pool; this.connection=null;  }
+MyMySql.prototype.getConnection=function*(flow){
+  var err, connection;      this.pool.getConnection(function(errT, connectionT) { err=errT; connection=connectionT; flow.next(); }); yield;   this.connection=connection; return [err];
 }
+MyMySql.prototype.startTransaction=function*(flow){
+  if(!this.connection) {var [err]=yield* this.getConnection(flow); if(err) return [err];}
+  var err;     this.connection.beginTransaction(function(errT) { err=errT; flow.next(); }); yield;   if(err) return [err];
+  this.transactionState='started';
+  return [null];
+}
+MyMySql.prototype.query=function*(flow, sql, Val){
+  if(!this.connection) {var [err]=yield* this.getConnection(flow); if(err) return [err];}
+  var err, results, fields;    this.connection.query(sql, Val, function (errT, resultsT, fieldsT) { err=errT; results=resultsT; fields=fieldsT; flow.next(); }); yield;   return [err, results, fields];
+}
+MyMySql.prototype.rollback=function*(flow){  this.connection.rollback(function() { flow.next(); }); yield;   }
+MyMySql.prototype.commit=function*(flow){
+  var err; this.connection.commit(function(errT){ err=errT; flow.next(); }); yield;   return [err];
+}
+MyMySql.prototype.rollbackNRelease=function*(flow){  this.connection.rollback(function() { flow.next(); }); yield;  this.connection.release(); }
+MyMySql.prototype.commitNRelease=function*(flow){
+  var err; this.connection.commit(function(errT){ err=errT; flow.next(); }); yield;  this.connection.release();  return [err];
+}
+MyMySql.prototype.fin=function(){   if(this.connection) { this.connection.destroy();this.connection=null;};  }
 
-myQueryW=function*(flow, connection, sql, Val){ 
-  var err, results, fields;
-  connection.query(sql, Val, function(errT, resultsT, fieldsT) { err=errT; results=resultsT; fields=fieldsT; flow.next();}); yield;
-  //connection.release();
-  //connection.destroy();
-  
-  return [err, results, fields];
-}
+
+
+
+//
+// Neo4j
+//
 
 MyNeo4j=function(){
   var chars = ['\\"', '\\\'', '\\\\'],   tmpStr='[' +chars.join("") +']';  this.regEscape=new RegExp(tmpStr, 'g');
   this.funEscape=function(m){ return "\\"+m;  }
 }
 MyNeo4j.prototype.escape=function(str){  if(typeof str=='string') str=str.replace(this.regEscape,this.funEscape);  return str;  }
+
+
+//
+// Errors
+//
 
 ErrorClient=class extends Error {
   constructor(message) {
@@ -160,7 +83,7 @@ tmp.out304=function(){  this.outCode(304);   }
 tmp.out404=function(str){ str=str||"404 Not Found\n"; this.outCode(404, str);    }
 //tmp.out500=function(err){ var errN=(err instanceof Error)?err:(new MyError(err)); console.log(errN.stack); this.writeHead(500, {"Content-Type": "text/plain"});  this.end(err+ "\n");   }
 tmp.out500=function(e){
-  if(e instanceof Error) {var mess=e.name + ': ' + e.message; console.error(e.stack);} else {var mess=e; console.error(mess);} 
+  if(e instanceof Error) {var mess=e.name + ': ' + e.message; console.error(e);} else {var mess=e; console.error(mess);} 
   this.writeHead(500, {"Content-Type": "text/plain"});  this.end(mess+ "\n");
 }
 tmp.out501=function(){ this.outCode(501, "Not implemented\n");   }
@@ -286,42 +209,45 @@ end;\n\
 return c";
 
 
-
-
-var regFileType=RegExp('\\.([a-z0-9]+)$','i'),    regZip=RegExp('^(css|js|txt|html)$'),   regUglify=RegExp('^js$');
-readFileToCache=function*(strFileName) {
-  var flow=this.flow;
-  var type, Match=regFileType.exec(strFileName);    if(Match && Match.length>1) type=Match[1]; else type='txt';
-  var boZip=regZip.test(type),  boUglify=regUglify.test(type);
-  var err, buf;
-  fs.readFile(strFileName, function(errT, bufT) {  err=errT; buf=bufT;  flow.next();   });  yield;  if(err) return [err];
-  var [err]=yield* CacheUri.set.call(this, '/'+strFileName, buf, type, boZip, boUglify);  if(err) return [err];
-  return [null];  
-}
-
 CacheUriT=function(){
-  var self=this;
-  this.set=function*(key,buf,type,boZip,boUglify){
-    var selfA=this;
+  this.set=function*(flow, key, buf, type, boZip, boUglify){
     var eTag=crypto.createHash('md5').update(buf).digest('hex'); 
-    /*if(boUglify) {
-      var objU; objU=UglifyJS.minify(bufO.toString(), {fromString: true});
-      bufO=new Buffer(objU.code,'utf8');
-    }*/
+    //if(boUglify) {
+      //var objU; objU=UglifyJS.minify(bufO.toString(), {fromString: true});
+      //bufO=new Buffer(objU.code,'utf8');
+    //}
     if(boZip){
       var bufI=buf;
       var gzip = zlib.createGzip();
       var err;
-      zlib.gzip(bufI, function(errT, bufT) { err=errT; buf=bufT; selfA.flow.next(); });  yield;
-      if(err) return [err];
-      //if(err){  console.log(err);  process.exit(); return;}
+      zlib.gzip(bufI, function(errT, bufT) { err=errT; buf=bufT; flow.next(); });  yield; if(err) return [err];
     }
-    self[key]={buf:buf,type:type,eTag:eTag,boZip:boZip,boUglify:boUglify};
+    this[key]={buf:buf,type:type,eTag:eTag,boZip:boZip,boUglify:boUglify};
     return [null];
   }
 }
 
+var regFileType=RegExp('\\.([a-z0-9]+)$','i'),    regZip=RegExp('^(css|js|txt|html)$'),   regUglify=RegExp('^js$');
+readFileToCache=function*(flow, strFileName) {
+  var type, Match=regFileType.exec(strFileName);    if(Match && Match.length>1) type=Match[1]; else type='txt';
+  var boZip=regZip.test(type),  boUglify=regUglify.test(type);
+  var err, buf;
+  fs.readFile(strFileName, function(errT, bufT) {  err=errT; buf=bufT;  flow.next();   });  yield;  if(err) return [err];
+  var [err]=yield* CacheUri.set(flow, '/'+strFileName, buf, type, boZip, boUglify);
+  return [err];
+}
 
+makeWatchCB=function(strFolder, StrFile) {
+  return function(ev,filename){
+    if(StrFile.indexOf(filename)!=-1){
+      var strFileName=path.normalize(strFolder+'/'+filename)
+      console.log(filename+' changed: '+ev);
+      var flow=( function*(){ 
+        var [err]=yield* readFileToCache(flow, strFileName); if(err) console.error(err);
+      })(); flow.next();
+    }
+  }
+}
 
 isRedirAppropriate=function(req){
   if(typeof RegRedir=='undefined') return false;

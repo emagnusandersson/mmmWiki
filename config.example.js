@@ -1,7 +1,7 @@
 
 
 //
-// For variable naming convention see https://emagnusandersson.com/myNodeApps_notation
+// For variable naming convention see https://emagnusandersson.com/prefixes_to_variables
 //
 
 
@@ -39,8 +39,7 @@ weIconLib='lib/image/Icon/';  wIconRed16=weIconLib+'iconRed16.png';   wIconRed20
   // This "if"-statement allows you to keep the same config-file for multiple infrastructure
   //
   // If you are running on:
-  //   * heroku.com, then create a environment variable strInfrastructure='heroku' 
-  //   * appfog.com, then create a environment variable strInfrastructure='af' 
+  //   * heroku.com, then create a environment variable strInfrastructure='heroku'
   //   * digitalocean.com, then create a environment variable strInfrastructure='do' 
   //   * localhost, then you can enter your settings in the "else"-statement below
   //
@@ -66,46 +65,26 @@ if(process.env.strInfrastructure=='heroku'){
 
     // Content of the <title>-tag of the start page. (if left undefined then it is defaulted to the domain name)
   //strStartPageTitle='blabla'; 
-
-}
-else if(process.env.strInfrastructure=='af'){  
-
-    // Appfog uses the environment variable "VCAP_APP_PORT" to store the port used:
-  port = parseInt(process.env.VCAP_APP_PORT, 10);
- 
-    // Setting uriDB 
-    // If you added the MySql-database on the appfog.com-interface then that one is used.
-  if('VCAP_SERVICES' in process.env) {
-    var tmp=process.env.VCAP_SERVICES, services_json = JSON.parse(tmp);
-    var mysql_config = services_json["mysql-5.1"][0]["credentials"];
-    var sqlUserName = mysql_config["username"];
-    var sqlPassword = mysql_config["password"];
-    var sqlHost = mysql_config["hostname"];
-    var portTmp = mysql_config["port"];
-    var sqlDBName = mysql_config["name"];
-    uriDB="mysql://"+sqlUserName+':'+sqlPassword+'@'+sqlHost+'/'+sqlDBName+"?reconnect=true";
-  }
-    // If you want to use some other urlDB then fill it in here
-  //uriDB='mysql://user:password@localhost/database';
-
-    // (For explanations of uriDB, vPassword, aPassword, levelMaintenance, strStartPageTitle  see comments above)
-  vPassword="1234"; aPassword="1234";
-  //levelMaintenance=1;
-  //strStartPageTitle='blabla'; 
+  
+    // From google recaptcha
+  strReCaptchaSiteKey="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";   strReCaptchaSecretKey="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
 
 
-}else if(process.env.strInfrastructure=='do'){  // (is yet to be written)
+}else if(process.env.strInfrastructure=='do'){
   uriDB=='mysql://user:password@host/database';
   port = 8080;
   vPassword="123"; aPassword="123"; 
   //levelMaintenance=1;
   //strStartPageTitle='blabla'; 
+  
+  strReCaptchaSiteKey="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";   strReCaptchaSecretKey="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
 
 }else {
   uriDB='mysql://user:password@localhost/database';
-  vPassword="123"; aPassword="123"; 
+  vPassword="123"; aPassword="123";
   //levelMaintenance=1;
   //strStartPageTitle='blabla'; 
+  strReCaptchaSiteKey="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";   strReCaptchaSecretKey="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
 } 
 
 

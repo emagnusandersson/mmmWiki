@@ -126,7 +126,7 @@ $.fn.visibilityToggle = function() {
         return (visibility == 'visible') ? 'hidden' : 'visible';
     });
 };
-jQuery.fn.sortElements = (function(){
+$.fn.sortElements = (function(){
  
     var funcSort = [].sort;
     //var funcSort=merge_sort;
@@ -191,7 +191,7 @@ jQuery.fn.sortElements = (function(){
 // Add stable merge sort to Array and jQuery prototypes
 
   // expose to Array and jQuery
-//Array.prototype.msort = jQuery.fn.msort = msort;
+//Array.prototype.msort = $.fn.msort = msort;
 
 msort=function(compare){
 "use strict"
@@ -283,7 +283,7 @@ createTextNode=function(str){ return document.createTextNode(str); }
 createElement=function(str){ return document.createElement(str); }
 createFragment=function(str){ return document.createDocumentFragment(); }
 
-function isVisible(el) {
+isVisible=function(el) {
     return !!( el.offsetWidth || el.offsetHeight || el.getClientRects().length );
 }
 

@@ -48,7 +48,6 @@ app.reqBU=function*(strArg) {
     //sql="SELECT pageName, data, UNIX_TIMESTAMP(tMod) AS date, eTag FROM "+pageTab+" p JOIN "+versionTab+" v JOIN "+fileTab+" f WHERE p.idPage=v.idPage AND rev=0 AND f.idFile=v.idFile";
     sql="SELECT boDefault, siteName, pageName, data, UNIX_TIMESTAMP(tMod) AS date, eTag FROM "+pageWWWView+" p JOIN "+versionTab+" v JOIN "+fileTab+" f WHERE p.idPage=v.idPage AND rev=0 AND f.idFile=v.idFile";
 
-
     if(boLimited){ strLim=" AND "+tmpQ;  }
   } else if(type=='image'){
     strExt='';
@@ -471,8 +470,8 @@ app.reqIndex=function*() {
   Str.push("<script language=\"JavaScript\">");
   Str.push("function indexAssign(){");
 
-  var tmp=copySome({},objSiteDefault, ['www','boTLS']);   Str.push("objSiteDefault="+JSON.stringify(tmp)+";");
-  var tmp=copySome({},objSite, ['www','boTLS']);    Str.push("objSite="+JSON.stringify(tmp)+";");
+  var tmp=copySome({},objSiteDefault, ['www', 'boTLS', 'siteName']);   Str.push("objSiteDefault="+JSON.stringify(tmp)+";");
+  var tmp=copySome({},objSite, ['www', 'boTLS', 'siteName']);    Str.push("objSite="+JSON.stringify(tmp)+";");
 
   if(typeof objPage!='undefined') {
     var tmp=copySome({},objPage, ['boOR','boOW', 'boSiteMap', 'idPage']);   Str.push("objPage="+JSON.stringify(tmp)+";");
@@ -524,16 +523,15 @@ app.reqStatic=function*() {
   var keyCache=pathName; //if(pathName==='/'+leafSiteSpecific) keyCache=req.strSite+keyCache; 
   if(!(keyCache in CacheUri)){
     var filename=pathName.substr(1);    
-    var [err]=yield* readFileToCache.call({flow:req.flow}, filename);
+    var [err]=yield* readFileToCache(req.flow, filename);
     if(err) {
       if(err.code=='ENOENT') {res.out404(); return;}
       if('Referer' in req.headers) console.log('Referer:'+req.headers.Referer);
       res.out500(err); return;
     }
   }
-  var cacheUri=CacheUri[keyCache];
-  if(cacheUri.eTag===eTagIn){ res.out304(); return; } 
-  var buf=cacheUri.buf, type=cacheUri.type,  eTag=cacheUri.eTag, boZip=cacheUri.boZip, boUglify=cacheUri.boUglify;
+  var {buf, type, eTag, boZip, boUglify}=CacheUri[keyCache];
+  if(eTag===eTagIn){ res.out304(); return; } 
   var mimeType=MimeType[type]; 
   if(typeof mimeType!='string') console.log('type: '+type+', mimeType: ', mimeType);
   if(typeof buf!='object' || !('length' in buf)) console.log('typeof buf: '+typeof buf);
@@ -1108,8 +1106,8 @@ app.SetupSqlT.prototype.createTable=function(boDropOnly){
   boOW TINYINT(1) NOT NULL DEFAULT 0, \n\
   boSiteMap TINYINT(1) NOT NULL DEFAULT 0, \n\
   lastRev int(4) NOT NULL DEFAULT 0,     # rev (and lastRev) is 0-indexed, version is 1-indexed\n\
-  nChild int(4) NOT NULL, \n\
-  nImage int(4) NOT NULL, \n\
+  nChild int(4) NOT NULL DEFAULT 0, \n\
+  nImage int(4) NOT NULL DEFAULT 0, \n\
   PRIMARY KEY (idPage), \n\
   UNIQUE KEY (idSite,pageName), \n\
   FOREIGN KEY (idSite) REFERENCES "+siteTab+"(idSite)  \n\
@@ -1786,88 +1784,9 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
 
   
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"getInfoNDataTest");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"getInfoNDataTest(IboTLS INT(1), Iwww varchar(128), Iname varchar(128), Irev INT, IeTag varchar(32), IreqDate INT) \n\
-    proc_label:BEGIN \n\
-      DECLARE VidSite, VidPage, Vc, VboTalk, VboTemplate, VboTalkExist, VidFile, VidFileCache, VboValidServerCache, VboValidReqCache INT; \n\
-      DECLARE VtMod, VtModCache INT UNSIGNED; \n\
-      DECLARE Vwww, Vname, talkPage, Vstr varchar(128); \n\
-      DECLARE VeTag varchar(32); \n\
-      DECLARE strEditText, strHtmlText MEDIUMBLOB; \n\
-      DECLARE VboTLS, VboRedirectCase, VboOR, Vbo INT(1); \n\
-\n\
-          # Get site \n\
-      SELECT SQL_CALC_FOUND_ROWS boDefault INTO Vbo FROM "+siteTab+" WHERE www=Iwww;#  <-- result #0 \n\
-      IF FOUND_ROWS()!=1 THEN LEAVE proc_label; END IF; \n\
-      SET VboTLS=@boTLS, VidSite=@VidSite; \n\
-\n\
-          # Check if there is a redirect for this page \n\
-      SELECT SQL_CALC_FOUND_ROWS @tmp:=url INTO Vstr FROM "+redirectTab+" WHERE idSite=VidSite AND pageName=Iname;     #  <-- result #1 \n\
-      IF FOUND_ROWS() THEN \n\
-        UPDATE "+redirectTab+" SET nAccess=nAccess+1, tLastAccess=now() WHERE idSite=VidSite AND pageName=Iname; \n\
-        LEAVE proc_label; \n\
-      END IF; \n\
-\n\
-          # Check if there is a redirect for this domain \n\
-      SELECT SQL_CALC_FOUND_ROWS @tmp:=url INTO Vstr FROM "+redirectDomainTab+" WHERE www=Iwww;     #  <-- result #2 \n\
-      IF FOUND_ROWS() THEN LEAVE proc_label; END IF; \n\
-\n\
-          # Get wwwCommon \n\
-      SELECT SQL_CALC_FOUND_ROWS boTLS INTO Vbo  FROM "+siteTab+" WHERE boDefault=1; #  <-- result #3 \n\
-\n\
-          # Check if page exist \n\
-      SELECT SQL_CALC_FOUND_ROWS @Vname:=pageName INTO Vstr FROM "+pageTab+" WHERE idSite=VidSite AND pageName=Iname;  #  <-- result #4 \n\
-      IF FOUND_ROWS()=0 THEN LEAVE proc_label; END IF;   # noSuchPage \n\
-      SET Vname=@Vname, VidPage=@VidPage, VboOR=@VboOR; \n\
-\n\
-\n\       # Redirect to correct case OR correct boTLS\n\
-      SET VboRedirectCase = BINARY Vname!=Iname OR VboTLS!=IboTLS; \n\
-      SELECT VboRedirectCase INTO Vbo;  #  <-- result #5 \n\
-      IF VboRedirectCase THEN LEAVE proc_label; END IF;   \n\
-\n\
-      IF !VboOR THEN LEAVE proc_label; END IF;   # Private\n\
-\n\
-          # Calc VboTalkExist \n\
-      SET VboTalk=isTalk(Iname), VboTemplate=isTemplate(Iname); \n\
-      IF VboTalk=0 THEN \n\
-        IF VboTemplate THEN SET talkPage=CONCAT('template_talk:',Iname); ELSE SET talkPage=CONCAT('talk:',Iname); END IF;\n\
-        SELECT count(idPage) INTO VboTalkExist FROM "+pageTab+" WHERE idSite=VidSite AND pageName=talkPage; \n\
-      END IF;\n\
-      SELECT VboTalkExist INTO Vbo;  #  <-- result #6 \n\
-\n\
-          # Get version table \n\
-      DROP TEMPORARY TABLE IF EXISTS tmpVersionTable; \n\
-      CREATE TEMPORARY TABLE tmpVersionTable AS  \n\
-        SELECT SQL_CALC_FOUND_ROWS rev, summary, signature, idFile, idFileCache, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache, eTag FROM "+versionTab+" WHERE idPage=VidPage; \n\
-      #SELECT * FROM tmpVersionTable;                                                 #  <-- result #7 \n\
-      SELECT FOUND_ROWS() INTO Vc; \n\
-      IF Vc<1 THEN LEAVE proc_label; END IF;   # no versions !? \n\
-\n\
-      IF Irev>=Vc THEN LEAVE proc_label; END IF;             # noSuchRev \n\
-\n\
-      IF Irev=-1 THEN SET Irev=Vc-1; END IF;                          # Use last rev \n\
-\n\
-          # The requested revision Irev \n\
-          # Note VtMod and VtModCache are already in unix-time\n\
-      SELECT eTag, idFile, idFileCache, tMod, tModCache INTO VeTag, VidFile, VidFileCache, VtMod, VtModCache FROM tmpVersionTable WHERE rev=Irev;   \n\
-\n\
-      SET VboValidServerCache=VtMod<=VtModCache AND LENGTH(VeTag);                                             # Calc VboValidServerCache \n\
-      SELECT VboValidServerCache INTO Vbo;  # <-- result #8 \n\
-\n\
-          # Calc VboValidReqCache \n\
-      SET VboValidReqCache= VboValidServerCache AND BINARY VeTag=IeTag AND VtModCache<=IreqDate;  \n\
-      SELECT VboValidReqCache INTO Vbo;   # <-- result #9 \n\
-      IF VboValidReqCache THEN LEAVE proc_label; END IF;                          # 304 \n\
-\n\
-      SELECT data INTO strEditText FROM "+fileTab+" WHERE idFile=VidFile;                            # <-- result #10 \n\
-\n\
-      IF VboValidServerCache THEN \n\
-        SELECT data INTO strHtmlText FROM "+fileTab+" WHERE idFile=VidFileCache;                                               # <-- result #11\n\
-        SELECT pageName, boOnWhenCached INTO Vstr, Vbo FROM "+subTab+" WHERE idPage=VidPage AND pageName REGEXP '^template:';       #  <-- result #12 \n\
-      END IF; \n\
-\n\
-    END");
-
   
+  
+
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"getInfoNDataBE");
   SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"getInfoNDataBE(Iwww varchar(128), Iname varchar(128), Irev INT, IeTag varchar(32), IreqDate INT) \n\
     proc_label:BEGIN \n\
@@ -1932,20 +1851,20 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
   //
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"saveByReplace");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"saveByReplace(IsiteName varchar(128), Iwww varchar(128), Iname varchar(128), Idata MEDIUMBLOB, Ihtml MEDIUMBLOB, IeTag varchar(32)) \n\
+  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"saveByReplace(IsiteName varchar(128), Iwww varchar(128), Iname varchar(128), Idata MEDIUMBLOB, Ihtml MEDIUMBLOB, IeTag varchar(32), OUT Omess varchar(128), OUT OidPage INT) \n\
       proc_label:BEGIN \n\
-        DECLARE Vc, VidSite, VidPage, VidFile, VidFileCache, VboTalk, VboTemplate, Vlen INT; \n\
+        DECLARE Vc, VidSite, VidFile, VidFileCache, VboTalk, VboTemplate, Vlen INT; \n\
 \n\
           # Get VidSite \n\
         IF(LENGTH(Iwww)) THEN \n\
           SELECT SQL_CALC_FOUND_ROWS idSite INTO VidSite FROM "+siteTab+" WHERE www=Iwww; \n\
-          IF FOUND_ROWS()=0 THEN SELECT 'IwwwNotFound' AS mess; LEAVE proc_label; END IF; \n\
+          IF FOUND_ROWS()=0 THEN SET Omess='IwwwNotFound'; LEAVE proc_label; END IF; \n\
         ELSEIF(LENGTH(IsiteName)) THEN \n\
           SELECT SQL_CALC_FOUND_ROWS idSite, www INTO VidSite, Iwww FROM "+siteTab+" WHERE siteName=IsiteName; \n\
-          IF FOUND_ROWS()=0 THEN SELECT 'IsiteNameNotFound' AS mess; LEAVE proc_label; END IF; \n\
+          IF FOUND_ROWS()=0 THEN SET Omess='IsiteNameNotFound'; LEAVE proc_label; END IF; \n\
         ELSE \n\
           SELECT SQL_CALC_FOUND_ROWS idSite, www INTO VidSite, Iwww FROM "+siteTab+" WHERE boDefault=1; \n\
-          IF FOUND_ROWS()=0 THEN SELECT 'noDefault' AS mess; LEAVE proc_label; END IF; \n\
+          IF FOUND_ROWS()=0 THEN SET Omess='noDefault'; LEAVE proc_label; END IF; \n\
         END IF; \n\
 \n\
         #CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); \n\
@@ -1954,14 +1873,14 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
 \n\
         INSERT INTO "+pageTab+" (idSite, pageName, boTalk, boTemplate) VALUES (VidSite, Iname, VboTalk, VboTemplate)  \n\
           ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=Iname, boTalk=VboTalk, boTemplate=VboTemplate, lastRev=0; \n\
-        SELECT LAST_INSERT_ID() INTO VidPage; \n\
+        SELECT LAST_INSERT_ID() INTO OidPage; \n\
         CALL "+strDBPrefix+"markStaleParentsOfPage(VidSite, Iname, 1, VboTemplate); \n\
 \n\
-        IF LENGTH(Idata)=0 THEN    CALL "+strDBPrefix+"deletePageID(VidPage); SELECT 'deleting' AS mess; LEAVE proc_label;        END IF;    # Delete all \n\
+        IF LENGTH(Idata)=0 THEN    CALL "+strDBPrefix+"deletePageID(OidPage); SET Omess='deleting'; LEAVE proc_label;        END IF;    # Delete all \n\
   \n\
           # Delete old versions \n\
-        CALL "+strDBPrefix+"deleteAllButFirst(VidPage, Iname); \n\
-        SELECT count(*), idFile, idFileCache INTO Vc,VidFile, VidFileCache FROM "+versionTab+" WHERE idPage=VidPage AND rev=0; \n\
+        CALL "+strDBPrefix+"deleteAllButFirst(OidPage, Iname); \n\
+        SELECT count(*), idFile, idFileCache INTO Vc, VidFile, VidFileCache FROM "+versionTab+" WHERE idPage=OidPage AND rev=0; \n\
   \n\
         IF VidFile IS NULL THEN \n\
           INSERT INTO "+fileTab+" (data) VALUES (Idata);    SELECT LAST_INSERT_ID() INTO VidFile; \n\
@@ -1976,13 +1895,14 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
   \n\
         SET Vlen=LENGTH(Idata); \n\
         IF Vc=0 THEN \n\
-          INSERT INTO "+versionTab+" (idPage,rev,idFile,tMod,idFileCache,tModCache,eTag,size) VALUES (VidPage,0,VidFile,now(),VidFileCache,now(),IeTag,Vlen); \n\
+          INSERT INTO "+versionTab+" (idPage,rev,idFile,tMod,idFileCache,tModCache,eTag,size) VALUES (OidPage,0,VidFile,now(),VidFileCache,now(),IeTag,Vlen); \n\
         ELSE \n\
-          UPDATE "+versionTab+" SET idFile=VidFile, boOther=0, tMod=now(), idFileCache=VidFileCache, tModCache=now(), eTag=IeTag, size=Vlen WHERE idPage=VidPage AND rev=0; \n\
+          UPDATE "+versionTab+" SET idFile=VidFile, boOther=0, tMod=now(), idFileCache=VidFileCache, tModCache=now(), eTag=IeTag, size=Vlen WHERE idPage=OidPage AND rev=0; \n\
         END IF; \n\
   \n\
-        CALL "+strDBPrefix+"writeSubTables(VidPage); \n\
-        SELECT 'done' AS mess, UNIX_TIMESTAMP(now()) AS tMod, UNIX_TIMESTAMP(now()) AS tModCache; \n\
+        CALL "+strDBPrefix+"writeSubTables(OidPage); \n\
+        SET Omess='done'; \n\
+        SELECT UNIX_TIMESTAMP(now()) AS tMod, UNIX_TIMESTAMP(now()) AS tModCache; \n\
       END");
 
 

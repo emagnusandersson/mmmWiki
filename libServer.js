@@ -143,17 +143,19 @@ createSubImageStr=function(StrT){
   return strSubQ;
 }
 
-createSaveByReplaceSQL=function(siteName, wwwSite, strName, strEditText, strHtmlText, eTag, arrSub, StrSubImage){ 
-  var [strSubQ,arrSubV]=createSubStr(arrSub);
-  var strSubImageQ=createSubImageStr(StrSubImage);
-  var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  Sql.push("TRUNCATE tmpSubNew; "+strSubQ); // START TRANSACTION; 
-  Sql.push("TRUNCATE tmpSubNewImage; "+strSubImageQ);
-  Sql.push("CALL "+strDBPrefix+"saveByReplace(?,?,?,?,?,?);");  //  COMMIT;
-  var sql=Sql.join('\n'); 
-  var Val=array_merge(arrSubV, StrSubImage, [siteName, wwwSite, strName, strEditText, strHtmlText, eTag]);
-  return {sql:sql,Val:Val,nEndingResults:1};
-}
+//createSaveByReplaceSQL=function(siteName, wwwSite, strName, strEditText, strHtmlText, eTag, arrSub, StrSubImage){ 
+  //var [strSubQ,arrSubV]=createSubStr(arrSub);
+  //var strSubImageQ=createSubImageStr(StrSubImage);
+  //var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
+  //Sql.push("TRUNCATE tmpSubNew; "+strSubQ); // START TRANSACTION; 
+  //Sql.push("TRUNCATE tmpSubNewImage; "+strSubImageQ);
+  //Sql.push("CALL "+strDBPrefix+"saveByReplace(?,?,?,?,?,?,@Omess);");  //  COMMIT;
+  //Sql.push("SELECT @Omess AS mess");
+  //var sql=Sql.join('\n'); 
+  //var Val=array_merge(arrSubV, StrSubImage, [siteName, wwwSite, strName, strEditText, strHtmlText, eTag]);
+  ////return {sql:sql,Val:Val,nEndingResults:1};
+  //return {sql:sql,Val:Val};
+//}
 
 createSaveByAddSQL=function(wwwSite, strName, summary, signature, strEditText, strHtmlText, eTag, arrSub, StrSubImage){ 
   var [strSubQ,arrSubV]=createSubStr(arrSub);
@@ -231,9 +233,9 @@ setSetting=function*(inObj){
 
 
 
-writeCacheDynamicJS=function*() {
+writeCacheDynamicJS=function*(flow) {
   var buf=createCommonJS();
-  var [err]=yield* CacheUri.set.call(this, '/'+leafCommon, buf, 'js', true, true);   if(err) return [err];
+  var [err]=yield* CacheUri.set(flow, '/'+leafCommon, buf, 'js', true, true);   if(err) return [err];
   return [null];
 }
 
@@ -293,7 +295,7 @@ StrOrderFiltImage="+JSON.stringify(StrOrderFiltImage)+";\n\
 regTalk=RegExp('^(talk|template_talk):','i');
 regTalkNTemplateNSite=RegExp('^(talk:|template:|template_talk:|)(?:([^:]+):)?(.+)','i');
 
-calcTalkName=function(queredPage){
+calcTalkName=function(queredPage){ // Examples: "abc"=>"talk:abc", "template:abc"=>"template_talk:abc", "talk:abc"=>"", "template_talk:abc"=>""
   var talkPage='';
   if(!regTalk.test(queredPage)){
     if(queredPage.substr(0,9)=='template:') talkPage='template_talk:'+queredPage; else talkPage='talk:'+queredPage;
