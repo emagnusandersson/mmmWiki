@@ -30,7 +30,7 @@
     "url": "http://github.com/"
   },
   "engines": {
-    "node": "7.x",
+    "node": "11.x",
     "npm": ""
   }
 }

@@ -32,7 +32,7 @@ redis = require("redis");
 //csvtojson=require('csvtojson');
 papaparse = require('papaparse');  // For parsing CSV
 //Neo4j = require('neo4j-transactions');
-var argv = require('minimist')(process.argv.slice(2));  // Perhaps use yargs !? (according to https://www.youtube.com/watch?v=S-_Fx4-nal8)
+var minimist = require('minimist')
 require('./lib.js');
 require('./libServerGeneral.js');
 require('./libServer.js');
@@ -78,6 +78,11 @@ helpTextExit=function(){
   process.exit(0);
 }
 
+var argv = minimist(process.argv.slice(2), {alias: {h:'help', p:'port'}} );  // Perhaps use yargs !? (according to https://www.youtube.com/watch?v=S-_Fx4-nal8)
+
+var C=AMinusB(Object.keys(argv),['_', 'h', 'help', 'p', 'port', 'sql', 'loadFrBU']);
+var tmp=[].concat(C,argv._);
+if(tmp.length){ console.log(tmp.join(', ')+' are unknown options'); helpTextExit(); return;}
 
 
 

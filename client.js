@@ -1,5 +1,74 @@
+/*
+\$\('<([^>]+)>'
+createElement('\1'
+
+\$\("<([^>]+)>"
+createElement('\1'
+
+\.val\('([^\)]*)'\)
+.value='\1'
+
+\.val\(\)
+.value
+
+\.val\(([^\)]*)\)
+.prop('value',\1)
+.value=\1
+
+$
+(this)
+parent()
+clone
+body
+.index
+.each
+add
+click
+keypress
+change
+append
+html
+text
+[]
+
+.eq
+\.eq\(([^\)]*)\)
+[\1]
+.children
+.find
+mouseover mouseout
+.add(
+.push(
+nth-of-type
+bind
+data
+\(([a-zA-Z0-9]+)\)\.
+eq
+append ->myAppend
+
+index
+not()
+before
+after
+setVis
+majax
+pop
+.children.forEach
+height width
+next()
+.hasClass
+.is(':empty')
+originalEvent
+
+myText\([^\)\,]+,[^\)]+\)
+*/
 
 
+
+
+/*
+pagelist: rwp vertically
+*/
 (function(){
 
 
@@ -38,63 +107,15 @@ MmmWikiFiltExtention={
 
 
 
-function popUpExtend($el){
-  $el.openPop=function() {
-"use strict"
-    //siz=getViewPortSize();  winW=siz.w;winH=siz.h;
-    //var siz=getViewPortSize(); var winW=siz.w;
-    var winW=$(window).width(),winH=$(window).height();
-    var $doc=$(document), scrollX=$doc.scrollLeft(), scrollY=$doc.scrollTop(); 
-    //var pageYOffset=window.pageYOffset;   if(typeof pageYOffset =='undefined') pageYOffset=document.body.scrollTop;
-    $el.setBlanketSize();
-  
-    $el.addClass('popUpDiv');
-    
-    $body.prepend($el.$blanket);  
-    $body.prepend($el);
-
-    //$(window).scroll($el.setBlanketSize);
-    $(window).on('scroll',$el.setBlanketSize);
-    //$(window).scroll(function(){alert('tt');});
-    
-    //var bubW=$el.width(), bubH=$el.height();
-    var bubW=$el.outerWidth(), bubH=$el.outerHeight(); //alert('$(window).width(): '+winW+' '+winH+', bubW: '+bubW+' '+bubH);
-    var x=scrollX+(winW-bubW)/2; if(x<0) x=0;    var y=scrollY+(winH-bubH)/4;  if(y<0) y=0;
-    //$el.append("scrollY:"+scrollY+", winH:"+winH+", bubH:"+bubH);
-    //if($.browser.msie)  $el.css({left:x+'px'});   else $el.css({top:y+'px',left:x+'px'});
-    $el.css({top:y+'px',left:x+'px'});
-  }
-
-  $el.closePop=function() { 
-    $el.detach();    
-    //$(window).unbind('scroll',$el.setBlanketSize);
-    $(window).off('scroll',$el.setBlanketSize);
-    $el.$blanket.detach(); 
-  }
-  
-  $el.setBlanketSize=function(){
-    
-    var docH=$(document).height(), winH=$(window).height(), blankH=docH>winH?docH:winH, blankHOld=$el.$blanket.css("height");
-    if(blankH!=blankHOld)  $el.$blanket.css({"height": blankH  });
-    var docW=$(document).width(), winW=$(window).width(), blankW=docW>winW?docW:winW, blankWOld=$el.$blanket.css("width");
-    if(blankW!=blankWOld)  $el.$blanket.css({"width": blankW  });
-    
-  }
-  
-  $el.$blanket=$('<div>').addClass('blanketPop');
-  //$el.$blanket.css({background:'#555'});
-  $el.$blanket.css({background:'#fff'});
-  return $el;
-}
 
 
-histGoTo=function($view){}
+histGoTo=function(view){}
 doHistBack=function(){  history.back();}
 doHistPush=function(obj){
     // Set "scroll" of stateNew  (If the scrollable div is already visible)
-  var $view=obj.$view;
-  var scrollT=$window.scrollTop();
-  if(typeof $view.setScroll=='function') $view.setScroll(scrollT); else history.StateMy[history.state.ind].scroll=scrollT;  //$view.intScroll=scrollT;
+  var view=obj.view;
+  var scrollT=window.scrollTop();
+  if(typeof view.setScroll=='function') view.setScroll(scrollT); else history.StateMy[history.state.ind].scroll=scrollT;  //view.intScroll=scrollT;
 
   if((boChrome || boOpera) && !boTouch)  history.boFirstScroll=true;
 
@@ -113,24 +134,24 @@ changeHist=function(obj){
   history.StateMy[history.state.ind]=obj;
 }
 getHistStatName=function(){
-  return history.StateMy[history.state.ind].$view.toString();
+  return history.StateMy[history.state.ind].view.toString();
 }
 
 
-history.distToGoal=function($viewGoal){
+history.distToGoal=function(viewGoal){
   var ind=history.state.ind;
   var indGoal;
   for(var i=ind; i>=0; i--){
     var obj=history.StateMy[i];
-    var $view; if(typeof obj=='object') $view=obj.$view; else continue;
-    if($view===$viewGoal) {indGoal=i; break;}
+    var view; if(typeof obj=='object') view=obj.view; else continue;
+    if(view===viewGoal) {indGoal=i; break;}
   }
 
   var dist; if(typeof indGoal!='undefined') dist=indGoal-ind;
   return dist;
 }
-history.fastBack=function($viewGoal, boRefreshHash){
-  var dist=history.distToGoal($viewGoal);
+history.fastBack=function(viewGoal, boRefreshHash){
+  var dist=history.distToGoal(viewGoal);
   if(dist) {
     if(typeof boRefreshHash!='undefined') history.boResetHashCurrent=boRefreshHash;
     history.go(dist);
@@ -139,62 +160,62 @@ history.fastBack=function($viewGoal, boRefreshHash){
 
 
 
-commentButtonExtend=function($el){
+commentButtonExtend=function(el){
 "use strict"
-  $el.setUp=function(boTalkExist){
+  el.setUp=function(boTalkExist){
     if(boTalkExist) {
-      $a.css({color:""}); if($a.prop('rel')) $a.prop({rel:''});
-    } else $a.css({color:"red"}).prop({rel:'nofollow'});
+      a.css({color:""}); if(a.prop('rel')) a.prop({rel:''});
+    } else a.css({color:"red"}).prop({rel:'nofollow'});
   } 
   var matches=queredPage.match(/^ *(talk:|template:|template_talk:|) *(.*)/)
   var kind=matches[1].replace(/:/,'');
   var _page=matches[2].replace(/ /,'_');
-  //$body.css({'line-height':'100%'});
+  //elBody.css({'line-height':'100%'});
   var url='',boShallHave=0;
   if(kind=='template') { url=uSite+'/template_talk:'+_page; boShallHave=1; }
   else if(kind=='') { url=uSite+'/talk:'+_page; boShallHave=1;}
   
-  var $a=$('<a>').prop({href:url});
+  var a=createElement('a').prop({href:url});
 
   if(boSmallAndroid){
     
-    var $tmpImg=$('<img>').prop({src:uComment}).css({display:'inline-block',height:'1em',width:'1em',position:'absolute',left:'0em',top:'0em',border:'0px'});
-    $a.append("██",$tmpImg).css({'font-size':'1.5em',position:'absolute',left:'0em',top:'0em'});  //██⬛
-    //var $divAbs=$('<div>').append($a).css({position:'relative',display:'inline-block',height:'1.6em',width:'1.6em','vertical-align':'baseline',top:'0em'});
-    $el.append($a).css({position:'relative',display:'inline-block',height:'1.5em',width:'1.5em',overflow:'hidden','vertical-align':'baseline',cursor:'pointer'});
-    $el.click(function(){window.location.assign(url)});
+    var tmpImg=createElement('img').prop({src:uComment}).css({display:'inline-block',height:'1em',width:'1em',position:'absolute',left:'0em',top:'0em',border:'0px'});
+    a.myAppend("██",tmpImg).css({'font-size':'1.5em',position:'absolute',left:'0em',top:'0em'});  //██⬛
+    //var divAbs=createElement('div').myAppend(a).css({position:'relative',display:'inline-block',height:'1.6em',width:'1.6em','vertical-align':'baseline',top:'0em'});
+    el.myAppend(a).css({position:'relative',display:'inline-block',height:'1.5em',width:'1.5em',overflow:'hidden','vertical-align':'baseline',cursor:'pointer'});
+    el.on('click',function(){window.location.assign(url)});
     
 /*
     var strSpeechBubble="💬";
-    $a.append(strSpeechBubble);
-    $el.append($a).css({'font-size':'0.88em','vertical-align':'text-bottom','line-height':strSizeIcon,'display':'inline-block'});
+    a.myText(strSpeechBubble);
+    el.myAppend(a).css({'font-size':'0.88em','vertical-align':'text-bottom','line-height':strSizeIcon,'display':'inline-block'});
 */
   }else {
-    $a.append('Comments');
-    $el.append($a).css({'font-size':'0.88em','vertical-align':'text-bottom','line-height':strSizeIcon,'display':'inline-block'});
+    a.myText('Comments');
+    el.myAppend(a).css({'font-size':'0.88em','vertical-align':'text-bottom','line-height':strSizeIcon,'display':'inline-block'});
   }
-  $el.toggle(Boolean(boShallHave));
-  //if(boShallHave) $el.css({display:''}); else {$el.hide(); }  //$el.show(); // $el.show() => display:block in Firefox !!!!!
-  return $el;
+  el.toggle(Boolean(boShallHave));
+  //if(boShallHave) el.css({display:''}); else {el.hide(); }  //el.show(); // el.show() => display:block in Firefox !!!!!
+  return el;
 }
 
-vLoginDivExtend=function($el){
+vLoginDivExtend=function(el){
 "use strict"
   var vPassF=function(){  
-    var tmp=SHA1($vPass.val()+strSalt);
+    var tmp=SHA1(vPass.value+strSalt);
     var vec=[['vLogin',{pass:tmp},pageLoadF]];   majax(oAJAX,vec);  
-    $vPass.val('');
+    vPass.value='';
   }
   var pageLoadF=function(){
-    if(boVLoggedIn) $pageView.setVis(); else return;
+    if(boVLoggedIn) pageView.setVis(); else return;
     var vec=[['pageLoad',1]];   majax(oAJAXCacheable,vec);
   }
-  var $vPass=$('<input type=password>').keypress( function(e){ if(e.which==13) {vPassF();return false;} });     
-  var $vPassButt=$('<button>').append('Login').click(vPassF);
-  $el.$vPass=$vPass;
-  $el.addClass('vPassword').append($vPass, $vPassButt);
+  var vPass=createElement('input').prop('type', 'password').on('keypress',  function(e){ if(e.which==13) {vPassF();return false;} });     
+  var vPassButt=createElement('button').myText('Login').on('click',vPassF);
+  el.vPass=vPass;
+  el.addClass('vPassword').myAppend(vPass, vPassButt);
 
-  return $el;
+  return el;
 }
 
 
@@ -213,304 +234,331 @@ createColJIndexNamesObj=function(arrName){
 }
 
 
-messExtend=function($el){
-"use strict"
-  $el.resetMess=function(time){ 
-    if(typeof time =='number')     messTimer=setTimeout('resetMess()',time*1000);
-    else {$el.html(''); clearTimeout(messTimer);} 
+//messExtend=function(el){
+//"use strict"
+  //el.resetMess=function(time){ 
+    //if(typeof time =='number')     messTimer=setTimeout('resetMess()',time*1000);
+    //else {el.myText(''); clearTimeout(messTimer);} 
+  //}
+  //el.setMess=function(str,time,boRot){  
+    //el.show();
+    //el.myText(str);  clearTimeout(messTimer); 
+    //if(typeof time=='number' && time>0)     messTimer=setTimeout('resetMess()',time*1000);
+    //if(boRot) el.myAppend(imgBusy);
+  //};
+  //var messTimer;
+  ////el.addClass('message').css({'z-index':8100,position:'fixed'}); 
+  //el.css({border:'black 1px solid',bottom:'0%',right:'0%',margin:'0',padding:'1px','background-color':'#F7F700','font-size':'0.8em','z-index':18100,position:'fixed'}); 
+  //el.on('click',function(){el.hide();});
+  //return el;
+//}
+
+spanMessageTextCreate=function(){
+  var el=createElement('span');
+  var spanInner=createElement('span');
+  el.myAppend(spanInner, imgBusy)
+  el.resetMess=function(time){
+    clearTimeout(messTimer);
+    if(typeof time =='number') { messTimer=setTimeout('resetMess()',time*1000); return; }
+    spanInner.myText(' ');
+    imgBusy.hide();
   }
-  $el.setMess=function(str,time,boRot){  
-    $el.show();
-    $el.html(str);  clearTimeout(messTimer); 
-    if(typeof time=='number' && time>0)     messTimer=setTimeout('resetMess()',time*1000);
-    if(boRot) $el.append($imgBusy);
+  el.setMess=function(str,time,boRot){
+    spanInner.myText(str);
+    clearTimeout(messTimer);
+    if(typeof time =='number')     messTimer=setTimeout('resetMess()',time*1000);
+    imgBusy.toggle(Boolean(boRot));
+  };
+  el.setHtml=function(str,time,boRot){
+    spanInner.myHtml(str);
+    clearTimeout(messTimer);
+    if(typeof time =='number')     messTimer=setTimeout('resetMess()',time*1000);
+    imgBusy.toggle(Boolean(boRot));
   };
   var messTimer;
-  //$el.addClass('message').css({'z-index':8100,position:'fixed'}); 
-  $el.css({border:'black 1px solid',bottom:'0%',right:'0%',margin:'0',padding:'1px','background-color':'#F7F700','font-size':'0.8em','z-index':18100,position:'fixed'}); 
-  $el.click(function(){$el.hide();});
-  return $el;
+  el.addClass('message');//.css({'z-index':8100,position:'fixed'});
+  //el.css({border:'black 1px solid',bottom:'0%',right:'0%',margin:'0',padding:'1px','background-color':'#F7F700','font-size':'0.8em','z-index':18100,position:'fixed'}); 
+  return el;
 }
-
 
 
 /*******************************************************************************
  * pageView
  ******************************************************************************/
-pageViewExtend=function($el){
+pageViewExtend=function(el){
 "use strict"
-  $el.toString=function(){return 'pageView';}
-  $el.setDetail=function(){
+  el.toString=function(){return 'pageView';}
+  el.setDetail=function(){
     var strNR='',  str='';
     if(matVersion.length){
       var ver=arrVersionCompared[1], rev=ver-1;
       var r=matVersion[rev];
       strNR='v'+ver+'/'+nVersion;  str=r[1]+' <b><i>'+r[2]+'</i></b>';//+mySwedDate(r[0]);
     }
-    $el.$spanNR.html(strNR);  $spanDetail.html(str);
+    el.spanNR.myHtml(strNR);  spanDetail.myHtml(str);
   }
-  $el.setFixedDivColor=function(boOR){   $el.$fixedDiv.css({background:boOR?'#fff':'lightgreen'});  }
+  el.setFixedDivColor=function(boOR){   el.fixedDiv.css({background:boOR?'#fff':'lightgreen'});  }
 
     // menuB == versionMenu
-  var $versionTableButton=$('<button>').append('Version list').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){
-    doHistPush({$view:$versionTable});
-    $versionTable.setVis();
+  var versionTableButton=createElement('button').myText('Version list').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
+    doHistPush({view:versionTable});
+    versionTable.setVis();
   });    
-  var $diffButton=$('<button>').append('Diff').addClass('fixWidth').css({'margin-right':'1em'}).click(function(){
+  var diffButton=createElement('button').myText('Diff').addClass('fixWidth').css({'margin-right':'1em'}).on('click',function(){
     //var arrVersionCompared=[bound(nVersion-iRow-1,1),nVersion-iRow];
     if(nVersion<2) return;
     arrVersionCompared[0]=arrVersionCompared[1]-1;
     if(arrVersionCompared[1]==1) arrVersionCompared=[2,1]; 
     var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
-    doHistPush({$view:$diffDiv});
-    $diffDiv.setVis();
+    doHistPush({view:diffDiv});
+    diffDiv.setVis();
   });
-  $el.$spanNR=$('<span>').css({margin:'0em 0.1em'});
-  var $nextButton=$('<button>').append('⇧').addClass('fixWidth').click(function(){
+  el.spanNR=createElement('span').css({margin:'0em 0.1em'});
+  var nextButton=createElement('button').myText('⇧').addClass('fixWidth').on('click',function(){
     var iVer=arrVersionCompared[1]+1; if(iVer>nVersion) iVer=1;
     var vec=[['pageLoad',{version:iVer}]];   majax(oAJAXCacheable,vec); 
   });
-  var $prevButton=$('<button>').append('⇩').addClass('fixWidth').css({'margin-left':'0.8em'}).click(function(){
+  var prevButton=createElement('button').myText('⇩').addClass('fixWidth').css({'margin-left':'0.8em'}).on('click',function(){
     var iVer=arrVersionCompared[1]-1; if(iVer<1) iVer=nVersion;
     var vec=[['pageLoad',{version:iVer}]];   majax(oAJAXCacheable,vec); 
   });
-  var $spanDetail=$('<span>').append('ggggggggggg').css({'margin-right':'0.5em', 'margin-left':'0.5em'});
-  var $divUpper=$('<div>').append($prevButton,$el.$spanNR,$nextButton,$spanDetail,$diffButton).css({'line-height':'2em'});
+  var spanDetail=createElement('span').myText('ggggggggggg').css({'margin-right':'0.5em', 'margin-left':'0.5em'});
+  var divUpper=createElement('div').myAppend(prevButton,el.spanNR,nextButton,spanDetail,diffButton).css({'line-height':'2em'});
 
   
-  var $divLower=$('<div>').append($versionTableButton).css({margin:'.5em auto auto'});
+  var divLower=createElement('div').myAppend(versionTableButton).css({margin:'.5em auto auto'});
 
-  $el.$versionMenu=$('<div>').append($divUpper,$divLower).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.5em auto'});
+  el.versionMenu=createElement('div').myAppend(divUpper,divLower).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.5em auto'});
 
  
 
   var boShowAdminButton=getItem('boShowAdminButton');  if(boShowAdminButton===null)  boShowAdminButton=false;
   var adminButtonToggleEventF=function(){
     var now=Date.now(); if(now>timeSpecialR+1000*10) {timeSpecialR=now; nSpecialReq=0;}    nSpecialReq++;
-    if(nSpecialReq==3) { nSpecialReq=0;boShowAdminButton=!boShowAdminButton; $spanAdmin.toggle(boShowAdminButton);  setItem('boShowAdminButton',boShowAdminButton);  }
+    if(nSpecialReq==3) { nSpecialReq=0;boShowAdminButton=!boShowAdminButton; spanAdmin.toggle(boShowAdminButton);  setItem('boShowAdminButton',boShowAdminButton);  }
   }
   var timeSpecialR=0, nSpecialReq=0;
     // menuA
 
-  var $tmpImg=$('<img>').prop({src:uBitcoin}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'});
-  var $tmpSpan=$('<span>').append('Pay/Donate');//.css({display:'inline-block','vertical-align':'text-bottom',height:strSizeIcon});  display:'inline-block',
-  var $paymentButton=$('<button>').append($tmpSpan).addClass('fixWidth').css({'vertical-align':'bottom','margin-right':'1em','line-height':strSizeIcon}).click(function(){
-    doHistPush({$view:$paymentDiv});
-    $paymentDiv.setVis();
-  }); if(ppStoredButt=='' && strBTC=='') $paymentButton.hide();
-  $editButton.on('click', adminButtonToggleEventF);
-  var $tmpImg=$('<img>').prop({src:uAdmin}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom', 'user-drag':'none'});
-  var $adminButton=$('<button>').append($tmpImg).addClass('fixWidth').click(function(){
-    doHistPush({$view:$adminDiv});
-    $adminDiv.setVis();
+  var tmpImg=createElement('img').prop({src:uBitcoin}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'});
+  var tmpSpan=createElement('span').myText('Pay/Donate');//.css({display:'inline-block','vertical-align':'text-bottom',height:strSizeIcon});  display:'inline-block',
+  var paymentButton=createElement('button').myAppend(tmpSpan).addClass('fixWidth').css({'vertical-align':'bottom','margin-right':'1em','line-height':strSizeIcon}).on('click',function(){
+    doHistPush({view:paymentDiv});
+    paymentDiv.setVis();
+  }); if(ppStoredButt=='' && strBTC=='') paymentButton.hide();
+  editButton.on('click', adminButtonToggleEventF);
+  var tmpImg=createElement('img').prop({src:uAdmin}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable');
+  var adminButton=createElement('button').myAppend(tmpImg).addClass('fixWidth').on('click',function(){
+    doHistPush({view:adminDiv});
+    adminDiv.setVis();
   });
-  var $spanAdmin=$('<span>').append($spanMod, $adminButton).css({'float':'right'})
-  if(!boTouch) popupHoverJQ($adminButton,$('<div>').html('Administrator entry.'));
-  $spanAdmin.toggle(boShowAdminButton);
+  var spanAdmin=createElement('span').myAppend(spanMod, adminButton).css({'float':'right'})
+  if(!boTouch) popupHover(adminButton,createElement('div').myText('Administrator entry.'));
+  spanAdmin.toggle(boShowAdminButton);
   
 
-  $commentButton.css({'margin-left':'1em','float':'right'});
-  var $menuA=$('<div>').append($editButton,$paymentButton,$commentButton,$spanAdmin).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //.css({margin:'1em 0','text-align':'center',position:'fixed',bottom:0,width:'100%'});
+  commentButton.css({'margin-left':'1em','float':'right'});
+  var menuA=createElement('div').myAppend(editButton,paymentButton,commentButton,spanAdmin).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //.css({margin:'1em 0','text-align':'center',position:'fixed',bottom:0,width:'100%'});
 
-  $el.$fixedDiv=$('<div>').append($el.$versionMenu,$menuA).css(cssFixed);//.css({position:'static'});
+  el.fixedDiv=createElement('div').myAppend(el.versionMenu,menuA).css(cssFixed);//.css({position:'static'});
 
   
-  $el.append($el.$fixedDiv);
+  el.myAppend(el.fixedDiv);
 
-  return $el;
+  return el;
 }
 
 /*******************************************************************************
  * adminDiv
  ******************************************************************************/
-adminDivExtend=function($el){
+adminDivExtend=function(el){
 "use strict"
-  $el.toString=function(){return 'adminDiv';}
-  $el.setUp=function(){
-    if($editText.parent()[0]!==$el.$fixedDiv[0]) {
-      $el.$fixedDiv.prepend($dragHR,$editText);
+  el.toString=function(){return 'adminDiv';}
+  el.setUp=function(){
+    if(editText.parentNode!==el.fixedDiv) {
+      el.fixedDiv.prepend(dragHR,editText);
     }
-    //$dragHR.after($editText);
+    //dragHR.after(editText);
   }
-  $el.setAdminStat=function(){
+  el.setAdminStat=function(){
     var boT=Boolean(boALoggedIn);
-    $infoDiv.add($logoutButt).add($handyButton).toggle(boT);
-    //$loginButt.add($password).add($password2).toggle(!boT);
-    $password.add($password2).toggle(!boT);
+    [infoDiv, logoutButt, handyButton].forEach(ele=>ele.toggle(boT));
+    //loginButt.add(password).add(password2).toggle(!boT);
+    [password, password2].forEach(ele=>ele.toggle(!boT));
   }
   var aPassF=function(){  
-    var tmp=SHA1($password.val()+strSalt);
+    var tmp=SHA1(password.value+strSalt);
     var vec=[['aLogin',{pass:tmp}]];   majax(oAJAX,vec); 
-    $password.val('');
+    password.value='';
   }
-  //var $loginButt=$('<button>').append('Login').on('click',aPassF).hide();
-  var $logoutButt=$('<button>').append('Logout').click(function(){
+  //var loginButt=createElement('button').myText('Login').on('click',aPassF).hide();
+  var logoutButt=createElement('button').myText('Logout').on('click',function(){
     var vec=[['aLogout',1]];   majax(oAJAX,vec); 
   }); 
-  var $password=$('<input type=password placeholder="Login">').keypress( function(e){   if(e.which==13) { aPassF(); return false;}   }); 
+  var password=createElement('input').prop({type:'password', placeholder:"Login"}).on('keypress',  function(e){   if(e.which==13) { aPassF(); return false;}   }); 
 
   var aPass2F=function(){  
-    var tmp=SHA1($password2.val()+strSalt); 
-    var vec=[['aLogin',{pass:tmp}],['saveByReplace',{strEditText:$editText.val()}]];   majax(oAJAX,vec); 
-    $password2.val('');
-    $boLCacheObs.val(1);
+    var tmp=SHA1(password2.value+strSalt); 
+    var vec=[['aLogin',{pass:tmp}],['saveByReplace',{strEditText:editText.value}]];   majax(oAJAX,vec); 
+    password2.value='';
+    boLCacheObs.value=1;
   }
-  var $handyButton=$('<button>').append('Overwrite').click(aPass2F); 
-  var $password2=$('<input type=password  placeholder="Overwrite">').keypress( function(e){   if(e.which==13) {aPass2F(); return false;}   }); 
-  var $imgH=$imgHelp.clone().css({margin:'0em 1em'}); popupHoverJQ($imgH,$('<div>').html('Write password for:<li>Login: logging in<li>Overwrite: A brutal but handy quick route for saving plus deleting all old versions.'));
-  //var $handySpan=$('<span>').append();  
-  var $aLoginDiv=$('<span>').append($imgH, $logoutButt, $password, ' ', $handyButton, $password2);
-  $password.add($password2).css({width:'6em'});
-  $aLoginDiv.css({"float":"right"});
+  var handyButton=createElement('button').myText('Overwrite').on('click',aPass2F); 
+  var password2=createElement('input').prop({type:'password', placeholder:"Overwrite"}).on('keypress',  function(e){   if(e.which==13) {aPass2F(); return false;}   }); 
+  var imgH=imgHelp.cloneNode().css({margin:'0em 1em'}); popupHover(imgH,createElement('div').myHtml('Write password for:<li>Login: logging in<li>Overwrite: A brutal but handy quick route for saving plus deleting all old versions.'));
+  //var handySpan=createElement('span').myAppend();  
+  var aLoginDiv=createElement('span').myAppend(imgH, logoutButt, password, ' ', handyButton, password2);
+  [password, password2].forEach(ele=>ele.css({width:'6em'}));
+  aLoginDiv.css({"float":"right"});
 
   
-  var $moreButton=$('<button>').append('More').addClass('fixWidth').click(function(){
-    doHistPush({$view:$adminMoreDiv});
-    $adminMoreDiv.setVis();
+  var moreButton=createElement('button').myText('More').addClass('fixWidth').on('click',function(){
+    doHistPush({view:adminMoreDiv});
+    adminMoreDiv.setVis();
   }); 
     
 
-  //var $infoDiv=$('<span>').append($pageListButton,$imageListButton,' ',$statLink,' ',$moreButton);
-  var $infoDiv=$('<span>').append($moreButton); 
+  //var infoDiv=createElement('span').myAppend(pageListButton,imageListButton,' ',statLink,' ',moreButton);
+  var infoDiv=createElement('span').myAppend(moreButton); 
 
 
-  //var $menuB=$('<div>').append($moreButton,$pageListButton,$imageListButton)
-  var $menuB=$('<div>').append($infoDiv,$aLoginDiv).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'1em auto'});
+  //var menuB=createElement('div').myAppend(moreButton,pageListButton,imageListButton)
+  var menuB=createElement('div').myAppend(infoDiv,aLoginDiv).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'1em auto'});
 
 
 
     // menuA
-  //var $buttonBack=$('<button>').append('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(doHistBack);
-  //var $spanLabel=$('<span>').append('Admin').css({'float':'right',margin:'0.2em 0 0 0'});  
-  //var $menuA=$('<div>').append($spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //$buttonBack,
+  //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',doHistBack);
+  //var spanLabel=createElement('span').myText('Admin').css({'float':'right',margin:'0.2em 0 0 0'});  
+  //var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
 
-  $el.$spanClickOutside=$('<span>').append(strClickOutside).hide();
-  $el.$fixedDiv=$('<div>').append($dragHR,$el.$spanClickOutside,$menuB).css(cssFixedDrag);  //,$menuA
+  el.spanClickOutside=createElement('span').myText(strClickOutside).hide();
+  el.fixedDiv=createElement('div').myAppend(dragHR,el.spanClickOutside,menuB).css(cssFixedDrag);  //,menuA
 
-  //$el.$menus=$menuA.add($menuB);
-  $el.$menus=$menuB;
-  $el.append($el.$fixedDiv);
-  return $el;
+  //el.menus=menuA.add(menuB);
+  el.menus=menuB;
+  el.append(el.fixedDiv);
+  return el;
 }
 
-adminMoreDivExtend=function($el){
-  $el.toString=function(){return 'adminMoreDiv';}
-  $el.setUp=function(){
+adminMoreDivExtend=function(el){
+  el.toString=function(){return 'adminMoreDiv';}
+  el.setUp=function(){
     var funRet=function(data){
       var boBUNeeded=data.tLastMod>data.tLastBU, strTmp='tLastBU: '+swedTime(data.tLastBU)+', tLastMod: '+swedTime(data.tLastMod)+' ('+data.pageName+')';
-      $aBUFilesToComp.prop('title', strTmp).css({'background':boBUNeeded?'red':''});
+      aBUFilesToComp.prop('title', strTmp).css({'background':boBUNeeded?'red':''});
     }
     majax(oAJAX,[['getLastTModNTLastBU',{},funRet]]);  
-    //majax(oAJAX,[['isBUNeeded',{},function(data){  $aBUFilesToComp.prop('title', swedTime(data.tLastMod) );  }]]);  
+    //majax(oAJAX,[['isBUNeeded',{},function(data){  aBUFilesToComp.prop('title', swedTime(data.tLastMod) );  }]]);  
   }
   var strPublicRead='<span style="display:inline-block">'+charPublicRead+'</span>';
-  var $imgH=$imgHelp.clone().css({'margin-left':'.5em','margin-right':'0.5em'}); popupHoverJQ($imgH,$('<div>').html(strPublicRead+' = public read access<br>'+charPublicWrite+' = public write access<br>'+charPromote+' = promote = include the page in sitemap.xml etc. (encourage search engines to list the page)'));
-  $el.setMod=function(){
-    setButMod.call($butModRead[0], objPage.boOR);
-    setButMod.call($butModWrite[0], objPage.boOW);
-    setButMod.call($butModSiteMap[0], objPage.boSiteMap);
+  var imgH=imgHelp.cloneNode().css({'margin-left':'.5em','margin-right':'0.5em'}); popupHover(imgH,createElement('div').myHtml(strPublicRead+' = public read access<br>'+charPublicWrite+' = public write access<br>'+charPromote+' = promote = include the page in sitemap.xml etc. (encourage search engines to list the page)'));
+  el.setMod=function(){
+    setButMod.call(butModRead, objPage.boOR);
+    setButMod.call(butModWrite, objPage.boOW);
+    setButMod.call(butModSiteMap, objPage.boSiteMap);
   }
   
-  var $butModRead=$('<button>').append(strPublicRead).prop('title','Public read access').click( function(){clickModF.call(this,'boOR');} );  
-  var $butModWrite=$('<button>').append(charPublicWrite).prop('title','Public write access').click(function(){clickModF.call(this,'boOW');});
-  var $butModSiteMap=$('<button>').append(charPromote).prop('title','Promote (include page in sitemap.xml)').click(function(){clickModF.call(this,'boSiteMap');});
+  var butModRead=createElement('button').myHtml(strPublicRead).prop('title','Public read access').on('click', function(){clickModF.call(this,'boOR');} );  
+  var butModWrite=createElement('button').myText(charPublicWrite).prop('title','Public write access').on('click',function(){clickModF.call(this,'boOW');});
+  var butModSiteMap=createElement('button').myText(charPromote).prop('title','Promote (include page in sitemap.xml)').on('click',function(){clickModF.call(this,'boSiteMap');});
     // Methods of the above buttons:
   var clickModF=function(strType){
-    var $b=$(this), boOn=$b.hasClass('boxShadowOn'); boOn=!boOn;
+    var b=this, boOn=b.hasClass('boxShadowOn'); boOn=!boOn;
     var o={File:[objPage.idPage]}; o[strType]=boOn;
     var vec=[['myChMod',o]];   majax(oAJAX,vec); 
-    setButMod.call($b[0], boOn);
+    setButMod.call(b, boOn);
   }
-  var setButMod=function(boOn){  boOn=Boolean(boOn); var $b=$(this); $b.toggleClass('boxShadowOn', boOn).toggleClass('boxShadowOff', !boOn); }
-  $butModRead.add($butModWrite).add($butModSiteMap).css({'margin-right':'0.4em', width:'1.5em', padding:0});   
+  var setButMod=function(boOn){  boOn=Boolean(boOn); var b=this; b.toggleClass('boxShadowOn', boOn).toggleClass('boxShadowOff', !boOn); }
+  var Tmp=[butModRead, butModWrite, butModSiteMap]; Tmp.forEach(ele=>ele.css({'margin-right':'0.4em', width:'1.5em', padding:0}));   
      
-  $el.setMod();
+  el.setMod();
   
   var boIsGeneratorSupported=isGeneratorSupported();
-  var $uploadAdminDiv='', $buttonDiffBackUpDiv='';
+  var uploadAdminDiv='', buttonDiffBackUpDiv='';
   if(boIsGeneratorSupported) {
-    $uploadAdminDiv=uploadAdminDivExtend($('<span>')); 
-    $buttonDiffBackUpDiv=$('<button>').append('Backup (diff)').click(function(){
-      doHistPush({$view:$diffBackUpDiv});
-      $diffBackUpDiv.setVis();
+    uploadAdminDiv=uploadAdminDivExtend(createElement('span')); 
+    buttonDiffBackUpDiv=createElement('button').myText('Backup (diff)').on('click',function(){
+      doHistPush({view:diffBackUpDiv});
+      diffBackUpDiv.setVis();
     });
   }
 
-  var $statLink=$('<a>').prop({href:'stat.html'}).append('stat');
-  var $pageListButton=$('<button>').append('List').addClass('fixWidth').click(function(){
+  var statLink=createElement('a').prop({href:'stat.html'}).myText('stat');
+  var pageListButton=createElement('button').myText('List').addClass('fixWidth').on('click',function(){
     //var idTmp=objPage.idPage; if(isNaN(idTmp)) idTmp=null;
     var idTmp=objPage.idPage; if(typeof idTmp=='string' && idTmp.length==0) idTmp=null;
-    $pageFilterDiv.Filt.setSingleParent(idTmp);  $pageList.histPush(); $pageList.loadTab();  $pageList.setVis();
+    pageFilterDiv.Filt.setSingleParent(idTmp);  pageList.histPush(); pageList.loadTab();  pageList.setVis();
   });    
-  var $imageListButton=$('<button>').append('List').addClass('fixWidth').click(function(){
+  var imageListButton=createElement('button').myText('List').addClass('fixWidth').on('click',function(){
     //var idTmp=objPage.idPage; if(isNaN(idTmp)) idTmp=null;
     var idTmp=objPage.idPage; if(typeof idTmp=='string' && idTmp.length==0) idTmp=null;
-    $imageFilterDiv.Filt.setSingleParent(idTmp);   $imageList.histPush();  $imageList.loadTab();  $imageList.setVis();  // $pageFilterDiv.Filt.filtClear();
+    imageFilterDiv.Filt.setSingleParent(idTmp);   imageList.histPush();  imageList.loadTab();  imageList.setVis();  // pageFilterDiv.Filt.filtAll();
   });
 
-  var $imgHPrefix=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverJQ($imgHPrefix,$('<div>').html('<p>Use prefix on default-site-pages:<p>Note that non-default-site-pages always gets the prefix added (to the filename in the zip-file).<p>Click the "Site table"-button below if you want to see or change the prefixes, and if you want to change which site is the default.'));  
+  var imgHPrefix=imgHelp.cloneNode().css({'margin-left':'1em'}); popupHover(imgHPrefix,createElement('div').myHtml('<p>Use prefix on default-site-pages:<p>Note that non-default-site-pages always gets the prefix added (to the filename in the zip-file).<p>Click the "Site table"-button below if you want to see or change the prefixes, and if you want to change which site is the default.'));  
   var boUsePrefix=getItem('boUsePrefixOnDefaultSitePages')||true;
-  var $cb=$('<input type=checkbox>').prop('checked',boUsePrefix).click(function(){
-    boUsePrefix=Number($cb.prop('checked')); 
+  var cb=createElement('input').prop({type:'checkbox', checked:boUsePrefix}).on('click',function(){
+    boUsePrefix=Number(cb.prop('checked')); 
     setItem('boUsePrefixOnDefaultSitePages',boUsePrefix);  
-    $aBUFilesToComp.setUp(boUsePrefix);
+    aBUFilesToComp.setUp(boUsePrefix);
   })
 
-  //var $imgHDownload=$imgHelp.clone().css({'margin-left':'1em','margin-right':'1em'}); popupHoverJQ($imgHDownload,$('<div>').html('Put all pages (or images or videos) in a zip-file and download.'));
-  var $aBUFilesToComp=$('<a>').prop({rel:'nofollow', download:''}).append('(pages).zip');
-  $aBUFilesToComp.setUp=function(boUsePrefix){
-    var tmpUrl='BUPage'+(boUsePrefix?'':'?{"boUsePrefixOnDefaultSitePages":0}'); $(this).prop({href:tmpUrl});
-  };  $aBUFilesToComp.setUp(boUsePrefix);
-  var $aBUImageToComp=$('<a>').prop({href:'BUImage', rel:'nofollow', download:''}).append('(images).zip');
-  var $aBUVideoToComp=$('<a>').prop({href:'BUVideo', rel:'nofollow', download:''}).append('(vidoes).zip');
-  var $aBUMeta=$('<a>').prop({href:'BUMeta', rel:'nofollow', download:''}).append('(MetaData).zip');
-  var $aBUMetaSQL=$('<a>').prop({href:'BUMetaSQL', rel:'nofollow', download:''}).append('(MetaData).sql');
-  var $imgHSql=$imgHelp.clone().css({'margin':'0 1em'}); popupHoverJQ($imgHSql,$('<div>').html('<p>Download "meta-data":<br>-extra data for pages/images (modification dates, access rights ...). <br>-redirect table.'));
+  //var imgHDownload=imgHelp.cloneNode().css({'margin-left':'1em','margin-right':'1em'}); popupHover(imgHDownload,createElement('div').myText('Put all pages (or images or videos) in a zip-file and download.'));
+  var aBUFilesToComp=createElement('a').prop({rel:'nofollow', download:''}).myText('(pages).zip');
+  aBUFilesToComp.setUp=function(boUsePrefix){
+    var tmpUrl='BUPage'+(boUsePrefix?'':'?{"boUsePrefixOnDefaultSitePages":0}'); this.prop({href:tmpUrl});
+  };  aBUFilesToComp.setUp(boUsePrefix);
+  var aBUImageToComp=createElement('a').prop({href:'BUImage', rel:'nofollow', download:''}).myText('(images).zip');
+  var aBUVideoToComp=createElement('a').prop({href:'BUVideo', rel:'nofollow', download:''}).myText('(vidoes).zip');
+  var aBUMeta=createElement('a').prop({href:'BUMeta', rel:'nofollow', download:''}).myText('(MetaData).zip');
+  var aBUMetaSQL=createElement('a').prop({href:'BUMetaSQL', rel:'nofollow', download:''}).myText('(MetaData).sql');
+  var imgHSql=imgHelp.cloneNode().css({'margin':'0 1em'}); popupHover(imgHSql,createElement('div').myHtml('<p>Download "meta-data":<br>-extra data for pages/images (modification dates, access rights ...). <br>-redirect table.'));
   
-  var $butBUPageServ=$('<button>').append('page.zip').click(  function(){    httpGetAsync('BUPageServ',function(str) {setMess(str,3);});    });
-  var $butBUImageServ=$('<button>').append('image.zip').click(function(){    httpGetAsync('BUImageServ',function(str) {setMess(str,3);});   });
-  var $butBUMetaServ=$('<button>').append('Meta-data (4 files)').click(function(){      httpGetAsync('BUMetaServ',function(str) {setMess(str,3);});    });
+  var butBUPageServ=createElement('button').myText('page.zip').on('click',  function(){    httpGetAsync('BUPageServ',function(str) {setMess(str,3);});    });
+  var butBUImageServ=createElement('button').myText('image.zip').on('click',function(){    httpGetAsync('BUImageServ',function(str) {setMess(str,3);});   });
+  var butBUMetaServ=createElement('button').myText('Meta-data (4 files)').on('click',function(){      httpGetAsync('BUMetaServ',function(str) {setMess(str,3);});    });
   
   var strOverwrite='This will overwrite data in the db?';
-  var $butLoadFromServerP=$('<button>').append('page.zip').click(function(){  if(confirm(strOverwrite)==0) return; var vec=[['uploadAdminServ',{file:'page.zip'}]];   majax(oAJAX,vec);    });
-  var $butLoadFromServerI=$('<button>').append('image.zip').click(function(){  if(confirm(strOverwrite)==0) return; var vec=[['uploadAdminServ',{file:'image.zip'}]];   majax(oAJAX,vec);    });
-  var $butLoadFromServerM=$('<button>').append('meta').click(function(){  if(confirm(strOverwrite)==0) return; var vec=[['loadMeta',{}]];   majax(oAJAX,vec);    });
+  var butLoadFromServerP=createElement('button').myText('page.zip').on('click',function(){  if(confirm(strOverwrite)==0) return; var vec=[['uploadAdminServ',{file:'page.zip'}]];   majax(oAJAX,vec);    });
+  var butLoadFromServerI=createElement('button').myText('image.zip').on('click',function(){  if(confirm(strOverwrite)==0) return; var vec=[['uploadAdminServ',{file:'image.zip'}]];   majax(oAJAX,vec);    });
+  var butLoadFromServerM=createElement('button').myText('meta').on('click',function(){  if(confirm(strOverwrite)==0) return; var vec=[['loadMeta',{}]];   majax(oAJAX,vec);    });
   
-  var $siteButton=$('<button>').append('Site table').addClass('fixWidth').click(function(){    doHistPush({$view:$siteTab}); $siteTab.setVis();   });
-  var $redirectButton=$('<button>').append('Redirect table').addClass('fixWidth').click(function(){   doHistPush({$view:$redirectTab}); $redirectTab.setVis();   });
+  var siteButton=createElement('button').myText('Site table').addClass('fixWidth').on('click',function(){    doHistPush({view:siteTab}); siteTab.setVis();   });
+  var redirectButton=createElement('button').myText('Redirect table').addClass('fixWidth').on('click',function(){   doHistPush({view:redirectTab}); redirectTab.setVis();   });
 
-  var $imgHRename=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverJQ($imgHRename,$('<div>').html('"Rename" will <b>not</b> rename any links to the page. (maybe something for future versions)'));  
-  var $renameButton=$('<button>').append('Rename').css({'margin-left':'0.5em'}).click(function(){
-    $renamePop.openFunc('page', null, objPage.idPage, queredPage);
+  var imgHRename=imgHelp.cloneNode().css({'margin-left':'1em'}); popupHover(imgHRename,createElement('div').myHtml('"Rename" will <b>not</b> rename any links to the page. (maybe something for future versions)'));  
+  var renameButton=createElement('button').myText('Rename').css({'margin-left':'0.5em'}).on('click',function(){
+    renamePop.openFunc('page', null, objPage.idPage, queredPage);
   });
   var objBottomLine={'border-bottom':'gray solid 1px'};
-  var $menuA=$('<div>').append($butModRead, $butModWrite, $butModSiteMap, $imgH, ' | ', $renameButton, $imgHRename).css(objBottomLine);
-  var $menuB0=$('<div>').append("<b>BU download: </b>");
-  var $menuB=$('<div>').append("<b>Page: </b>", $pageListButton, ' | ', $aBUFilesToComp, ', Use prefix on default-site-pages: ', $cb, $imgHPrefix);
-  var $menuC=$('<div>').append("<b>Image: </b>", $imageListButton, ' | ', $aBUImageToComp, ' | ', $buttonDiffBackUpDiv).css({'background':'lightblue'});
-  var $menuD=$('<div>').append("<b>Video: </b>", $aBUVideoToComp);
-  var $menuE=$('<div>').append("<b>Other: </b>", $aBUMeta, $imgHSql, ' | ', $statLink, ' | ', $aBUMetaSQL).css(objBottomLine);
-  var $menuF=$('<div>').append($uploadAdminDiv).css(objBottomLine);
-  var $menuG=$('<div>').append($siteButton,$redirectButton).css(objBottomLine);
-  var $menuH=$('<div>').append("<b>Save to server-BU-Folder: </b>", $butBUPageServ,$butBUImageServ,$butBUMetaServ).css(objBottomLine);
-  var $menuI=$('<div>').append("<b>Load from server-BU-Folder: </b>", $butLoadFromServerP, $butLoadFromServerI, $butLoadFromServerM).css(objBottomLine);
-  var $menuJ=$('<div>').append('DB: '+strDBType);
-  var $Menu=$([]).push($menuA,$menuB0, $menuB,$menuC,$menuE,$menuF,$menuG, $menuH, $menuI, $menuJ).css({margin:'0.5em 0'}); //,$menuD
+  var menuA=createElement('div').myAppend(butModRead, butModWrite, butModSiteMap, imgH, ' | ', renameButton, imgHRename).css(objBottomLine);
+  var menuB0=createElement('div').myHtml("<b>BU download: </b>");
+  var menuB=createElement('div').myHtml("<b>Page: </b>").myAppend(pageListButton, ' | ', aBUFilesToComp, ', Use prefix on default-site-pages: ', cb, imgHPrefix);
+  var menuC=createElement('div').myHtml("<b>Image: </b>").myAppend(imageListButton, ' | ', aBUImageToComp, ' | ', buttonDiffBackUpDiv).css({'background':'lightblue'});
+  var menuD=createElement('div').myHtml("<b>Video: </b>").myAppend(aBUVideoToComp);
+  var menuE=createElement('div').myHtml("<b>Other: </b>").myAppend(aBUMeta, imgHSql, ' | ', statLink, ' | ', aBUMetaSQL).css(objBottomLine);
+  var menuF=createElement('div').myAppend(uploadAdminDiv).css(objBottomLine);
+  var menuG=createElement('div').myAppend(siteButton,redirectButton).css(objBottomLine);
+  var menuH=createElement('div').myHtml("<b>Save to server-BU-Folder: </b>").myAppend(butBUPageServ,butBUImageServ,butBUMetaServ).css(objBottomLine);
+  var menuI=createElement('div').myHtml("<b>Load from server-BU-Folder: </b>").myAppend(butLoadFromServerP, butLoadFromServerI, butLoadFromServerM).css(objBottomLine);
+  var menuJ=createElement('div').myText('DB: '+strDBType);
+  var Menu=[menuA,menuB0, menuB,menuC,menuE,menuF,menuG, menuH, menuI, menuJ]; Menu.forEach(ele=>ele.css({margin:'0.5em 0'})); //,menuD
 
-  $el.$divCont=$('<div>').append($Menu);
-  $el.$divCont.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'1em auto'});
+  el.divCont=createElement('div').myAppend(...Menu);
+  el.divCont.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'1em auto'});
 
 
     // menuBottom
-  //var $buttonBack=$('<button>').append('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(doHistBack);
-  var $spanLabel=$('<span>').append('adminMore').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var $menuBottom=$('<div>').append($spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //$buttonBack,
+  //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',doHistBack);
+  var spanLabel=createElement('span').myText('adminMore').css({'float':'right',margin:'0.2em 0 0 0'});  
+  var menuBottom=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
 
 
-  $el.$fixedDiv=$('<div>').append($menuBottom).css(cssFixed);
+  el.fixedDiv=createElement('div').myAppend(menuBottom).css(cssFixed);
 
-  $el.append($el.$divCont,$el.$fixedDiv);
-  return $el;
+  el.myAppend(el.divCont,el.fixedDiv);
+  return el;
 }
 
 
@@ -522,30 +570,30 @@ adminMoreDivExtend=function($el){
 
 
 
-dumpDivExtend=function($el){
+dumpDivExtend=function(el){
   "use strict"
-  $el.toString=function(){return 'dumpDiv';}
-  return $el;
+  el.toString=function(){return 'dumpDiv';}
+  return el;
 }
 
-tabBUDivExtend=function($el){
+tabBUDivExtend=function(el){
   "use strict"
-  $el.toString=function(){return 'tabBUDiv';}
-  $el.setUp=function(arrStr,objFetch){
-    $table.empty();
+  el.toString=function(){return 'tabBUDiv';}
+  el.setUp=function(arrStr,objFetch){
+    table.empty();
     var StrOld=arrStr[0], StrDeleted=arrStr[1], StrReuse=arrStr[2], StrFetch=arrStr[3], StrNew=arrStr[4];
     var nOld=StrOld.length, nDel=StrDeleted.length, nReuse=StrReuse.length, nFetch=StrFetch.length, nNew=StrNew.length;
 
-    var $tha=$('<th>').append('Deleted ('+nDel+')').css({background:'orange'});
-    var $thb=$('<th>').append('Reused ('+nReuse+')').css({background:'yellow'});
-    var $thc=$('<th>').append('Fetch ('+nFetch+')').css({background:'lightgreen'});
-    $table.append($('<tr>').append($tha,$thb,$thc));
+    var tha=createElement('th').myText('Deleted ('+nDel+')').css({background:'orange'});
+    var thb=createElement('th').myText('Reused ('+nReuse+')').css({background:'yellow'});
+    var thc=createElement('th').myText('Fetch ('+nFetch+')').css({background:'lightgreen'});
+    table.myAppend(createElement('tr').myAppend(tha,thb,thc));
 
     //var nMax=Math.max(nOld,nNew);
     var nMax=Math.max(nDel,nReuse,nFetch);
     for(var i=0;i<nMax;i++){
-      var $r=$('<tr>');
-      var $tda=$('<td>'), $tdb=$('<td>'), $tdc=$('<td>');
+      var r=createElement('tr');
+      var tda=createElement('td'), tdb=createElement('td'), tdc=createElement('td');
       var strNameA='', strColorA=''; if(i<nDel) {strNameA=StrDeleted[i]; strColorA='orange'; }
 
       var strNameB='', strColorB=''; if(i<nReuse) {strNameB=StrReuse[i]; strColorB='yellow'; }
@@ -558,123 +606,74 @@ tabBUDivExtend=function($el){
         }
         strColorC='lightgreen';
       }
-      $tda.html(strNameA).css({background:strColorA}); 
-      $tdb.html(strNameB).css({background:strColorB}); 
-      $tdc.html(strNameC).css({background:strColorC}); 
+      tda.myText(strNameA).css({background:strColorA}); 
+      tdb.myText(strNameB).css({background:strColorB}); 
+      tdc.myText(strNameC).css({background:strColorC}); 
 
-      $r.append($tda,$tdb,$tdc);
-      $table.append($r);
+      r.myAppend(tda,tdb,tdc);
+      table.myAppend(r);
     }
     
   }
-  var $table=$('<table>').addClass('tableSticky');
-  $el.append($table);
-  return $el;
+  var table=createElement('table').addClass('tableSticky');
+  el.append(table);
+  return el;
 }
 
 
-tabBUSumExtend=function($el){
-  $el.setUp=function(arrN){
+tabBUSumExtend=function(el){
+  el.setUp=function(arrN){
     //var StrOld=arrStr[0], StrDeleted=arrStr[1], StrReuse=arrStr[2], StrFetch=arrStr[3], StrNew=arrStr[4];
     //var nOld=StrOld.length, nDel=StrDeleted.length, nReuse=StrReuse.length, nFetch=StrFetch.length, nNew=StrNew.length;
     for(var i=0;i<nRow;i++){
-      var $r=$R.eq(i), jNn=1, leftMargin=0;
+      var r=R[i], jNn=1, leftMargin=0;
       //if(i%2==0){        jNn=1; leftMargin=0;      }else{        jNn=1; leftMargin=nReuse;      }
       var len=arrN[i];
-      $r.find('td:eq('+jNn+')').html(len);
-      $r.find('td:eq(2)>div').css({width:len+'px','margin-left':leftMargin+'px'});
+      //r.querySelector('td:nth-of-type('+(jNn+1)+')').myText(len);
+      r.children[jNn].myText(len);
+      //r.querySelector('td:nth-of-type(3)>div').css({width:len+'px','margin-left':leftMargin+'px'});
+      r.children[2].querySelector('div').css({width:len+'px','margin-left':leftMargin+'px'});
       //var arrTmp; if(arrStr[i].length>10) arrTmp=arrStr[i].slice(0,10).concat('...'); else arrTmp=arrStr[i];
-      //$DivPop.eq(i).html(arrTmp.join('<br>'));
+      //DivPop[i].myHtml(arrTmp.join('<br>'));
 
     }
   }
   var StrLabel=['Old Zip','To be deleted','To be reused','To fetch (changed)','To fetch (new)','New Zip'], nRow=StrLabel.length;
   //var StrColor=['red','orange','yellow','lightgreen','lightgreen','lightblue'];
   var StrColor=['black','black','black','black','black','black'];
-  var $DivPop=$([]); //, $Button=$([]);
-  var $thead=$('<thead>').append("<tr><th></th><th>nFiles</th></tr>");
-  var $tbody=$('<tbody>');
-  $el.append($thead,$tbody);
+  //var DivPop=[]; //, Button=([]);
+  var thead=createElement('thead').myHtml("<tr><th></th><th>nFiles</th></tr>");
+  var tBody=createElement('tbody');
+  el.myAppend(thead,tBody);
 
   for(var i=0;i<nRow;i++){
-    var $r=$('<tr>');
+    var r=createElement('tr');
     for(var j=0;j<5;j++){
-      var $td=$('<td>');  $r.append($td);
+      var td=createElement('td');  r.append(td);
       if(j==2){
-        var $div=$('<div>').css({'background':StrColor[i],'height':'20px'});
-        $td.append($div);
+        var div=createElement('div').css({'background':StrColor[i],'height':'20px'});
+        td.append(div);
       }
       if(j==0){    
-        $td.append(StrLabel[i]);
+        td.append(StrLabel[i]);
       }
     }
-    //var $divPop=$('<div>'); $DivPop.push($divPop);
-    //popupHoverJQ($r,$divPop);
-    $tbody.append($r);
+    //var divPop=createElement('div'); DivPop.push(divPop);
+    //popupHover(r,divPop);
+    tBody.append(r);
   }
-  var $R=$tbody.find('tr');
-  $el.css({'border-collapse':'collapse'});
-  return $el;
+  var R=tBody.childNodes;
+  el.css({'border-collapse':'collapse'});
+  return el;
 }
 
 
-/*
-tabBUSumExtend=function($el){
-  $el.setUp=function(arrStr,objFetch){
-    var StrOld=arrStr[0], StrDeleted=arrStr[1], StrReuse=arrStr[2], StrFetch=arrStr[3], StrNew=arrStr[4];
-    var nOld=StrOld.length, nDel=StrDeleted.length, nReuse=StrReuse.length, nFetch=StrFetch.length, nNew=StrNew.length;
-    for(var i=0;i<5;i++){
-      var $r=$R.eq(i), jNn, leftMargin;
-      if(i%2==0){
-        jNn=1; leftMargin=0;
-      }else{
-        jNn=1; leftMargin=nReuse;
-      }
-      var len=arrStr[i].length;
-      $r.find('td:eq('+jNn+')').html(len);
-      $r.find('td:eq(2)>div').css({width:len+'px','margin-left':leftMargin+'px'});
-      var arrTmp; if(arrStr[i].length>10) arrTmp=arrStr[i].slice(0,10).concat('...'); else arrTmp=arrStr[i];
-      $DivPop.eq(i).html(arrTmp.join('<br>'));
 
-    }
-    $el.arrStr=arrStr;
-  }
-  var StrLabel=['Old Zip','Deleted','Reusable','To fetch','New Zip'];
-  var StrColor=['red','orange','yellow','lightgreen','lightblue'];
-  var $DivPop=$([]); //, $Button=$([]);
-  var $thead=$('<thead>').append("<tr><th></th><th>nFiles</th></tr>");
-  var $tbody=$('<tbody>');
-  $el.append($thead,$tbody);
-
-  for(var i=0;i<5;i++){
-    var $r=$('<tr>');
-    for(var j=0;j<5;j++){
-      var $td=$('<td>');  $r.append($td);
-      if(j==2){
-        var $div=$('<div>').css({'background':StrColor[i],'height':'20px'});
-        $td.append($div);
-      }
-      //if((j==0 && i%2==0) || (j==4 && i%2==1)){
-      if(j==0){
-        //var $but=$('<button>').data({'ind':i}).append(StrLabel[i]); $Button.push($but)
-        
-        $td.append(StrLabel[i]);
-      }
-    }
-    var $divPop=$('<div>'); $DivPop.push($divPop);
-    popupHoverJQ($r,$divPop);
-    $tbody.append($r);
-  }
-  var $R=$tbody.find('tr');
-  $el.css({'border-collapse':'collapse'});
-  return $el;
-}
-*/
 
 //try{  var myString = (function () {   /*  //123412341234
-diffBackUpDivExtend=function($el){
+diffBackUpDivExtend=function(el){
   "use strict"
-  $el.toString=function(){return 'diffBackUpDiv';}
+  el.toString=function(){return 'diffBackUpDiv';}
 
   var onerror=function(message) {
     debugger
@@ -700,8 +699,8 @@ diffBackUpDivExtend=function($el){
 
 
   var inpSelChange=function*(){  
-    $ul.empty().show();
-    //$saveButton.prop("disabled",true);
+    ul.empty().show();
+    //saveButton.prop("disabled",true);
     var arrOrg=this.files;  
     var file=arrOrg[0];
     EntryLocal={}; // Create EntryLocal
@@ -724,7 +723,7 @@ diffBackUpDivExtend=function($el){
       EntryLocal[entry.filename]=entry;
     });  
 
-    StrOld=Object.keys(EntryLocal); //var $li=$('<li>').append('Old zip-file has <b>'+nOld+'</b> files.'); $ul.append($li);
+    StrOld=Object.keys(EntryLocal); //var li=createElement('li').myAppend('Old zip-file has <b>'+nOld+'</b> files.'); ul.append(li);
     majax(oAJAX,[['getImageInfo',{},function(data){ flowDiff=getImageInfoRet.call(this,data);  flowDiff.next();}]]);  
   }
 
@@ -760,8 +759,8 @@ diffBackUpDivExtend=function($el){
       if(!(key in FileNew)){ StrDeleted.push(key); }
     }
   
-    var $progress=$('<progress>'), iNew=0, $imgDoneLast=$imgDone.clone();
-    var $li=$('<li>').append('Extracting meta data from the selected file (names, modification dates and file-sizes): ', $progress, $imgDoneLast); $ul.append($li);
+    var progress=createElement('progress'), iNew=0, imgDoneLast=imgDone.cloneNode();
+    var li=createElement('li').myText('Extracting meta data from the selected file (names, modification dates and file-sizes): ').myAppend(progress, imgDoneLast); ul.append(li);
     
     for(var key in FileNew){  // Create StrReuse, StrFetch and objFetch
       if(key in EntryLocal){
@@ -790,41 +789,41 @@ diffBackUpDivExtend=function($el){
       } else {
         StrFetch.push(key);
       }
-      iNew++; $progress.attr({value:iNew,max:StrNew.length});
+      iNew++; progress.attr({value:iNew,max:StrNew.length});
     }
-    $imgDoneLast.show();
+    imgDoneLast.show();
 
       // Display tab
     var ArrStr=[StrOld, StrDeleted, StrReuse, StrFetch, StrNew];
-    var $tabBUSum=tabBUSumExtend($('<table>')), nChanged=Object.keys(objFetch).length;
-    $tabBUSum.setUp([StrOld.length, StrDeleted.length, StrReuse.length, nChanged, StrFetch.length-nChanged, StrNew.length]);
-    $tabBUDiv.setUp(ArrStr, objFetch);
-    var $buttonDetail=$('<button>').append('Details').click(function(){
-      doHistPush({$view:$tabBUDiv});
-      $tabBUDiv.setVis();
+    var tabBUSum=tabBUSumExtend(createElement('table')), nChanged=Object.keys(objFetch).length;
+    tabBUSum.setUp([StrOld.length, StrDeleted.length, StrReuse.length, nChanged, StrFetch.length-nChanged, StrNew.length]);
+    tabBUDiv.setUp(ArrStr, objFetch);
+    var buttonDetail=createElement('button').myText('Details').on('click',function(){
+      doHistPush({view:tabBUDiv});
+      tabBUDiv.setVis();
     });
-    var $li=$('<li>').append('Summary: ( ',$buttonDetail,' )',$tabBUSum); $ul.append($li);
+    var li=createElement('li').myAppend('Summary: ( ',buttonDetail,' )',tabBUSum); ul.append(li);
 
 
       // Check if it is OK to abort
     if(StrFetch.length==0 && StrDeleted.length==0) {
-      var $li=$('<li>').append('Aborting since your local files are (seem (based on filesizes/modTimes)) up to date.'); $ul.append($li); $progress.detach();
+      var li=createElement('li').myText('Aborting since your local files are (seem (based on filesizes/modTimes)) up to date.'); ul.append(li); progress.detach();
       return;
     }
 
-    //if(confirm("Continue ?")) {} else {$progress.detach(); return;}
-    var $buttonContinue=$('<button>').append('Continue').click(function(){
-      flowDiff=continueFunc.call(this);  flowDiff.next(); $buttonContinue.prop("disabled",true);
+    //if(confirm("Continue ?")) {} else {progress.detach(); return;}
+    var buttonContinue=createElement('button').myText('Continue').on('click',function(){
+      flowDiff=continueFunc.call(this);  flowDiff.next(); buttonContinue.prop("disabled",true);
     });
-    var $li=$('<li>').append($buttonContinue); $ul.append($li); $progress.detach();
+    var li=createElement('li').myAppend(buttonContinue); ul.append(li); progress.detach();
  
   }
 
   var continueFunc=function*(){    
-    var $progress=$('<progress>')
+    var progress=createElement('progress')
       // Writing fresh files
-    var iAdded=0, $imgDoneLast=$imgDone.clone();
-    var $li=$('<li>').append('Reusing (adding) old images to new zip: ', $progress, $imgDoneLast); $ul.append($li);
+    var iAdded=0, imgDoneLast=imgDone.cloneNode();
+    var li=createElement('li').myText('Reusing (adding) old images to new zip: ').myAppend(progress, imgDoneLast); ul.append(li);
     //for(var key in StrReuse){
     for(var i=0;i<StrReuse.length;i++){
       var key=StrReuse[i];
@@ -843,15 +842,15 @@ diffBackUpDivExtend=function($el){
         if(semY) { flowDiff.next(); } semCB=1;
       }, onprogress,  {lastModDate:date});
       if(!semCB) { semY=1; yield;}
-      iAdded++;  $progress.attr({value:iAdded,max:StrReuse.length}); 
+      iAdded++;  progress.attr({value:iAdded,max:StrReuse.length}); 
     }
-    $imgDoneLast.show();
+    imgDoneLast.show();
 
       // Fetching files
-    var $imgDoneLast=$imgDone.clone();
-    var $li=$('<li>').append('Fetching: ', $progress, $imgDoneLast); $ul.append($li);
+    var imgDoneLast=imgDone.cloneNode();
+    var li=createElement('li').myAppend('Fetching: ', progress, imgDoneLast); ul.append(li);
 
-    var progressHandlingFunction=function(e){      if(e.lengthComputable){   $progress.attr({value:e.loaded,max:e.total});      }      }
+    var progressHandlingFunction=function(e){      if(e.lengthComputable){   progress.attr({value:e.loaded,max:e.total});      }      }
     var semCB=0, semY=0, dataFetched;
     var xhr = new XMLHttpRequest();
     xhr.open('POST', 'BUimage', true);
@@ -865,7 +864,7 @@ diffBackUpDivExtend=function($el){
     var jsonTmp=JSON.stringify({arrName:StrFetch});
     xhr.send(jsonTmp); 
     if(!semCB) { semY=1; yield;}
-    $imgDoneLast.show();
+    imgDoneLast.show();
 
 
 
@@ -888,8 +887,8 @@ diffBackUpDivExtend=function($el){
       EntryFetched[entry.filename]=entry;
     });
 
-    var iAdded=0, $imgDoneLast=$imgDone.clone();
-    var $li=$('<li>').append('Adding the fetched images to new zip: ', $progress, $imgDoneLast); $ul.append($li);
+    var iAdded=0, imgDoneLast=imgDone.cloneNode();
+    var li=createElement('li').myAppend('Adding the fetched images to new zip: ', progress, imgDoneLast); ul.append(li);
     for(var key in EntryFetched){
       var entry = EntryFetched[key], blob;
       
@@ -907,14 +906,14 @@ diffBackUpDivExtend=function($el){
         if(semY) { flowDiff.next(); } semCB=1;
       }, onprogress,  {lastModDate:date});
       if(!semCB) { semY=1; yield;}
-      iAdded++; $progress.attr({value:iAdded,max:StrFetch.length});
+      iAdded++; progress.attr({value:iAdded,max:StrFetch.length});
     }
-    var $saveButton=$('<button>').text('Save to disk').click(saveFun);  //.prop("disabled",true)
-    var $li=$('<li>').append($saveButton); $ul.append($li);
-    //$saveButton.prop("disabled",false);
-    //$ul.hide();
-    $imgDoneLast.show();
-    $progress.hide();
+    var saveButton=createElement('button').myText('Save to disk').on('click',saveFun);  //.prop("disabled",true)
+    var li=createElement('li').myAppend(saveButton); ul.append(li);
+    //saveButton.prop("disabled",false);
+    //ul.hide();
+    imgDoneLast.show();
+    progress.hide();
 
   }
 
@@ -938,8 +937,8 @@ diffBackUpDivExtend=function($el){
       );
       aSave.dispatchEvent(event);
     });
-    $ul.empty();
-    //$saveButton.prop("disabled",true);
+    ul.empty();
+    //saveButton.prop("disabled",true);
   
   }
   var StrOld, StrDeleted, StrReuse, StrFetch, StrNew, objFetch;
@@ -955,56 +954,38 @@ diffBackUpDivExtend=function($el){
 
   var zipFileEntry=null, zipWriter=null;
 
-  var $imgDone=$('<span>').append('Done').css({'background':'lightgreen'}).hide();
+  var imgDone=createElement('span').myText('Done').css({'background':'lightgreen'}).hide();
 
-  var $imgHHead=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverJQ($imgHHead,$('<div>').html('<p>If the old files\' size and modification date match then they are considered up to date.'));
-  var $head=$('<div>').append('Differential backup of images',$imgHHead).css({'font-weight':'bold'});
+  var imgHHead=imgHelp.cloneNode().css({'margin-left':'1em'}); popupHover(imgHHead,createElement('div').myHtml('<p>If the old files\' size and modification date match then they are considered up to date.'));
+  var head=createElement('div').myAppend('Differential backup of images',imgHHead).css({'font-weight':'bold'});
   var strTmpExt=StrImageExt.join(', ');
-  var $imgHLoad=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverJQ($imgHLoad,$('<div>').html('<p>Accepted file endings: '+strTmpExt+', or zip files containing these formats (no folders in the zip file)'));
-  var $formFile=$('<form enctype="multipart/form-data">');
-  var $inpFile=$('<input name="file" type="file" accept="application/zip" >').css({background:'lightgrey'}); //multiple
-  var $ul=$('<ul>');//.hide();
+  var imgHLoad=imgHelp.cloneNode().css({'margin-left':'1em'}); popupHover(imgHLoad,createElement('div').myHtml('<p>Accepted file endings: '+strTmpExt+', or zip files containing these formats (no folders in the zip file)'));
+  var formFile=createElement('form').prop({enctype:"multipart/form-data"});
+  var inpFile=createElement('input').prop({name:"file", type:"file", accept:"application/zip"}).css({background:'lightgrey'}); //multiple
+  var ul=createElement('ul');//.hide();
   
   
 
   var EntryLocal, StrOld;
   var nFilesUpload;
 
-  $formFile.append('<b>Select your old backup (zip) file:</b> ',$inpFile);   $formFile.css({display:'inline'});
-  $el.append($head, $formFile, $imgHLoad, $ul);
+  formFile.myHtml('<b>Select your old backup (zip) file:</b> ').myAppend(inpFile);   formFile.css({display:'inline'});
+  el.append(head, formFile, imgHLoad, ul);
 
   var flowDiff;
-  $inpFile.change(function(e) {
+  inpFile.on('change', function(e) {
     flowDiff=inpSelChange.call(this,e);  flowDiff.next();
     //inpSelChange.call(this,e);
   });
 
-  return $el;
+  return el;
 }
 
 
   
-uploadAdminDivExtend=function($el){
+uploadAdminDivExtend=function(el){
 "use strict"
-  var progressHandlingFunction=function(e){      if(e.lengthComputable){   $progress.attr({value:e.loaded,max:e.total});      }      }
-  var oAJAXL={
-    url: leafBE,
-    type: 'POST',
-    xhr: function() {  // Custom XMLHttpRequest
-      var myXhr = $.ajaxSettings.xhr();
-      if(myXhr.upload){   myXhr.upload.addEventListener('progress',progressHandlingFunction, false);   }
-      return myXhr;
-    },
-    beforeSend: function(){$progress.show();},
-    success: function(){ $progress.attr({value:0});  $progress.hide();  },
-    error: function(){ $progress.hide(); errorFunc.call(this,arguments);},//errorHandler=function(){setMess('error uploading');},
-    //Options to tell jQuery not to process data or worry about content-type.
-    cache: false,
-    contentType: false,
-    processData: false,
-    headers:{'x-type':'multi'}
-  }
-  oAJAXL.boFormData=1;
+  var progressHandlingFunction=function(e){      if(e.lengthComputable){   progress.attr({value:e.loaded,max:e.total});      }      }
   var onerror=function(message) {
     debugger; alert(message);
   }
@@ -1039,15 +1020,15 @@ uploadAdminDivExtend=function($el){
     var FileInfo=data.FileInfo, len=FileInfo.length;
     for(var i=0;i<len;i++){ StrConflict.push(FileInfo[i].imageName); } 
     if(StrConflict.length){
-      var tmpLab='<b>WARNING!!! These files will be OVERWRITTEN (if you click "Upload")</b>';
+      var tmpLab='WARNING!!! These files will be OVERWRITTEN (if you click "Upload")';
       StrConflict.unshift(tmpLab);
       if(StrConflict.length>10) StrConflict.push(tmpLab);
-      setMess(StrConflict.join('<br>'));
+      setMessHtml(StrConflict.join('<br>'));
     }        
   }
   var verifyFun2=function(){ 
     nFilesUpload=arrFile.length;  
-    $uploadButton.prop("disabled",!nFilesUpload);
+    uploadButton.prop("disabled",!nFilesUpload);
     sendConflictCheck(arrName);
   }
   
@@ -1093,64 +1074,75 @@ uploadAdminDivExtend=function($el){
     for(var i=0;i<arrFile.length;i++)  {
       formData.append("fileToUpload[]", arrFile[i]);
     }
-    majax(oAJAXL,[['uploadAdmin',formData,function(){ 
-      $progress.hide(); $uploadButton.prop("disabled",false);}]]);
+    
+    
+    var vecIn=[['uploadAdmin'], ['page',queredPage], ['tMod',tMod], ['CSRFCode',CSRFCode]];
+    var arrRet=[function(){  progress.hide(); uploadButton.prop("disabled",false);}];
+    
+    formData.append('vec', JSON.stringify(vecIn));
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', uBE, true);
+    var dataOut=formData;
+    xhr.setRequestHeader('x-type','multi');
+    
+    progress.attr({value:0}); progress.show(); 
+    xhr.onprogress=progressHandlingFunction;
+    xhr.onload=function() {
+      var dataFetched=this.response;
+      var data; try{ data=JSON.parse(this.response); }catch(e){ setMess(e);  return; }
+      
+      var dataArr=data.dataArr;  // Each argument of dataArr is an array, either [argument] or [altFuncArg,altFunc]
+      delete data.dataArr;
+      beRet(data);
+      for(var i=0;i<dataArr.length;i++){
+        var r=dataArr[i];
+        //if(r.length!=1) { window[r[1]].call(window,r[0]);   }
+        if(r.length==1) {var f=arrRet[i]; if(f) f(r[0]);} else { window[r[1]].call(window,r[0]);   }
+      }
+    }
+    xhr.onerror=function(e){ progress.hide(); uploadButton.prop("disabled",false); var tmp='statusText : '+xhr.statusText;  setMess(tmp); console.log(tmp);   throw 'bla';}
+    
+    xhr.send(dataOut); 
+    busyLarge.show();
+    
     setMess('Uploading ...');
-    $uploadButton.prop("disabled",true);
+    uploadButton.prop("disabled",true);
   
   }
 
   var strTmpExt=StrImageExt.join(', ');
-  var $imgHUpload=$imgHelp.clone().css({'margin-left':'1em'}); popupHoverJQ($imgHUpload,$('<div>').html('Accepted file endings: '+strTmpExt+', txt or zips file containing these formats (no folders in the zip file)'));
+  var imgHUpload=imgHelp.cloneNode().css({'margin-left':'1em'}); popupHover(imgHUpload,createElement('div').myText('Accepted file endings: '+strTmpExt+', txt or zips file containing these formats (no folders in the zip file)'));
 
-  var $formFile=$('<form enctype="multipart/form-data">');
-  var $inpFile=$('<input name="file" type="file" multiple>').css({background:'lightgrey'});
-  //var $inpUploadButton=$('<input type="button" value="Upload">');
-  var $uploadButton=$('<button>').text('Upload').prop("disabled",true);
-  var $progress=$('<progress max=100, value=0>').hide();
+
+  var formFile=createElement('form').prop({enctype:"multipart/form-data"});
+  var inpFile=createElement('input').prop({name:"file", type:"file", multiple:true}).css({background:'lightgrey'});
+  //var inpUploadButton=createElement('input type="button" value="Upload"');
+  var uploadButton=createElement('button').myText('Upload').prop("disabled",true);
+  var progress=createElement('progress').prop({max:100, value:0}).hide();
   
   var arrOrg, arrName, arrFile, StrConflict;
   var nOrg, nFilesUpload;
 
-  $formFile.append('<b>Upload:</b> ',$inpFile);   $formFile.css({display:'inline'});
-  $el.append($formFile, $uploadButton, $imgHUpload, $progress);
+  formFile.myHtml('<b>Upload:</b> ').myAppend(inpFile).css({display:'inline'});
+  el.append(formFile, uploadButton, imgHUpload, progress);
 
   var flowVerify;
-  $inpFile.change(function(e) {
+  inpFile.on('change', function(e) {
     flowVerify=verifyFun.call(this,e);  flowVerify.next();
-  }).click(function(){$inpFile[0].value=""; $uploadButton.prop("disabled",true);});
-  $uploadButton.click(sendFun);
+  }).on('click',function(){inpFile.value=""; uploadButton.prop("disabled",true);});
+  uploadButton.on('click',sendFun);
 
-  return $el;
+  return el;
 }
 //  */}).toString().match(/[^]*\/\*([^]*)\*\/\}$/)[1];    eval(myString);    }catch(err){}  //123412341234
 
 
-uploadUserDivExtend=function($el){
-  $el.toString=function(){return 'uploadUserDiv';}
-  var progressHandlingFunction=function(e){      if(e.lengthComputable){   $progress.attr({value:e.loaded,max:e.total});      }      }
-  var oAJAXL={
-    url: leafBE,
-    type: 'POST',
-    xhr: function() {  // Custom XMLHttpRequest
-      var myXhr = $.ajaxSettings.xhr();
-      if(myXhr.upload){   myXhr.upload.addEventListener('progress',progressHandlingFunction, false);   }
-      return myXhr;
-    },
-    beforeSend: function(){$progress.visible();},
-    success: function(){    $progress.attr({value:0});  $progress.invisible();     },
-    error: function(){ $progress.invisible(); errorFunc.call(this,arguments);},//errorHandler=function(){setMess('error uploading',5);},
-    //Options to tell jQuery not to process data or worry about content-type.
-    cache: false,
-    contentType: false,
-    processData: false,
-    headers:{'x-type':'single'}
-  }
-  oAJAXL.boFormData=1;
-
-  var setMess=function(str) {$divMess.html(str);}
-  var clearMess=function() {$divMess.html('');}
-  var toggleVerified=function(boT){ if(typeof boT=='undefined') boT=$divName.is('visible'); boT=Boolean(boT); $divName.toggle(boT);  $uploadButton.prop("disabled",!boT); }
+uploadUserDivExtend=function(el){
+  el.toString=function(){return 'uploadUserDiv';}
+  var progressHandlingFunction=function(e){      if(e.lengthComputable){   progress.attr({value:e.loaded,max:e.total});      }      }
+  var setMess=function(str) {divMess.myHtml(str);}
+  var clearMess=function() {divMess.myHtml('');}
+  var toggleVerified=function(boT){ if(typeof boT=='undefined') boT=divName.style.display!='none'; boT=Boolean(boT); divName.toggle(boT);  uploadButton.prop("disabled",!boT); }
   var verifyFun=function(){  
     clearMess();
     var arrFile=this.files;
@@ -1165,7 +1157,7 @@ uploadUserDivExtend=function($el){
     var Match=RegExp('^(.+)\\.(\\w{1,4})$').exec(strName);  
     if(!Match) {setMess('The file name should be in the form xxx.xxx',5); toggleVerified(0); return;}
     var strNameA=Match[1], strExtension=Match[2].toLowerCase();
-    $inpName.val(strNameA);  $spanExtension.html('.'+strExtension); inpNameChange();
+    inpName.value=strNameA;  spanExtension.myText('.'+strExtension); inpNameChange();
 
     toggleVerified(1);
   }
@@ -1174,70 +1166,103 @@ uploadUserDivExtend=function($el){
     if(boFormDataOK==0) {alert("Your browser doesn't support FormData"); return; };
     var formData = new FormData();
     formData.append("type", 'single');
-    formData.append("strName", $inpName.val()+$spanExtension.html());
+    formData.append("strName", inpName.value+spanExtension.myText());
     formData.append("fileToUpload[]", objFile);
     
     var strTmp=grecaptcha.getResponse();  if(!strTmp) {setMess("Captcha response is empty"); return; }   formData.append('g-recaptcha-response', strTmp);
-     
-    majax(oAJAXL,[['uploadUser',formData,function(data){if('strMessage' in data) setMess(data.strMessage); $progress.invisible(); $uploadButton.prop("disabled",false);}]]);
-    setMess('Uploading ...');
-    $uploadButton.prop("disabled",true);
-  }
-  $el.setVis=function(){
-    $el.show();
     
-    //$divName.after($divReCaptcha);
-    //$divReCaptcha.setUp();
+    
+    
+    
+    var vecIn=[['uploadUser'], ['page',queredPage], ['tMod',tMod], ['CSRFCode',CSRFCode]];
+    var arrRet=[function(data){if('strMessage' in data) setMess(data.strMessage); progress.invisible(); uploadButton.prop("disabled",false);}];
+    formData.append('vec', JSON.stringify(vecIn));
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', uBE, true);
+    var dataOut=formData;
+    xhr.setRequestHeader('x-type','single');
+    
+    progress.attr({value:0}); progress.visible(); //progress.visible();
+    xhr.onprogress=progressHandlingFunction;
+    xhr.onload=function() {
+      var dataFetched=this.response;
+      var data; try{ data=JSON.parse(this.response); }catch(e){ setMess(e);  return; }
+      
+      var dataArr=data.dataArr;  // Each argument of dataArr is an array, either [argument] or [altFuncArg,altFunc]
+      delete data.dataArr;
+      beRet(data);
+      for(var i=0;i<dataArr.length;i++){
+        var r=dataArr[i];
+        //if(r.length) { if('strMessage' in r[0]) setMess(r[0].strMessage);   }
+        if(r.length==1) {var f=arrRet[i]; if(f) f(r[0]);} else { window[r[1]].call(window,r[0]);   }
+      }
+    }
+    xhr.onerror=function(e){ progress.invisible(); errorFunc.call(this,arguments); }
+    
+    xhr.send(dataOut); 
+    busyLarge.show();
+    
+    //majax(oAJAXL,[['uploadUser',formData,function(data){if('strMessage' in data) setMess(data.strMessage); progress.invisible(); uploadButton.prop("disabled",false);}]]);
+    setMess('Uploading ...');
+    uploadButton.prop("disabled",true);
+  }
+  el.setVis=function(){
+    el.show();
+    
+    //divName.after(divReCaptcha);
+    //divReCaptcha.setUp();
     
     return true;
   }
 
-  //$el=popUpExtend($el);  
-  //$el.css({'max-width':'20em', padding: '0.3em 0.5em 1.2em 0.6em'});
+  //el=popUpExtend(el);  
+  //el.css({'max-width':'20em', padding: '0.3em 0.5em 1.2em 0.6em'});
   var maxUserUploadSizeMB=boDbg?0.5:1;
 
-  var $head=$('<h3>').append('Upload Image: (max '+maxUserUploadSizeMB+'MB)').css({'font-weight':'bold'});
-  var $formFile=$('<form enctype="multipart/form-data">');
-  var $inpFile=$('<input type=file name=file id=file accept="image/*">').css({background:'lightgrey'});
-  //var $inpUploadButton=$('<input type="button" value="Upload">');
-  var $uploadButton=$('<button>').text('Upload').prop("disabled",true).css({'margin-right':'0.5em', 'float':'right'});
-  var $progress=$('<progress max=100, value=0>').css({'display':'block','margin-top':'1em'}).invisible();
-  var $divMess=$('<div>').css({'margin-top':'1.2em'});
+  var head=createElement('h3').myAppend('Upload Image: (max '+maxUserUploadSizeMB+'MB)').css({'font-weight':'bold'});
+  var formFile=createElement('form').prop({enctype:"multipart/form-data"});
+  var inpFile=createElement('input').prop({name:"file", type:"file", id:'file', accept:"image/*"}).css({background:'lightgrey'});
+  //var inpUploadButton=createElement('input type="button" value="Upload"');
+  var uploadButton=createElement('button').myText('Upload').prop("disabled",true).css({'margin-right':'0.5em', 'float':'right'});
+  var progress=createElement('progress').prop({max:100, value:0}).css({'display':'block','margin-top':'1em'}).invisible();
+  var divMess=createElement('div').css({'margin-top':'1.2em'});
   
   var objFile;
-  $inpFile.change(verifyFun).click(function(){$uploadButton.prop("disabled",true);});
-  $formFile.append($inpFile);   $formFile.css({display:'inline'});
+  inpFile.on('change', verifyFun).on('click',function(){this.value=''; uploadButton.prop("disabled",true);});
+  formFile.append(inpFile);   formFile.css({display:'inline'});
    
   var inpNameChange=function(e){ 
     clearMess();
-    var strNameA=$inpName.val(), strName=strNameA+$spanExtension.html(); 
-    var boOK=strNameA.length>0; $spanOK.html(boOK?'&nbsp;':'Empty').css({color:'red'});   
+    var strNameA=inpName.value, strName=strNameA+spanExtension.myText(); 
+    //var boOK=strNameA.length>0; spanOK.myText(boOK?' ':'Empty').css({color:'red'});  
+    var boOK=strNameA.length>0; spanOK.myText(boOK?'Checking':'Empty').css({color:boOK?'brown':'red'});   
+    //var boOK=strNameA.length>0; if(boOK) spanOK.myText('Checking').css({color:'yellow'}); else spanOK.myText('Empty').css({color:'red'}); 
     if(boOK) majax(oAJAX,[['getImageInfo',{arrName:[strName]},inpNameRet]]);
-    else $uploadButton.prop("disabled",!boOK);
+    else uploadButton.prop("disabled",!boOK);
   }
   var inpNameRet=function(data){
-    var boOK=data.FileInfo.length==0; $spanOK.html(boOK?'OK':'Exists').css({color:boOK?'green':'red'});  $uploadButton.prop("disabled",!boOK);    
+    var boOK=data.FileInfo.length==0; spanOK.myText(boOK?'OK':'Exists').css({color:boOK?'green':'red'});  uploadButton.prop("disabled",!boOK);    
   } 
-  var $inpName=$('<input type=text>').on('input', inpNameChange);
-  var $spanExtension=$('<span>');
-  var $spanOK=$('<span>').html('').css('margin-left', '0.3em');
-  var $divNameInner=$("<div>").append($inpName, $spanExtension, $spanOK);
-  var $divName=$("<div>").append('Name: ', $divNameInner).css({'margin-top':'1.2em','line-height':'2em'}).hide();
+  var inpName=createElement('input').prop({type:'text'}).on('input', inpNameChange); //,placeholder:'Name'
+  var spanExtension=createElement('span').css({'font-size':'0.8em'});
+  var spanOK=createElement('span').myText('').css({'margin-left':'0.3em',  width:'3em', display:'inline-block', 'font-size':'0.8em'});
+  var divNameInner=createElement('div').myAppend(inpName, spanExtension);
+  var divName=createElement('div').myAppend('Select name: ', divNameInner, spanOK).css({'margin-top':'1.2em','line-height':'1,3em', background:'lightgrey'}).hide();
   
 
-  var $closeButton=$('<button>').append('Close').click(doHistBack);
-  var $menuBottom=$('<div>').append($closeButton, $uploadButton).css({'margin-top':'1.2em'});
+  var closeButton=createElement('button').myText('Close').on('click',doHistBack);
+  var menuBottom=createElement('div').myAppend(closeButton, uploadButton).css({'margin-top':'1.2em'});
 
 
-  var $blanket=$('<div>').addClass("blanket");
-  var $centerDiv=$('<div>').append($head, $formFile, $progress, $divName, $divMess,$menuBottom);  
-  $centerDiv.addClass("Center").css({padding: '0.3em 0.5em 1.2em 0.6em', 'box-sizing':'content-box'}); // 'width':'20em', height:'26em', 
-  //if(boIE) $centerDiv.css({'width':'20em'}); 
-  $el.addClass("Center-Container").append($centerDiv,$blanket); //
+  var blanket=createElement('div').addClass("blanket");
+  var centerDiv=createElement('div').myAppend(head, formFile, divName, divMess, progress, menuBottom);  
+  centerDiv.addClass("Center").css({padding: '0.3em 0.2em 1.2em 0.3em', 'box-sizing':'content-box'}); // 'width':'20em', height:'26em', 
+  //if(boIE) centerDiv.css({'width':'20em'}); 
+  el.addClass("Center-Container").myAppend(centerDiv,blanket); //
   
 
-  $uploadButton.click(sendFun);
-  return $el;
+  uploadButton.on('click',sendFun);
+  return el;
 }
 
 
@@ -1246,230 +1271,250 @@ uploadUserDivExtend=function($el){
 
 var PageFilterDiv=function(Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst, StrGroup){   //  Note!! StrOrderFilt should not be changed by any clinet side plugins (as it is also used on the server)
 "use strict"
-  var $el=$('<div>'); 
-  $el.toString=function(){return 'pageFilterDiv';}
-  $el.setNFilt=function(arr){ var tmp=arr[0]+'/'+arr[1]; $infoWrap.html(tmp);  $pageList.$filterInfoWrap.html(tmp);  } 
+  var el=createElement('div'); 
+  el.toString=function(){return 'pageFilterDiv';}
+  el.setNFilt=function(arr){ var tmp=arr[0]+'/'+arr[1]; infoWrap.myText(tmp);  pageList.filterInfoWrap.myText(tmp);  } 
   
   if(typeof StrGroupFirst=='undefined') StrGroupFirst=[];    if(typeof StrGroup=='undefined') StrGroup=[];
-  $el.Prop=Prop; $el.Label=Label; $el.StrOrderFilt=StrOrderFilt; $el.changeFunc=changeFunc; $el.StrGroupFirst=StrGroupFirst; $el.StrGroup=StrGroup;
-  $.extend($el,FilterDivProt);
-  $el.$divCont=$('<div>').css({'max-width':menuMaxWidth+'px',margin:'0em auto','text-align':'left'}); //cssFixed
+  //el.Prop=Prop; el.Label=Label; el.StrOrderFilt=StrOrderFilt; el.changeFunc=changeFunc; el.StrGroupFirst=StrGroupFirst; el.StrGroup=StrGroup;
+  //$.extend(el,FilterDivProt);
+  
+  //el.divCont=createElement('div').css({'max-width':menuMaxWidth+'px',margin:'0em auto','text-align':'left'}); //cssFixed
+  var objArg={Prop:Prop, Label:Label, StrOrderFilt:StrOrderFilt, changeFunc:changeFunc, StrGroupFirst:StrGroupFirst, StrGroup:StrGroup, helpBub:helpBub};
+  //objArg.StrProp=oRole.filter.StrProp;
+
+  el.divCont=filterDivICreator(objArg, changeFunc).addClass('contDiv').css({'max-width':menuMaxWidth+'px',margin:'0em auto','text-align':'left'});
 
       // menuA
-  var $buttClear=$('<button>').append('C').click(function(){$el.Filt.filtClear(); $pageList.histReplace(-1); $pageList.loadTab();});//.css({'float':'right'});
-  var $infoWrap=$('<span>'),     $spanLabel=$('<span>').append('Page filter',' (',$infoWrap,')').css({'float':'right',margin:'0.2em 0 0 0.2em'});
-  var $menuA=$('<div>').append($buttClear,$spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  // $buttonBack,
+  var buttClear=createElement('button').myText('C').on('click',function(){el.Filt.filtAll(); pageList.histReplace(-1); pageList.loadTab();}).css({'margin-left':'1em'});
+  var infoWrap=createElement('span'),     spanLabel=createElement('span').myAppend('Page filter',' (',infoWrap,')').css({'float':'right',margin:'0.2em 0 0 0.2em'});
+  var menuA=createElement('div').myAppend(buttClear,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  // buttonBack,
   
-  $el.addClass('unselectable').prop({unselectable:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie
+  el.addClass('unselectable').prop({unselectable:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie
 
-  $el.$fixedDiv=$('<div>').append($menuA).css(cssFixed);
-  $el.css({'text-align':'center'});
-  $el.append($el.$divCont, $el.$fixedDiv);
-  return $el;
+  el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
+  el.css({'text-align':'center'});
+  el.append(el.divCont, el.fixedDiv);
+  return el;
 }
 
 var ImageFilterDiv=function(Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst, StrGroup){   //  Note!! StrOrderFilt should not be changed by any client side plugins (as it is also used on the server)
 "use strict"
-  var $el=$('<div>'); 
-  $el.toString=function(){return 'imageFilterDiv';}
-  $el.setNFilt=function(arr){ var tmp=arr[0]+'/'+arr[1]; $infoWrap.html(tmp);  $imageList.$filterInfoWrap.html(tmp);  } 
+  var el=createElement('div'); 
+  el.toString=function(){return 'imageFilterDiv';}
+  el.setNFilt=function(arr){ var tmp=arr[0]+'/'+arr[1]; infoWrap.myText(tmp);  imageList.filterInfoWrap.myText(tmp);  } 
   
   if(typeof StrGroupFirst=='undefined') StrGroupFirst=[];    if(typeof StrGroup=='undefined') StrGroup=[];
-  $el.Prop=Prop; $el.Label=Label; $el.StrOrderFilt=StrOrderFilt; $el.changeFunc=changeFunc; $el.StrGroupFirst=StrGroupFirst; $el.StrGroup=StrGroup;
-  $.extend($el,FilterDivProt);
-  $el.$divCont=$('<div>').css({'max-width':menuMaxWidth+'px',margin:'0em auto','text-align':'left'}); //cssFixed
-
+  //el.Prop=Prop; el.Label=Label; el.StrOrderFilt=StrOrderFilt; el.changeFunc=changeFunc; el.StrGroupFirst=StrGroupFirst; el.StrGroup=StrGroup;
+  //$.extend(el,FilterDivProt);
+  //el.divCont=createElement('div').css({'max-width':menuMaxWidth+'px',margin:'0em auto','text-align':'left'}); //cssFixed
+  var objArg={Prop:Prop, Label:Label, StrOrderFilt:StrOrderFilt, changeFunc:changeFunc, StrGroupFirst:StrGroupFirst, StrGroup:StrGroup, helpBub:helpBub};
+  //objArg.StrProp=oRole.filter.StrProp;
+  
+  el.divCont=filterDivICreator(objArg, changeFunc).addClass('contDiv').css({'max-width':menuMaxWidth+'px',margin:'0em auto','text-align':'left'});
+  
       // menuA
-  var $buttClear=$('<button>').append('C').click(function(){$el.Filt.filtClear(); $imageList.histReplace(-1); $imageList.loadTab()});
-  var $infoWrap=$('<span>'),     $spanLabel=$('<span>').append('Image filter',' (',$infoWrap,')').css({'float':'right',margin:'0.2em 0 0 0.2em'});
-  var $menuA=$('<div>').append($buttClear,$spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //$buttonBack,
+  var buttClear=createElement('button').myText('C').on('click',function(){el.Filt.filtAll(); imageList.histReplace(-1); imageList.loadTab()}).css({'margin-left':'1em'});
+  var infoWrap=createElement('span'),     spanLabel=createElement('span').myAppend('Image filter',' (',infoWrap,')').css({'float':'right',margin:'0.2em 0 0 0.2em'});
+  var menuA=createElement('div').myAppend(buttClear,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
 
-  $el.addClass('unselectable').prop({unselectable:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie
+  el.addClass('unselectable').prop({unselectable:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie
 
-  $el.$fixedDiv=$('<div>').append($menuA).css(cssFixed).css({background:'lightblue'});
-  $el.css({'text-align':'center'});
-  $el.append($el.$divCont, $el.$fixedDiv);
-  return $el;
+  el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed).css({background:'lightblue'});
+  el.css({'text-align':'center'});
+  el.append(el.divCont, el.fixedDiv);
+  return el;
 }
 
 
-var headExtend=function($el, $tableDiv, StrName, BoAscDefault, Label, strTR='tr', strTD='td'){  // $tableDiv must have a property $table, $tbody and nRowVisible (int)
-//"use strict"
-  $el.setArrow=function(strName,dir){
+
+"use strict"
+var headExtend=function(el, tableDiv, StrName, BoAscDefault, Label, strTR='tr', strTD='td'){  // tableDiv must have a property table, tBody and nRowVisible (int)
+  el.setArrow=function(strName,dir){
     boAsc=dir==1;
-    $sortImages.prop({src:uUnsorted});     var tmp=boAsc?uIncreasing:uDecreasing;  $el.children(strTH+'[name='+strName+']').children('img[data-type=sort]').prop({src:tmp});
+    arrImgSort.forEach(function(ele){ele.prop({src:uUnsorted}) });
+    var tmp=boAsc?uIncreasing:uDecreasing;
+    el.querySelector(strTH+'[name='+strName+']').querySelector('img[data-type=sort]').prop({src:tmp});
   }
-  $el.clearArrow=function(){
-    thSorted=null, boAsc=false;  $sortImages.prop({src:uUnsorted});
+  el.clearArrow=function(){
+    thSorted=null, boAsc=false;
+    arrImgSort.forEach(function(ele){ele.prop({src:uUnsorted}) });
   }
-  var thClick=function() { 
-    var $ele=$(this), strName=$ele.attr('name'); boAscDefault=$ele.data('boAscDefault');
+  var thClick=function() {
+    var ele=this, strName=ele.attr('name'), boAscDefault=ele.boAscDefault;
     boAsc=(thSorted===this)?!boAsc:boAscDefault;  thSorted=this;
-    $sortImages.prop({src:uUnsorted});     var tmp=boAsc?uIncreasing:uDecreasing;  $ele.children('img[data-type=sort]').prop({src:tmp});
-    $tableDiv.$tbody.detach();
-    var $tr=$tableDiv.$tbody.children(strTR+':lt('+$tableDiv.nRowVisible+')');
-    var $tdNameSort =$tr.children(strTD+'[name='+strName+']'); 
-    $tdNameSort.sortElements(function(aT, bT){               
-      var $a=$(aT), $b=$(bT), a = $a.data('valSort'),  b = $b.data('valSort'),   dire=boAsc?1:-1;
+    arrImgSort.forEach(function(ele){ele.prop({src:uUnsorted}) });
+    var tmp=boAsc?uIncreasing:uDecreasing;  ele.querySelector('img[data-type=sort]').prop({src:tmp});
+    var tBody=tableDiv.tBody;
+    var arrT=[...tBody.querySelectorAll('tr')];
+    var arrToSort=arrT.slice(0, tableDiv.nRowVisible);
+    var iChild=ele.myIndex();
+    var comparator=function(aT, bT){
+      var a = aT.children[iChild].valSort,  b = bT.children[iChild].valSort,   dire=boAsc?1:-1; 
       var boAStr=0,boBStr=0;
       var aN=Number(a); if(!isNaN(aN) && a!=='') {a=aN;} else {a=a.toLowerCase(); boAStr=1;}
       var bN=Number(b); if(!isNaN(bN) && b!=='') {b=bN;} else {b=b.toLowerCase(); boBStr=1;}
-      if(boAStr!=boBStr) return ((boAStr<boBStr)?-1:1)*dire; 
-      if(a==b) {return 0;} else return ((a<b)?-1:1)*dire; 
-    }, function(){ return this.parentNode;  });
-    $tableDiv.$table.append($tableDiv.$tbody);
-
+      if(boAStr!=boBStr) return ((boAStr<boBStr)?-1:1)*dire;
+      if(a==b) {return 0;} else return ((a<b)?-1:1)*dire;
+    }
+    var arrToSortN=msort.call(arrToSort,comparator);
+    tBody.prepend.apply(tBody,arrToSortN);
   }
+
   var strTH=strTD=='td'?'th':strTD;
   var boAsc=false, thSorted=null;
-
-  for(var i=0;i<StrName.length;i++){
+  var len=StrName.length;
+  var Th=Array(len), arrImgSort=Array(len);
+  for(var i=0;i<len;i++){
     var strName=StrName[i];  
-    var $imgSort=$('<img data-type=sort>');
+    var imgSort=createElement('img').attr('data-type', 'sort').prop({src:uUnsorted});
     var boAscDefault=(strName in BoAscDefault)?BoAscDefault[strName]:true;
     var label=(strName in Label)?Label[strName]:ucfirst(strName);
-    var $h=$("<"+strTH+">").append($imgSort).addClass('unselectable').prop({UNSELECTABLE:"on"}).attr('name',strName).data('boAscDefault',boAscDefault).prop('title',label).click(thClick);
-    $el.append($h);
+    var h=createElement(strTH).myAppend(imgSort).addClass('unselectable').prop({UNSELECTABLE:"on"}).attr('name',strName).prop('boAscDefault',boAscDefault).prop('title',label).on('click',thClick);
+    Th[i]=h;
+    arrImgSort[i]=imgSort;
   }
 
-  var $th=$el.children(strTH);
-  var $sortImages=$th.children('img[data-type=sort]').prop({src:uUnsorted});
-  //$sortImages.css({zoom:1.5,'margin':'auto','margin-top':'0.3em','margin-bottom':'0.3em'}); // display:'block',
-  $el.addClass('listHead');
-  //$el.css({'font-family':'initial'});
-  //$el.css({ position:'fixed'});
-  
-  return $el;
+  el.append(...Th);
+  el.addClass('listHead');
+  return el;
 }
-
 
 
 
   // Methods of clicked button
 var clickSetParentFilter=function(){
-  var idPage=$(this).parent().parent().data('idPage');  $pageFilterDiv.Filt.setSingleParent(idPage); $pageList.histPush(); $pageList.loadTab();
-  if(!$pageList.is(":visible")) $pageList.setVis();
+  var idPage=this.parentNode.parentNode.idPage;  pageFilterDiv.Filt.setSingleParent(idPage); pageList.histPush(); pageList.loadTab();
+  if(pageList.style.display=='none') pageList.setVis();
 }
 var clickSetParentFilterI=function(){
-  //changeHist({$view:$imageList});
-  $imageList.setVis();
-  var idPage=$(this).parent().parent().data('idPage');   $imageFilterDiv.Filt.setSingleParent(idPage); $imageList.histPush(); $imageList.loadTab(); 
-  if(!$imageList.is(":visible")) $imageList.setVis();
+  //changeHist({view:imageList});
+  //imageList.setVis();
+  var idPage=this.parentNode.parentNode.idPage;   imageFilterDiv.Filt.setSingleParent(idPage); imageList.histPush(); imageList.loadTab(); 
+  if(imageList.style.display=='none') imageList.setVis();
 }
 
-var PageRowLabel={nParent:'Parents / Alternatve parents', cb:'Select',date:'Last Modified',boOR:'Public read access', boOW:'Public write access', boSiteMap:'Promote (include in Sitemap.xml etc)', nImage:'Images', nChild:'Child pages', version:'Supplied by user / mult versions'};
+
+var PageRowLabel={nParent:'Parents / Alternatve parents', cb:'Select',tCreated:'Created',date:'Last Modified',boOR:'Public read access', boOW:'Public write access', boSiteMap:'Promote (include in Sitemap.xml etc)', nImage:'Images', nChild:'Child pages', version:'Supplied by user / mult versions'};
   
   
-pageListExtend=function($el){ 
+pageListExtend=function(el){ 
 "use strict"
-  $el.toString=function(){return 'pageList';}
+  el.toString=function(){return 'pageList';}
   var condAddRows=function(){
-    var $rows=$tbody.children('p');
-    for(var i=$rows.length; i<File.length;i++){
-      var $r=$('<p>');
-      var $cb=$('<input type=checkbox>').click(cbClick);
-      //$cb.css({'margin-top':'0em','margin-bottom':'0em'});  //,'vertical-align':'bottom'
-      //if(boAndroid) $cb.css({'-webkit-transform':'scale(2,2)'}); else $cb.css({width:'1.4em',height:'1.4em'});
-      var $buttonNParent=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'page');});  // ,'page'
-      var $tdNParent=$('<span>').append($buttonNParent).attr('name','nParent').prop('title','Parents');
-      var $tdCB=$('<span>').data('valSort',0).append($cb).attr('name','cb'); //.css({'margin-left':'0.15em'});
-      //var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
-      var $buttonExecute=$('<button>').append(charFlash).on(strMenuOpenEvent,$menuPageSingle.buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"});
-      var $tdExecute=$('<span>').data('valSort',0).append($buttonExecute).attr('name','execute');
-      var $tdR=$('<span>').attr('name','boOR').html(charPublicRead).prop('title',PageRowLabel.boOR), $tdW=$('<span>').attr('name','boOW').html(charPublicWrite).prop('title',PageRowLabel.boOW), $tdP=$('<span>').attr('name','boSiteMap').html(charPromote).css({'margin-right':'0.15em'}).prop('title',PageRowLabel.boSiteMap);
-      var $tdVer=$('<span>').attr('name','version'); //.css({'margin-left':'0.15em'});
-      var $tdDate=$('<span>').attr('name','date').prop('title',PageRowLabel.date);
-      var $tdSite=$('<span>').attr('name','siteName'); //.hide();
-      var $aLink=$('<a>').prop({target:"_blank"});
-      var $tdLink=$('<span>').attr('name','link').append($aLink); //.hide();
-      var $tdSize=$('<span>').attr('name','size');
-      var $buttonNChild=$('<button>').append('<span></span>').click(clickSetParentFilter);
-      var $buttonNImage=$('<button>').click(clickSetParentFilterI);
-      var $tdNChild=$('<span>').append($buttonNChild).attr('name','nChild').prop('title','Children'); 
-      var $tdNImage=$('<span>').append($buttonNImage).attr('name','nImage').prop('title','Images');  
-      $r.append($tdNParent, $tdCB, $tdExecute, $tdDate, $tdR, $tdW, $tdP, $tdSize, $tdNImage, $tdNChild, $tdVer, ' ', $tdSite,$tdLink);  //    , $tdName     ,$('<span>').append($bView)
-      //$r.data({$tdCB:$tdCB, $tdDate:$tdDate, $tdR:$tdR, $tdW:$tdW, $tdP:$tdP, $tdLink:$tdLink, $tdVer:$tdVer, $tdSize:$tdSize, $tdNChild:$tdNChild, $tdNImage:$tdNImage});
-      $tbody.append($r);
+    var Row=tBody.childNodes;
+    for(var i=Row.length; i<File.length;i++){
+      var r=createElement('p');
+      var cb=createElement('input').prop('type','checkbox').on('click',cbClick);
+      //cb.css({'margin-top':'0em','margin-bottom':'0em'});  //,'vertical-align':'bottom'
+      //if(boAndroid) cb.css({'-webkit-transform':'scale(2,2)'}); else cb.css({width:'1.4em',height:'1.4em'});
+      var buttonNParent=createElement('button').myHtml('<span></span>').on('click',function(){goToParentMethod.call(this,'page');});  // ,'page'
+      var tdNParent=createElement('span').myAppend(buttonNParent).attr('name','nParent').prop('title','Parents');
+      var tdCB=createElement('span').prop('valSort',0).myAppend(cb).attr('name','cb'); //.css({'margin-left':'0.15em'});
+      //var tmpImg=createElement('img').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
+      var buttonExecute=createElement('button').myAppend(charFlash).on(strMenuOpenEvent,menuPageSingle.buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"});
+      var tdExecute=createElement('span').prop('valSort',0).myAppend(buttonExecute).attr('name','execute');
+      var tdR=createElement('span').attr('name','boOR').myText(charPublicRead).prop('title',PageRowLabel.boOR), tdW=createElement('span').attr('name','boOW').myText(charPublicWrite).prop('title',PageRowLabel.boOW), tdP=createElement('span').attr('name','boSiteMap').myText(charPromote).css({'margin-right':'0.15em'}).prop('title',PageRowLabel.boSiteMap);
+      var tdVer=createElement('span').attr('name','version'); //.css({'margin-left':'0.15em'});
+      var tdTCreated=createElement('span').attr('name','tCreated').prop('title',PageRowLabel.tCreated);
+      var tdDate=createElement('span').attr('name','date').prop('title',PageRowLabel.date);
+      var tdSite=createElement('span').attr('name','siteName'); //.hide();
+      var aLink=createElement('a').prop({target:"_blank"});
+      var tdLink=createElement('span').attr('name','link').myAppend(aLink); //.hide();
+      var tdSize=createElement('span').attr('name','size');
+      var buttonNChild=createElement('button').myHtml('<span></span>').on('click',clickSetParentFilter);
+      var buttonNImage=createElement('button').on('click',clickSetParentFilterI);
+      var tdNChild=createElement('span').myAppend(buttonNChild).attr('name','nChild').prop('title','Children'); 
+      var tdNImage=createElement('span').myAppend(buttonNImage).attr('name','nImage').prop('title','Images');  
+      r.append(tdNParent, tdCB, tdExecute, tdTCreated, tdDate, tdR, tdW, tdP, tdSize, tdNImage, tdNChild, tdVer, ' ', tdSite,tdLink);  //    , tdName     ,createElement('span').append(bView)
+      //r.data({tdCB:tdCB, tdDate:tdDate, tdR:tdR, tdW:tdW, tdP:tdP, tdLink:tdLink, tdVer:tdVer, tdSize:tdSize, tdNChild:tdNChild, tdNImage:tdNImage});
+      tBody.append(r);
     }
   }
   var isAnyOn=function(){
-    var boOn=false, $Tr=$tbody.children('p:lt('+$el.nRowVisible+')');     $Tr.find('input').each(function(){var boTmp=$(this).prop('checked'); if(boTmp) boOn=true;});   return boOn;
+    //var boOn=false, Tr=tBody.children('p:lt('+el.nRowVisible+')');     Tr.find('input').forEach(function(){var boTmp=this.prop('checked'); if(boTmp) boOn=true;});   return boOn;
+    var boOn=false, Tr=[...tBody.childNodes].slice(0, el.nRowVisible);     Tr.forEach(ele=>{var inp=ele.querySelector('input'); if(inp.checked) boOn=true;});   return boOn;
   }
   var isOneOn=function(){
-    var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')'), $checked=$Tr.find('input:checked'); return $checked.length==1;
+    //var Tr=tBody.children('p:lt('+el.nRowVisible+')'), checked=Tr.find('input:checked'); return checked.length==1;
+    var Tr=[...tBody.childNodes].slice(0, el.nRowVisible), cOn=0; Tr.forEach(ele=>{var inp=ele.querySelector('input'); if(inp.checked) cOn++;});  return cOn==1;
   }
   var cbClick=function(){
-    var $cb=$(this), boOn=Number($cb.prop('checked'));    $cb.parent().data('valSort',boOn);
-    var boOn=isAnyOn();    $allButton.text(boOn?'None':'All');    $buttonExecuteMult.toggle(boOn);
+    var cb=this, boOn=Number(cb.prop('checked'));    cb.parentNode.valSort=boOn;
+    var boOn=isAnyOn();    allButton.myText(boOn?'None':'All');    buttonExecuteMult.toggle(boOn);
   }
   var fileArray2Div=function(){
     var nRT=File.length;
-    var $rows=$tbody.children('p');   $rows.slice(nRT).hide();
-    var $myRows=$rows.slice(0,nRT); 
-    //if($myRows.length==0) { return; }
-    $myRows.show();
-    $myRows.each(function(i,r){ 
-      //var $r=$(r).data({idPage:File[i].idPage, iFlip:i, pageName:File[i].pageName, nParent:File[i].nParent, idParent:File[i].idParent, nameParent:File[i].nameParent}); 
-      var $r=$(r); $r.data(File[i]);  $r.data({iFlip:i}); 
-      $r.attr({idPage:File[i].idPage});
+    //var rows=tBody.children('p');
+    var Row=[...tBody.childNodes];
+    Row.slice(nRT).forEach(ele=>ele.hide());
+    var myRows=Row.slice(0,nRT); 
+    myRows.forEach(function(r, i){ 
+      r.show();
+      //var r=r.data({idPage:File[i].idPage, iFlip:i, pageName:File[i].pageName, nParent:File[i].nParent, idParent:File[i].idParent, nameParent:File[i].parent}); 
+      r.prop(File[i]);  r.prop({iFlip:i}); 
+      r.attr({idPage:File[i].idPage});
       var f=File[i];      
-      var nParent=File[i].nParent, $buttonTmp=$r.children('span[name=nParent]').data('valSort',nParent).children('button');
-        var boSingle=$pageFilterDiv.Filt.checkIfSingleParent();
+      var nParent=File[i].nParent, buttonTmp=r.querySelector('span[name=nParent]').prop('valSort',nParent).querySelector('button');
+        var boSingle=pageFilterDiv.Filt.checkIfSingleParent();
         var strTitle;
         if(boSingle) {
           strTitle=nParent+' parents';
         }else{
-          strTitle=nParent+' parents'; if(nParent==1) strTitle=File[i].nameParent; else if(!nParent) strTitle='orphan';
+          strTitle=nParent+' parents'; if(nParent==1) strTitle=File[i].parent; else if(!nParent) strTitle='orphan';
         }
-        $buttonTmp.prop('title',strTitle);
+        buttonTmp.prop('title',strTitle);
         var boHide=boSingle && nParent<=1; 
-        $buttonTmp.visibilityToggle(!boHide);
-        //$buttonTmp.prop("disabled",boHide).css({opacity:boHide?0.5:''});
-        $buttonTmp.children('span:eq(0)').html(nParent); 
-      $r.children('span[name=cb]').data('valSort',0).children('input').prop({'checked':false}); 
-      var tmp=File[i].boOR; $r.children('span[name=boOR]').data('valSort',tmp).visibilityToggle(tmp); 
-      var tmp=File[i].boOW; $r.children('span[name=boOW]').data('valSort',tmp).visibilityToggle(tmp);
-      var tmp=File[i].boSiteMap; $r.children('span[name=boSiteMap]').data('valSort',tmp).visibilityToggle(tmp);
+        buttonTmp.visibilityToggle(!boHide);
+        //buttonTmp.prop("disabled",boHide).css({opacity:boHide?0.5:''});
+        //buttonTmp.querySelector('span:nth-of-type(1)').myText(nParent); 
+        buttonTmp.children[0].myText(nParent);
+      r.querySelector('span[name=cb]').prop('valSort',0).querySelector('input').prop({'checked':false}); 
+      var tmp=File[i].boOR; r.querySelector('span[name=boOR]').prop('valSort',tmp).visibilityToggle(tmp); 
+      var tmp=File[i].boOW; r.querySelector('span[name=boOW]').prop('valSort',tmp).visibilityToggle(tmp);
+      var tmp=File[i].boSiteMap; r.querySelector('span[name=boSiteMap]').prop('valSort',tmp).visibilityToggle(tmp);
       var strVersion=''; if(Boolean(File[i].boOther)) strVersion='v'+(Number(File[i].lastRev)+1);   
-      //$r.children('span[name=version]').toggle(Boolean(File[i].boOther)).html(strVersion);
-      $r.children('span[name=version]').data('valSort',strVersion).visibilityToggle(Boolean(File[i].boOther)).html(strVersion);
-      var tmp=File[i].tMod; $r.children('span[name=date]').data('valSort',-tmp.valueOf()).html(mySwedDate(tmp)).prop('title','Last Mod:\n'+UTC2JS(tmp));    
+      //r.querySelector('span[name=version]').toggle(Boolean(File[i].boOther)).myText(strVersion);
+      r.querySelector('span[name=version]').prop('valSort',strVersion).visibilityToggle(Boolean(File[i].boOther)).myText(strVersion);
+      var tmp=File[i].tCreated; r.querySelector('span[name=tCreated]').prop('valSort',-tmp.valueOf()).myText(mySwedDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));  
+      var tmp=File[i].tMod; r.querySelector('span[name=date]').prop('valSort',-tmp.valueOf()).myText(mySwedDate(tmp)).prop('title','Last Mod:\n'+UTC2JS(tmp));    
       var size=File[i].size, sizeDisp=size, pre=''; if(size>=1024) {sizeDisp=Math.round(size/1024); pre='k';} if(size>=1048576) { sizeDisp=Math.round(size/1048576); pre='M';}
-      var $tmp=$r.children('span[name=size]').data('valSort',size).html(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; $tmp.prop('title',strTitle);   //$tmp.css({weight:pre=='M'?'bold':'',color:pre==''?'grey':''}); 
-      var tmp=File[i].nChild, $buttonTmp=$r.children('span[name=nChild]').data('valSort',tmp).children('button'); $buttonTmp.children('span:eq(0)').html(tmp); $buttonTmp.visibilityToggle(tmp);    
-      var tmp=File[i].nImage; $r.children('span[name=nImage]').data('valSort',tmp).children('button').html(tmp).visibilityToggle(tmp); //  
-      var tmp=File[i].siteName; $r.children('span[name=siteName]').data('valSort',tmp).text(tmp).prop('title',File[i].www);
-      var tmp=File[i].pageName, strS=Number(File[i].boTLS)?'s':''; $r.children('span[name=link]').data('valSort',tmp).children('a').prop({href:'http'+strS+'://'+File[i].www+'/'+tmp}).text(tmp);    
+      var tmp=r.querySelector('span[name=size]').prop('valSort',size).myHtml(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; tmp.prop('title',strTitle);   //tmp.css({weight:pre=='M'?'bold':'',color:pre==''?'grey':''}); 
+      var tmp=File[i].nChild, buttonTmp=r.querySelector('span[name=nChild]').prop('valSort',tmp).querySelector('button'); buttonTmp.querySelector('span:nth-of-type(1)').myText(tmp); buttonTmp.visibilityToggle(tmp);    
+      var tmp=File[i].nImage; r.querySelector('span[name=nImage]').prop('valSort',tmp).querySelector('button').myText(tmp).visibilityToggle(tmp); //  
+      var tmp=File[i].siteName; r.querySelector('span[name=siteName]').prop('valSort',tmp).myText(tmp).prop('title',File[i].www);
+      var tmp=File[i].pageName, strS=Number(File[i].boTLS)?'s':''; r.querySelector('span[name=link]').prop('valSort',tmp).querySelector('a').prop({href:'http'+strS+'://'+File[i].www+'/'+tmp}).myText(tmp);    
     });
-    $tbody.find('span[name=cb] input').prop({'checked':false}); 
+    var Tmp=[...tBody.querySelectorAll('input')]; Tmp.forEach(ele=>ele.prop({'checked':false})); // span[name=cb]
   }
-  $el.setCBStat=function(boOn){
-    boOn=Boolean(boOn);$allButton.html('All');
-    $buttonExecuteMult.toggle(false);
-    $tbody.find('span input').prop({'checked':false});
+  el.setCBStat=function(boOn){
+    boOn=Boolean(boOn);allButton.myText('All');
+    buttonExecuteMult.toggle(false);
+    //tBody.find('span input').prop({'checked':false});
+    var Tmp=[...tBody.querySelectorAll('input')]; Tmp.forEach(ele=>ele.prop({'checked':false}));
   }
-  var restExecuteButton=function(){   $allButton.html('All');  $buttonExecuteMult.hide();  }
-  $el.loadTab=function(){
-    var oF=$pageFilterDiv.gatherFiltData();
+  var restExecuteButton=function(){   allButton.myText('All');  buttonExecuteMult.hide();  }
+  el.loadTab=function(){
+    var oF=pageFilterDiv.divCont.gatherFiltData();
     var vec=[['setUpPageListCond',oF],['getPageList',1,getListRet],['getPageHist',1,histRet]]; 
-    //var boSingleParentFilter=$pageFilterDiv.Filt.checkIfSingleParent();
-    var boWhite=$pageFilterDiv.Filt.isWhite(),     nParentsOn=$pageFilterDiv.Filt.getNParentsOn();
+    //var boSingleParentFilter=pageFilterDiv.Filt.checkIfSingleParent();
+    var boWhite=pageFilterDiv.Filt.isWhite(),     nParentsOn=pageFilterDiv.Filt.getNParentsOn();
     if(boWhite && nParentsOn==1){
-      var idParent=$pageFilterDiv.Filt.getSingleParent();
-      //var siteName=$pageFilterDiv.Filt.getSingleSite();
-      vec.push(['getParent',{idPage:idParent},function(data){$divRowParent.getParentRet(data);}],
-         ['getSingleParentExtraStuff',{idPage:idParent},function(data){$divRowParent.getSingleParentExtraStuffRet(data);}]);  // If filtering for single parent then also get the "grandparents"
+      var idParent=pageFilterDiv.Filt.getSingleParent();
+      //var siteName=pageFilterDiv.Filt.getSingleSite();
+      vec.push(['getParent',{idPage:idParent},function(data){divRowParent.getParentRet(data);}],
+         ['getSingleParentExtraStuff',{idPage:idParent},function(data){divRowParent.getSingleParentExtraStuffRet(data);}]);  // If filtering for single parent then also get the "grandparents"
     }
-    $divRowParent.setUpPreAJAX(idParent);
+    divRowParent.setUpPreAJAX(idParent);
     majax(oAJAX,vec);
     setMess('... fetching pages ... ',5,true);
-    $head.clearArrow(); restExecuteButton();
+    head.clearArrow(); restExecuteButton();
   }
   var getListRet=function(data){
     var nCur;  //, TabTmp, StrCol;
-    var tmp=data.NFilt;   if(typeof tmp!="undefined") { $pageFilterDiv.setNFilt(tmp); } 
+    var tmp=data.NFilt;   if(typeof tmp!="undefined") { pageFilterDiv.setNFilt(tmp); } 
     File.length=0; if('tab' in data) File=tabNStrCol2ArrObj(data);
-    $el.nRowVisible=File.length;
+    el.nRowVisible=File.length;
     condAddRows(); fileArray2Div();
   }
   var histRet=function(data){
@@ -1488,78 +1533,86 @@ pageListExtend=function($el){
       if(row.pageName in objMult) row.text=row.siteName+':'+row.pageName; else row.text=row.pageName;
     }
 
-    $pageFilterDiv.interpretHistPHP(HistPHP);
-    $pageFilterDiv.update();
-    //$pageList.setCBStat(0);
+    pageFilterDiv.divCont.interpretHistPHP(HistPHP);
+    pageFilterDiv.divCont.update();
+    //pageList.setCBStat(0);
   }
   
   var getChecked=function(){
-    var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')'), $checked=$Tr.find('input:checked'), FileTmp=[]; $checked.each(function(){var tmp=$(this).parent().parent().data('idPage'); FileTmp.push(tmp);});
+    //var Tr=tBody.children('p:lt('+el.nRowVisible+')'), checked=Tr.find('input:checked'), FileTmp=[]; checked.forEach(ele=>{var tmp=ele.parentNode.parentNode.idPage; FileTmp.push(tmp);});
+    var Tr=[...tBody.childNodes].slice(0, el.nRowVisible), FileTmp=[]; Tr.forEach(ele=>{
+      var inp=ele.querySelector('input:checked'); if(inp) {var tmp=ele.idPage; FileTmp.push(tmp);}
+    });
     return FileTmp;
   }
   var changeModOfChecked=function(strName,boVal){
-    var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')');
-    $Tr.find('input:checked').each(function(i){var $cb=$(this); $cb.parent().parent().children('span[name='+strName+']').data('valSort',Number(boVal)).visibilityToggle(boVal); });
+    //var Tr=tBody.children('p:lt('+el.nRowVisible+')');
+    //Tr.find('input:checked').forEach(function(ele,i){var cb=ele; cb.parentNode.parentNode.children('span[name='+strName+']').prop('valSort',Number(boVal)).visibilityToggle(boVal); });
+    var Tr=[...tBody.childNodes].slice(0, el.nRowVisible);
+    Tr.forEach(ele=>{
+      var inp=ele.querySelector('input:checked'); if(inp) inp.parentNode.parentNode.querySelector('span[name='+strName+']').prop('valSort',Number(boVal)).visibilityToggle(boVal);
+    });
   }
-  $el.changeName=function(r,strNewName){
-    var $r=$(r);
-    if($r.data('iFlip')!==null){
-      var iFlip=$r.data('iFlip');
+  el.changeName=function(r,strNewName){
+    if(r.iFlip!==null){
+      var iFlip=r.iFlip;
       File[iFlip].pageName=strNewName;
       var www=File[iFlip].www, strS=Number(File[iFlip].boTLS)?'s':'';
-      $r.data('pageName',strNewName); var $td=$r.children('span[name=link]').data('valSort',strNewName); $td.children('a').prop({href:'http'+strS+'://'+www+'/'+strNewName}).text(strNewName);
+      r.prop('pageName',strNewName); var td=r.querySelector('span[name=link]').prop('valSort',strNewName); td.querySelector('a').prop({href:'http'+strS+'://'+www+'/'+strNewName}).myText(strNewName);
     }
   }
-  $el.deleteF=function(FileDelete, histBackFun){
-    var oF=$pageFilterDiv.gatherFiltData();    
+  el.deleteF=function(FileDelete, histBackFun){
+    var oF=pageFilterDiv.divCont.gatherFiltData();    
     //var vec=[['deletePage',{File:FileDelete}],['setUpPageListCond',oF],['getPageList',1,getListRet],['getPageHist',1,histRet]];
     var vec=[['deletePage',{File:FileDelete}, histBackFun]];
     restExecuteButton();  majax(oAJAX, vec);
   }
   
   var funPopped=function(stateMyPopped){ 
-    $pageFilterDiv.frStored(stateMyPopped);
-    $el.loadTab();
+    pageFilterDiv.divCont.frStored(stateMyPopped);
+    el.loadTab();
   }
-  $el.histPush=function(){
-    var o=$pageFilterDiv.toStored();
-    doHistPush({$view:$pageList, Filt:o, fun:funPopped}); //
+  el.histPush=function(){
+    var o=pageFilterDiv.divCont.toStored();
+    doHistPush({view:pageList, Filt:o, fun:funPopped}); //
   }
-  $el.histReplace=function(indDiff){
-    var o=$pageFilterDiv.toStored();
-    doHistReplace({$view:$pageList, Filt:o, fun:funPopped}, indDiff); // 
+  el.histReplace=function(indDiff){
+    var o=pageFilterDiv.divCont.toStored();
+    doHistReplace({view:pageList, Filt:o, fun:funPopped}, indDiff); // 
   }
 
 
   var ParentName, IndParentName;
-  PropPage.parent.setRowButtF=function($span,val,boOn){
+  PropPage.parent.setRowButtF=function(span,val,boOn){
     var text=''; if(val in IndParentName) text=IndParentName[val].text;
     else if(val===null) text='(no parent)';
-    $span.html(text);
+    span.myText(text);
   }
 
-  //var $myRows;
-  var $tbody=$el.$tbody=$("<div>").addClass('pageList listBody'); //.addClass('listBody')
-  $el.$table=$("<div>").append($tbody).css({width:'100%',position:'relative'});
-  $el.$divCont=$("<div>").append($el.$table).css({margin:'0em auto 1em','text-align':'left',display:'inline-block'});//
-  //$el.$divCont.on('mouseover','button[name=nChild]',function(){console.log('gg');});
+  //var myRows;
+  var tBody=el.tBody=createElement('div').addClass('pageList', 'listBody'); //.addClass('listBody')
+  el.table=createElement('div').myAppend(tBody).css({width:'100%',position:'relative'});
+  el.divCont=createElement('div').myAppend(el.table).css({margin:'0em auto 1em','text-align':'left',display:'inline-block'});//
+  //el.divCont.on('mouseover','button[name=nChild]',function(){console.log('gg');});
 
-  var StrCol=['nParent','cb','execute','date','boOR','boOW','boSiteMap','size','nImage','nChild','version','siteName', 'link'], BoAscDefault={cb:0,boOR:0,boOW:0,boSiteMap:0,nImage:0,nChild:0,nParent:0,version:0,size:0};
-  //var $spanFill=$('<span>').css({height:'calc(1.5*8px + 0.6em)'});
-  //var $headFill=$('<p>').append().css({background:'white',margin:'0px',height:'calc(12px + 1.2em)'});
-  var $head=headExtend($('<p>'),$el,StrCol,BoAscDefault,PageRowLabel,'p','span').addClass('pageList');
-  $head.css({background:'white', width:'inherit',height:'calc(12px + 1.2em)'});     // , position:'sticky', top:'57px', 'z-index':'1', margin:'0px'
-  $el.$headW=$('<div>').append($head).css({background:'white', width:'inherit', position:'sticky', top:'0px', 'z-index':'1', margin:'0px'});     
-  $el.$table.prepend($el.$headW); //,$headFill
+  var StrCol=['nParent','cb','execute','tCreated','date','boOR','boOW','boSiteMap','size','nImage','nChild','version','siteName', 'link'], BoAscDefault={cb:0,boOR:0,boOW:0,boSiteMap:0,nImage:0,nChild:0,nParent:0,version:0,size:0};
+  //var spanFill=createElement('span').css({height:'calc(1.5*8px + 0.6em)'});
+  //var headFill=createElement('p').append().css({background:'white',margin:'0px',height:'calc(12px + 1.2em)'});
+  var head=headExtend(createElement('p'),el,StrCol,BoAscDefault,PageRowLabel,'p','span').addClass('pageList');
+  head.css({background:'white', width:'inherit',height:'calc(12px + 1.2em)'});     // , position:'sticky', top:'57px', 'z-index':'1', margin:'0px'
+  el.headW=createElement('div').myAppend(head).css({background:'white', width:'inherit', position:'sticky', top:'0px', 'z-index':'1', margin:'0px'});     
+  el.table.prepend(el.headW); //,headFill
 
 
     // menuA
-  var $allButton=$('<button>').append('All').addClass('fixWidth').css({'margin-right':'1em'}).click(function(){  //'margin-left':'0.8em'
-    var boOn=$allButton.text()=='All';
-    var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')');
-    $Tr.find('input').prop({'checked':boOn});
-    $allButton.text(boOn?'None':'All');
-    $buttonExecuteMult.toggle(boOn);
+  var allButton=createElement('button').myText('All').addClass('fixWidth').css({'margin-right':'1em'}).on('click',function(){  //'margin-left':'0.8em'
+    var boOn=allButton.myText()=='All';
+    //var Tr=tBody.children('p:lt('+el.nRowVisible+')');
+    //Tr.find('input').prop({'checked':boOn});
+    var Tr=[...tBody.childNodes].slice(0, el.nRowVisible);
+    Tr.forEach(ele=>{ var inp=ele.querySelector('input'); if(inp) inp.prop({'checked':boOn}); });
+    allButton.myText(boOn?'None':'All');
+    buttonExecuteMult.toggle(boOn);
   });
 
   var strEvent='mouseup'; if(boTouch) strEvent='click';
@@ -1571,72 +1624,70 @@ pageListExtend=function($el){
 
 
     // menuMult
-  var $buttonDownload=$('<div>').html('Download');
-  var $buttonROn=$('<div>').append(strPublicRead+' on').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOR:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOR',1);   });
-  var $buttonROff=$('<div>').append(strPublicRead+' off').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOR:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOR',0);   });
-  var $buttonWOn=$('<div>').append(strPublicWrite+' on').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOW:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOW',1);   });
-  var $buttonWOff=$('<div>').append(strPublicWrite+' off').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOW:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOW',0);   });
-  var $buttonPOn=$('<div>').append(strPromote+' on').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boSiteMap:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boSiteMap',1);   });
-  var $buttonPOff=$('<div>').append(strPromote+' off').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boSiteMap:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boSiteMap',0);   });
-  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){
-    var FileTmp=getChecked(), strLab='Are sure you want to delete these pages';   $areYouSurePop.openFunc(strLab, function(){$el.deleteF(FileTmp, doHistBack);}, doHistBack);
+  var buttonDownload=createElement('div').myText('Download');
+  var buttonROn=createElement('div').myHtml(strPublicRead+' on').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOR:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOR',1);   });
+  var buttonROff=createElement('div').myHtml(strPublicRead+' off').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOR:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOR',0);   });
+  var buttonWOn=createElement('div').myText(strPublicWrite+' on').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOW:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOW',1);   });
+  var buttonWOff=createElement('div').myText(strPublicWrite+' off').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boOW:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boOW',0);   });
+  var buttonPOn=createElement('div').myText(strPromote+' on').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boSiteMap:1,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boSiteMap',1);   });
+  var buttonPOff=createElement('div').myText(strPromote+' off').on(strEvent,function(){  var FileTmp=getChecked(),   vec=[['myChMod',{boSiteMap:0,File:FileTmp}]];   majax(oAJAX,vec);   changeModOfChecked('boSiteMap',0);   });
+  var buttonDelete=createElement('div').myText('Delete').on(strEvent,function(){
+    var FileTmp=getChecked(), strLab='Are sure you want to delete these pages';   areYouSurePop.openFunc(strLab, function(){el.deleteF(FileTmp, doHistBack);}, doHistBack);
   });
   
-  //var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});   
-  var $buttonExecuteMult=$('<button>').append(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
-  var $itemMulti=$([]).push($buttonROn, $buttonROff, $buttonWOn, $buttonWOff, $buttonPOn, $buttonPOff, $buttonDelete);
-  //var $menuMult=menuExtend($('<div>')).css({'text-align':'left'});
-  var $menuMult=$('<div>').css({'text-align':'left'});  menuExtend($menuMult[0]);
+  //var tmpImg=createElement('img').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});   
+  var buttonExecuteMult=createElement('button').myText(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
+  var itemMulti=[buttonROn, buttonROff, buttonWOn, buttonWOff, buttonPOn, buttonPOff, buttonDelete];
+  var menuMult=createElement('div').css({'text-align':'left'});  menuExtend(menuMult);
   var buttonExeMultClick=function(e){ 
-    //var $button=$(this);  //$itemMulti.eq(0).toggle(isOneOn());
-    //if(boTouch){ doHistPush({$view:$menuDiv});     $menuDiv.setUp($itemMulti);   $menuDiv.setVis();    }else{   }
-    //$menuMult.openFunc(e,$button,$itemMulti); 
-    var fragItems=jQueryObjToFragment($itemMulti);
-    $menuMult[0].openFunc(e,this,fragItems);
+    //var button=this;  //itemMulti[0].toggle(isOneOn());
+    //if(boTouch){ doHistPush({view:menuDiv});     menuDiv.setUp(itemMulti);   menuDiv.setVis();    }else{   }
+    //menuMult.openFunc(e,button,itemMulti); 
+    //var fragItems=jQueryObjToFragment(itemMulti);
+    menuMult.openFunc(e,this,itemMulti);
   }
-  $buttonExecuteMult.on(strMenuOpenEvent,buttonExeMultClick); 
+  buttonExecuteMult.on(strMenuOpenEvent,buttonExeMultClick); 
   
 
-  var File=[]; $el.nRowVisible=0;
+  var File=[]; el.nRowVisible=0;
 
-  //var $buttonBack=$('<button>').append('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(doHistBack);
-  var $spanTmp=$('<span>').append(strFastBackSymbol).css({'font-size':'0.7em'});
-  var $buttonFastBack=$('<button>').append($spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){history.fastBack($adminMoreDiv);});
-  //var $spanLabel=$('<span>').append('Pages').css({'float':'right',margin:'0.2em 0 0 0'});  
+  //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',doHistBack);
+  var spanTmp=createElement('span').myText(strFastBackSymbol).css({'font-size':'0.7em'});
+  var buttonFastBack=createElement('button').myAppend(spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){history.fastBack(adminMoreDiv);});
+  //var spanLabel=createElement('span').append('Pages').css({'float':'right',margin:'0.2em 0 0 0'});  
 
-  var $tmpImg=$('<img>').prop({src:uFilter}).css({height:'1em',width:'1em','vertical-align':'text-bottom','user-drag':'none'});
-  $el.$filterInfoWrap=$('<span>');
-  var $buttFilter=$('<button>').append($tmpImg,' (',$el.$filterInfoWrap,')').addClass('flexWidth').css({'float':'right','margin-right':'0.2em'}).click(function(){ doHistPush({$view:$pageFilterDiv}); $pageFilterDiv.setVis();});
-  var $buttClear=$('<button>').append('C').click(function(){$pageFilterDiv.Filt.filtClear(); $pageList.histPush(); $pageList.loadTab()}).css({'float':'right','margin-right':'1em'});
-  var $spanTmp=$('<span>').append('orp-<br>hans').css({'font-size':'0.8em'});
-  var $buttOrphan=$('<button>').append('orp-<br>hans').click(function(){$pageFilterDiv.Filt.setSingleParent(null);  $pageList.histPush(); $pageList.loadTab()}).css({'float':'right','margin-right':'1em'});
+  var tmpImg=createElement('img').prop({src:uFilter}).css({height:'1em',width:'1em','vertical-align':'text-bottom'}).addClass('undraggable');
+  el.filterInfoWrap=createElement('span');
+  var buttFilter=createElement('button').myAppend(tmpImg,' (',el.filterInfoWrap,')').addClass('flexWidth').css({'float':'right','margin-right':'0.2em'}).on('click',function(){ doHistPush({view:pageFilterDiv}); pageFilterDiv.setVis();});
+  var buttClear=createElement('button').myText('C').on('click',function(){pageFilterDiv.Filt.filtAll(); pageList.histPush(); pageList.loadTab()}).css({'float':'right','margin-right':'1em'});
+  var spanTmp=createElement('span').myText('orp­hans').css({'font-size':'0.8em'});
+  var buttOrphan=createElement('button').myText('orp­hans').on('click',function(){pageFilterDiv.Filt.setSingleParent(null);  pageList.histPush(); pageList.loadTab()}).css({'float':'right','margin-right':'1em'});
 
-  var $menuA=$('<div>').append($buttonFastBack, $allButton, $buttonExecuteMult, $buttFilter, $buttClear, $buttOrphan);  // $buttonBack, 
-  $menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
+  var menuA=createElement('div').myAppend(buttonFastBack, allButton, buttonExecuteMult, buttFilter, buttClear, buttOrphan);  // buttonBack, 
+  menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
 
-  //$el.addClass('pageList');
-  //$el.$fixedTop=$('<div>').append($divRowParent).css(cssFixedTop);
-  $el.$fixedDiv=$('<div>').append($menuA).css(cssFixed);
-  $el.css({'text-align':'center'});
-  $el.append($el.$divCont,$el.$fixedDiv);  //,$el.$fixedTop
-  return $el;
+  el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
+  el.css({'text-align':'center'});
+  el.append(el.divCont,el.fixedDiv);  //,el.fixedTop
+  return el;
 }
 
 
 var pageListRowMethods={
   changeModOfSingle:function(strName,boVal){
-    var $r=$(this);  //, boValO=$span.data('valSort');
-    var boValO=$r.data(strName);
+    var r=this;
+    var boValO=r[strName];
     if(typeof boVal=='undefined') boVal=1-boValO;
  
-    var o={File:[$r.data('idPage')]}; o[strName]=boVal;
+    var o={File:[r.idPage]}; o[strName]=boVal;
     var vec=[['myChMod',o]];   majax(oAJAX,vec);
-    $r.data(strName,boVal);
-    var $span=$r.children('span[name='+strName+']');  $span.data('valSort',Number(boVal)).visibilityToggle(boVal);
+    r.prop(strName,boVal);
+    //var span=r.children('span[name='+strName+']');  span.prop('valSort',Number(boVal)).visibilityToggle(boVal);
+    var span=r.querySelector('span[name='+strName+']');  span.prop('valSort',Number(boVal)).visibilityToggle(boVal);
   }
 }
 
-var menuPageSingleExtend=function($menuSingle){
+var menuPageSingleExtend=function(menuSingle){
   var strPublicRead='<span style="display:inline-block">'+charPublicRead+'</span> (pulic read)';
   var strPublicWrite=charPublicWrite+' (pulic write)';
   var strPromote=charPromote+' (promote)';
@@ -1644,27 +1695,27 @@ var menuPageSingleExtend=function($menuSingle){
   var strEvent='mouseup'; if(boTouch) strEvent='click';
 
         // menuSingle
-  var $buttonDownload=$('<div>').html('Download');
-  var $buttonRename=$('<div>').append('Rename').on(strEvent,function(){
-    $renamePop.openFunc('page', this.parentElement.r);
+  var buttonDownload=createElement('div').myText('Download');
+  var buttonRename=createElement('div').myText('Rename').on(strEvent,function(){
+    renamePop.openFunc('page', this.parentElement.r);
   });
-  var $buttonRTog=$('<div>').append('Toggle '+strPublicRead).on(strEvent,function(){  pageListRowMethods.changeModOfSingle.call(this.parentElement.r,'boOR');   });
-  var $buttonWTog=$('<div>').append('Toggle '+strPublicWrite).on(strEvent,function(){  pageListRowMethods.changeModOfSingle.call(this.parentElement.r,'boOW');    });
-  var $buttonPTog=$('<div>').append('Toggle '+strPromote).on(strEvent,function(){  pageListRowMethods.changeModOfSingle.call(this.parentElement.r,'boSiteMap');   });
-  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){
-    var r=this.parentElement.r,  FileTmp=[$(r).data('idPage')], strLab='Are sure you want to delete this page'; 
-    $areYouSurePop.openFunc(strLab, function(){$pageList.deleteF(FileTmp, doHistBack);}, doHistBack);
+  var buttonRTog=createElement('div').myHtml('Toggle '+strPublicRead).on(strEvent,function(){  pageListRowMethods.changeModOfSingle.call(this.parentElement.r,'boOR');   });
+  var buttonWTog=createElement('div').myHtml('Toggle '+strPublicWrite).on(strEvent,function(){  pageListRowMethods.changeModOfSingle.call(this.parentElement.r,'boOW');    });
+  var buttonPTog=createElement('div').myText('Toggle '+strPromote).on(strEvent,function(){  pageListRowMethods.changeModOfSingle.call(this.parentElement.r,'boSiteMap');   });
+  var buttonDelete=createElement('div').myText('Delete').on(strEvent,function(){
+    var r=this.parentElement.r,  FileTmp=[r.idPage], strLab='Are sure you want to delete this page'; 
+    areYouSurePop.openFunc(strLab, function(){pageList.deleteF(FileTmp, doHistBack);}, doHistBack);
   });
   
-  var $itemSingle=$([]).push($buttonRename, $buttonRTog, $buttonWTog, $buttonPTog, $buttonDelete);
-  $menuSingle.css({'text-align':'left'});  menuExtend($menuSingle[0]);
-  $menuSingle.buttonExeSingleClick=function(e){ 
-    var $button=$(this); 
-    $menuSingle[0].r=$button[0].parentElement.parentElement;
-    var fragItems=jQueryObjToFragment($itemSingle);
-    $menuSingle[0].openFunc(e,this,fragItems);
+  var itemSingle=[buttonRename, buttonRTog, buttonWTog, buttonPTog, buttonDelete];
+  menuSingle.css({'text-align':'left'});  menuExtend(menuSingle);
+  menuSingle.buttonExeSingleClick=function(e){ 
+    var button=this; 
+    menuSingle.r=button.parentElement.parentElement;
+    //var fragItems=jQueryObjToFragment(itemSingle);
+    menuSingle.openFunc(e,this,itemSingle);
   }
-  return $menuSingle;
+  return menuSingle;
 }
 
 
@@ -1674,136 +1725,158 @@ var menuPageSingleExtend=function($menuSingle){
    //
 
 var SpanGrandParent=function(){
-  var $el=$('<span>'); $.extend($el,SpanGrandParent.tmpPrototype);
-  $el.GrandParent=[];
-  $el.$buttPop=$('<button>').css({'background-image':'url("stylesheets/buttonLeft1.png")'}).click(function(){
-    //var strTypeCur=$el.parent().parent()==$imageList?'image':'page';
-    var strTypeCur=$imageList.is(':visible')?'image':'page';
-    //$el[0].parentElement.parentElement.parentElement.parentElement.parentElement==$imageList[0]
-    $grandParentSelPop.openFunc($el.GrandParent,strTypeCur,'page');
+  var el=createElement('span'); extend(el,SpanGrandParent.tmpPrototype);
+  el.GrandParent=[];
+  el.buttPop=createElement('button').css({'background-image':'url("stylesheets/buttonLeft1.png")'}).on('click',function(){
+    //var strTypeCur=el.parentNode.parentNode==imageList?'image':'page';
+    var strTypeCur=imageList.style.display=='none'?'page':'image';
+    //el[0].parentElement.parentElement.parentElement.parentElement.parentElement==imageList[0]
+    grandParentSelPop.openFunc(el.GrandParent,strTypeCur,'page');
   }).hide();
-  $el.$buttOrphan=$('<button>').append('(orphans)').css({'background-image':'url("stylesheets/buttonLeft3.png")'}).click(function(){ $el.clickFunc(null); }).hide();
-  $el.$spanButt=$('<span>').on('click','button',function(){var ind=$(this).data('ind'); $el.clickFunc($el.GrandParent[ind]);});
+  el.buttOrphan=createElement('button').myText('(orphans)').css({'background-image':'url("stylesheets/buttonLeft3.png")'}).on('click',function(){ el.clickFunc(null); }).hide();
+  el.spanButt=createElement('span').on('click',function(e){
+    var ele=e.target;
+    if(ele.nodeName!='BUTTON') return;
+    var ind=ele.ind; el.clickFunc(el.GrandParent[ind]);
+  });
 
-  $el.append($el.$buttPop, $el.$buttOrphan, $el.$spanButt); //  'Up: ',    .click(function(){$el.clickFunc();}); 
-  return $el;
+  el.myAppend(el.buttPop, el.buttOrphan, el.spanButt); //  'Up: ',    .on('click',function(){el.clickFunc();}); 
+  return el;
 }
 SpanGrandParent.tmpPrototype={};
-SpanGrandParent.tmpPrototype.setUpClear=function(){   this.$spanButt.empty(); this.$buttPop.hide();  this.$buttOrphan.hide();  }
+SpanGrandParent.tmpPrototype.setUpClear=function(){   this.spanButt.empty(); this.buttPop.hide();  this.buttOrphan.hide();  }
 SpanGrandParent.tmpPrototype.setUp=function(GrandParent){
-  var strTypeCur=$imageList.is(':visible')?'image':'page';
+  var strTypeCur=imageList.style.display=='none'?'page':'image';
   this.GrandParent=GrandParent; 
   var nGrandParent=GrandParent.length, lenMax=10;;
-  var boPop=nGrandParent>2; this.$buttPop.toggle(boPop).html(nGrandParent);
-  //this.$buttOrphan.toggle(!nGrandParent);
-  this.$spanButt.empty();
+  var boPop=nGrandParent>2; this.buttPop.toggle(boPop).myText(nGrandParent);
+  //this.buttOrphan.toggle(!nGrandParent);
+  this.spanButt.empty();
   if(!boPop){
     for(var i=0;i<nGrandParent;i++){
       var str=GrandParent[i].pageName; if(str.length>lenMax) str=str.substr(0,lenMax-2)+'...';
-      var $butt=$('<button>').append(str).prop('title',GrandParent[i].pageName).data({ind:i});       this.$spanButt.append($butt);
+      var butt=createElement('button').myText(str).prop('title',GrandParent[i].pageName).prop({ind:i});       this.spanButt.append(butt);
       var intSize=1; if(str.length>6) intSize=3;  else if(str.length>3) intSize=2; // Determine size of background image
-      $butt.css({'background-image':'url("stylesheets/buttonLeft'+intSize+'.png")'}); //+this.strColor
+      butt.css({'background-image':'url("stylesheets/buttonLeft'+intSize+'.png")'}); //+this.strColor
     }
   }
-  var $filterDiv=strTypeCur=='page'?$pageFilterDiv:$imageFilterDiv;
-  var On=$filterDiv.Filt.getParentsOn(), boOrphanFiltering=Boolean(On.length==1 && On[0]==null), boShow=!boOrphanFiltering && nGrandParent==0;  this.$buttOrphan.toggle(boShow); // this.toggle(boShow);
+  var filterDiv=strTypeCur=='page'?pageFilterDiv:imageFilterDiv;
+  var On=filterDiv.Filt.getParentsOn(), boOrphanFiltering=Boolean(On.length==1 && On[0]==null), boShow=!boOrphanFiltering && nGrandParent==0;  this.buttOrphan.toggle(boShow); // this.toggle(boShow);
 
 }
 SpanGrandParent.tmpPrototype.clickFunc=function(parent){ 
-  var idTmp=parent?parent.idPage:null;   $pageFilterDiv.Filt.setSingleParent(idTmp); 
-  $pageList.histPush(); $pageList.loadTab();    if(!$pageList.is(':visible')) { $pageList.setVis(); }  
+  var idTmp=parent?parent.idPage:null;   pageFilterDiv.Filt.setSingleParent(idTmp); 
+  pageList.histPush(); pageList.loadTab();    if(pageList.style.display=='none') { pageList.setVis(); }  
 }
    
 var DivRowParentT=function(){
-  var $el=$('<div>'); $.extend($el,DivRowParentT.tmpPrototype);
+  var el=createElement('div'); extend(el,DivRowParentT.tmpPrototype);
+  var setParentFilter=function(){
+    var boImageCur=pageList.style.display=='none',  boImageGoal=this==el.buttonNImage;
+    var divCur=boImageCur?imageFilterDiv:pageFilterDiv;
+    var divGoal=boImageGoal?imageFilterDiv:pageFilterDiv;
+    var listGoal=boImageGoal?imageList:pageList;
+    
+    var idPage=divCur.Filt.getSingleParent();
+    divGoal.Filt.setSingleParent(idPage); listGoal.histPush(); listGoal.loadTab();
+    if(listGoal.style.display=='none') listGoal.setVis();
+  }
   
-  $el.$spanGrandParent=new SpanGrandParent('page','page').css({'margin-right':'0.6em'}).attr('name','nParent');
+  el.spanGrandParent=new SpanGrandParent('page','page').css({'margin-right':'0.6em'}).attr('name','nParent');
 
-  var $buttonExecute=$('<button>').append(charFlash).on(strMenuOpenEvent, $menuPageSingle.buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"}) 
-  $el.$tdExecute=$('<span>').data('valSort',0).append($buttonExecute).attr('name','execute'); 
-  $el.$tdR=$('<span>').attr('name','boOR').html(charPublicRead).prop('title',PageRowLabel.boOR); $el.$tdW=$('<span>').attr('name','boOW').html(charPublicWrite).prop('title',PageRowLabel.boOW); $el.$tdP=$('<span>').attr('name','boSiteMap').html(charPromote).css({'margin-right':'0.15em'}).prop('title',PageRowLabel.boSiteMap);
-  $el.$tdVer=$('<span>').attr('name','version').css({'min-width':'1.5em', background:'red', 'float':'right'}); //.css({'margin-left':'0.15em'});
-  $el.$tdDate=$('<span>').attr('name','date').prop('title',PageRowLabel.date);
-  $el.$tdSite=$('<span>').attr('name','siteName');
-  $el.$tdOrphan=$('<span>').css({color:'grey'});
-  $el.$aLink=$('<a>').prop({target:"_blank"});
-  $el.$tdLink=$('<span>').attr('name','link').append($el.$aLink);
-  $el.$tdSize=$('<span>').attr('name','size').css({'float':'right'});
-  $el.$buttonNChild=$('<button>').append('<span></span>').click(clickSetParentFilter);//.css({'background-image':'url("stylesheets/buttonRight1.png")'})
-  $el.$buttonNImage=$('<button>').click(clickSetParentFilterI).prop('title','Images');//.css({'background-image':'url("stylesheets/buttonRightBlue1.png")'})
-  $el.$tdNChild=$('<span>').append($el.$buttonNChild).attr('name','nChild');//.css({'float':'right'}); 
-  $el.$tdNImage=$('<span>').append($el.$buttonNImage).attr('name','nImage');//.css({'float':'right'});  
+  var buttonExecute=createElement('button').myText(charFlash).on(strMenuOpenEvent, menuPageSingle.buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"}) 
+  el.tdExecute=createElement('span').prop('valSort',0).myAppend(buttonExecute).attr('name','execute'); 
+  el.tdR=createElement('span').attr('name','boOR').myText(charPublicRead).prop('title',PageRowLabel.boOR); el.tdW=createElement('span').attr('name','boOW').myText(charPublicWrite).prop('title',PageRowLabel.boOW); el.tdP=createElement('span').attr('name','boSiteMap').myText(charPromote).css({'margin-right':'0.15em'}).prop('title',PageRowLabel.boSiteMap);
+  el.tdVer=createElement('span').attr('name','version').css({'min-width':'1.5em', background:'red', 'float':'right'}); //.css({'margin-left':'0.15em'});
+  el.tdTCreated=createElement('span').attr('name','tCreated').prop('title',PageRowLabel.tCreated);
+  el.tdDate=createElement('span').attr('name','date').prop('title',PageRowLabel.date);
+  el.tdSite=createElement('span').attr('name','siteName');
+  el.tdOrphan=createElement('span').css({color:'grey'});
+  el.aLink=createElement('a').prop({target:"_blank"});
+  el.tdLink=createElement('span').attr('name','link').myAppend(el.aLink);
+  el.tdSize=createElement('span').attr('name','size').css({'float':'right'});
+  el.buttonNChild=createElement('button').on('click',setParentFilter);//.css({'background-image':'url("stylesheets/buttonRight1.png")'})
+  el.buttonNImage=createElement('button').on('click',setParentFilter).prop('title','Images');//.css({'background-image':'url("stylesheets/buttonRightBlue1.png")'})
+  el.tdNChild=createElement('span').myAppend(el.buttonNChild).attr('name','nChild');//.css({'float':'right'}); 
+  el.tdNImage=createElement('span').myAppend(el.buttonNImage).attr('name','nImage');//.css({'float':'right'});  
   
-  $el.append($el.$spanGrandParent, $el.$tdExecute, $el.$tdDate, $el.$tdR, $el.$tdW, $el.$tdP, $el.$tdSize, $el.$tdNImage, $el.$tdNChild, $el.$tdVer, $el.$tdSite, $el.$tdOrphan, $el.$tdLink);
+  el.append(el.spanGrandParent, el.tdExecute, el.tdTCreated, el.tdDate, el.tdR, el.tdW, el.tdP, el.tdSize, el.tdNImage, el.tdNChild, el.tdVer, el.tdSite, el.tdOrphan, el.tdLink);
   
-  $el.css({'line-height':'2.7em'});  // ,'max-width':menuMaxWidth+'px'
-  $el.addClass('pageList');
-  return $el;
+  el.css({'line-height':'2.7em'});  // ,'max-width':menuMaxWidth+'px'
+  el.addClass('pageList');
+  return el;
 }
 DivRowParentT.tmpPrototype={};
 DivRowParentT.tmpPrototype.setUpPreAJAX=function(idParent){  
-  var boWhite=$pageFilterDiv.Filt.isWhite();
-  var nParentsOn=$pageFilterDiv.Filt.getNParentsOn();
-  var nParentsOff=$pageFilterDiv.Filt.getNParentsOff();
+  var boWhite=pageFilterDiv.Filt.isWhite();
+  var nParentsOn=pageFilterDiv.Filt.getNParentsOn();
+  var nParentsOff=pageFilterDiv.Filt.getNParentsOff();
+  //if(typeof iParent!='undefined') this.idPage=idParent;
   if(!boWhite || nParentsOn!=1){
-    this.$spanGrandParent.setUpClear();
-    this.children().hide();  this.$tdOrphan.show();
+    this.spanGrandParent.setUpClear();
+    //this.children().hide();
+    [...this.childNodes].forEach(ele=>ele.hide());
+    this.tdOrphan.show();
   
-    if(boWhite) { var strTmp='('+nParentsOn+' parents on)', StrTmp=$pageFilterDiv.Filt.getParentsOn(); } 
+    if(boWhite) { var strTmp='('+nParentsOn+' parents on)', StrTmp=pageFilterDiv.Filt.getParentsOn(); } 
     else { 
-      if(nParentsOff){ var strTmp='('+nParentsOff+' parents off)', StrTmp=$pageFilterDiv.Filt.getParentsOff(); }
+      if(nParentsOff){ var strTmp='('+nParentsOff+' parents off)', StrTmp=pageFilterDiv.Filt.getParentsOff(); }
       else {var strTmp='(No parent filter)', StrTmp=[];}
     }
     var StrTmp=StrTmp.slice(0,5), indT=StrTmp.indexOf(null); if(indT!=-1) StrTmp[indT]='(orphans)';
     var strTitle=StrTmp.join('\n');
-    this.$tdOrphan.html(strTmp).css({color:'grey'}).prop('title',strTitle);
+    this.tdOrphan.myText(strTmp).css({color:'grey'}).prop('title',strTitle);
     return;
   } 
 }
 DivRowParentT.tmpPrototype.getParentRet=function(data){
-  if('tab' in data) { var Parent=tabNStrCol2ArrObj(data); this.$spanGrandParent.setUp(Parent);  } 
+  if('tab' in data) { var Parent=tabNStrCol2ArrObj(data); this.spanGrandParent.setUp(Parent);  } 
 }
 DivRowParentT.tmpPrototype.getSingleParentExtraStuffRet=function(data){
-  var boImageList=$imageList.is(':visible'), boPageList=!boImageList;
-  this.$buttonNChild.html(data.nSub).prop("disabled",!boImageList).visibilityToggle(data.nSub);
-  this.$buttonNImage.html(data.nImage).prop("disabled",boImageList).visibilityToggle(data.nImage);
+  var boImageList=imageList.style.display!='none', boPageList=!boImageList;
+  this.buttonNChild.myText(data.nSub).prop("disabled",!boImageList).visibilityToggle(data.nSub);
+  this.buttonNImage.myText(data.nImage).prop("disabled",boImageList).visibilityToggle(data.nImage);
   
   if(data.idPage==null) {
-    this.children().hide();  this.$tdOrphan.show();  this.$tdNChild.show(); this.$tdNImage.show();
-    this.$tdOrphan.html('orphans'+(boPageList?' (roots)':'')); this.$aLink.html('');
+    //this.children().hide();
+    [...this.childNodes].forEach(ele=>ele.hide());  this.tdOrphan.show();  this.tdNChild.show(); this.tdNImage.show();
+    this.tdOrphan.myText('orphans'+(boPageList?' (roots)':'')); this.aLink.myText('');
   } else {
-    this.children().show();
-    this.$tdOrphan.html('');
-    this.data(data);  this.data({iFlip:null}); 
+    //this.children().show();
+    [...this.childNodes].forEach(ele=>ele.show());
+    this.tdOrphan.myText('');
+    this.prop(data);  this.prop({iFlip:null}); 
     
     var strS=Number(data.boTLS)?'s':'', strUrl='http'+strS+'://'+data.www+'/'+data.pageName, text=data.siteName+':'+data.pageName; //if(data.nSame>1) text=data.siteName+':'+text;
     var size=data.size, sizeDisp=size, pre=''; if(size>=1024) {sizeDisp=Math.round(size/1024); pre='k';} if(size>=1048576) { sizeDisp=Math.round(size/1048576); pre='M';}
-      this.$tdSize.html(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; this.$tdSize.prop('title',strTitle); 
+      this.tdSize.myHtml(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; this.tdSize.prop('title',strTitle); 
     var strVersion=Boolean(data.boOther)?'v'+(Number(data.lastRev)+1):'';  
-      this.$tdVer.visibilityToggle(Boolean(data.boOther)).html(strVersion);
-    this.$tdR.visibilityToggle(Boolean(data.boOR)); this.$tdW.visibilityToggle(Boolean(data.boOW)); this.$tdP.visibilityToggle(Boolean(data.boSiteMap));
+      this.tdVer.visibilityToggle(Boolean(data.boOther)).myText(strVersion);
+    this.tdR.visibilityToggle(Boolean(data.boOR)); this.tdW.visibilityToggle(Boolean(data.boOW)); this.tdP.visibilityToggle(Boolean(data.boSiteMap));
+    var tmp=data.tCreated; 
+      this.tdTCreated.myText(mySwedDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));   
     var tmp=data.tMod; 
-      this.$tdDate.html(mySwedDate(tmp)).prop('title','Last Mod:\n'+UTC2JS(tmp));   
-    var tmp=data.siteName; this.$tdSite.text(tmp).prop('title',data.www); 
-    var tmp=data.pageName, strS=Number(data.boTLS)?'s':'';   this.$aLink.prop({href:'http'+strS+'://'+data.www+'/'+tmp}).text(tmp);   
+      this.tdDate.myText(mySwedDate(tmp)).prop('title','Last Mod:\n'+UTC2JS(tmp));   
+    var tmp=data.siteName; this.tdSite.myText(tmp).prop('title',data.www); 
+    var tmp=data.pageName, strS=Number(data.boTLS)?'s':'';   this.aLink.prop({href:'http'+strS+'://'+data.www+'/'+tmp}).myText(tmp);   
   }
 }
 
 
 
-  // Method of $buttonNParent
+  // Method of buttonNParent
 var goToParentMethod=function(strTypeGoal){  //strTypeCur,
-  var $b=$(this), $r=$b.parent().parent(), nParent=$r.data('nParent'), idParent=$r.data('idParent');
-  var FiltGoal=strTypeGoal=='page'?$pageFilterDiv.Filt:$imageFilterDiv.Filt;
-  var $listGoal=strTypeGoal=='page'?$pageList:$imageList;
-  var strTypeCur=$imageList.is(':visible')?'image':'page';
+  var b=this, r=b.parentNode.parentNode, nParent=r.nParent, idParent=r.idParent;
+  var FiltGoal=strTypeGoal=='page'?pageFilterDiv.Filt:imageFilterDiv.Filt;
+  var listGoal=strTypeGoal=='page'?pageList:imageList;
+  var strTypeCur=imageList.style.display=='none'?'page':'image';
   if(nParent<=1){ // ... go directly to parent 
-    FiltGoal.setSingleParent(idParent);  $listGoal.histPush(); $listGoal.loadTab(); if(strTypeGoal!=strTypeCur) {    $listGoal.setVis(); }
+    FiltGoal.setSingleParent(idParent);  listGoal.histPush(); listGoal.loadTab(); if(strTypeGoal!=strTypeCur) {    listGoal.setVis(); }
   } else { // .. else open popup
-    if(strTypeCur=='page'){      var strGetParentFunc='getParent', objTmp={idPage:$r.data('idPage')};    }else{      var strGetParentFunc='getParentOfImage', objTmp={idImage:$r.data('idImage')};    }
+    if(strTypeCur=='page'){      var strGetParentFunc='getParent', objTmp={idPage:r.idPage};    }else{      var strGetParentFunc='getParentOfImage', objTmp={idImage:r.idImage};    }
     var vec=[[strGetParentFunc,objTmp,function(data){
       var Parent=[]; if('tab' in data) Parent=tabNStrCol2ArrObj(data);  
-      $grandParentSelPop.openFunc(Parent,strTypeCur,strTypeGoal);
+      grandParentSelPop.openFunc(Parent,strTypeCur,strTypeGoal);
     }]];
     majax(oAJAX,vec);     
   }
@@ -1811,77 +1884,78 @@ var goToParentMethod=function(strTypeGoal){  //strTypeCur,
 
 
 
-var grandParentSelPopExtend=function($el){
+
+var grandParentSelPopExtend=function(el){
 "use strict"
-  $el.toString=function(){return 'grandParentSelPop';}
+  el.toString=function(){return 'grandParentSelPop';}
   var buttonPress=function(){
-    var $b=$(this), idPage=$b.data('idPage');
+    var b=this, idPage=b.idPage;
     if(['page','image'].indexOf(strTypeGoal)==-1) throw 'err';
-    var FiltT=strTypeGoal=='page'?$pageFilterDiv.Filt:$imageFilterDiv.Filt;
+    var FiltT=strTypeGoal=='page'?pageFilterDiv.Filt:imageFilterDiv.Filt;
     FiltT.setSingleParent(idPage);
-    //changeHist({$view:$listGoal});
-    $listGoal.histReplace(); $listGoal.loadTab(); $listGoal.setVis();
+    //changeHist({view:listGoal});
+    listGoal.histReplace(); listGoal.loadTab(); listGoal.setVis();
      
     //doHistBack();
-    //history.funOverRule=function(){ changeHist({$view:$listGoal}); $listGoal.loadTab(); $listGoal.setVis(); }
+    //history.funOverRule=function(){ changeHist({view:listGoal}); listGoal.loadTab(); listGoal.setVis(); }
     //history.go(-1);
   }
 
-  $el.openFunc=function(GrandParent, strTypeCurrent, strTypeGoalT){
+  el.openFunc=function(GrandParent, strTypeCurrent, strTypeGoalT){
     strTypeGoal=strTypeGoalT;
-    var FiltT=strTypeCurrent=='page'?$pageFilterDiv.Filt:$imageFilterDiv.Filt;
-    $listGoal=strTypeGoal=='page'?$pageList:$imageList;
+    var FiltT=strTypeCurrent=='page'?pageFilterDiv.Filt:imageFilterDiv.Filt;
+    listGoal=strTypeGoal=='page'?pageList:imageList;
     var idParent=FiltT.getSingleParent()
     
-    $div.empty();
+    div.empty();
     var len=GrandParent.length, tmpS=len==1?'':'s';
-    $head.html(len+' parent'+tmpS+':');
+    head.myText(len+' parent'+tmpS+':');
     //var boEqual=1; for(var i=0;i<len;i++) { if(GrandParent[i].siteName!=GrandParent[0].siteName) boEqual=0; }
     for(var i=0;i<len;i++) {  
       var idPage=GrandParent[i].idPage, name=GrandParent[i].pageName, siteName=GrandParent[i].siteName;
       var boCur=idPage===idParent;
-      var $but=$('<button>').data({idPage:idPage}).html(name).click(buttonPress).prop('disabled', boCur); 
-      var $r=$('<p>').css({display:'block'}).append($but);
-      //if(!boEqual) $r.prepend(siteName+' ');
-      if(strTypeCurrent=='image') $r.prepend(siteName+' ');
-      $div.append($r);
+      var but=createElement('button').prop({idPage:idPage}).myText(name).on('click',buttonPress).prop('disabled', boCur); 
+      var r=createElement('p').css({display:'block'}).myAppend(but);
+      //if(!boEqual) r.prepend(siteName+' ');
+      if(strTypeCurrent=='image') r.prepend(siteName+' ');
+      div.append(r);
     }
-    doHistPush({$view:$grandParentSelPop});
-    $el.setVis();  
+    doHistPush({view:grandParentSelPop});
+    el.setVis();  
   }
-  $el.closeFunc=function(){   doHistBack();    }
-  $el.setVis=function(){
-    $el.show(); return 1;
+  el.closeFunc=function(){   doHistBack();    }
+  el.setVis=function(){
+    el.show(); return 1;
   }
   
-  //$el=popUpExtend($el);  
-  //$el.css({'max-width':'20em', padding: '0.5em 0.5em 1.2em 1.2em'});  
-  var strTypeGoal, $listGoal;
+  //el=popUpExtend(el);  
+  //el.css({'max-width':'20em', padding: '0.5em 0.5em 1.2em 1.2em'});  
+  var strTypeGoal, listGoal;
 
-  //var $spanNParent=$('<span>');
-  var $head=$('<span>').css({'font-weight':'bold','margin-right':'1em'}); //.append($spanNParent,' Parents')
+  //var spanNParent=createElement('span');
+  var head=createElement('span').css({'font-weight':'bold','margin-right':'1em'}); //.myAppend(spanNParent,' Parents')
 
-  var $div=$('<div>');
-  var $cancel=$('<button>').click(function(){doHistBack();}).html('Cancel').css({'float':'right','margin-top':'1em'}); 
+  var div=createElement('div');
+  var cancel=createElement('button').on('click',function(){doHistBack();}).myText('Cancel').css({'float':'right','margin-top':'1em'}); 
  
-  //$el.append($head,$div,$cancel);
-  //$el.css({'text-align':'left'});
+  //el.append(head,div,cancel);
+  //el.css({'text-align':'left'});
 
-  var $blanket=$('<div>').addClass("blanket");
-  var $centerDiv=$('<div>').addClass("Center").append($head,$div,$cancel).css({'max-width':'20em', padding: '0.5em 0.5em 1.2em 1.2em'});  // height:'22em', 
-  //if(boIE) $centerDiv.css({'width':'20em'}); 
-  $el.addClass("Center-Container").append($centerDiv,$blanket); 
+  var blanket=createElement('div').addClass("blanket");
+  var centerDiv=createElement('div').addClass("Center").myAppend(head,div,cancel).css({'max-width':'20em', padding: '0.5em 0.5em 1.2em 1.2em'});  // height:'22em', 
+  //if(boIE) centerDiv.css({'width':'20em'}); 
+  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
   
-  return $el;
+  return el;
 }
 
 
-renamePopExtend=function($el){
+renamePopExtend=function(el){
 "use strict"
-  $el.toString=function(){return 'renamePop';}
+  el.toString=function(){return 'renamePop';}
   var save=function(){ 
     resetMess();  
-    var strNewName=$inpName.val().trim(); $inpName.val(strNewName); if(strNewName.length==0) {setMess('name can not be empty',5); return; }
+    var strNewName=inpName.value.trim(); inpName.value=strNewName; if(strNewName.length==0) {setMess('name can not be empty',5); return; }
     strNewName.replace(RegExp(' ','g'),'_');
     var o1={strNewName:strNewName,id:id};
     var vec=[['rename'+ucfirst(strType),o1,saveRet]];   majax(oAJAX,vec);
@@ -1892,208 +1966,218 @@ renamePopExtend=function($el){
     var boOK=false;
     var tmp=data.boOK;   if(typeof tmp!="undefined")  boOK=tmp;
     if(row!==null){
-      var $par=strType=='page'?$pageList:$imageList;
-      if(boOK) { $par.changeName(row, $inpName.val()); doHistBack();}  
+      var par=strType=='page'?pageList:imageList;
+      if(boOK) { par.changeName(row, inpName.value); doHistBack();}  
     }
   }
-  $el.openFunc=function(strTypeT, rowT, idT, strNameT){
+  el.openFunc=function(strTypeT, rowT, idT, strNameT){
     strType=strTypeT; row=rowT;
     if(row!==null){
-      var $r=$(rowT), strName=$r.data(strType+'Name');  id=$r.data('id'+ucfirst(strType));
+      var strName=rowT[strType+'Name'];  id=rowT['id'+ucfirst(strType)];
     } else {id=idT; strName=strNameT; }
-    $type.html(strType); $inpName.val(strName).focus();
-    doHistPush({$view:$renamePop});
-    $el.setVis();
+    type.myText(strType); inpName.prop('value',strName).focus();
+    doHistPush({view:renamePop});
+    el.setVis();
   }
-  $el.setVis=function(){
-    $el.show();   return true;
+  el.setVis=function(){
+    el.show();   return true;
   }
 
   var row, id, strType='';
  
-  var $type=$('<span>'); 
-  var $head=$('<h3>').append('Rename ',$type);
-  var $nameLab=$('<div>').append('New name: ');
-  var $inpName=$('<input>').css({display:'block',width:'100%'}).keypress( function(e){ if(e.which==13) {save();return false;}} );
+  var type=createElement('span'); 
+  var head=createElement('h3').myAppend('Rename ',type);
+  var nameLab=createElement('div').myText('New name: ');
+  var inpName=createElement('input').css({display:'block',width:'100%'}).on('keypress',  function(e){ if(e.which==13) {save();return false;}} );
 
-  var $saveButton=$('<button>').append('Save').click(save).css({'margin-top':'1em'});
-  var $cancelButton=$('<button>').append('Cancel').click(doHistBack).css({'margin-top':'1em'});
-  $el.append($head,$nameLab,$inpName,$cancelButton,$saveButton); //.css({padding:'0.1em'}); 
+  var saveButton=createElement('button').myText('Save').on('click',save).css({'margin-top':'1em'});
+  var cancelButton=createElement('button').myText('Cancel').on('click',doHistBack).css({'margin-top':'1em'});
+  el.append(head,nameLab,inpName,cancelButton,saveButton); //.css({padding:'0.1em'}); 
 
-  var $blanket=$('<div>').addClass("blanket");
-  var $centerDiv=$('<div>').addClass("Center").append($head,$nameLab,$inpName,$cancelButton,$saveButton).css({'min-width':'17em', 'max-width':'30em', padding: '0.3em 0.5em 1.2em 1.2em'}); // height:'12em', 
-  //if(boIE) $centerDiv.css({'width':'20em'}); 
-  $el.addClass("Center-Container").append($centerDiv,$blanket); 
+  var blanket=createElement('div').addClass("blanket");
+  var centerDiv=createElement('div').addClass("Center").myAppend(head,nameLab,inpName,cancelButton,saveButton).css({'min-width':'17em', 'max-width':'30em', padding: '0.3em 0.5em 1.2em 1.2em'}); // height:'12em', 
+  //if(boIE) centerDiv.css({'width':'20em'}); 
+  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
   
-  return $el;
+  return el;
 }
 
-areYouSurePopExtend=function($el){
+areYouSurePopExtend=function(el){
 "use strict"
-  $el.toString=function(){return 'areYouSurePop';}
-  $el.openFunc=function(strLab, continueClick, cancelClick){ // continueClick(finFun): called when the user clicks the continue button. It takes a callback-argument which closes the areYouSurePop.
-    $labPageName.html(strLab);
-    doHistPush({$view:$areYouSurePop});
-    $el.setVis();
+  el.toString=function(){return 'areYouSurePop';}
+  el.openFunc=function(strLab, continueClick, cancelClick){ // continueClick(finFun): called when the user clicks the continue button. It takes a callback-argument which closes the areYouSurePop.
+    labPageName.myText(strLab);
+    doHistPush({view:areYouSurePop});
+    el.setVis();
     continueClickLoc=continueClick;
     cancelClickLoc=cancelClick;
   }
-  $el.setVis=function(){
-    $el.show(); return 1;
+  el.setVis=function(){
+    el.show(); return 1;
   }
  
   var continueClickLoc, cancelClickLoc;
-  //$el=popUpExtend($el);  
-  //$el.css({'max-width':'20em', padding: '1.2em 0.5em 1.2em 1.2em'}); 
+  //el=popUpExtend(el);  
+  //el.css({'max-width':'20em', padding: '1.2em 0.5em 1.2em 1.2em'}); 
 
-  var $labPageName=$('<div>');
-  var $buttonCancel=$('<button>').append('Cancel').click(function(){ cancelClickLoc(); }).css({'margin-top':'1em'});
-  var $buttonContinue=$('<button>').append('Yes').click(function(){  continueClickLoc();  }).css({'margin-top':'1em'});
-  var $divBottom=$('<div>').append($buttonCancel,$buttonContinue);
-  //$el.append($labPageName,$divBottom);
+  var labPageName=createElement('div');
+  var buttonCancel=createElement('button').myText('Cancel').on('click',function(){ cancelClickLoc(); }).css({'margin-top':'1em'});
+  var buttonContinue=createElement('button').myText('Yes').on('click',function(){  continueClickLoc();  }).css({'margin-top':'1em'});
+  var divBottom=createElement('div').myAppend(buttonCancel,buttonContinue);
+  //el.append(labPageName,divBottom);
 
-  var $blanket=$('<div>').addClass("blanket");
-  var $centerDiv=$('<div>').addClass("Center").append($labPageName,$divBottom).css({'max-width':'20em', padding: '1.2em 0.5em 1.2em 1.2em'});  // height:'8em', '
-  //if(boIE) $centerDiv.css({'width':'20em'}); 
-  $el.addClass("Center-Container").append($centerDiv,$blanket); 
+  var blanket=createElement('div').addClass("blanket");
+  var centerDiv=createElement('div').addClass("Center").myAppend(labPageName,divBottom).css({'max-width':'20em', padding: '1.2em 0.5em 1.2em 1.2em'});  // height:'8em', '
+  //if(boIE) centerDiv.css({'width':'20em'}); 
+  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
   
-  return $el;
+  return el;
 }
 
 
-imageListExtend=function($el){ 
-  $el.toString=function(){return 'imageList';}
+imageListExtend=function(el){ 
+  el.toString=function(){return 'imageList';}
   var imageClick=function(){
-    var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')'); 
-    var StrImg=[], $Caption=$([]); 
-    $Tr.each(function(i,p){ 
-      var $tr=$(this), imageName=$tr.data('imageName'), i=$tr.data('iFlip');
-      //var size=$tr.data('$tdSize'), tCreated=$tr.data('$tdCreated').data, boOther=$tr.data('$tdBoOther')
-      //var size=$tr.children('span[name=size]').text(), tCreated=$tr.children('span[name=tCreated]').text(), boOther=$tr.children('span[name=boOther]').text();
+    //var Tr=tBody.children('p:lt('+el.nRowVisible+')'); 
+    var Tr=[...tBody.childNodes].slice(0,el.nRowVisible);
+    var StrImg=[], Caption=[]; 
+    Tr.forEach(function(p,i){ 
+      var tr=p, imageName=tr.imageName, i=tr.iFlip;
+      //var size=tr.tdSize, tCreated=tr.tdCreated.data, boOther=tr.tdBoOther
+      //var size=tr.children('span[name=size]').myText(), tCreated=tr.children('span[name=tCreated]').myText(), boOther=tr.children('span[name=boOther]').myText();
       var size=File[i].size, tCreated=mySwedDate(File[i].tCreated), boOther=File[i].boOther;
       StrImg.push(imageName);
       //var str='<p>'+imageName+'<p>Size: '+File[i].size+'<p>Mod: '+mySwedDate(File[i].tCreated); if(File[i].boOther) str+='<p style="color:red">Others Upload</p>'
       var str='<p>'+imageName+'<p>Size: '+size+'<p>Created: '+tCreated; if(Number(boOther)) str+='<p style="color:red">Uploaded by user</p>'
-      var $cap=$('<div>').append(str);
-      $Caption.push($cap);    
+      var cap=createElement('div').myHtml(str);
+      Caption.push(cap);    
     });
-    var iCur=$(this).parent().parent().index();
-    $slideShow.setUp(StrImg,$Caption,iCur);
-    doHistPush({$view:$slideShow});
-    $slideShow.setVis(); 
+    var iCur=this.parentNode.parentNode.myIndex();
+    slideShow.setUp(StrImg,Caption,iCur);
+    doHistPush({view:slideShow});
+    slideShow.setVis(); 
   }
   var condAddRows=function(){
-    var $rows=$tbody.children('p');
-    for(var i=$rows.length; i<File.length;i++){
-      var $r=$('<p>');
-      var $cb=$('<input type=checkbox>').click(cbClick);
-      //$cb.css({'margin-top':'0em','margin-bottom':'0em'}); //'vertical-align':'bottom'
-      //if(boAndroid) $cb.css({'-webkit-transform':'scale(2,2)'}); else $cb.css({width:'1.4em',height:'1.4em'});
-      var $buttonNParent=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'page');});  //,'image'
-      var $tdNParent=$('<span>').append($buttonNParent).attr('name','nParent').prop('title','Parents'); 
-      var $buttonNParentI=$('<button>').append('<span></span>').click(function(){goToParentMethod.call(this,'image');});  // ,'image'
-      var $tdNParentI=$('<span>').append($buttonNParentI).attr('name','nParentI').prop('title','Parents'); 
-      var $tdCB=$('<span>').data('valSort',0).append($cb).attr('name','cb');
-      //var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'}); 
-      var $buttonExecute=$('<button>').append(charFlash).on(strMenuOpenEvent,buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"});
-      var $tdExecute=$('<span>').data('valSort',0).append($buttonExecute).attr('name','execute'); 
-      var $tdDate=$('<span>').attr('name','date').prop('title',Label.date);  //.css({margin:'auto 0.3em'})
-      var $img=$('<img>').click(imageClick);//.css({'margin-right':'0.1em','max-width':'50px','max-height':'50px'});
-      var $tdImg=$('<span>').attr('name','image').append($img);
-      var $tdBoOther=$('<span>').html('user').attr('name','boOther');
-      //var $tdName=$('<span>').attr('name','imageName'); //.hide();
-      var $aLink=$('<a>').prop({target:"_blank"});
-      var $tdLink=$('<span>').append($aLink).attr('name','link');
-      var $tdSize=$('<span>').attr('name','size');  //.css({'margin-left':'1em'})
-      $r.append($tdNParentI, $tdCB, $tdExecute, $tdDate, $tdImg, $tdSize, $tdBoOther, $tdLink);  //  $tdName  ,$('<span>').append($bView)  $tdNParent, 
-      //$r.data({$tdCB:$tdCB, $tdDate:$tdDate, $tdImg:$tdImg, $tdLink:$tdLink, $tdBoOther:$tdBoOther, $tdSize:$tdSize});
-      $tbody.append($r);
+    //var rows=tBody.children('p');
+    var rows=[...tBody.childNodes];
+    for(var i=rows.length; i<File.length;i++){
+      var r=createElement('p');
+      var cb=createElement('input').prop('type', 'checkbox').on('click',cbClick);
+      //cb.css({'margin-top':'0em','margin-bottom':'0em'}); //'vertical-align':'bottom'
+      //if(boAndroid) cb.css({'-webkit-transform':'scale(2,2)'}); else cb.css({width:'1.4em',height:'1.4em'});
+      var buttonNParent=createElement('button').myHtml('<span></span>').on('click',function(){goToParentMethod.call(this,'page');});  //,'image'
+      var tdNParent=createElement('span').myAppend(buttonNParent).attr('name','nParent').prop('title','Parents'); 
+      var buttonNParentI=createElement('button').myHtml('<span></span>').on('click',function(){goToParentMethod.call(this,'image');});  // ,'image'
+      var tdNParentI=createElement('span').myAppend(buttonNParentI).attr('name','nParentI').prop('title','Parents'); 
+      var tdCB=createElement('span').prop('valSort',0).myAppend(cb).attr('name','cb');
+      //var tmpImg=createElement('img').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'}); 
+      var buttonExecute=createElement('button').myText(charFlash).on(strMenuOpenEvent,buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"});
+      var tdExecute=createElement('span').prop('valSort',0).myAppend(buttonExecute).attr('name','execute'); 
+      var tdDate=createElement('span').attr('name','date').prop('title',Label.date);  //.css({margin:'auto 0.3em'})
+      var img=createElement('img').on('click',imageClick);//.css({'margin-right':'0.1em','max-width':'50px','max-height':'50px'});
+      var tdImg=createElement('span').attr('name','image').myAppend(img);
+      var tdBoOther=createElement('span').myText('user').attr('name','boOther');
+      //var tdName=createElement('span').attr('name','imageName'); //.hide();
+      var aLink=createElement('a').prop({target:"_blank"});
+      var tdLink=createElement('span').myAppend(aLink).attr('name','link');
+      var tdSize=createElement('span').attr('name','size');  //.css({'margin-left':'1em'})
+      r.append(tdNParentI, tdCB, tdExecute, tdDate, tdImg, tdSize, tdBoOther, tdLink);  //  tdName  ,createElement('span').myAppend(bView)  tdNParent, 
+      //r.data({tdCB:tdCB, tdDate:tdDate, tdImg:tdImg, tdLink:tdLink, tdBoOther:tdBoOther, tdSize:tdSize});
+      tBody.append(r);
     }
   }
   var isAnyOn=function(){
-    var boOn=false, $Tr=$tbody.children('p:lt('+$el.nRowVisible+')');     $Tr.find('input').each(function(){var boTmp=$(this).prop('checked'); if(boTmp) boOn=true;});   return boOn;
+    //var boOn=false, Tr=tBody.children('p:lt('+el.nRowVisible+')');     Tr.find('input').forEach(ele=>{var boTmp=ele.prop('checked'); if(boTmp) boOn=true;});   return boOn;
+    var boOn=false, Tr=[...tBody.childNodes].slice(0, el.nRowVisible);     Tr.forEach(ele=>{var inp=ele.querySelector('input'); if(inp.checked) boOn=true;});   return boOn;
   }
   var isOneOn=function(){
-    var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')'), $checked=$Tr.find('input:checked'); return $checked.length==1;
+    //var Tr=tBody.children('p:lt('+el.nRowVisible+')'), checked=Tr.find('input:checked'); return checked.length==1;
+    var Tr=[...tBody.childNodes].slice(0, el.nRowVisible), cOn=0; Tr.forEach(ele=>{var inp=ele.querySelector('input'); if(inp.checked) cOn++;});  return cOn==1;
   }
   var cbClick=function(){
-    var $cb=$(this), boOn=Number($cb.prop('checked'));    $cb.parent().data('valSort',boOn);
-    var boOn=isAnyOn();    $allButton.text(boOn?'None':'All');    $buttonExecuteMult.toggle(boOn);
+    var cb=this, boOn=Number(cb.prop('checked'));    cb.parentNode.valSort=boOn;
+    var boOn=isAnyOn();    allButton.myText(boOn?'None':'All');    buttonExecuteMult.toggle(boOn);
   }
   var fileArray2Div=function(){
     var nRT=File.length;
-    var $rows=$tbody.children('p');   $rows.slice(nRT).hide();
-    var $myRows=$rows.slice(0,nRT); 
-    //if($myRows.length==0) return;
-    $myRows.show();
-    $myRows.each(function(i,r){ 
-      //var $r=$(r).data({idImage:File[i].idImage, iFlip:i, imageName:File[i].imageName, nParent:File[i].nParent, idParent:File[i].idParent, nameParent:File[i].nameParent}); 
-      var $r=$(r); $r.data(File[i]);  $r.data({iFlip:i}); 
+    //var rows=tBody.children('p');
+    var rows=[...tBody.childNodes];
+    rows.slice(nRT).forEach(ele=>ele.hide());
+    var myRows=rows.slice(0,nRT); 
+    //if(myRows.length==0) return;
+    myRows.forEach(function(r,i){ 
+      r.show();
+      //var r=(r).data({idImage:File[i].idImage, iFlip:i, imageName:File[i].imageName, nParent:File[i].nParent, idParent:File[i].idParent, nameParent:File[i].parent}); 
+      r.prop(File[i]);  r.prop({iFlip:i}); 
       var nParent=File[i].nParent;
-      //var $buttonTmp=$r.children('span[name=nParent]').data('valSort',nParent).children('button');
-      var $buttonITmp=$r.children('span[name=nParentI]').data('valSort',nParent).children('button');
-        var boSingle=$imageFilterDiv.Filt.checkIfSingleParent();
+      //var buttonTmp=r.children('span[name=nParent]').prop('valSort',nParent).children('button');
+      //var buttonITmp=r.children('span[name=nParentI]').prop('valSort',nParent).children('button');
+      var buttonITmp=r.querySelector('span[name=nParentI]').prop('valSort',nParent).querySelector('button');
+        var boSingle=imageFilterDiv.Filt.checkIfSingleParent();
         var strTitle;
         if(boSingle) {
           strTitle=nParent+' parents';
         }else{
-          strTitle=nParent+' parents'; if(nParent==1) strTitle=File[i].nameParent; else if(!nParent) strTitle='orphan';
+          strTitle=nParent+' parents'; if(nParent==1) strTitle=File[i].parent; else if(!nParent) strTitle='orphan';
         }
         var boHide=boSingle && nParent<=1; 
-        //$buttonTmp.prop('title',strTitle);   $buttonTmp.children('span:eq(0)').html(nParent);   $buttonTmp.visibilityToggle(!boHide);
-        $buttonITmp.prop('title',strTitle);  $buttonITmp.children('span:eq(0)').html(nParent);  $buttonITmp.visibilityToggle(!boHide);
+        //buttonTmp.prop('title',strTitle);   buttonTmp.children('span:nth-of-type(1)').myText(nParent);   buttonTmp.visibilityToggle(!boHide);
+        //buttonITmp.prop('title',strTitle);  buttonITmp.children('span:nth-of-type(1)').myText(nParent);  buttonITmp.visibilityToggle(!boHide);
+        buttonITmp.prop('title',strTitle);  buttonITmp.children[0].myText(nParent);  buttonITmp.visibilityToggle(!boHide);
         
-      $r.children('span[name=cb]').data('valSort',0).children('input').prop({'checked':false});
-      var tmp=File[i].imageName; $r.children('span[name=image]').data('valSort',tmp).children('img').prop({src:'50apx-'+tmp});
-      var tmp=File[i].boOther; $r.children('span[name=boOther]').data('valSort',tmp).visibilityToggle(tmp==1);      
-      var tmp=File[i].tCreated; $r.children('span[name=date]').data('valSort',-tmp.valueOf()).html(mySwedDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));    
+      r.querySelector('span[name=cb]').prop('valSort',0).querySelector('input').prop({'checked':false});
+      var tmp=File[i].imageName; r.querySelector('span[name=image]').prop('valSort',tmp).querySelector('img').prop({src:'50apx-'+tmp});
+      var tmp=File[i].boOther; r.querySelector('span[name=boOther]').prop('valSort',tmp).visibilityToggle(tmp==1);      
+      var tmp=File[i].tCreated; r.querySelector('span[name=date]').prop('valSort',-tmp.valueOf()).myText(mySwedDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));    
       var size=File[i].size, sizeDisp=size, pre=''; if(size>=1024) {sizeDisp=Math.round(size/1024); pre='k';} if(size>=1048576) { sizeDisp=Math.round(size/1048576); pre='M';}
-      var $tmp=$r.children('span[name=size]').data('valSort',size).html(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; $tmp.prop('title',strTitle);   //$tmp.css({weight:pre=='M'?'bold':'',color:pre==''?'grey':''}); 
-      var tmp=File[i].imageName; $r.children('span[name=link]').data('valSort',tmp).children('a').prop({href:uCommon+'/'+tmp}).text(tmp);
+      var tmp=r.querySelector('span[name=size]').prop('valSort',size).myHtml(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; tmp.prop('title',strTitle);   //tmp.css({weight:pre=='M'?'bold':'',color:pre==''?'grey':''}); 
+      var tmp=File[i].imageName; r.querySelector('span[name=link]').prop('valSort',tmp).querySelector('a').prop({href:uCommon+'/'+tmp}).myText(tmp);
     });
-    $tbody.find('input').prop({'checked':false}); 
+    //tBody.find('input').prop({'checked':false}); 
+    var Tmp=[...tBody.querySelectorAll('input')]; Tmp.forEach(ele=>ele.prop({'checked':false}));
   }
-  $el.setCBStat=function(boOn){
-    boOn=Boolean(boOn);$allButton.html('All');
-    $buttonExecuteMult.toggle(false);
-    //if(typeof $myRows=='undefined') return;
-    var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')');
-    $Tr.find('input').prop({'checked':false});
+  el.setCBStat=function(boOn){
+    boOn=Boolean(boOn);allButton.myText('All');
+    buttonExecuteMult.toggle(false);
+    //if(typeof myRows=='undefined') return;
+    //var Tr=tBody.children('p:lt('+el.nRowVisible+')');
+    var Tr=[...tBody.childNodes].slice(0, el.nRowVisible);
+    Tr.forEach(ele=>ele.querySelector('input').prop({'checked':false}));
   }
-  var restExecuteButton=function(){   $allButton.html('All');  $buttonExecuteMult.hide();  }
-  $el.loadTab=function(){
-    var oF=$imageFilterDiv.gatherFiltData();
+  var restExecuteButton=function(){   allButton.myText('All');  buttonExecuteMult.hide();  }
+  el.loadTab=function(){
+    var oF=imageFilterDiv.divCont.gatherFiltData();
     var vec=[['setUpImageListCond',oF],['getImageList',1,getListRet],['getImageHist',1,histRet]];
-    //var boSingleParentFilter=$imageFilterDiv.Filt.checkIfSingleParent();
-    var boWhite=$imageFilterDiv.Filt.isWhite(),     nParentsOn=$imageFilterDiv.Filt.getNParentsOn();
+    //var boSingleParentFilter=imageFilterDiv.Filt.checkIfSingleParent();
+    var boWhite=imageFilterDiv.Filt.isWhite(),     nParentsOn=imageFilterDiv.Filt.getNParentsOn();
     
     if(boWhite && nParentsOn==1){
-      var idParent=$imageFilterDiv.Filt.getSingleParent();
-      //var siteName=$imageFilterDiv.Filt.getSingleSite();
-      vec.push(['getParent',{idPage:idParent},function(data){$divRowParent.getParentRet(data);}],
-         ['getSingleParentExtraStuff',{idPage:idParent},function(data){$divRowParent.getSingleParentExtraStuffRet(data);}]);  // If filtering for single parent then also get the "grandparents"
+      var idParent=imageFilterDiv.Filt.getSingleParent();
+      //var siteName=imageFilterDiv.Filt.getSingleSite();
+      vec.push(['getParent',{idPage:idParent},function(data){divRowParent.getParentRet(data);}],
+         ['getSingleParentExtraStuff',{idPage:idParent},function(data){divRowParent.getSingleParentExtraStuffRet(data);}]);  // If filtering for single parent then also get the "grandparents"
     }
-    $divRowParent.setUpPreAJAX(idParent);
+    divRowParent.setUpPreAJAX(idParent);
     majax(oAJAX,vec);
     setMess('... fetching image list ... ',5,true);
-    $head.clearArrow(); restExecuteButton();
+    head.clearArrow(); restExecuteButton();
   }
   var getParentRet=function(data){
-    if('tab' in data) { var Parent=tabNStrCol2ArrObj(data); $spanGrandParent.setUp(Parent);  } 
+    if('tab' in data) { var Parent=tabNStrCol2ArrObj(data); spanGrandParent.setUp(Parent);  } 
   }
   var getSingleParentExtraStuffRet=function(data){
-    if('nSub' in data) {      $buttPI.empty().append(data.nSub);    }
+    if('nSub' in data) {      buttPI.myText(data.nSub);    }
     if('pageName' in data) {
       var strS=Number(data.boTLS)?'s':'',  strUrl='http'+strS+'://'+data.www+'/'+data.pageName, text=data.pageName; if(data.nSame>1) text=data.siteName+':'+text;
-      $aSingleFilter.prop('href',strUrl).html(text);
+      aSingleFilter.prop('href',strUrl).myText(text);
     }
   }
   var getListRet=function(data){
     var nCur;  //, TabTmp, StrCol=[];
-    var tmp=data.NFilt;   if(typeof tmp!="undefined") { $imageFilterDiv.setNFilt(tmp); } 
+    var tmp=data.NFilt;   if(typeof tmp!="undefined") { imageFilterDiv.setNFilt(tmp); } 
     File.length=0;
     if('tab' in data) File=tabNStrCol2ArrObj(data);
-    $el.nRowVisible=File.length;
+    el.nRowVisible=File.length;
     condAddRows(); fileArray2Div();
   }
   var histRet=function(data){
@@ -2111,35 +2195,43 @@ imageListExtend=function($el){
       if(row.pageName in objMult) row.text=row.siteName+':'+row.pageName; else row.text=row.pageName;
     }
 
-    $imageFilterDiv.interpretHistPHP(HistPHP);
-    $imageFilterDiv.update();         
-    //$imageList.setCBStat(0); 
+    imageFilterDiv.divCont.interpretHistPHP(HistPHP);
+    imageFilterDiv.divCont.update();         
+    //imageList.setCBStat(0); 
   }
 
   var changeModOfSingleI=function(strName,boVal){
-    var $r=$(this);  //, boValO=$span.data('valSort');
-    var boValO=$r.data(strName);
+    var r=this;
+    var boValO=r.prop(strName);
     if(typeof boVal=='undefined') boVal=1-boValO;
  
-    var o={File:[$r.data('idImage')]}; o[strName]=boVal;
+    var o={File:[r.idImage]}; o[strName]=boVal;
     var vec=[['myChModImage',o]];   majax(oAJAX,vec);
-    $r.data(strName,boVal);
-    var $span=$r.children('span[name='+strName+']'); $span.data('valSort',Number(boVal)).visibilityToggle(boVal); 
+    r.prop(strName,boVal);
+    //var span=r.children('span[name='+strName+']');
+    var span=r.querySelector('span[name='+strName+']');
+    span.prop('valSort',Number(boVal)).visibilityToggle(boVal); 
   }
   
   var getChecked=function(){
-    var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')'), $checked=$Tr.find('input:checked'), FileTmp=[]; $checked.each(function(){var tmp=$(this).parent().parent().data('idImage'); FileTmp.push(tmp);});
+    //var Tr=tBody.children('p:lt('+el.nRowVisible+')'), checked=Tr.find('input:checked'), FileTmp=[]; checked.forEach(ele=>{var tmp=ele.parentNode.parentNode.idImage; FileTmp.push(tmp);});
+    var Tr=[...tBody.childNodes].slice(0, el.nRowVisible), FileTmp=[]; Tr.forEach(ele=>{
+      var inp=ele.querySelector('input:checked'); if(inp) {var tmp=ele.idImage; FileTmp.push(tmp);}
+    });
     return FileTmp;
   }
  
-  $el.changeName=function(r,strNewName){
-    var $r=$(r), iFlip=$r.data('iFlip');
+  el.changeName=function(r,strNewName){
+    var iFlip=r.iFlip;
     File[iFlip].imageName=strNewName;
-    $r.data('imageName',strNewName); var $td=$r.children('span[name=link]').data('valSort',strNewName); $td.children('a').prop({href:uCommon+'/'+strNewName}).text(strNewName);
+    r.imageName=strNewName;
+    //var td=r.children('span[name=link]').prop('valSort',strNewName);
+    var td=r.querySelector('span[name=link]').prop('valSort',strNewName);
+    td.querySelector('a').prop({href:uCommon+'/'+strNewName}).myText(strNewName);
   }
   
-  $el.deleteF=function(FileDelete, histBackFun){
-    var oF=$imageFilterDiv.gatherFiltData();    
+  el.deleteF=function(FileDelete, histBackFun){
+    var oF=imageFilterDiv.divCont.gatherFiltData();    
     //var vec=[['deleteImage',{File:FileDelete}],['setUpImageListCond',oF],['getImageList',1,getListRet],['getImageHist',1,histRet]];
     var vec=[['deleteImage',{File:FileDelete}, histBackFun]];
     restExecuteButton();  majax(oAJAX,vec);
@@ -2147,126 +2239,122 @@ imageListExtend=function($el){
   
   
   var funPopped=function(statePopped){ 
-    $imageFilterDiv.frStored(statePopped);
-    $el.loadTab();
+    imageFilterDiv.divCont.frStored(statePopped);
+    el.loadTab();
   }
-  $el.histPush=function(){
-    var o=$imageFilterDiv.toStored();
-    doHistPush({$view:$imageList, Filt:o, fun:funPopped});
+  el.histPush=function(){
+    var o=imageFilterDiv.divCont.toStored();
+    doHistPush({view:imageList, Filt:o, fun:funPopped});
   }
-  $el.histReplace=function(indDiff){
-    var o=$imageFilterDiv.toStored();
-    doHistReplace({$view:$imageList, Filt:o, fun:funPopped}, indDiff); //
+  el.histReplace=function(indDiff){
+    var o=imageFilterDiv.divCont.toStored();
+    doHistReplace({view:imageList, Filt:o, fun:funPopped}, indDiff); //
   }
 
   var ParentName, IndParentName;
-  PropImage.parent.setRowButtF=function($span,val,boOn){
+  PropImage.parent.setRowButtF=function(span,val,boOn){
     var text=''; if(val in IndParentName) text=IndParentName[val].text;
     else if(val===null) text='(no parent)';
-    $span.html(text);
+    span.myText(text);
   }
 
 
-  //var $myRows;
-  var $tbody=$el.$tbody=$("<div>").addClass('imageList listBody');  //.addClass('listBody');
-  $el.$table=$("<div>").append($tbody).css({width:'100%',position:'relative'});
-  $el.$divCont=$("<div>").append($el.$table).css({margin:'0em auto 1em','text-align':'left',display:'inline-block'});//
+  //var myRows;
+  var tBody=el.tBody=createElement('div').addClass('imageList', 'listBody');  //.addClass('listBody');
+  el.table=createElement('div').myAppend(tBody).css({width:'100%',position:'relative'});
+  el.divCont=createElement('div').myAppend(el.table).css({margin:'0em auto 1em','text-align':'left',display:'inline-block'});//
   
   
   var strTmp='Parents / Alternatve parents';
   var StrCol=['nParentI','cb','execute','date','image','size','boOther','link'], BoAscDefault={cb:0,boOther:0,size:0}, Label={nParent:strTmp, nParentI:strTmp, cb:'Select',date:'Created',boOther:'Supplied by user'}; //'nParent',
-  //var $headFill=$('<p>').append().css({background:'white',margin:'0px',height:'calc(12px + 1.2em)'});
-  var $head=headExtend($('<p>'),$el,StrCol,BoAscDefault,Label,'p','span').addClass('imageList');
-  $head.css({background:'white', width:'inherit',height:'calc(12px + 1.2em)'});     // , position:'sticky', top:'57px', 'z-index':'1', margin:'0px'
-  $el.$headW=$('<div>').append($head).css({background:'white', width:'inherit', position:'sticky', top:'0px', 'z-index':'1', margin:'0px'});     
-  $el.$table.prepend($el.$headW); //,$headFill
+  //var headFill=createElement('p').myAppend().css({background:'white',margin:'0px',height:'calc(12px + 1.2em)'});
+  var head=headExtend(createElement('p'),el,StrCol,BoAscDefault,Label,'p','span').addClass('imageList');
+  head.css({background:'white', width:'inherit',height:'calc(12px + 1.2em)'});     // , position:'sticky', top:'57px', 'z-index':'1', margin:'0px'
+  el.headW=createElement('div').myAppend(head).css({background:'white', width:'inherit', position:'sticky', top:'0px', 'z-index':'1', margin:'0px'});     
+  el.table.prepend(el.headW); //,headFill
 
   
     // menuA
-  var $allButton=$('<button>').append('All').addClass('fixWidth').css({'margin-right':'1em'}).click(function(){  //'margin-left':'0.8em'
-    var boOn=$allButton.text()=='All';
-    var $Tr=$tbody.children('p:lt('+$el.nRowVisible+')');
-    $Tr.find('input').prop({'checked':boOn});
-    $allButton.text(boOn?'None':'All');
-    $buttonExecuteMult.toggle(boOn);
+  var allButton=createElement('button').myText('All').addClass('fixWidth').css({'margin-right':'1em'}).on('click',function(){  //'margin-left':'0.8em'
+    var boOn=allButton.myText()=='All';
+    //var Tr=tBody.children('p:lt('+el.nRowVisible+')');
+    //Tr.find('input').prop({'checked':boOn});
+    var Tr=[...tBody.childNodes].slice(0, el.nRowVisible);
+    Tr.forEach(ele=>{ var inp=ele.querySelector('input'); if(inp) inp.prop({'checked':boOn}); });
+    allButton.myText(boOn?'None':'All');
+    buttonExecuteMult.toggle(boOn);
   });
 
   var strEvent='mouseup'; if(boTouch) strEvent='click';
 
 
     // menuSingle
-  var $buttonDownload=$('<div>').html('Download');
-  var $buttonRename=$('<div>').append('Rename').on(strEvent,function(){
-    $renamePop.openFunc('image', this.parentElement.r);
+  var buttonDownload=createElement('div').myText('Download');
+  var buttonRename=createElement('div').myText('Rename').on(strEvent,function(){
+    renamePop.openFunc('image', this.parentElement.r);
   });
-  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){
-    var r=this.parentElement.r,  FileTmp=[$(r).data('idImage')], strLab='Are sure you want to delete this page'; 
-    $areYouSurePop.openFunc(strLab, function(){$el.deleteF(FileTmp, doHistBack);}, doHistBack);
+  var buttonDelete=createElement('div').myText('Delete').on(strEvent,function(){
+    var r=this.parentElement.r,  FileTmp=[r.idImage], strLab='Are sure you want to delete this page'; 
+    areYouSurePop.openFunc(strLab, function(){el.deleteF(FileTmp, doHistBack);}, doHistBack);
   });
-  var $buttonBoOtherTog=$('<div>').append('Toggle boOther').on(strEvent,function(){ changeModOfSingleI.call(this.parentElement.r,'boOther');   });
+  var buttonBoOtherTog=createElement('div').myText('Toggle boOther').on(strEvent,function(){ changeModOfSingleI.call(this.parentElement.r,'boOther');   });
   
   
-  //var $itemSingle=$([]).push($buttonGoToParent, $buttonRename, $buttonDelete);
-  var $itemSingle=$([]).push($buttonRename, $buttonDelete, $buttonBoOtherTog);
-  //var $menuSingle=menuExtend($('<div>')).css({'text-align':'left'});
-  var $menuSingle=$('<div>').css({'text-align':'left'});  menuExtend($menuSingle[0]);
+  var itemSingle=[buttonRename, buttonDelete, buttonBoOtherTog];
+  var menuSingle=createElement('div').css({'text-align':'left'});  menuExtend(menuSingle);
   var buttonExeSingleClick=function(e){ 
-    var $button=$(this); 
-    $menuSingle[0].r=$button[0].parentElement.parentElement;
-    var fragItems=jQueryObjToFragment($itemSingle);
-    $menuSingle[0].openFunc(e,this,fragItems);
+    var button=this; 
+    menuSingle.r=button.parentElement.parentElement;
+    //var fragItems=jQueryObjToFragment(itemSingle);
+    menuSingle.openFunc(e,this,itemSingle);
   }
   
 
     // menuMult
-  var $buttonDownload=$('<div>').html('Download');
-  var $buttonDelete=$('<div>').append('Delete').on(strEvent,function(){
-    var FileTmp=getChecked(), strLab='Deleting '+FileTmp.length+' image(s).';   $areYouSurePop.openFunc(strLab, function(){$el.deleteF(FileTmp, doHistBack);}, doHistBack);
+  var buttonDownload=createElement('div').myText('Download');
+  var buttonDelete=createElement('div').myText('Delete').on(strEvent,function(){
+    var FileTmp=getChecked(), strLab='Deleting '+FileTmp.length+' image(s).';   areYouSurePop.openFunc(strLab, function(){el.deleteF(FileTmp, doHistBack);}, doHistBack);
   });
   
-  //var $tmpImg=$('<img>').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
-  var $buttonExecuteMult=$('<button>').append(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
-  var $itemMulti=$([]).push( $buttonDelete);
-  //var $menuMult=menuExtend($('<div>')).css({'text-align':'left'});
-  var $menuMult=$('<div>').css({'text-align':'left'});  menuExtend($menuMult[0]);
+  //var tmpImg=createElement('img').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
+  var buttonExecuteMult=createElement('button').myText(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
+  var itemMulti=[buttonDelete];
+  var menuMult=createElement('div').css({'text-align':'left'});  menuExtend(menuMult);
   var buttonExeMultClick=function(e){ 
-    //var $button=$(this);  //$itemMulti.eq(0).toggle(isOneOn());
-    //if(boTouch){      doHistPush({$view:$menuDiv});     $menuDiv.setUp($itemMulti);   $menuDiv.setVis();    }else{    }
-    var fragItems=jQueryObjToFragment($itemMulti);
-    $menuMult[0].openFunc(e,this,fragItems);
-    //$menuMult.openFunc(e,$button,$itemMulti);
+    //var button=this;  //itemMulti[0].toggle(isOneOn());
+    //if(boTouch){      doHistPush({view:menuDiv});     menuDiv.setUp(itemMulti);   menuDiv.setVis();    }else{    }
+    //var fragItems=jQueryObjToFragment(itemMulti);
+    menuMult.openFunc(e,this,itemMulti);
   }
-  $buttonExecuteMult.on(strMenuOpenEvent,buttonExeMultClick);
+  buttonExecuteMult.on(strMenuOpenEvent,buttonExeMultClick);
 
 
-  //$el.$buttonExecuteParent=$('<button>').append(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"});
-  //var $divRowParent=new DivRowParentT($el);
-  //$headW.prepend($divRowParent);
+  //el.buttonExecuteParent=createElement('button').myText(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"});
+  //var divRowParent=new DivRowParentT(el);
+  //headW.prepend(divRowParent);
 
 
-  var File=[]; $el.nRowVisible=0;
+  var File=[]; el.nRowVisible=0;
 
-  //var $buttonBack=$('<button>').append('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(doHistBack);
-  var $spanTmp=$('<span>').append(strFastBackSymbol).css({'font-size':'0.7em'});
-  var $buttonFastBack=$('<button>').append($spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){history.fastBack($adminMoreDiv);});
-  //var $spanLabel=$('<span>').append('Images').css({'float':'right',margin:'0.2em 0 0 0'}); 
+  //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',doHistBack);
+  var spanTmp=createElement('span').myText(strFastBackSymbol).css({'font-size':'0.7em'});
+  var buttonFastBack=createElement('button').myAppend(spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){history.fastBack(adminMoreDiv);});
+  //var spanLabel=createElement('span').myText('Images').css({'float':'right',margin:'0.2em 0 0 0'}); 
   
-  var $tmpImg=$('<img>').prop({src:uFilter}).css({height:'1em',width:'1em','vertical-align':'text-bottom','user-drag':'none'});
-  $el.$filterInfoWrap=$('<span>');
-  var $buttFilter=$('<button>').append($tmpImg,' (',$el.$filterInfoWrap,')').addClass('flexWidth').css({'float':'right','margin-right':'0.2em'}).click(function(){ doHistPush({$view:$imageFilterDiv}); $imageFilterDiv.setVis();});
-  var $buttClear=$('<button>').append('C').click(function(){$imageFilterDiv.Filt.filtClear(); $imageList.histPush(); $imageList.loadTab()}).css({'float':'right','margin-right':'1em'});
-  var $spanTmp=$('<span>').append('(orphans)').css({'font-size':'0.8em'});
-  var $buttOrphan=$('<button>').append($spanTmp).click(function(){$imageFilterDiv.Filt.setSingleParent(null);  $imageList.histPush(); $imageList.loadTab()}).css({'float':'right','margin-right':'1em'});
+  var tmpImg=createElement('img').prop({src:uFilter}).css({height:'1em',width:'1em','vertical-align':'text-bottom'}).addClass('undraggable');
+  el.filterInfoWrap=createElement('span');
+  var buttFilter=createElement('button').myAppend(tmpImg,' (',el.filterInfoWrap,')').addClass('flexWidth').css({'float':'right','margin-right':'0.2em'}).on('click',function(){ doHistPush({view:imageFilterDiv}); imageFilterDiv.setVis();});
+  var buttClear=createElement('button').myText('C').on('click',function(){imageFilterDiv.Filt.filtAll(); imageList.histPush(); imageList.loadTab()}).css({'float':'right','margin-right':'1em'});
+  var spanTmp=createElement('span').myText('(orphans)').css({'font-size':'0.8em'});
+  var buttOrphan=createElement('button').myAppend(spanTmp).on('click',function(){imageFilterDiv.Filt.setSingleParent(null);  imageList.histPush(); imageList.loadTab()}).css({'float':'right','margin-right':'1em'});
 
-  var $menuA=$('<div>').append($buttonFastBack, $allButton, $buttonExecuteMult, $buttFilter, $buttClear, $buttOrphan);  // $buttonBack, 
-  $menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
+  var menuA=createElement('div').myAppend(buttonFastBack, allButton, buttonExecuteMult, buttFilter, buttClear, buttOrphan);  // buttonBack, 
+  menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
 
-  //$el.addClass('imageList');
-  //$el.$fixedTop=$('<div>').append($divRowParent).css(cssFixedTop).css({'background':'lightblue'});
-  $el.$fixedDiv=$('<div>').append($menuA).css(cssFixed).css({'background':'lightblue'});
-  $el.css({'text-align':'center'});
-  $el.append($el.$divCont,$el.$fixedDiv);  //,$el.$fixedTop
-  return $el;
+  el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed).css({'background':'lightblue'});
+  el.css({'text-align':'center'});
+  el.append(el.divCont,el.fixedDiv);  //,el.fixedTop
+  return el;
 }
 
 
@@ -2274,195 +2362,207 @@ imageListExtend=function($el){
 /*******************************************************************************
  * editDiv
  ******************************************************************************/
-divReCaptchaExtend=function($el){
+divReCaptchaExtend=function(el){
 "use strict"
-  $el.setUp=function(){
+  el.setUp=function(){
     //if(typeof grecaptcha=='undefined') var grecaptcha={render:function(){console.log('no grecaptcha');}};
     if(typeof grecaptcha=='undefined' || !('render' in grecaptcha)) {console.log('no grecaptcha'); return; }
-    if($el.is(':empty')){    grecaptcha.render($el[0], {sitekey:strReCaptchaSiteKey});    } else grecaptcha.reset();
+    if(el.children.length==0){    grecaptcha.render(el, {sitekey:strReCaptchaSiteKey});    } else grecaptcha.reset();
   }
-  $el.addClass("g-recaptcha");
-  //$el.prop({"data-sitekey": strReCaptchaSiteKey});
-  return $el;
+  el.addClass("g-recaptcha");
+  //el.prop({"data-sitekey": strReCaptchaSiteKey});
+  return el;
 }
 
 
-editDivExtend=function($el){
+editDivExtend=function(el){
 "use strict"
-  $el.toString=function(){return 'editDiv';}
-  $el.setUp=function(){
-    if($editText.parent()[0]!==$el.$fixedDiv[0]) {
-      $el.$fixedDiv.prepend($dragHR,$editText);
+  el.toString=function(){return 'editDiv';}
+  el.setUp=function(){
+    if(editText.parentNode!==el.fixedDiv) {
+      el.fixedDiv.prepend(dragHR,editText);
     }
+    //el.spanLastMod.myText(mySwedDate(tMod)).prop('title','Last Modified:\n'+UTC2JS(tMod));
+    //var tmp=objPage.tCreated; el.spanCreated.myText(mySwedDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));
+    var tmp=tMod; el.spanLastMod.myText(UTC2TimeOrDate(tmp)).prop('title','Last Modified:\n'+UTC2JS(tmp));
+    var tmp=objPage.tCreated; el.spanCreated.myText(UTC2TimeOrDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));
+    spanTimeW.toggle(tMod);
     
-    //window.$divReCaptcha=divReCaptchaExtend($('<div>'));
-    //$el.$spanSave.prepend($divReCaptcha);
-    $divReCaptcha.setUp();
+    //window.divReCaptcha=divReCaptchaExtend(createElement('div'));
+    //el.spanSave.prepend(divReCaptcha);
+    divReCaptcha.setUp();
   }
   
     // menuB
-  $el.$spanSave=spanSaveExtend($('<span>'));
-  var $templateButton=$('<button>').append('Template list').addClass('fixWidth').css({'margin-right':'1em'}).click(function(){
-    doHistPush({$view:$templateList});
-    $templateList.setVis();
-  });    
-  $el.$templateButton=$templateButton;
-  //var $upLoadButton=$('<button>').append('Upload image').click(function(){$uploadUserDiv.openFunc();}).css({'float':'right'});
-  var $upLoadButton=$('<button>').append('Upload<br>image').click(function(){  doHistPush({$view:$uploadUserDiv}); $uploadUserDiv.setVis();}).css({'float':'right'});
-  $el.$spanLastMod=$('<span>');  
-  var $spanLastModW=$('<span>').append('Last mod: ', $el.$spanLastMod).css({'float':'right',margin:'0.2em .5em 0 0'});  
-  var $menuB=$('<div>').append($el.$spanSave,$templateButton,' ',$upLoadButton).addClass('fixWidth').css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'1em auto'});
+  el.spanSave=spanSaveExtend(createElement('span'));
+  var templateButton=createElement('button').myText('Template list').addClass('fixWidth').css({'margin-right':'1em'}).on('click',function(){
+    doHistPush({view:templateList});
+    templateList.setVis();
+  });
+  el.templateButton=templateButton;
+  //var upLoadButton=createElement('button').myText('Upload image').on('click',function(){uploadUserDiv.openFunc();}).css({'float':'right'});
+  var upLoadButton=createElement('button').myAppend('Upload image').on('click',function(){  doHistPush({view:uploadUserDiv}); uploadUserDiv.setVis();}).css({'float':'right'});
+  el.spanCreated=createElement('span');   el.spanLastMod=createElement('span');  
+  //var spanTimeW=createElement('span').myAppendB('Creation age: ', el.spanCreated, '. Mod age: ', el.spanLastMod).css({'float':'right',margin:'0.2em .5em 0 0'});  
+  var spanTimeW=createElement('span').myAppendB('Page created: ', el.spanCreated, '. Last mod: ', el.spanLastMod).css({'float':'right',margin:'0.2em .5em 0 0', 'font-size':'70%'});  
+  var menuB=createElement('div').myAppend(el.spanSave,templateButton,' ',upLoadButton).addClass('fixWidth').css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'1em auto 0'});
 
     // menuA
-  //var $buttonBack=$('<button>').append('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(doHistBack);
-  var $spanLabel=$('<span>').append('Edit').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var $menuA=$('<div>').append($spanLastModW).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //$buttonBack, ,$spanLabel
+  //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',doHistBack);
+  var spanLabel=createElement('span').myText('Edit').css({'float':'right',margin:'0.2em 0 0 0'});  
+  var menuA=createElement('div').myAppend(spanTimeW).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //buttonBack, ,spanLabel
 
-  $el.$spanClickOutside=$('<span>').append('Click outside the textarea when ready.').hide();
-  $el.$fixedDiv=$('<div>').append($el.$spanClickOutside,$menuB,$menuA).css(cssFixedDrag);
+  el.spanClickOutside=createElement('span').myText('Click outside the textarea when ready.').hide();
+  el.fixedDiv=createElement('div').myAppend(el.spanClickOutside,menuB,menuA).css(cssFixedDrag);
 
-  $el.$menus=$menuA.add($menuB);
-  $el.append($el.$fixedDiv);
-  return $el;
+  el.menus=[menuA, menuB];
+  el.append(el.fixedDiv);
+  return el;
 }
 
 
-editButtonExtend=function($el){
-  $el.setImg=function(boOW){ 
-    $imgOW.prop({src:boOW?uPen:uPenNot});
-    //$imgOW.toggle(boOW); $imgOWNot.toggle(1-boOW);
-    $divHov.html(boOW?'Edit the page.':'See wiki text.')
+editButtonExtend=function(el){
+  el.setImg=function(boOW){ 
+    imgOW.prop({src:boOW?uPen:uPenNot});
+    //imgOW.toggle(boOW); imgOWNot.toggle(1-boOW);
+    divHov.myText(boOW?'Edit the page.':'See wiki text.')
   }
-  var $divHov=$('<div>');  if(!boTouch) { popupHoverJQ($el,$divHov);  };
+  var divHov=createElement('div');  if(!boTouch) { popupHover(el,divHov);  };
   
-  var $imgOW=$('<img>').prop({src:uPen}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom', 'user-drag':'none'});
-  //var $imgOWNot=$('<img>').prop({src:uPenNot}).css({height:'1em',width:'1em','vertical-align':'text-bottom'}).hide();
-  //var $imgOWNot=$('<span>').append('src').hide();
-  $el.append($imgOW);
-  return $el;
+  var imgOW=createElement('img').prop({src:uPen}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable');
+  //var imgOWNot=createElement('img').prop({src:uPenNot}).css({height:'1em',width:'1em','vertical-align':'text-bottom'}).hide();
+  //var imgOWNot=createElement('span').myText('src').hide();
+  el.append(imgOW);
+  return el;
 }
-spanModExtend=function($el){
+spanModExtend=function(el){
   var strPublicRead='<span style="display:inline-block">'+charPublicRead+'</span>';
-  $el.setup=function(data){   $el.html((data.boOR?strPublicRead:' ') + (data.boOW?charPublicWrite:' ') + (data.boSiteMap?charPromote:' '));  }
-  return $el;
+  el.setup=function(data){   el.myHtml((data.boOR?strPublicRead:' ') + (data.boOW?charPublicWrite:' ') + (data.boSiteMap?charPromote:' '));  }
+  return el;
 }
 
-dragHRExtend=function($el){
+dragHRExtend=function(el){
 "use strict"
   var myMousedown= function(e){
     var e = e || window.event; if(e.which==3) return;
-    $el.css({position:'relative',opacity:0.55,'z-index':'auto',cursor:'move'}); 
-    hStart=$editText.height();
-    if(boTouch) {e.preventDefault(); var orig=e.originalEvent;  mouseXStart=orig.changedTouches[0].pageX; mouseYStart=orig.changedTouches[0].pageY;}
+    el.css({position:'relative',opacity:0.55,'z-index':'auto',cursor:'move'}); 
+    //hStart=editText.height();
+    //var rect=editText.getBoundingClientRect(); hStart=rect.height;
+    hStart=editText.offsetHeight;
+    if(boTouch) {e.preventDefault(); mouseXStart=e.changedTouches[0].pageX; mouseYStart=e.changedTouches[0].pageY;}
     else {mouseXStart=e.pageX; mouseYStart=e.pageY;}
 
-    if(boTouch){      $(document).on('touchmove',myMousemove).on('touchend',$el.myMouseup);  }
-    else{   $(document).on('mousemove',myMousemove).on('mouseup',$el.myMouseup);    }
+    //if(boTouch){      document.on('touchmove',myMousemove).on('touchend',el.myMouseup);  } else{   document.on('mousemove',myMousemove).on('mouseup',el.myMouseup);    }
+    document.on(strMouseMoveEvent,myMousemove).on(strMouseUpEvent,el.myMouseup);
     //setMess('Down',5);
   } 
-  $el.myMouseup= function(e){ 
-    $el.css({position:'relative',opacity:1,'z-index':'auto',top:'0px',cursor:'row-resize'});
-    if(boTouch) $(document).off('touchmove',myMousemove).off('touchend',$el.myMouseup);
-    else $(document).off('mousemove').off('mouseup'); 
-    //setMess(print_r($el.myGet(),1));
+  el.myMouseup= function(e){ 
+    el.css({position:'relative',opacity:1,'z-index':'auto',top:'0px',cursor:'row-resize'});
+    //if(boTouch) document.off('touchmove',myMousemove).off('touchend',el.myMouseup); else document.off('mousemove').off('mouseup'); 
+    document.off(strMouseMoveEvent,myMousemove).off(strMouseUpEvent,el.myMouseup);
+    //setMess(print_r(el.myGet(),1));
   }
   
   var myMousemove= function(e){
     var mouseX,mouseY;
-    if(boTouch) {e.preventDefault(); var orig=e.originalEvent;  mouseX=orig.changedTouches[0].pageX; mouseY=orig.changedTouches[0].pageY;}
+    if(boTouch) {e.preventDefault(); mouseX=e.changedTouches[0].pageX; mouseY=e.changedTouches[0].pageY;}
     else {mouseX=e.pageX; mouseY=e.pageY;}
 
     var hNew=hStart-(mouseY-mouseYStart); 
-    $editText.height(hNew);
+    //editText.height(hNew);
+    editText.css('height', hNew+'px');
   };
+  var strMouseDownEvent='mousedown', strMouseMoveEvent='mousemove', strMouseUpEvent='mouseup';  if(boTouch){  strMouseDownEvent='touchstart'; strMouseMoveEvent='touchmove'; strMouseUpEvent='touchend';  }
   var hStart,mouseXStart,mouseYStart;
-  if(boTouch) $el.on('touchstart',myMousedown); else $el.on('mousedown',myMousedown);
-  $el.addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
-  $el.css({cursor:'row-resize'});
-  return $el;
+  //if(boTouch) el.on('touchstart',myMousedown); else el.on('mousedown',myMousedown);
+  el.on(strMouseDownEvent,myMousedown);
+  el.addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
+  el.css({cursor:'row-resize'});
+  return el;
 }
 
 
 
-editTextExtend=function($el){
+editTextExtend=function(el){
 "use strict"
   var hDefault=160;
   var hEditText=getItem('hEditText');  if(hEditText===null)  hEditText=hDefault;      
   if(boTouch) hEditText=hDefault;
-  $el.css({width:'80%',height:hEditText+'px',display:'block',resize:'none'}).prop({autocomplete:"off"});//,wrap:"virtual"//,'margin-left':'40px','margin-right':'10px's
+  el.css({width:'80%',height:hEditText+'px',display:'block',resize:'none'}).prop({autocomplete:"off"});//,wrap:"virtual"//,'margin-left':'40px','margin-right':'10px's
   var clickBlurFunc=function(e){
     var boOn=e.type=='click';
     //if(!boOn) return;
     if(boTouch){//boTouch
-      var $parent=$el.parent();
+      var elParent=el.parentNode;
       if(boOn) {        
-        $parent.css({top:'0px',bottom:''});
+        elParent.css({top:'0px',bottom:''});
       } else { 
-        $parent.css({top:'',bottom:'0px'});
+        elParent.css({top:'',bottom:'0px'});
       }
-      var $toHideAtTouch=$pageText.add($editDiv.$menus).add($adminDiv.$menus);
-      $toHideAtTouch.toggle(!Boolean(boOn));
-      $editDiv.$spanClickOutside.toggle(Boolean(boOn));
-      $adminDiv.$spanClickOutside.toggle(Boolean(boOn));
+      var toHideAtTouch=[pageText, ...editDiv.menus, adminDiv.menus];
+      toHideAtTouch.forEach(ele=>ele.toggle(!Boolean(boOn)));
+      editDiv.spanClickOutside.toggle(Boolean(boOn));
+      adminDiv.spanClickOutside.toggle(Boolean(boOn));
     }
   }
-  $el.on('click',clickBlurFunc);  
-  $el.on('blur',clickBlurFunc);
-  return $el;
+  el.on('click',clickBlurFunc);  
+  el.on('blur',clickBlurFunc);
+  return el;
 }
 
 
-spanSaveExtend=function($el){
+spanSaveExtend=function(el){
 "use strict"
-  var $summary=$("<input type=text placeholder=Summary>").css({width:'5em'}); //$spanSummary=$('<span>').append('Summary: ',$summary).css({'white-space':'nowrap'});
-  var $signature=$("<input type=text placeholder=Signature>").css({width:'5em'}); //$spanSignature=$('<span>').append('Signature: ',$signature).css({'white-space':'nowrap'});
+  var summary=createElement('input').prop({type:'text', placeholder:'Summary'}).css({width:'5em'}); //spanSummary=createElement('span').myAppend('Summary: ',summary).css({'white-space':'nowrap'});
+  var signature=createElement('input').prop({type:'text', placeholder:'Signature'}).css({width:'5em'}); //spanSignature=createElement('span').myAppend('Signature: ',signature).css({'white-space':'nowrap'});
   //if(boIE && versionIE<10) { 
-    //var tmpf=function(){$(this).css({background:'#fff'});}
-    //var tmpSu='url('+uSummary+') no-repeat scroll 0 50% #fff'; $summary.css({background: tmpSu}).focusin(tmpf).focusout(function(){$(this).css({background:tmpSu});});
-    //var tmpSi='url('+uSignature+') no-repeat scroll 0 50% #fff'; $signature.css({background: tmpSi}).focusin(tmpf).focusout(function(){$(this).css({background:tmpSi});});
+    //var tmpf=function(){this.css({background:'#fff'});}
+    //var tmpSu='url('+uSummary+') no-repeat scroll 0 50% #fff'; summary.css({background: tmpSu}).focusin(tmpf).focusout(function(){this.css({background:tmpSu});});
+    //var tmpSi='url('+uSignature+') no-repeat scroll 0 50% #fff'; signature.css({background: tmpSi}).focusin(tmpf).focusout(function(){this.css({background:tmpSi});});
   //}
-  var $save=$('<button>').append('Save').click(function(){
-    if(!$summary.val() || !$signature.val()) { setMess('Summary- or signature- field is empty',5); return;}
+  var save=createElement('button').myText('Save').on('click',function(){
+    if(!summary.value || !signature.value) { setMess('Summary- or signature- field is empty',5); return;}
     
     var strTmp=grecaptcha.getResponse(); if(!strTmp) {setMess("Captcha response is empty"); return; }
-    var o={strEditText:$editText.val(), summary:$summary.val(), signature:$signature.val(),  'g-recaptcha-response': grecaptcha.getResponse()};
+    var o={strEditText:editText.value, summary:summary.value, signature:signature.value,  'g-recaptcha-response': grecaptcha.getResponse()};
     
     var vec=[['saveByAdd',o]];   majax(oAJAX,vec); 
-    $summary.val(''); $signature.val('');
-    $boLCacheObs.val(1);
+    summary.value=''; signature.value='';
+    boLCacheObs.value=1;
   });
-  var $preview=$('<button>').append('Show<br>preview').click(function(){
-    var vec=[['getPreview',{strEditText:$editText.val()}]];   majax(oAJAX,vec); 
+  var preview=createElement('button').myText('Show preview').on('click',function(){
+    var vec=[['getPreview',{strEditText:editText.value}]];   majax(oAJAX,vec); 
   });
 
-  $el.append($summary,' ',$signature,' ',$save,' ',$preview);
-  return $el;
+  el.append(summary,' ',signature,' ',save,' ',preview);
+  return el;
 }
 
 
-templateListExtend=function($el){
+templateListExtend=function(el){
 "use strict"
-  $el.toString=function(){return 'templateList';}
-  $el.setUp=function(obj){
-    $div.empty(); 
+  el.toString=function(){return 'templateList';}
+  el.setUp=function(obj){
+    div.empty(); 
     for(var key in obj) {  
-      var str="template:"+key;   var $a=$('<a>').prop({href:'/'+str}).html(str).css({display:'block'}); $div.append($a);
-      if( obj[key]==0) $a.addClass("stub");
+      var str="template:"+key;   var a=createElement('a').prop({href:'/'+str}).myText(str).css({display:'block'}); div.append(a);
+      if( obj[key]==0) a.addClass("stub");
     }
-    //if(tab.length) $el.prepend('<h3>Templates</h3>');
-    $editDiv.$templateButton.toggle(!$.isEmptyObject(obj));
+    //if(tab.length) el.prepend('<h3>Templates</h3>');
+    //editDiv.templateButton.toggle(!$.isEmptyObject(obj));
+    editDiv.templateButton.toggle(Object.keys(obj).length);
   }
-  var $div=$('<div>');
+  var div=createElement('div');
       // menuA
-  // var $buttonBack=$('<button>').append('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(doHistBack);
-  var $spanLabel=$('<span>').append('Template list').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var $menuA=$('<div>').append($spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); // $buttonBack,
+  // var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',doHistBack);
+  var spanLabel=createElement('span').myText('Template list').css({'float':'right',margin:'0.2em 0 0 0'});  
+  var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); // buttonBack,
 
 
-  var $fixedDiv=$('<div>').append($menuA).css(cssFixed);
+  var fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
 
-  $el.append($div,$fixedDiv);
-  return $el;
+  el.append(div,fixedDiv);
+  return el;
 }
 
 
@@ -2470,23 +2570,26 @@ templateListExtend=function($el){
 /*******************************************************************************
  * versionTable
  ******************************************************************************/
-versionTableExtend=function($el){
+versionTableExtend=function(el){
 "use strict"
-  $el.toString=function(){return 'versionTable';}
+  el.toString=function(){return 'versionTable';}
   function cbCompareWPrev(){ 
-    var iVer=$(this).parent().parent().data('iMy');  arrVersionCompared=[bound(iVer-1,1),iVer];
+    var iVer=this.parentNode.parentNode.iMy;  arrVersionCompared=[bound(iVer-1,1),iVer];
     var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
-    doHistPush({$view:$diffDiv}); $diffDiv.setVis();
+    doHistPush({view:diffDiv}); diffDiv.setVis();
     return false;
   }
-  function cbVersionView(){
-    var iVer=$(this).parent().data('iMy');
+  function cbVersionView(e){
+    var ele=e.target;
+    if(ele.name=='ind' || ele.name=='date' || ele.name=='summary'){} else return;
+    
+    var iVer=ele.parentNode.iMy;
     var vec=[['pageLoad',{version:iVer}]];   majax(oAJAXCacheable,vec); 
     doHistBack();
   }
   /*
   function cbRowClick(){ 
-    var iRow=$(this).parent().index();
+    var iRow=this.parentNode.myIndex();
     if(iRow==nVersion-1) { var vec=[['pageLoad',{version:nVersion-iRow}]];   majax(oAJAX,vec);   }
     else{
       arrVersionCompared=[bound(nVersion-iRow-1,1),nVersion-iRow];
@@ -2495,114 +2598,153 @@ versionTableExtend=function($el){
     return false;
   }*/
   function redClick(){ 
-    var verR=$(this).parent().parent().data('iMy'), verGT=arrVersionCompared[1]; verGT=verGT<=verR?verR+1:verGT; verGT=Math.min(verGT,nVersion);
+    var verR=this.parentNode.parentNode.iMy, verGT=arrVersionCompared[1]; verGT=verGT<=verR?verR+1:verGT; verGT=Math.min(verGT,nVersion);
     arrVersionCompared=[verR, verGT]; 
     var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
-    doHistPush({$view:$diffDiv}); $diffDiv.setVis();
+    doHistPush({view:diffDiv}); diffDiv.setVis();
     return false;
   }
   function greenClick(){ 
-    var verG=$(this).parent().parent().data('iMy'),  verRT=arrVersionCompared[0]; verRT=verRT>=verG?verG-1:verRT; verRT=Math.max(verRT,1);
+    var verG=this.parentNode.parentNode.iMy,  verRT=arrVersionCompared[0]; verRT=verRT>=verG?verG-1:verRT; verRT=Math.max(verRT,1);
     arrVersionCompared=[verRT, verG];
     var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
-    doHistPush({$view:$diffDiv}); $diffDiv.setVis();
+    doHistPush({view:diffDiv}); diffDiv.setVis();
     return false;
   }  
-  $el.setTable=function(){
-    $el.condAddRows(); $el.versionTable2TBody();
+  el.setTable=function(){
+    el.condAddRows(); el.versionTable2TBody();
     //boMultVersion=Number(matVersion.length>1); 
     
-    $pageView.$versionMenu.add($el.$table).add($warningDiv).toggle(matVersion.length>1);
-    //if(matVersion.length==1) {$tHead.children('th:gt(3)').hide();}  else {$tHead.children('th:gt(3)').show();}
+    [pageView.versionMenu, el.table, warningDiv].forEach(ele=>ele.toggle(matVersion.length>1));
+    //if(matVersion.length==1) {tHead.children('th:gt(3)').hide();}  else {tHead.children('th:gt(3)').show();}
   }
   
-  $el.condAddRows=function(){
-    var $rows=$tBody.children('tr'), n=matVersion.length;
-    //var diff=n-$rows.length;
-    for(var i=$rows.length; i<n;i++){
-      var $r=$('<tr>'); $r.css({cursor:'pointer'});
-      //if(!boTouch) {  $r.on('mouseover',function(){$(this).children('td').css({background:'#8f8'});}).on('mouseout',function(){$(this).children('td').css({background:''});});  }
+  el.condAddRows=function(){
+    //var rows=tBody.children('tr');
+    var rows=tBody.children;
+    var n=matVersion.length;
+    //var diff=n-rows.length;
+    for(var i=rows.length; i<n;i++){
+      var r=createElement('tr'); r.css({cursor:'pointer'});
+      //if(!boTouch) {  r.on('mouseover',function(){this.children('td').css({background:'#8f8'});}).on('mouseout',function(){this.children('td').css({background:''});});  }
       /*if(!boTouch) { var tmp='td:lt(3)';
-        $r.on('mouseover',tmp,function(){$(this).parent().children(tmp).css({background:'#8f8',cursor:'pointer'});});
-        $r.on('mouseout',tmp,function(){$(this).parent().children(tmp).css({background:'',cursor:''});});
+        r.on('mouseover',tmp,function(){this.parentNode.children(tmp).css({background:'#8f8',cursor:'pointer'});});
+        r.on('mouseout',tmp,function(){this.parentNode.children(tmp).css({background:'',cursor:''});});
       }*/
-      //var $bView=$('<button>').html('View').click(cbVersionView);
-      var $bEdit=$('<button>').html('Diff').click(cbCompareWPrev).css({position:'relative',top:'1.25em'});
-      var $bRed=$('<button>').css({width:'1.5em'}).html('&nbsp;').click(redClick);
-      var $bGreen=$('<button>').css({width:'1.5em'}).html('&nbsp;').click(greenClick);
-      var $tInd=$('<td>').attr('name','ind');
-      var $tDate=$('<td>').attr('name','date');
-      var $tSummary=$('<td>').attr('name','summary');
-      $r.append($tInd,$tDate,$tSummary,$('<td>').css({'vertical-align':'bottom'}).append($bEdit),$('<td>').append($bRed),$('<td>').append($bGreen));  //,$('<td>').append($bView)
+      //var bView=createElement('button').myText('View').on('click',cbVersionView);
+      var bEdit=createElement('button').myText('Diff').on('click',cbCompareWPrev).css({position:'relative',top:'1.25em'});
+      var bRed=createElement('button').css({width:'1.5em'}).on('click',redClick);
+      var bGreen=createElement('button').css({width:'1.5em'}).on('click',greenClick);
+      var tInd=createElement('td').attr('name','ind');
+      var tDate=createElement('td').attr('name','date');
+      var tSummary=createElement('td').attr('name','summary');
+      r.myAppend(tInd,tDate,tSummary,createElement('td').css({'vertical-align':'bottom'}).myAppend(bEdit),createElement('td').myAppend(bRed),createElement('td').myAppend(bGreen));  //,createElement('td').myAppend(bView)
       
-      $tBody.append($r);
+      tBody.append(r);
     }
   }
-  $el.versionTable2TBody=function(){
+  el.versionTable2TBody=function(){
     nVersion=matVersion.length;
     var nRT=matVersion.length;
-    $tBody.find('button').show();
-    $tBody.children('tr').css({"background-color":""});
-    $tBody.find('button').css({"background-color":""});
-    //$tBody.children('tr:eq('+nRT+'), gt('+nRT'+)').hide();
-    //$tBody.children('tr:lt('+nRT'+)').show();
-    //var $myRows=$tBody.children('tr:lt('+nRT'+)');
-    var $rows=$tBody.children('tr');   $rows.slice(nRT).hide();
-    var $myRows=$rows.slice(0,nRT); 
-    if($myRows.length==0) return;
-    $myRows.show();
-    $myRows.each(function(i,tr){ $(tr).data({iMy:nRT-i}); });
-    $myRows.find('td:nth-child(1)').each(function(i,td){      $(td).html(nRT-i);  });
-    $myRows.find('td:nth-child(2)').each(function(i,td){      $(td).html(mySwedDate(matVersion[nRT-1-i][0]));  });
-    $myRows.find('td:nth-child(3)').each(function(i,td){    $(td).empty();  $(td).append(matVersion[nRT-1-i][1], ' / ', matVersion[nRT-1-i][2]);  });
+    //tBody.find('button').show();
+    var Tmp=[...tBody.querySelectorAll('button')]; Tmp.forEach(ele=>ele.show());
+    //tBody.children('tr').css({"background-color":""});
+    [...tBody.childNodes].forEach(ele=>ele.css({"background-color":""}));
+    //tBody.find('button').css({"background-color":""});
+    var Tmp=[...tBody.querySelectorAll('button')]; Tmp.forEach(ele=>ele.css({"background-color":""}));
+    //tBody.children('tr:nth-of-type('+(nRT+1)+'), gt('+nRT'+)').hide();
+    //tBody.children('tr:lt('+nRT'+)').show();
+    //var myRows=tBody.children('tr:lt('+nRT'+)');
+    //var rows=tBody.children('tr');
+    var rows=[...tBody.childNodes];
+    rows.slice(nRT).forEach(ele=>ele.hide());
+    var myRows=rows.slice(0,nRT); 
+    if(myRows.length==0) return;
+    //myRows.show();
+    myRows.forEach(function(tr,i){
+      tr.show(); tr.iMy=nRT-i;
+      tr.children[0].myText(nRT-i);
+      tr.children[1].myText(mySwedDate(matVersion[nRT-1-i][0]));
+      tr.children[2].myText(matVersion[nRT-1-i][1] + ' / '+ matVersion[nRT-1-i][2]);
+    });
+    //myRows.find('td:nth-child(1)').forEach(function(td,i){      (td).myText(nRT-i);  });
+    //myRows.find('td:nth-child(2)').forEach(function(td,i){      (td).myText(mySwedDate(matVersion[nRT-1-i][0]));  });
+    //myRows.find('td:nth-child(3)').forEach(function(td,i){    (td).empty();  (td).myText(matVersion[nRT-1-i][1], ' / ', matVersion[nRT-1-i][2]);  });
 
-    var $rEarliest=$myRows.eq(nRT-1);  $rEarliest.find('button:eq('+jBEdit+')').hide(); // Hide earliest edit-button
-    $rEarliest.find('button:eq('+jBGreen+')').hide(); // Hide earliest green-button
-    var $rLatest=$myRows.eq(0);  $rLatest.find('button:eq('+jBRed+')').hide(); // Hide latest red-button
+    var rEarliest=myRows[nRT-1];
+    //rEarliest.querySelector('button:nth-of-type('+(jBEdit+1)+')').hide(); // Hide earliest edit-button
+    //rEarliest.querySelector('button:nth-of-type('+(jBGreen+1)+')').hide(); // Hide earliest green-button
+    var arrButtT=rEarliest.querySelectorAll('button');
+    arrButtT[jBEdit].hide(); // Hide earliest edit-button
+    arrButtT[jBGreen].hide(); // Hide earliest green-button
+    var rLatest=myRows[0];
+    //rLatest.querySelector('button:nth-of-type('+(jBRed+1)+')').hide(); // Hide latest red-button
+    var arrButtT=rLatest.querySelectorAll('button')
+    arrButtT[jBRed].hide(); // Hide latest red-button
 
     if(arrVersionCompared[0]!==null){
-      var iRowRedT=nVersion-arrVersionCompared[0];      $tBody.children('tr:eq('+iRowRedT+')').css({"background-color":'#faa'}); // rowRed
-      $tBody.children('tr:eq('+iRowRedT+')').find('button:eq('+jBRed+')').css({"background-color":'red'}); // buttRed
+      //var iRowRedT=nVersion-arrVersionCompared[0];   tBody.querySelector('tr:nth-of-type('+(iRowRedT+1)+')').css({"background-color":'#faa'}); // rowRed
+      var iRowRedT=nVersion-arrVersionCompared[0];   tBody.children[iRowRedT].css({"background-color":'#faa'}); // rowRed
+      //tBody.querySelector('tr:nth-of-type('+(iRowRedT+1)+')').querySelector('button:nth-of-type('+(jBRed+1)+')').css({"background-color":'red'}); // buttRed
+      //var arrButtT=tBody.querySelector('tr:nth-of-type('+(iRowRedT+1)+')').querySelectorAll('button');
+      var arrButtT=tBody[iRowRedT].querySelectorAll('button');
+      arrButtT[jBRed].css({"background-color":'red'}); // buttRed
     } 
-    var iRowVerT=nVersion-arrVersionCompared[1];     $tBody.children('tr:eq('+iRowVerT+')').css({"background-color":"#afa"}); // rowGreen
-    $tBody.children('tr:eq('+iRowVerT+')').find('button:eq('+jBGreen+')').css({"background-color":'green'}); // buttGreen
+    //var iRowVerT=nVersion-arrVersionCompared[1];     tBody.querySelector('tr:nth-of-type('+(iRowVerT+1)+')').css({"background-color":"#afa"}); // rowGreen
+    var iRowVerT=nVersion-arrVersionCompared[1];     tBody.children[iRowVerT].css({"background-color":"#afa"}); // rowGreen
+    //tBody.querySelector('tr:nth-of-type('+(iRowVerT+1)+')').querySelector('button:nth-of-type('+(jBGreen+1)+')').css({"background-color":'green'}); // buttGreen
+    //var arrButtT=tBody.querySelector('tr:nth-of-type('+(iRowVerT+1)+')').querySelectorAll('button');
+    var arrButtT=tBody.children[iRowVerT].querySelectorAll('button');
+    arrButtT[jBGreen].css({"background-color":'green'}); // buttGreen
   
   }
   var jBEdit=0,jBRed=1,jBGreen=2;
-  var $spanDiff=$('<span>').append('Diff').css({position:'absolute',top:'0em',right:'0.9em'});
-  //var $spanSumSign=$('<span>').append('sum/sign').css({position:'absolute',top:'-1.1em',left:'-1em'});
-  //var $spanSumSign=$('<span>').append('sum/sign').css({position:'absolute',top:'0em',left:'-1em','white-space':'nowrap'});
+  var spanDiff=createElement('span').myText('Diff').css({position:'absolute',top:'0em',right:'0.9em'});
+  //var spanSumSign=createElement('span').myText('sum/sign').css({position:'absolute',top:'-1.1em',left:'-1em'});
+  //var spanSumSign=createElement('span').myText('sum/sign').css({position:'absolute',top:'0em',left:'-1em','white-space':'nowrap'});
   //display:'inline-block'
-  //var $colgroup=$("<colgroup>").append($('<col>'),$('<col>'),$('<col>'),$('<col>'),$('<col>'),$('<col>').css({}),$('<col>'));
+  //var colgroup=createElement('colgroup').myAppend(createElement('col'),createElement('col'),createElement('col'),createElement('col'),createElement('col'),createElement('col').css({}),createElement('col'));
   //.css({'overflow':'visible',position:'relative'})
-  var $tHead=$("<thead>").append($('<th>'),$('<th>').append('&nbsp;'),$('<th>').append('Sum/Sign'),$('<th>'),
-      $('<th>').css({'background':'#faa'}), $('<th>').css({'max-width':'10px',background:'lightgreen',overflow:'visible',position:'relative'}).append($spanDiff) );
-  var $tBody=$("<tbody>").css({border:'1px solid #000'});
-  var tmp='[name=ind],[name=date],[name=summary]';
-  $tBody.on('click',tmp,cbVersionView);
-  $el.$table=$("<table>").append($tHead,$tBody).css({"border-collapse":"collapse",'margin':'1em auto'}); 
-  $el.append($el.$table); //'<h3>Versions</h3>',
-  //$tBody.find('td').css({border:'1px #000 soild'});
+  var tHead=createElement('thead').myAppend(createElement('th'), createElement('th'), createElement('th').myText('Sum/Sign'), createElement('th'),
+      createElement('th').css({'background':'#faa'}), createElement('th').css({'max-width':'10px',background:'lightgreen',overflow:'visible',position:'relative'}).myAppend(spanDiff) );
+  var tBody=createElement('tbody').css({border:'1px solid #000'});
+  //var tmp='[name=ind],[name=date],[name=summary]';
+  tBody.on('click', cbVersionView);
+  el.table=createElement('table').myAppend(tHead,tBody).css({"border-collapse":"collapse",'margin':'1em auto'}); 
+  el.append(el.table); //'<h3>Versions</h3>',
+  //tBody.find('td').css({border:'1px #000 soild'});
 
       // menuA
-  // var $buttonBack=$('<button>').append('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(doHistBack);
-  var $spanLabel=$('<span>').append('Version list').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var $menuA=$('<div>').append($spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //$buttonBack,
+  // var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',doHistBack);
+  var spanLabel=createElement('span').myText('Version list').css({'float':'right',margin:'0.2em 0 0 0'});  
+  var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
 
-  $el.$fixedDiv=$('<div>').append($menuA).css(cssFixed);
+  el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
 
-  $el.append($el.$table,$el.$fixedDiv);
-  return $el;
+  el.append(el.table,el.fixedDiv);
+  return el;
 }
 
-diffDivExtend=function($el){  
+diffDivExtend=function(el){  
 "use strict"
-  $el.toString=function(){return 'diffDiv';}  
-  $el.setUp=function(strHtml){
-    $el.$divCont.html(strHtml);  $el.$divCont.find('td').css({border:'1px #fff'});  $el.$divCont.find('td:nth-child(2):not(:first)').css({background:'#ddd'});
-    $el.$divCont.find('td:nth-child(1)').css({background:'pink'});
-    $el.$divCont.find('td:nth-child(3)').css({background:'lightgreen'});
-    $el.$divCont.children('table').css({'margin':'1em auto'});
+  el.toString=function(){return 'diffDiv';}  
+  el.setUp=function(strHtml){
+    el.divCont.myHtml(strHtml);
+    //el.divCont.find('td').css({border:'1px #fff'});
+    //el.divCont.find('td:nth-child(2):not(:first)').css({background:'#ddd'});
+    //el.divCont.find('td:nth-child(1)').css({background:'pink'});
+    //el.divCont.find('td:nth-child(3)').css({background:'lightgreen'});
+    //[...el.divCont.querySelectorAll('td')].forEach(ele=>ele.css({border:'1px #fff'}));
+    //[...el.divCont.querySelectorAll('td:nth-child(2):not(:first-of-type)')].forEach(ele=>ele.css({background:'#ddd'}));
+    //[...el.divCont.querySelectorAll('td:nth-child(1)')].forEach(ele=>ele.css({background:'pink'}));
+    //[...el.divCont.querySelectorAll('td:nth-child(3)')].forEach(ele=>ele.css({background:'lightgreen'}));
+    [...el.divCont.querySelectorAll('tr')].forEach((tr,i)=>{
+      [...tr.childNodes].forEach(td=>td.css({border:'1px #fff'}));
+      tr.children[0].css({background:'pink'});
+      if(i) tr.children[1].css({background:'#ddd'});
+      tr.children[2].css({background:'lightgreen'});
+    });
+    var elT=el.divCont.querySelector('table'); if(elT) elT.css({'margin':'1em auto'});
 
     var strNR='', str='';
     if(matVersion.length>0){
@@ -2610,111 +2752,111 @@ diffDivExtend=function($el){
       var r=matVersion[rev];
       strNR='v'+ver;   str=r[1]+' <b><i>'+r[2]+'</i></b> '+mySwedDate(r[0]);
     }
-    $versionNew.html(strNR); $detailNew.html(str);  
+    versionNew.myText(strNR); detailNew.myHtml(str);  
     var strNR='', str='', ver=arrVersionCompared[0];
     if(ver){  // ver is 1-indexed
       var rev=ver-1;
       var r=matVersion[rev];
       strNR='v'+ver;   str=r[1]+' <b><i>'+r[2]+'</i></b> '+mySwedDate(r[0]);
     }
-    $versionOld.html(strNR); $detailOld.html(str); 
+    versionOld.myText(strNR); detailOld.myHtml(str); 
 
-    $prevButton.add($nextButton).toggle(matVersion.length>2);
+    [prevButton, nextButton].forEach(ele=>ele.toggle(matVersion.length>2));
   }
 
 
-  $el.$divCont=$('<div>');
+  el.divCont=createElement('div');
 
         // menuC
-  var $nextButtonNew=$('<button>').append('⇧').addClass('fixWidth').click(function(){
+  var nextButtonNew=createElement('button').myText('⇧').addClass('fixWidth').on('click',function(){
     arrVersionCompared[1]++;   if(arrVersionCompared[1]>nVersion) {arrVersionCompared[1]=nVersion;}
     var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
   });
-  var $prevButtonNew=$('<button>').append('⇩').addClass('fixWidth').click(function(){
+  var prevButtonNew=createElement('button').myText('⇩').addClass('fixWidth').on('click',function(){
     arrVersionCompared[1]--; if(arrVersionCompared[0]==arrVersionCompared[1]) arrVersionCompared[0]--;
     if(arrVersionCompared[0]==0) {arrVersionCompared=[nVersion-1,nVersion];}
     var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec);  
   });
-  var $versionNew=$('<span>').css({'background':'#afa'}), $detailNew=$('<span>'); 
+  var versionNew=createElement('span').css({'background':'#afa'}), detailNew=createElement('span'); 
   
 
         // menuB
-  var $nextButtonOld=$('<button>').append('⇧').addClass('fixWidth').click(function(){
+  var nextButtonOld=createElement('button').myText('⇧').addClass('fixWidth').on('click',function(){
     arrVersionCompared[0]++; if(arrVersionCompared[0]==arrVersionCompared[1]) arrVersionCompared[1]++;
     if(arrVersionCompared[1]>nVersion) {arrVersionCompared=[1,2];}
     var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec);
   });
-  var $prevButtonOld=$('<button>').append('⇩').addClass('fixWidth').click(function(){
+  var prevButtonOld=createElement('button').myText('⇩').addClass('fixWidth').on('click',function(){
     arrVersionCompared[0]--;   if(arrVersionCompared[0]==0) {arrVersionCompared[0]=1;}
     var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
   });
-  var $versionOld=$('<span>').css({'background':'#faa'}), $detailOld=$('<span>'); 
+  var versionOld=createElement('span').css({'background':'#faa'}), detailOld=createElement('span'); 
 
-  $versionNew.add($versionOld).css({'margin':'auto 0.3em'});
-  $detailNew.add($detailOld).css({'margin':'auto 0.3em'});
-  $prevButtonNew.add($prevButtonOld).css({'margin-left':'0.8em'});
+  [versionNew, versionOld].forEach(ele=>ele.css({'margin':'auto 0.3em'}));
+  [detailNew, detailOld].forEach(ele=>ele.css({'margin':'auto 0.3em'}));
+  [prevButtonNew, prevButtonOld].forEach(ele=>ele.css({'margin-left':'0.8em'}));
 
-  //$prevButtonNew,$versionNew,$nextButtonNew   $prevButtonOld,$versionOld,$nextButtonOld
-  var $menuC=$('<div>').append($versionNew,$detailNew).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
-  var $menuB=$('<div>').append($versionOld,$detailOld).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
+  //prevButtonNew,versionNew,nextButtonNew   prevButtonOld,versionOld,nextButtonOld
+  var menuC=createElement('div').myAppend(versionNew,detailNew).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
+  var menuB=createElement('div').myAppend(versionOld,detailOld).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
 
 
 
         // menuA
-  var $nextButton=$('<button>').append('⇧').addClass('fixWidth').css({'margin-right':'1em'}).click(function(){
+  var nextButton=createElement('button').myText('⇧').addClass('fixWidth').css({'margin':'0 1em'}).on('click',function(){
     arrVersionCompared[0]++; arrVersionCompared[1]++;
     if(arrVersionCompared[1]>nVersion) {arrVersionCompared=[1,2];}
     var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec);
   });
-  var $prevButton=$('<button>').append('⇩').addClass('fixWidth').css({'margin-right':'1em'}).click(function(){
+  var prevButton=createElement('button').myText('⇩').addClass('fixWidth').css({'margin':'0 1em'}).on('click',function(){
     arrVersionCompared[0]--; arrVersionCompared[1]--; 
     if(arrVersionCompared[0]==0) {arrVersionCompared=[nVersion-1,nVersion];}
     var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec);  
   });
-  // var $buttonBack=$('<button>').append('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(doHistBack);
-  var $spanLabel=$('<span>').append('Diff').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var $menuA=$('<div>').append($prevButton,$nextButton,$spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); //$buttonBack,
+  // var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',doHistBack);
+  var spanLabel=createElement('span').myText('Diff').css({'float':'right',margin:'0.2em 0 0 0'});  
+  var menuA=createElement('div').myAppend(prevButton,nextButton,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
 
-  $el.$fixedDiv=$('<div>').append($menuC,$menuB,$menuA).css(cssFixed);
+  el.fixedDiv=createElement('div').myAppend(menuC,menuB,menuA).css(cssFixed);
 
-  $el.append($el.$divCont,$el.$fixedDiv);
-  return $el;
+  el.append(el.divCont,el.fixedDiv);
+  return el;
 }
 
 
-var formPPExtend=function($el){
+var formPPExtend=function(el){
 "use strict"
   //var urlPaypalButton="https://www.paypal.com/en_US/i/btn/btn_paynowCC_LG.gif";
   //var urlPaypalButton="https://www.paypalobjects.com/webstatic/en_US/btn/btn_paynow_cc_144x47.png";
   //var urlPaypalButton="https://www.paypalobjects.com/webstatic/en_US/btn/btn_pponly_142x27.png";
   if(boDbg) urlPaypalButton='';
-  $el.empty();   $el.prop({action:urlPayPal,method:'post'}).css({display:"inline","vertical-align":"-6px"});
-  var $input0=$('<input>').prop({type:"hidden",name:"cmd", value:"_s-xclick"});
-  var $input1=$('<input>').prop({type:"hidden",name:"hosted_button_id", value:ppStoredButt});
-  var $inputImg=$('<input type="image" src="'+urlPaypalButton+'" border="0" name="submit" alt="PayPal — The safer, easier way to pay online.">');
-  $el.append($input0,$input1,$inputImg);
-  return $el;
+  el.empty();   el.prop({action:urlPayPal,method:'post'}).css({display:"inline","vertical-align":"-6px"});
+  var input0=createElement('input').prop({type:"hidden",name:"cmd", value:"_s-xclick"});
+  var input1=createElement('input').prop({type:"hidden",name:"hosted_button_id", value:ppStoredButt});
+  var inputImg=createElement('input').prop({type:"image", src:urlPaypalButton, name:"submit", alt:"PayPal — The safer, easier way to pay online."}).css({border:"0"});
+  el.append(input0,input1,inputImg);
+  return el;
 }
 
-paymentDivExtend=function($el){  
+paymentDivExtend=function(el){  
 "use strict"
-  $el.toString=function(){return 'paymentDiv';}
+  el.toString=function(){return 'paymentDiv';}
     // menuB
-  var $formPP=formPPExtend($('<form>')),     $divPP=$('<div>').append($formPP).css({'margin-top':'1em'}); if(ppStoredButt.length==0) $divPP.hide();  //'Paypal: ',
-  var $strBTC=$('<span>').append(strBTC).css({'font-size':'0.70em'}),    $divBC=$('<div>').append('฿: ',$strBTC); if(strBTC.length==0) $divBC.hide();
-  var $menuB=$('<div>').append($divBC,$divPP).css({'text-align':'center'}).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'center',margin:'1em auto'});
+  var formPP=formPPExtend(createElement('form')),     divPP=createElement('div').myAppend(formPP).css({'margin-top':'1em'}); if(ppStoredButt.length==0) divPP.hide();  //'Paypal: ',
+  var spanBTC=createElement('span').myAppend(strBTC).css({'font-size':'0.70em'}),    divBC=createElement('div').myAppend('฿: ',spanBTC); if(spanBTC.length==0) divBC.hide();
+  var menuB=createElement('div').myAppend(divBC,divPP).css({'text-align':'center'}).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'center',margin:'1em auto'});
 
     // menuA
-  // var $buttonBack=$('<button>').append('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(doHistBack);
-  var $spanLabel=$('<span>').append('Pay/Donate').css({'float':'right',margin:'0.2em 0 0 0'}); 
-  $spanLabel.addClass('unselectable').prop({UNSELECTABLE:"on"}); // class: needed by firefox, prop: needed by opera, firefox and ie 
-  var $menuA=$('<div>').append($spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); //$buttonBack,
+  // var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',doHistBack);
+  var spanLabel=createElement('span').myText('Pay/Donate').css({'float':'right',margin:'0.2em 0 0 0'}); 
+  spanLabel.addClass('unselectable').prop({UNSELECTABLE:"on"}); // class: needed by firefox, prop: needed by opera, firefox and ie 
+  var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
 
-  $el.$fixedDiv=$('<div>').append($menuB,$menuA).css(cssFixed);
+  el.fixedDiv=createElement('div').myAppend(menuB,menuA).css(cssFixed);
 
 
-  $el.append($el.$fixedDiv);
-  return $el;
+  el.append(el.fixedDiv);
+  return el;
 }
 
 
@@ -2733,9 +2875,9 @@ function calcLimitingDim(wFrame,hFrame,wOld,hOld){
 }
 
 
-var slideShowExtend=function($el){
+var slideShowExtend=function(el){
 "use strict"
-  $el.toString=function(){return 'slideShow';}
+  el.toString=function(){return 'slideShow';}
   var touchesOld=[];
   var getStoredTouch=function(identifier) {
     for (var i=0; i<touchesOld.length; i++) {
@@ -2759,8 +2901,10 @@ var slideShowExtend=function($el){
   }
   var getCorresponingTouchesOld=function(Tou){return [getStoredTouch(Tou[0].identifier), getStoredTouch(Tou[1].identifier)];}
 
-  var leftCur=0;
+  var leftCur=0; // State variable when dragging
+  var leftGoal, timerSlide, tInt=50; // Variable when timer is running
   var panNZoom=function(evt){
+    clearTimeout(timerSlide);
     //var strEvent=evt.timeStamp+' '+evt.type; if('targetTouches' in evt && evt.targetTouches.length) strEvent+=' '+evt.targetTouches.length+' '+evt.targetTouches[0].identifier;  console.log(strEvent);
     if(nImg==1) return;
     var Tou=evt.targetTouches;
@@ -2770,43 +2914,50 @@ var slideShowExtend=function($el){
       var viewportScale = screen.width / window.innerWidth;  //console.log(viewportScale);
       if(viewportScale>1.1) return;
       if(evt.cancelable) evt.preventDefault(); 
-      var pos=$board.position(); leftCur=pos.left;
+      //var pos=board.position(); leftCur=pos.left;
+      leftCur=board.offsetLeft; 
       var tAL=getStoredTouch(Tou[0].identifier), xAL, yAL, xavgL=xAL=tAL.pageX, yavgL=yAL=tAL.pageY;
       var tA=Tou[0], xA, yA, xavg=xA=tA.pageX, yavg=yA=tA.pageY;
       var dXScreen=xavg-xavgL;    leftCur+=dXScreen;
       var dYScreen=yavg-yavgL;    //topCur+=dYScreen;
-      $board.css({transition:'','left':leftCur});
+      board.css({transition:'','left':leftCur+'px'});
     }
     else if(mode==0){
       var leftCurA=Math.abs(leftCur);
-      var dir=sign(-leftCur), boShift=leftCurA>window.innerWidth/8; if(!boShift) dir=0;
+      var dir=sign(-leftCur), boShift=leftCurA>window.innerWidth/4; if(!boShift) dir=0;
       var distA=leftCurA;  if(boShift) distA=window.innerWidth-leftCurA;
-      leftCur=0;
       
-      $board.animate({'left':(-dir*window.innerWidth)},distA,function(){
-        if(boShift){          shiftFunc(dir);        }
-      });
+      if(1){
+        leftGoal=-dir*window.innerWidth;
+        timerSlide=setInterval(timerCB, tInt);
+      }else{
+        //board.css({'left':'0px'});
+        leftCur=0;
+        if(boShift){  shiftFunc(dir); } else board.css({'left':'0px'});
+      }
+
     }
     storeTouches(Tou);
   }
   var arrowPressF=function(e){ 
     e.stopPropagation();
-    if(!Boolean($el.is(':visible'))) return;
+    if(el.style.display=='none') return;
     if(e.which==37) {shiftFunc(-1);return false;}else if(e.which==39) {shiftFunc(1);return false;}
   }
   var shiftFunc=function(dir){
     if(nImg==1) return;
+    if(dir==0) return;
     iCur+=dir;  iCur=(iCur+nImg)%nImg
     var iNext=(iCur+1+nImg)%nImg, iPrev=(iCur-1+nImg)%nImg;
-    var $Img=$board.children('div');
-    //if(dir==1) {var $imgT=$Img.eq(0).detach(); $imgT.prop({src:StrImgUrl[iNext]}); $board.append($imgT);}
-    //else if(dir==-1) {var $imgT=$Img.eq(2).detach(); $imgT.prop({src:StrImgUrl[iPrev]}); $board.prepend($imgT);}
-    if(dir==1) {var $imgT=$Img.eq(0).detach(); $imgT.css({'background-image':'url("'+StrImgUrl[iNext]+'")'}); $board.append($imgT);}
-    else if(dir==-1) {var $imgT=$Img.eq(2).detach(); $imgT.css({'background-image':'url("'+StrImgUrl[iPrev]+'")'}); $board.prepend($imgT);}
-    var $Img=$board.children('div');
-    $Img.eq(0).css({left:'-100%'}); $Img.eq(1).css({left:'0%'}); $Img.eq(2).css({left:'100%'});
-    $board.css({'left':leftCur});
-    $divCaptionCont.empty().append($Caption.eq(iCur).clone());
+    var Img=board.children;
+    //if(dir==1) {var imgT=Img[0].detach(); imgT.prop({src:StrImgUrl[iNext]}); board.append(imgT);}
+    //else if(dir==-1) {var imgT=Img[2].detach(); imgT.prop({src:StrImgUrl[iPrev]}); board.prepend(imgT);}
+    if(dir==1) {var imgT=Img[0].detach(); imgT.css({'background-image':'url("'+StrImgUrl[iNext]+'")'}); board.append(imgT);}
+    else if(dir==-1) {var imgT=Img[2].detach(); imgT.css({'background-image':'url("'+StrImgUrl[iPrev]+'")'}); board.prepend(imgT);}
+    var Img=board.children;
+    Img[0].css({left:'-100%'}); Img[1].css({left:'0%'}); Img[2].css({left:'100%'});
+    board.css({'left':leftCur+'px'});
+    divCaptionCont.empty().myAppend(Caption[iCur].cloneNode(true));
   }
   var handleMove=function(evt) {
     panNZoom(evt);
@@ -2825,228 +2976,246 @@ var slideShowExtend=function($el){
     var strMess=' handleLeave: '+evt.targetTouches.length;
     setMess(strMess);
   }
-  $el.setUp=function(StrImgUrlT, $CaptionT, iCurT){
-    StrImgUrl=StrImgUrlT;  $Caption=$CaptionT;  iCur=iCurT;
-    nImg=StrImgUrl.length; var $Img=$([]);
-    if(!boTouch) $Arrow.toggle(nImg!=1);
+  el.setUp=function(StrImgUrlT, CaptionT, iCurT){
+    StrImgUrl=StrImgUrlT;  Caption=CaptionT;  iCur=iCurT;
+    nImg=StrImgUrl.length; var Img=[];
+    if(!boTouch) Arrow.forEach(ele=>ele.toggle(nImg!=1));
     for(var i=0;i<3;i++){  //StrImgUrl.length
-      //var $img=$('<img>').prop({src:StrImgUrl[i]});
+      //var img=createElement('img').prop({src:StrImgUrl[i]});
       var iTmp=(iCur+i-1+nImg)%nImg;
-      var $img=$('<div>').css({'background-image':'url("'+StrImgUrl[iTmp]+'")'}); //.click($winCaption[0].openFunc);
-      $Img.push($img);
+      var img=createElement('div').css({'background-image':'url("'+StrImgUrl[iTmp]+'")'}); //.on('click',winCaption[0].openFunc);
+      Img.push(img);
     }
-    $Img.eq(0).css({left:'-100%'});
-    $Img.eq(2).css({left:'100%'});  
+    Img[0].css({left:'-100%'});
+    Img[2].css({left:'100%'});  
     
-    $Img.css({width:'100%', height:'100%',  margin:'auto',position:'absolute',  'box-sizing':'border-box', border:'#fff 10px solid', display:'block'});  //,transition:'left 1s'
-    $Img.css({'background-size':'contain', 'background-repeat':'no-repeat', 'background-position':'center'});    
-    $board.empty().append($Img);
-    $document.on('keydown',arrowPressF);
-    $winCaption.css({width:'',left:'0px',top:$window.height()/3+'px'});
-    $divCaptionCont.empty().append($Caption.eq(iCur).clone());  $winCaption[0].openFunc(); 
+    Img.forEach(ele=>ele.css({width:'100%', height:'100%',  margin:'auto',position:'absolute',  'box-sizing':'border-box', border:'#fff 1px solid', display:'block'}));  //,transition:'left 1s'
+    Img.forEach(ele=>ele.css({'background-size':'contain', 'background-repeat':'no-repeat', 'background-position':'center'}));    
+    board.empty().myAppend(...Img);
+    document.on('keydown',arrowPressF);
+    winCaption.css({width:'',left:'0px',top:window.offsetHeight/3+'px'});
+    divCaptionCont.empty().myAppend(Caption[iCur].cloneNode(true));  winCaption.openFunc(); 
     
   } 
-  $el.addClass('unselectable').prop({UNSELECTABLE:"on"}).css({height:'100%',width:'100%'}); // class: needed by firefox, attr: needed by opera, firefox and ie 
-  $el.keydown( arrowPressF); 
-  var StrImgUrl, $Caption, iCur, nImg;
+  el.addClass('unselectable').prop({UNSELECTABLE:"on"}).css({height:'100%',width:'100%'}); // class: needed by firefox, attr: needed by opera, firefox and ie 
+  el.on('keydown',arrowPressF); 
+  var StrImgUrl, Caption, iCur, nImg;
   
-  var $board=$('<div>').css({'left':leftCur});
-  $board.css({position:'relative',width:'100vw',height:'100vh'}); //
-  $el.css({position:'relative',width:'100vw',height:'100vh', overflow:'hidden'});
-  $el.append($board);
+  var intStepSize=50;
+  var timerCB=function(){
+    var leftCurT=board.offsetLeft, diffGoal=leftGoal-leftCurT, aDiffGoal=Math.abs(diffGoal), dirT=sign(diffGoal), leftNext, boFin=0;
+    if(aDiffGoal<=intStepSize) {leftNext=leftGoal; clearTimeout(timerSlide); boFin=1; }
+    else leftNext=leftCurT+dirT*intStepSize;
+    board.style.left=leftNext+"px";
+    
+    if(boFin) {    
+      leftCur=0; var dir=-sign(leftGoal);
+      if(dir){  shiftFunc(dir); } else board.css({'left':'0px'});
+    }
+    
+  }
+
+  
+  var board=createElement('div').css({'left':leftCur+'px'});
+  board.css({position:'relative',width:'100%',height:'100%'}); //
+  el.css({position:'absolute',width:'100%',height:'100%', overflow:'hidden'});
+  el.append(board);
+
 
   if(boTouch){
-    $el[0].addEventListener("click", function(){ $winCaption[0].toggleFunc();}, true);
+    el.addEventListener("click", function(){ winCaption.toggleFunc();}, true);
   }else{
     var intArrowSize=20, strColor='blue';
-    var $arrowLeft=$('<div>').css({'border-right': intArrowSize+'px solid '+strColor}),  $arrowRight=$('<div>').css({'border-left': intArrowSize+'px solid '+strColor});
-    var $Arrow=$arrowLeft.add($arrowRight).css({width:'0px', height:'0px', 'border-top':intArrowSize+'px solid transparent', 'border-bottom': intArrowSize+'px solid transparent', opacity:0.3});
+    var elArrowLeft=createElement('div').css({'border-right': intArrowSize+'px solid '+strColor}),  elArrowRight=createElement('div').css({'border-left': intArrowSize+'px solid '+strColor});
+    var Arrow=[elArrowLeft, elArrowRight]; Arrow.forEach(ele=>ele.css({width:'0px', height:'0px', 'border-top':intArrowSize+'px solid transparent', 'border-bottom': intArrowSize+'px solid transparent', opacity:0.3}));
   //, margin:'auto'
   /*
-    var $divLeft=$('<div>').append($arrowLeft).css({left:'0px'}).click(function(){shiftFunc(-1);}),  $divRight=$('<div>').append($arrowRight).css({right:'0px'}).click(function(){shiftFunc(1);});
-    $divLeft.add($divRight).css({height:'100%', width:'33%', position:'absolute', right:'0px', top:'0px', display:'flex', 'justify-content':'center','align-items':'center'});
-    $divLeft.add($divRight).mouseover(function(){$(this).children('div').css({opacity:1});}).mouseout(function(){$(this).children('div').css({opacity:0.3});});
-    if(!boTouch) $el.append($divLeft,$divRight);
+    var divLeft=createElement('div').myAppend(elArrowLeft).css({left:'0px'}).on('click',function(){shiftFunc(-1);}),  divRight=createElement('div').myAppend(elArrowRight).css({right:'0px'}).on('click',function(){shiftFunc(1);});
+    divLeft.add(divRight).css({height:'100%', width:'33%', position:'absolute', right:'0px', top:'0px', display:'flex', 'justify-content':'center','align-items':'center'});
+    divLeft.add(divRight).mouseover(function(){this.children('div').css({opacity:1});}).mouseout(function(){this.children('div').css({opacity:0.3});});
+    if(!boTouch) el.append(divLeft,divRight);
   */
 
-    var $divAreaParent=$('<div>').css({position:'absolute', width:'100vw', height:'100vh', top:'0px', left:'0px',display:'flex'}); 
-    var $divLeft=$('<div>').append($arrowLeft).css({left:'0px'}).click(function(){shiftFunc(-1);}),  $divRight=$('<div>').append($arrowRight).css({right:'0px'}).click(function(){shiftFunc(1);});
-    $divLeft.add($divRight).css({height:'100%', display:'flex', 'justify-content':'center','align-items':'center', flex:'1 1 auto'});
-    $divLeft.add($divRight).mouseover(function(){$(this).children('div').css({opacity:1});}).mouseout(function(){$(this).children('div').css({opacity:0.3});});
-    var $divCenter=$('<div>').css({flex:'1 1 auto'}).click(function(){$winCaption[0].toggleFunc();});
-    $divAreaParent.append($divLeft,$divCenter,$divRight);
-    $el.append($divAreaParent);
+    var divAreaParent=createElement('div').css({position:'absolute', width:'100vw', height:'100vh', top:'0px', left:'0px',display:'flex'}); 
+    var divLeft=createElement('div').myAppend(elArrowLeft).css({left:'0px'}).on('click',function(){shiftFunc(-1);}),  divRight=createElement('div').myAppend(elArrowRight).css({right:'0px'}).on('click',function(){shiftFunc(1);});
+    [divLeft, divRight].forEach(ele=>ele.css({height:'100%', display:'flex', 'justify-content':'center','align-items':'center', flex:'1 1 auto'}));
+    [divLeft, divRight].forEach(ele=>ele.on('mouseover', function(){this.firstChild.css({opacity:1});}).on('mouseout', function(){this.firstChild.css({opacity:0.3});}));
+    var divCenter=createElement('div').css({flex:'1 1 auto'}).on('click',function(){winCaption.toggleFunc();});
+    divAreaParent.append(divLeft,divCenter,divRight);
+    el.append(divAreaParent);
   }
 
-  var $divCaptionCont=$('<div>');//.css({padding:'0.1em'});
-  var $winCaption=$('<div>').append($divCaptionCont);
-  //var $divPopParent=$('<div>').css({position:'absolute', width:'100vw', height:'100vh', top:'0px', left:'0px'}); $el.prepend($divPopParent);
-  $winCaption[0]=popupDragExtendM($winCaption[0],'',$el[0]); $winCaption.css({left:'3px',top:'200px'}); 
+  var divCaptionCont=createElement('div');//.css({padding:'0.1em'});
+  var winCaption=createElement('div').myAppend(divCaptionCont);
+  //var divPopParent=createElement('div').css({position:'absolute', width:'100vw', height:'100vh', top:'0px', left:'0px'}); el.prepend(divPopParent);
+  winCaption=popupDragExtendM(winCaption,'',el); winCaption.css({left:'3px',top:'200px'}); 
 
-
-  var el = $board[0];
-  el.addEventListener("touchstart", handleStart, false);
-  el.addEventListener("touchend", handleEnd, false);
-  el.addEventListener("touchcancel", handleCancel, false);
-  el.addEventListener("touchleave", handleLeave, false);
-  el.addEventListener("touchmove", handleMove, false);
+  board.on("touchstart", handleStart, false);
+  board.on("touchend", handleEnd, false);
+  board.on("touchcancel", handleCancel, false);
+  board.on("touchleave", handleLeave, false);
+  board.on("touchmove", handleMove, false);
 
  
-  return $el;
+  return el;
 }
 
 
 
-function pageTextExtend($el){
+function pageTextExtend(el){
 "use strict"
-  var clickImgFun=function(){
-    //var $li=$(this).parent(), iCur=$li.index(); //, StrImg=$li.parent().data('StrImg'), $Caption=$li.parent().data('$Caption');
+  var clickImgFun=function(e){
+    //var li=this.parentNode, iCur=li.myIndex(); //, StrImg=li.parentNode.StrImg, Caption=li.parentNode.Caption;
     //alert(iCur+' '+print_r(StrImg)); 
-    var $a=$(this), iCur=$a.data('iCur');
-    $slideShow.setUp($el.StrImg,$el.$Caption,iCur);
-    doHistPush({$view:$slideShow});
-    $slideShow.setVis(); 
-    return false;
+    var a=this, iCur=a.iCur;
+    slideShow.setUp(el.StrImg,el.Caption,iCur);
+    doHistPush({view:slideShow});
+    slideShow.setVis();
+    e.preventDefault();
   }
-  var clickVideoFun=function(){
-    var $s=$(this).find('source');
-    window.location.href=$s[0].getAttribute('src');
-    return false;
+  var clickVideoFun=function(e){
+    var s=this.querySelector('source');
+    window.location.href=s.getAttribute('src');
+    e.preventDefault();
   }
-  $el.modStuff=function(){
-    var $galleries=$el.find('.gallery');
-    $galleries.each(function(i,el){ 
-      var $ele=$(el), $li=$ele.children('li');
-      $li.each(function(j,l){
-        var $a=$(l).children('a:eq(0)'); $a.click(clickImgFun);  $a.data({iCur:$el.StrImg.length});  $el.StrImg.push($a.prop('href')); $el.$Caption.push($a.next());
+  el.modStuff=function(){
+    var galleries=[...el.querySelectorAll('.gallery')];
+    galleries.forEach(function(ele,i){ 
+      var Li=[...ele.querySelectorAll('li')];
+      Li.forEach(function(l,j){
+        var a=l.querySelector('a:nth-of-type(1)'); a.on('click',clickImgFun).prop({iCur:el.StrImg.length});  el.StrImg.push(a.prop('href')); el.Caption.push(a.nextElementSibling);
       });
     });
-    var $imgThumbimage=$el.find('.thumbimage');
-    $imgThumbimage.each(function(i,el){ 
-      var $a=$(el).parent(); 
-      if($a.next().hasClass('thumbcaption')){ 
-        $a.click(clickImgFun);  $a.data({iCur:$el.StrImg.length});  $el.StrImg.push($a.prop('href')); $el.$Caption.push($a.next());
+    //var imgThumbimage=el.find('.thumbimage');
+    var ImgThumbimage=[...el.querySelectorAll('.thumbimage')];
+    ImgThumbimage.forEach(function(ele,i){ 
+      var a=ele.parentNode; 
+      if(a.nextElementSibling.hasClass('thumbcaption')){ 
+        a.on('click',clickImgFun).prop({iCur:el.StrImg.length});  el.StrImg.push(a.prop('href')); el.Caption.push(a.nextElementSibling);
       }
     });
-    var $video=$el.find('video');
-    $video.each(function(i,el){  $(el).click(clickVideoFun);  });
+    //var video=el.find('video');
+    var Video=[...el.querySelectorAll('video')];
+    Video.forEach(function(ele,i){  ele.on('click',clickVideoFun);  });
   }
-  $el.StrImg=[];
-  $el.$Caption=$([]);
-  return $el;
+  el.StrImg=[];
+  el.Caption=[];
+  return el;
 }
 
-redirectSetPopExtend=function($el){
+redirectSetPopExtend=function(el){
 "use strict"
-  $el.toString=function(){return 'redirectSetPop';}
+  el.toString=function(){return 'redirectSetPop';}
   var save=function(){
-    r.idSiteOld=r.idSite; r.pageNameOld=r.pageName;
-    r.idSite=$selSite.val(); var rS=$redirectTab.indexSiteTabById[r.idSite]; r.siteName=rS.siteName; r.www=rS.www;
-    r.pageName=$inpPageName.val(); if(r.pageName.length==0){ setMess('empty page name',2);  return;}
-    r.url=$inpURL.val();  if(r.url.length==0){ setMess('empty url',2);  return;}
+    rMat.idSiteOld=rMat.idSite; rMat.pageNameOld=rMat.pageName;
+    rMat.idSite=selSite.value; var rS=redirectTab.indexSiteTabById[rMat.idSite]; rMat.siteName=rS.siteName; rMat.www=rS.www;
+    rMat.pageName=inpPageName.value; if(rMat.pageName.length==0){ setMess('empty page name',2);  return;}
+    rMat.url=inpURL.value;  if(rMat.url.length==0){ setMess('empty url',2);  return;}
     //if(RegExp('^https?:\/\/$').test(url)) { setMess('empty domain',2);  return;}
     //if(!RegExp('^https?:\/\/').test(url)){  url="http://"+url;   }
-    var objTmp=$.extend({boUpd:boUpd},r);
+    var objTmp=extend({boUpd:boUpd},rMat);
     var vec=[['redirectTabSet', objTmp, saveRet]];   majax(oAJAX,vec);
   }
   var saveRet=function(data){
     if(!data.boOK) return;
-    if(boUpd) {  $redirectTab.myEdit(r); } //r.idSite=idSite;
-    else {r.tCreated=unixNow(); $redirectTab.myAdd(r); }
-    //$redirectTab.setUp();
+    if(boUpd) {  redirectTab.myEdit(rMat); } //rMat.idSite=idSite;
+    else {rMat.tCreated=unixNow(); redirectTab.myAdd(rMat); }
+    //redirectTab.setUp();
     doHistBack();
   }
-  $el.setUp=function(){
-    var $Opt=$([]); siteTab=$redirectTab.siteTab;
-    for(var i=0;i<siteTab.length;i++) {var $optT=$('<option>').text(siteTab[i].siteName).val(siteTab[i].idSite); $Opt.push($optT); }
-    $selSite.empty().append($Opt);    var tmpVal=(typeof r.idSite!='undefined')?r.idSite:$redirectTab.idSiteDefault;    $selSite.val(tmpVal);
-    $inpPageName.val(r.pageName); $inpURL.val(r.url); $inpPageName.focus();  return true;
+  el.setUp=function(){
+    var Opt=[]; siteTab=redirectTab.siteTab;
+    for(var i=0;i<siteTab.length;i++) {var optT=createElement('option').myText(siteTab[i].siteName).prop('value',siteTab[i].idSite); Opt.push(optT); }
+    selSite.empty().myAppend(...Opt);    var tmpVal=(typeof rMat.idSite!='undefined')?rMat.idSite:redirectTab.idSiteDefault;    selSite.value=tmpVal;
+    inpPageName.value=rMat.pageName; inpURL.value=rMat.url; inpPageName.focus();  return true;
   }
-  $el.openFunc=function(boUpdT,boGotData){
+  el.openFunc=function(boUpdT,boGotData){
     boUpd=boUpdT;
     if(boGotData){
-      var $r=$(this).parent().parent();
-      r=$r.data('r');
-    } else {r=rDefault;}
-    //$divInsOrUpd.toggle(boUpd); $vippInsOrUpd.setStat(0);
-    //$selSite.push($inpPageName).prop('disabled',boUpd);
-    doHistPush({$view:$redirectSetPop});
-    $el.setVis();
-    $el.setUp();
+      var elR=this.parentNode.parentNode;
+      rMat=elR.rMat;
+    } else {rMat=rDefault;}
+    //divInsOrUpd.toggle(boUpd); vippInsOrUpd.setStat(0);
+    //selSite.push(inpPageName).prop('disabled',boUpd);
+    doHistPush({view:redirectSetPop});
+    el.setVis();
+    el.setUp();
   }
-  $el.setVis=function(){
-    $el.show(); return 1;
+  el.setVis=function(){
+    el.show(); return 1;
   }
  
   var rDefault={siteName:'', www:'', pageName:'', url:''};
-  var siteTab, boUpd, r; 
+  var siteTab, boUpd, rMat; 
   
 
-  var $labSite=$('<b>').append('siteName');
-  var $selSite=$('<select>').css({display:'block'});
-  var $labPageName=$('<b>').append('pageName');
-  var $inpPageName=$('<input type=text>');
-  var $labURL=$('<b>').append('Redirect to (pageName or url)');
-  var $inpURL=$('<input type=text>');;
+  var labSite=createElement('b').myText('siteName');
+  var selSite=createElement('select').css({display:'block'});
+  var labPageName=createElement('b').myText('pageName');
+  var inpPageName=createElement('input').prop({type:'text'});
+  var labURL=createElement('b').myText('Redirect to (pageName or url)');
+  var inpURL=createElement('input').prop({type:'text'});
 
 
-  var $Lab=$([]).push($labSite, $labPageName, $labURL).css({'margin-right':'0.5em'});
-  var $Inp=$([]).push($inpPageName, $inpURL).css({display:'block',width:'100%'}).keypress( function(e){ if(e.which==13) {save();return false;}} );
-  var $inpNLab=$([]).push($labSite, $selSite, $labPageName, $inpPageName, $labURL, $inpURL);
+  [labSite, labPageName, labURL].forEach(ele=>ele.css({'margin-right':'0.5em'}));
+  [inpPageName, inpURL].forEach(ele=>ele.css({display:'block',width:'100%'}).on('keypress',  function(e){ if(e.which==13) {save();return false;}} ));
+  var inpNLab=[labSite, selSite, labPageName, inpPageName, labURL, inpURL];
 
 
-  var $buttonSave=$('<button>').append('Save').click(save).css({'margin-top':'1em'});
-  var $divBottom=$('<div>').append($buttonSave);  //$buttonCancel,
+  var buttonSave=createElement('button').myText('Save').on('click',save).css({'margin-top':'1em'});
+  var divBottom=createElement('div').myAppend(buttonSave);  //buttonCancel,
 
-  var $blanket=$('<div>').addClass("blanket");
-  var $centerDiv=$('<div>').addClass("Center").append($inpNLab,$divBottom).css({'min-width':'17em','max-width':'30em', padding: '1.2em 0.5em 1.2em 1.2em'});  // height:'18em', 
-  //if(boIE) $centerDiv.css({'width':'20em'}); 
-  $el.addClass("Center-Container").append($centerDiv,$blanket); 
+  var blanket=createElement('div').addClass("blanket");
+  var centerDiv=createElement('div').addClass("Center").myAppend(...inpNLab,divBottom).css({'min-width':'17em','max-width':'30em', padding: '1.2em 0.5em 1.2em 1.2em'});  // height:'18em', 
+  //if(boIE) centerDiv.css({'width':'20em'}); 
+  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
    
-  return $el;
+  return el;
 }
 
 
-redirectDeletePopExtend=function($el){
+redirectDeletePopExtend=function(el){
 "use strict"
-  $el.toString=function(){return 'redirectDeletePop';}
-  var $ok=$('<button>').html('OK').css({'margin-top':'1em'}).click(function(){    
-    var pageName=$r.attr('pageName'), idSite=$r.attr('idSite'), vec=[['redirectTabDelete',{idSite:idSite,pageName:pageName},okRet]];   majax(oAJAX,vec);    
+  el.toString=function(){return 'redirectDeletePop';}
+  var ok=createElement('button').myText('OK').css({'margin-top':'1em'}).on('click',function(){    
+    var pageName=elR.attr('pageName'), idSite=elR.attr('idSite'), vec=[['redirectTabDelete',{idSite:idSite,pageName:pageName},okRet]];   majax(oAJAX,vec);    
   });
   var okRet=function(data){
     if(!data.boOK) return;
-    $redirectTab.myRemove($r);
+    redirectTab.myRemove(elR);
     doHistBack();
   }
-  $el.openFunc=function(){
-    $r=$(this).parent().parent(); $spanPage.text($r.data('r').siteName+':'+$r.attr('pageName'));
-    doHistPush({$view:$redirectDeletePop});
-    $el.setVis();
-    $ok.focus();
+  el.openFunc=function(){
+    elR=this.parentNode.parentNode; spanPage.myText(elR.rMat.siteName+':'+elR.attr('pageName'));
+    doHistPush({view:redirectDeletePop});
+    el.setVis();
+    ok.focus();
   }
-  $el.setVis=function(){
-    $el.show(); return 1;
+  el.setVis=function(){
+    el.show(); return 1;
   }
  
-  var $r;
-  var $head=$('<h3>').append('Delete');
-  var $spanPage=$('<span>');//.css({'font-weight': 'bold'});
-  var $p=$('<div>').append($spanPage);
+  var elR;
+  var head=createElement('h3').myText('Delete');
+  var spanPage=createElement('span');//.css({'font-weight': 'bold'});
+  var p=createElement('div').myAppend(spanPage);
 
-  var $blanket=$('<div>').addClass("blanket");
-  var $centerDiv=$('<div>').addClass("Center").append($head,$p,$ok).css({'min-width':'17em','max-width':'25em', padding:'0.5em'}); //,$cancel height:'10em', 
-  //if(boIE) $centerDiv.css({'width':'20em'}); 
-  $el.addClass("Center-Container").append($centerDiv,$blanket); 
+  var blanket=createElement('div').addClass("blanket");
+  var centerDiv=createElement('div').addClass("Center").myAppend(head,p,ok).css({'min-width':'17em','max-width':'25em', padding:'0.5em'}); //,cancel height:'10em', 
+  //if(boIE) centerDiv.css({'width':'20em'}); 
+  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
  
-  return $el; 
+  return el; 
 }
 
 regHttp=/^https?:\/\//;
-redirectTabExtend=function($el){
+redirectTabExtend=function(el){
 "use strict"
-  $el.toString=function(){return 'redirectTab';}
-  var funcTTimeTmp=function(t){ var arrT=getSuitableTimeUnit(unixNow()-t);  $(this).text(Math.round(arrT[0])+arrT[1]);  }
-  var funcLinkTmp=function(url, r){  var rS=$el.indexSiteTabById[r.idSite], urlLink=url; if(!regHttp.test(url)) urlLink='http'+(rS.boTLS?'s':'')+'://'+rS.www+'/'+url; $(this).children('a').prop({href:urlLink}).html(url);  }
+  el.toString=function(){return 'redirectTab';}
+  var funcTTimeTmp=function(t){ var arrT=getSuitableTimeUnit(unixNow()-t);  this.myText(Math.round(arrT[0])+arrT[1]);  }
+  var funcLinkTmp=function(url, rMat){
+    var rS=el.indexSiteTabById[rMat.idSite], urlLink=url; if(!regHttp.test(url)) urlLink='http'+(rS.boTLS?'s':'')+'://'+rS.www+'/'+url; this.querySelector('a').prop({href:urlLink}).myText(url);
+  }
   var TDProt={
     url:{ mySetVal:funcLinkTmp },
     tCreated:{ mySetVal:funcTTimeTmp },
@@ -3054,375 +3223,390 @@ redirectTabExtend=function($el){
     tMod:{ mySetVal:funcTTimeTmp }
   }
   var TDConstructors={
-    url:function(){ var $a=$('<a>').prop({target:"_blank"}),$el=$('<td>').append($a);  $.extend($el[0],TDProt.url);  return $el;  },
-    tCreated:function(){ var $el=$('<td>');  $.extend($el[0],TDProt.tCreated);  return $el;  },
-    tLastAccess:function(){ var $el=$('<td>');  $.extend($el[0],TDProt.tLastAccess);  return $el;  },
-    tMod:function(){ var $el=$('<td>');  $.extend($el[0],TDProt.tMod);  return $el;  }
+    url:function(){ var a=createElement('a').prop({target:"_blank"}),el=createElement('td').myAppend(a);  extend(el,TDProt.url);  return el;  },
+    tCreated:function(){ var el=createElement('td');  extend(el,TDProt.tCreated);  return el;  },
+    tLastAccess:function(){ var el=createElement('td');  extend(el,TDProt.tLastAccess);  return el;  },
+    tMod:function(){ var el=createElement('td');  extend(el,TDProt.tMod);  return el;  }
   }
-  $el.myAdd=function(r){
-    var $Td=$([]);  for(var i=0;i<StrCol.length;i++) { 
-      var name=StrCol[i], val=r[name], $td; if(name in TDConstructors) {$td=new TDConstructors[name](); }   else $td=$('<td>');   $Td.push($td.attr('name',name));
-      if('mySetVal' in $td[0]) { $td[0].mySetVal(val, r);}   else $td.append(val);
-      if('mySetSortVal' in $td[0]) { $td[0].mySetSortVal(val);}   else $td.data('valSort',val);
+  el.myAdd=function(rMat){
+    var Td=[];  for(var i=0;i<StrCol.length;i++) { 
+      var name=StrCol[i], val=rMat[name], td; if(name in TDConstructors) {td=new TDConstructors[name](); }   else td=createElement('td');   Td.push(td.attr('name',name));
+      if('mySetVal' in td) { td.mySetVal(val, rMat);}   else td.append(val);
+      if('mySetSortVal' in td) { td.mySetSortVal(val);}   else td.valSort=val;
     }
-    var $buttEdit=$('<button>').attr('name','buttonEdit').append('Edit').click(function(){
-      $redirectSetPop.openFunc.call(this,1,1);
+    var buttEdit=createElement('button').attr('name','buttonEdit').myText('Edit').on('click',function(){
+      redirectSetPop.openFunc.call(this,1,1);
     });
-    var $buttCopy=$('<button>').attr('name','buttonCopy').append('Copy').click(function(){
-      $redirectSetPop.openFunc.call(this,0,1);
+    var buttCopy=createElement('button').attr('name','buttonCopy').myText('Copy').on('click',function(){
+      redirectSetPop.openFunc.call(this,0,1);
     });
-    var $buttDelete=$('<button>').attr('name','buttonDelete').css({'margin-right':'0.2em'}).append($imgDelete.clone()).click($redirectDeletePop.openFunc);
-    var $tEdit=$('<td>').append($buttEdit), $tCopy=$('<td>').append($buttCopy), $tDelete=$('<td>').append($buttDelete); 
-    var $r=$('<tr>').append($Td, $tEdit, $tCopy, $tDelete); $r.attr({idSite:r.idSite,pageName:r.pageName}).data('r',r);
-    $tbody.append($r); 
-    $el.nRowVisible=$tbody.children('tr').length;
-    return $el;
+    var buttDelete=createElement('button').attr('name','buttonDelete').css({'margin-right':'0.2em'}).myAppend(imgDelete.cloneNode()).on('click',redirectDeletePop.openFunc);
+    var tEdit=createElement('td').myAppend(buttEdit), tCopy=createElement('td').myAppend(buttCopy), tDelete=createElement('td').myAppend(buttDelete); 
+    var elR=createElement('tr').myAppend(...Td, tEdit, tCopy, tDelete); elR.attr({idSite:rMat.idSite, pageName:rMat.pageName}).prop('rMat',rMat)
+    tBody.append(elR); 
+    el.nRowVisible=tBody.children.length;
+    return el;
   }
-  $el.myRemove=function($r){
-    $r.remove();  
-    $el.nRowVisible=$tbody.children('tr').length;
-    return $el; 
+  el.myRemove=function(elR){
+    elR.remove();  
+    el.nRowVisible=tBody.children.length;
+    return el; 
   }
-  $el.myEdit=function(r){
-    var $r=$tbody.children('[idSite='+r.idSiteOld+'][pageName='+r.pageNameOld+']');
-    $r.attr({idSite:r.idSite,pageName:r.pageName}).data('r',r);
-    for(var i=0;i<StrCol.length;i++) { var name=StrCol[i], val=r[name], $td=$r.children('td:eq('+i+')'); if($td[0].mySetVal) $td[0].mySetVal(val, r); else $td.text(val); }
-    return $el;
+  el.myEdit=function(rMat){
+    var elR=tBody.querySelector('[idSite="'+rMat.idSiteOld+'"][pageName='+rMat.pageNameOld+']');
+    elR.attr({idSite:rMat.idSite,pageName:rMat.pageName}).prop('rMat',rMat);
+    //for(var i=0;i<StrCol.length;i++) { var name=StrCol[i], val=rMat[name], td=elR.querySelector('td:nth-of-type('+(i+1)+')'); if(td.mySetVal) td.mySetVal(val, rMat); else td.myText(val); }
+    for(var i=0;i<StrCol.length;i++) { var name=StrCol[i], val=rMat[name], td=elR.children[i]; if(td.mySetVal) td.mySetVal(val, rMat); else td.myText(val); }
+    return el;
   }
-  $el.setUp=function(){
-    if($el.boStale) {
+  el.setUp=function(){
+    if(el.boStale) {
       var vec=[['siteTabGet',1,setUpRetA], ['redirectTabGet',1,setUpRetB]];   majax(oAJAX,vec);
-      $el.boStale=0;
+      el.boStale=0;
     }
   }
   var setUpRetA=function(data){
-    $el.siteTab=data.tab||[];
+    el.siteTab=data.tab||[];
     var StrCol=data.StrCol;
-    $el.indexSiteTabById={};
-    for(var i=0; i<$el.siteTab.length; i++) {
-      var r={}; for(var j=0;j<StrCol.length;j++){ r[StrCol[j]]=$el.siteTab[i][j];}
-      $el.siteTab[i]=r;
-      $el.indexSiteTabById[r.idSite]=r;
-      if(r.boDefault) $el.idSiteDefault=r.idSite;
+    el.indexSiteTabById={};
+    for(var i=0; i<el.siteTab.length; i++) {
+      var r={}; for(var j=0;j<StrCol.length;j++){ r[StrCol[j]]=el.siteTab[i][j];}
+      el.siteTab[i]=r;
+      el.indexSiteTabById[r.idSite]=r;
+      if(r.boDefault) el.idSiteDefault=r.idSite;
     }
   }
   var setUpRetB=function(data){
     var tab=data.tab||[];
     var StrCol=data.StrCol; var nEntry=data.nEntry;
-    $tbody.empty(); 
+    tBody.empty(); 
     for(var i=0;i<tab.length;i++) {  
       var r={}; for(var j=0;j<StrCol.length;j++){ r[StrCol[j]]=tab[i][j];}
-      $el.myAdd(r);      
+      el.myAdd(r);      
     }
     var plurEnding=nEntry==1?'y':'ies'; setMess('Got '+nEntry+' entr'+plurEnding,3);
-    $el.nRowVisible=tab.length;
+    el.nRowVisible=tab.length;
   }
-  $el.boStale=1;
+  el.boStale=1;
 
-  var $tbody=$el.$tbody=$("<tbody>");
-  $el.$table=$("<table>").append($tbody).addClass('tableSticky'); //.css({width:'100%',position:'relative'});
-  $el.$divCont=$("<div>").append($el.$table).css({'margin':'1em auto','text-align':'left',display:'inline-block'});
+  var tBody=el.tBody=createElement('tbody');
+  el.table=createElement('table').myAppend(tBody).addClass('tableSticky'); //.css({width:'100%',position:'relative'});
+  el.divCont=createElement('div').myAppend(el.table).css({'margin':'1em auto','text-align':'left',display:'inline-block'});
 
   var StrCol=['siteName','pageName','url', 'tCreated', 'tMod', 'nAccess', 'tLastAccess'], BoAscDefault={tCreated:0};
   var Label={tCreated:'Age'};
-  var $thead=headExtend($('<thead>'),$el,StrCol,BoAscDefault,Label);
-  $thead.css({background:'white', width:'inherit'});  //,height:'calc(12px + 1.2em)'
-  $el.$table.prepend($thead);
-  $el.nRowVisible=0;
+  //var thead=headExtend(createElement('thead'),el,StrCol,BoAscDefault,Label);
+  var trTmp=headExtend(createElement('tr'),el,StrCol,BoAscDefault,Label);
+  var thead=createElement('thead').myAppend(trTmp);
+  thead.css({background:'white', width:'inherit'});  //,height:'calc(12px + 1.2em)'
+  el.table.prepend(thead);
+  el.nRowVisible=0;
 
-  var $imgDelete=$imgProt.clone().prop({src:uDelete});
+  var imgDelete=imgProt.cloneNode().prop({src:uDelete});
       // menuA
-  var $buttonAdd=$("<button>").append('Add').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){
-    $redirectSetPop.openFunc.call({},0,0);
-    //$redirectSetPop.openFunc.call({boButtonIns:1});
+  var buttonAdd=createElement('button').myText('Add').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
+    redirectSetPop.openFunc.call({},0,0);
+    //redirectSetPop.openFunc.call({boButtonIns:1});
   });
-  var $buttonClearNAccess=$("<button>").append('Clear nAccess').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){
-    var vec=[['redirectTabResetNAccess', {}, function(){$el.boStale=1; $el.setUp();}]];   majax(oAJAX,vec);
+  var buttonClearNAccess=createElement('button').myText('Clear nAccess').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
+    var vec=[['redirectTabResetNAccess', {}, function(){el.boStale=1; el.setUp();}]];   majax(oAJAX,vec);
   });
-  var $spanLabel=$('<span>').append('Redirect').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var $menuA=$('<div>').append($buttonAdd,$buttonClearNAccess,$spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); 
+  var spanLabel=createElement('span').myText('Redirect').css({'float':'right',margin:'0.2em 0 0 0'});  
+  var menuA=createElement('div').myAppend(buttonAdd,buttonClearNAccess,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); 
 
-  $el.addClass('redirectTab');
-  $el.$fixedDiv=$('<div>').append($menuA).css(cssFixed);
-  $el.css({'text-align':'center'});
-  $el.append($el.$divCont, $el.$fixedDiv);
-  return $el;
+  el.addClass('redirectTab');
+  el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
+  el.css({'text-align':'center'});
+  el.append(el.divCont, el.fixedDiv);
+  return el;
 }
 
 
-siteSetPopExtend=function($el){
+siteSetPopExtend=function(el){
 "use strict"
-  $el.toString=function(){return 'siteSetPop';}
+  el.toString=function(){return 'siteSetPop';}
   var save=function(){ 
-    r.boTLS=Number($selBoTLS.val());
-    r.siteName=$inpName.val(); if(r.siteName.length==0){ setMess('empty siteName',2);  return;}
-    r.www=$inpWWW.val();  if(r.www.length==0){ setMess('empty www',2);  return;}
-    r.googleAnalyticsTrackingID=$inpGog.val();
-    r.urlIcon16=$inpURLIcon16.val();
-    r.urlIcon200=$inpURLIcon200.val();
-    var objTmp=$.extend({boUpd:boUpd},r);
+    r.boTLS=Number(selBoTLS.value);
+    r.siteName=inpName.value; if(r.siteName.length==0){ setMess('empty siteName',2);  return;}
+    r.www=inpWWW.value;  if(r.www.length==0){ setMess('empty www',2);  return;}
+    r.googleAnalyticsTrackingID=inpGog.value;
+    r.urlIcon16=inpURLIcon16.value;
+    r.urlIcon200=inpURLIcon200.value;
+    var objTmp=extend({boUpd:boUpd},r);
     var vec=[['siteTabSet', objTmp, saveRet]];   majax(oAJAX,vec);
   }
   var saveRet=function(data){
     if(!data.boOK) return;
     var idSiteOld=r.idSite; r.idSite=data.idSite;
-    if(boUpd) { $siteTab.myEdit(idSiteOld, r); } //r.idSite=idSite;
-    else {r.tCreated=unixNow(); $siteTab.myAdd(r); }    
-    //$siteTab.setUp();
+    if(boUpd) { siteTab.myEdit(idSiteOld, r); } //r.idSite=idSite;
+    else {r.tCreated=unixNow(); siteTab.myAdd(r); }    
+    //siteTab.setUp();
     doHistBack();
   }
-  $el.setUp=function(){
+  el.setUp=function(){
     if(typeof r.boTLS=='undefined') r.boTLS=0;
-    $selBoTLS.val(Number(r.boTLS)); $inpName.val(r.siteName); $inpWWW.val(r.www); $inpGog.val(r.googleAnalyticsTrackingID); $inpURLIcon16.val(r.urlIcon16); $inpURLIcon200.val(r.urlIcon200);
-    $inpName.focus();  return true;
+    selBoTLS.value=Number(r.boTLS); inpName.value=r.siteName; inpWWW.value=r.www; inpGog.value=r.googleAnalyticsTrackingID; inpURLIcon16.value=r.urlIcon16; inpURLIcon200.value=r.urlIcon200;
+    inpName.focus();  return true;
   }
-  $el.openFunc=function(boUpdT,boGotData){
+  el.openFunc=function(boUpdT,boGotData){
     boUpd=boUpdT;
     if(boGotData){
-      var $r=$(this).parent().parent();
-      r=$r.data('r');
+      var elR=this.parentNode.parentNode;  r=elR.rMat;
     } else {r=rDefault;}
     if(!boUpd) r.boDefault=0;
-    doHistPush({$view:$siteSetPop});
-    $el.setVis();
-    $el.setUp();
+    doHistPush({view:siteSetPop});
+    el.setVis();
+    el.setUp();
   }
-  $el.setVis=function(){
-    $el.show(); return 1;
+  el.setVis=function(){
+    el.show(); return 1;
   }
  
   var rDefault={idSite:'', siteName:'', www:'', googleAnalyticsTrackingID:'', urlIcon16:'', urlIcon200:''};
   var boUpd, r; 
-  var $selBoTLS=$('<select><option value=0 selected>http</option><option value=1>https</option></select>').css({display:'block'}); 
-  var $labName=$('<b>').append('Name (used as prefix when backing up...)');
-  var $inpName=$('<input type=text>');
-  var $imgHWWW=$imgHelp.clone().css({margin:'0em 1em'}); popupHoverJQ($imgHWWW,$('<div>').html('<p>Ex:<p>www.example.com<p>127.0.0.1:5000<p>localhost:5000'));
-  var $labWWW=$('<b>').append('www', $imgHWWW);
-  var $inpWWW=$('<input type=text>');
-  var $labGog=$('<b>').append('googleAnalyticsTrackingID');
-  var $inpGog=$('<input type=text>');
-  var $labURLIcon16=$('<b>').append('urlIcon16');
-  var $inpURLIcon16=$('<input type=text>');
-  var $labURLIcon200=$('<b>').append('urlIcon200');
-  var $inpURLIcon200=$('<input type=text>');
+  var opt=createElement('option').prop({value:0, selected:true}).css({display:'block'}).myText('http'); 
+  var optS=createElement('option').prop({value:1}).css({display:'block'}).myText('https'); 
+  var selBoTLS=createElement('select').css({display:'block'}).myAppend(opt,optS); 
+  var labName=createElement('b').myText('Name (used as prefix when backing up...)');
+  var inpName=createElement('input').prop('type', 'text');
+  var imgHWWW=imgHelp.cloneNode().css({margin:'0em 1em'}); popupHover(imgHWWW,createElement('div').myHtml('<p>Ex:<p>www.example.com<p>127.0.0.1:5000<p>localhost:5000'));
+  var labWWW=createElement('b').myAppend('www', imgHWWW);
+  var inpWWW=createElement('input').prop('type', 'text');
+  var labGog=createElement('b').myText('googleAnalyticsTrackingID');
+  var inpGog=createElement('input').prop('type', 'text');
+  var labURLIcon16=createElement('b').myText('urlIcon16');
+  var inpURLIcon16=createElement('input').prop('type', 'text');
+  var labURLIcon200=createElement('b').myText('urlIcon200');
+  var inpURLIcon200=createElement('input').prop('type', 'text');
  
-  var $Lab=$([]).push($labName, $labWWW, $labGog, $labURLIcon16, $labURLIcon200).css({'margin-right':'0.5em'});
-  var $Inp=$([]).push($inpName, $inpWWW, $inpGog, $inpURLIcon16, $inpURLIcon200).css({display:'block',width:'100%'}).keypress( function(e){ if(e.which==13) {save();return false;}} );
-  var $inpNLab=$([]).push($selBoTLS, $labName, $inpName, $labWWW, $inpWWW, $labGog, $inpGog, $labURLIcon16, $inpURLIcon16, $labURLIcon200, $inpURLIcon200);
+  [labName, labWWW, labGog, labURLIcon16, labURLIcon200].forEach(ele=>ele.css({'margin-right':'0.5em'}));
+  [inpName, inpWWW, inpGog, inpURLIcon16, inpURLIcon200].forEach(ele=>ele.css({display:'block',width:'100%'}).on('keypress',  function(e){ if(e.which==13) {save();return false;}} ));
+  var inpNLab=[selBoTLS, labName, inpName, labWWW, inpWWW, labGog, inpGog, labURLIcon16, inpURLIcon16, labURLIcon200, inpURLIcon200];
 
-  //var $buttonCancel=$('<button>').append('Cancel').click(doHistBack).css({'margin-top':'1em'});
-  var $buttonSave=$('<button>').append('Save').click(save).css({'margin-top':'1em'});
-  var $divBottom=$('<div>').append($buttonSave);  //$buttonCancel,
+  //var buttonCancel=createElement('button').myText('Cancel').on('click',doHistBack).css({'margin-top':'1em'});
+  var buttonSave=createElement('button').myText('Save').on('click',save).css({'margin-top':'1em'});
+  var divBottom=createElement('div').myAppend(buttonSave);  //buttonCancel,
 
-  var $blanket=$('<div>').addClass("blanket");
-  var $centerDiv=$('<div>').addClass("Center").append($inpNLab,$divBottom).css({'min-width':'17em','max-width':'30em', padding: '1.2em 0.5em 1.2em 1.2em'}); //height:'24em', 
-  //if(boIE) $centerDiv.css({'width':'20em'}); 
-  $el.addClass("Center-Container").append($centerDiv,$blanket); 
+  var blanket=createElement('div').addClass("blanket");
+  var centerDiv=createElement('div').addClass("Center").myAppend(...inpNLab,divBottom).css({'min-width':'17em','max-width':'30em', padding: '1.2em 0.5em 1.2em 1.2em'}); //height:'24em', 
+  //if(boIE) centerDiv.css({'width':'20em'}); 
+  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
    
-  return $el;
+  return el;
 }
 
-siteDeletePopExtend=function($el){
+siteDeletePopExtend=function(el){
 "use strict"
-  $el.toString=function(){return 'siteDeletePop';}
-  var $ok=$('<button>').html('OK').css({'margin-top':'1em'}).click(function(){    
+  el.toString=function(){return 'siteDeletePop';}
+  var ok=createElement('button').myText('OK').css({'margin-top':'1em'}).on('click',function(){    
     var vec=[['siteTabDelete',{siteName:siteName},okRet]];   majax(oAJAX,vec);    
   });
   var okRet=function(data){
     if(!data.boOK) return;
-    $siteTab.myRemove($r);
+    siteTab.myRemove(elR);
     doHistBack();
   }
-  $el.openFunc=function(){
-    $r=$(this).parent().parent(); siteName=$r.data('r').siteName; $spanSite.text(siteName);
-    doHistPush({$view:$siteDeletePop});
-    $el.setVis();
-    $ok.focus();
+  el.openFunc=function(){
+    elR=this.parentNode.parentNode; siteName=elR.rMat.siteName; spanSite.myText(siteName);
+    doHistPush({view:siteDeletePop});
+    el.setVis();
+    ok.focus();
   }
-  $el.setVis=function(){
-    $el.show(); return 1;
+  el.setVis=function(){
+    el.show(); return 1;
   }
  
-  var $r, siteName;
-  var $head=$('<h3>').append('Delete');
-  var $spanSite=$('<span>');//.css({'font-weight': 'bold'});
-  var $p=$('<div>').append($spanSite);
-  //var $cancel=$('<button>').html("Cancel").click(doHistBack).css({'margin-top':'1em'});
+  var elR, siteName;
+  var head=createElement('h3').myText('Delete');
+  var spanSite=createElement('span');//.css({'font-weight': 'bold'});
+  var p=createElement('div').myAppend(spanSite);
+  //var cancel=createElement('button').myText("Cancel").on('click',doHistBack).css({'margin-top':'1em'});
 
-  var $blanket=$('<div>').addClass("blanket");
-  var $centerDiv=$('<div>').addClass("Center").append($head,$p,$ok).css({'min-width':'17em','max-width':'25em', padding:'0.5em'});  //,$cancel height:'10em', 
-  //if(boIE) $centerDiv.css({'width':'20em'}); 
-  $el.addClass("Center-Container").append($centerDiv,$blanket); 
+  var blanket=createElement('div').addClass("blanket");
+  var centerDiv=createElement('div').addClass("Center").myAppend(head,p,ok).css({'min-width':'17em','max-width':'25em', padding:'0.5em'});  //,cancel height:'10em', 
+  //if(boIE) centerDiv.css({'width':'20em'}); 
+  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
  
-  return $el;
+  return el;
 }
 
-siteTabExtend=function($el){
+siteTabExtend=function(el){
 "use strict"
-  $el.toString=function(){return 'siteTab';}
+  el.toString=function(){return 'siteTab';}
 
   var TDProt={
     boDefault:{
-      mySetVal:function(boOn){  var $td=$(this), $b=$td.children(), strCol=''; if(boOn) strCol='green'; $b.css('background',strCol);  }
+      mySetVal:function(boOn){  var td=this, b=td.firstChild, strCol=''; if(boOn) strCol='green'; b.css('background',strCol);  }
     },
     boTLS:{
-      mySetVal:function(boOn){  $(this).text(boOn?'s':'');  }
+      mySetVal:function(boOn){  this.myText(boOn?'s':'');  }
     },
     www:{
       mySetVal:function(strText){
-        var $td=$(this), strS=Number($td.parent().data('r').boTLS)?'s':'', $a=$td.children().prop('href','http'+strS+'://'+strText).text(strText);
+        var td=this, strS=Number(td.parentNode.rMat.boTLS)?'s':'', a=td.firstChild.prop('href','http'+strS+'://'+strText).myText(strText);
       }
     },
     tCreated:{
-      mySetVal:function(tCreated){      var $td=$(this), arrT=getSuitableTimeUnit(unixNow()-tCreated);  $td.text(Math.round(arrT[0])+arrT[1]);  }
+      mySetVal:function(tCreated){      var td=this, arrT=getSuitableTimeUnit(unixNow()-tCreated);  td.myText(Math.round(arrT[0])+arrT[1]);  }
     },
     urlIcon16:{
-      mySetVal:function(url){      $(this).children().prop({src:url, title:url});    }
+      mySetVal:function(url){      this.firstChild.prop({src:url, title:url});    }
     },
     urlIcon200:{
-      mySetVal:function(url){      $(this).children().prop({src:url, title:url});   }
+      mySetVal:function(url){      this.firstChild.prop({src:url, title:url});   }
     }
   }
   var TDConstructors={
-    boDefault:function(){ var $b=$('<button>').css('width','1.2em').click(setDefault), $el=$('<td>').css('text-align','center').append($b);  $.extend($el[0],TDProt.boDefault);  return $el;  },
-    boTLS:function(){ var $el=$('<td>'); $.extend($el[0],TDProt.boTLS);  return $el;  },
-    www:function(){ var $a=$('<a>').prop({target:"_blank"}),  $el=$('<td>').append($a);  $.extend($el[0],TDProt.www);  return $el;  },
-    tCreated:function(){ var $el=$('<td>');  $.extend($el[0],TDProt.tCreated);  return $el;  },
-    urlIcon16:function(){ var $i=$('<img>').css({'vertical-align':'middle'}), $el=$('<td>').append($i); $.extend($el[0],TDProt.urlIcon16);  return $el;  },
-    urlIcon200:function(){ var $i=$('<img>').css({'vertical-align':'middle', 'max-width':'50px', 'max-height':'50px'}), $el=$('<td>').append($i); $.extend($el[0],TDProt.urlIcon200);  return $el;  }
+    boDefault:function(){ var b=createElement('button').css('width','1.2em').on('click',setDefault), el=createElement('td').css('text-align','center').myAppend(b);  extend(el,TDProt.boDefault);  return el;  },
+    boTLS:function(){ var el=createElement('td'); extend(el,TDProt.boTLS);  return el;  },
+    www:function(){ var a=createElement('a').prop({target:"_blank"}),  el=createElement('td').myAppend(a);  extend(el,TDProt.www);  return el;  },
+    tCreated:function(){ var el=createElement('td');  extend(el,TDProt.tCreated);  return el;  },
+    urlIcon16:function(){ var im=createElement('img').css({'vertical-align':'middle'}), el=createElement('td').myAppend(im); extend(el,TDProt.urlIcon16);  return el;  },
+    urlIcon200:function(){ var im=createElement('img').css({'vertical-align':'middle', 'max-width':'50px', 'max-height':'50px'}), el=createElement('td').myAppend(im); extend(el,TDProt.urlIcon200);  return el;  }
   }
-  $el.myAdd=function(r){
-    var $r=$('<tr>'); $r.attr({idSite:r.idSite}).data('r',r);
+  el.myAdd=function(rMat){
+    var elR=createElement('tr'); elR.attr({idSite:rMat.idSite}).prop('rMat',rMat)
     for(var i=0;i<StrCol.length;i++) { 
-      var name=StrCol[i], val=r[name], $td; if(name in TDConstructors) {$td=new TDConstructors[name](); }   else $td=$('<td>');   $r.append($td.attr('name',name));
-      if('mySetVal' in $td[0]) { $td[0].mySetVal(val);}   else $td.append(val);
-      if('mySetSortVal' in $td[0]) { $td[0].mySetSortVal(val);}   else $td.data('valSort',val);
+      var name=StrCol[i], val=rMat[name], td; if(name in TDConstructors) {td=new TDConstructors[name](); }   else td=createElement('td');   elR.append(td.attr('name',name));
+      if('mySetVal' in td) { td.mySetVal(val);}   else td.append(val);
+      if('mySetSortVal' in td) { td.mySetSortVal(val);}   else td.valSort=val;
     }
-    var $buttEdit=$('<button>').attr('name','buttonEdit').append('Edit').click(function(){
-      $siteSetPop.openFunc.call(this,1,1);
+    var buttEdit=createElement('button').attr('name','buttonEdit').myText('Edit').on('click',function(){
+      siteSetPop.openFunc.call(this,1,1);
     });
-    var $buttCopy=$('<button>').attr('name','buttonCopy').append('Copy').click(function(){
-      $siteSetPop.openFunc.call(this,0,1);
+    var buttCopy=createElement('button').attr('name','buttonCopy').myText('Copy').on('click',function(){
+      siteSetPop.openFunc.call(this,0,1);
     });
-    var $buttDelete=$('<button>').attr('name','buttonDelete').css({'margin-right':'0.2em'}).append($imgDelete.clone()).click($siteDeletePop.openFunc);
-    var $tEdit=$('<td>').append($buttEdit), $tCopy=$('<td>').append($buttCopy), $tDelete=$('<td>').append($buttDelete); 
-    $r.append($tEdit, $tCopy, $tDelete);
-    $tbody.append($r); 
-    $el.nRowVisible=$tbody.children('tr').length;
-    return $el;
+    var buttDelete=createElement('button').attr('name','buttonDelete').css({'margin-right':'0.2em'}).myAppend(imgDelete.cloneNode()).on('click',siteDeletePop.openFunc);
+    var tEdit=createElement('td').myAppend(buttEdit), tCopy=createElement('td').myAppend(buttCopy), tDelete=createElement('td').myAppend(buttDelete); 
+    elR.append(tEdit, tCopy, tDelete);
+    tBody.append(elR); 
+    el.nRowVisible=tBody.children.length;
+    return el;
   }
-  $el.myRemove=function($r){
-    $r.remove();
-    $el.nRowVisible=$tbody.children('tr').length;
-    return $el; 
+  el.myRemove=function(elR){
+    elR.remove();
+    el.nRowVisible=tBody.children.length;
+    return el; 
   }
-  $el.myEdit=function(idSiteOld, r){
-    var $r=$tbody.children('[idSite='+idSiteOld+']');
-    $r.attr({idSite:r.idSite});
-    for(var i=0;i<StrCol.length;i++) { var name=StrCol[i], val=r[name], $td=$r.children('td:eq('+i+')'); if($td[0].mySetVal) $td[0].mySetVal(val); else $td.text(val); }
-    return $el;
+  el.myEdit=function(idSiteOld, rMat){
+    var elR=tBody.querySelector('[idSite="'+idSiteOld+'"]');
+    elR.attr({idSite:rMat.idSite});
+    //for(var i=0;i<StrCol.length;i++) { var name=StrCol[i], val=r[name], td=r.querySelector('td:nth-of-type('+(i+1)+')'); if(td.mySetVal) td.mySetVal(val); else td.myText(val); }
+    for(var i=0;i<StrCol.length;i++) { var name=StrCol[i], val=rMat[name], td=elR.children[i]; if(td.mySetVal) td.mySetVal(val); else td.myText(val); }
+    return el;
   }
-  $el.setUp=function(){
-    if($el.boStale) {
+  el.setUp=function(){
+    if(el.boStale) {
       var vec=[['siteTabGet',1,setUpRet]];   majax(oAJAX,vec);
-      $el.boStale=0;
+      el.boStale=0;
     }
   }
   var setUpRet=function(data){
     var tab=data.tab||[];
     StrCol=data.StrCol;
-    $tbody.empty(); 
+    tBody.empty(); 
     for(var i=0;i<tab.length;i++) {  
       var obj={}; for(var j=0;j<StrCol.length;j++){ obj[StrCol[j]]=tab[i][j];}
       tab[i]=obj;
-      //$el.myAdd(idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, tCreated);  
-      $el.myAdd(tab[i]);      
+      //el.myAdd(idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, tCreated);  
+      el.myAdd(tab[i]);      
     }
-    $el.nRowVisible=tab.length;
+    el.nRowVisible=tab.length;
   }
   var setDefault=function(){
-    var $r=$(this).parent().parent(), r=$r.data('r');
-    var vec=[['siteTabSetDefault',{idSite:r.idSite},function(){
-      var $Row=$tbody.children('tr');
-      $Row.each(function(i,el){
-        var $rowA=$(this), rA=$rowA.data('r'), idA=rA.idSite;
-        var $td=$rowA.children('[name=boDefault]'); $td[0].mySetVal(idA==r.idSite);
+    var elR=this.parentNode.parentNode, rMat=elR.rMat;
+    var vec=[['siteTabSetDefault',{idSite:rMat.idSite},function(){
+      var Row=[...tBody.childNodes];
+      Row.forEach(function(rowA,i){
+        var idA=rowA.rMat.idSite;  //.data('r')
+        var td=rowA.querySelector('[name=boDefault]'); td.mySetVal(idA==rMat.idSite);
       })
     }]];   majax(oAJAX,vec);
   }
-  //$el.boRefreshNeeded; // The parent view of this view ($siteTab) should set this to 1
-  $el.boStale=1; 
+  //el.boRefreshNeeded; // The parent view of this view (siteTab) should set this to 1
+  el.boStale=1; 
   var StrCol;
 
 
-  var $tbody=$el.$tbody=$("<tbody>");
-  $el.$table=$("<table>").append($tbody).addClass('tableSticky'); //.css({width:'100%',position:'relative'});
-  $el.$divCont=$("<div>").append($el.$table).css({'margin':'1em auto','text-align':'left',display:'inline-block'});
+  var tBody=el.tBody=createElement('tbody');
+  el.table=createElement('table').myAppend(tBody).addClass('tableSticky'); //.css({width:'100%',position:'relative'});
+  el.divCont=createElement('div').myAppend(el.table).css({'margin':'1em auto','text-align':'left',display:'inline-block'});
 
   var StrColHead=['boDefault','secure (TLS)', 'idSite','siteName','www','googleAnalyticsTrackingID','urlIcon16','urlIcon200','tCreated','nPage'], BoAscDefault={boDefault:0,boTLS:0,tCreated:0,nPage:0};
   var Label={boDefault:'Default',siteName:'siteName/prefix', gog:'gog...', tCreated:'Age', nPage:'#page'};
-  var $thead=headExtend($('<thead>'),$el,StrColHead,BoAscDefault,Label);
-  $thead.css({background:'white', width:'inherit'});  //,height:'calc(12px + 1.2em)'
-  $el.$table.prepend($thead);
-  $el.nRowVisible=0;
+  //var thead=headExtend(createElement('thead'),el,StrColHead,BoAscDefault,Label);
+  var trTmp=headExtend(createElement('tr'),el,StrColHead,BoAscDefault,Label);
+  var thead=createElement('thead').myAppend(trTmp);
+  thead.css({background:'white', width:'inherit'});  //,height:'calc(12px + 1.2em)'
+  el.table.prepend(thead);
+  el.nRowVisible=0;
 
 
-  var $imgDelete=$imgProt.clone().prop({src:uDelete});
+  var imgDelete=imgProt.cloneNode().prop({src:uDelete});
       // menuA
-  var $buttonAdd=$("<button>").append('Add').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){
-    $siteSetPop.openFunc.call({},0,0);
+  var buttonAdd=createElement('button').myText('Add').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
+    siteSetPop.openFunc.call({},0,0);
   });
-  var $spanLabel=$('<span>').append('SiteTab').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var $menuA=$('<div>').append($buttonAdd,$spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); //$buttonBack,
+  var spanLabel=createElement('span').myText('SiteTab').css({'float':'right',margin:'0.2em 0 0 0'});  
+  var menuA=createElement('div').myAppend(buttonAdd,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
 
-  $el.addClass('siteTab');
-  $el.$fixedDiv=$('<div>').append($menuA).css(cssFixed);
-  $el.css({'text-align':'center'});
-  $el.append($el.$divCont, $el.$fixedDiv);
-  return $el;
+  el.addClass('siteTab');
+  el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
+  el.css({'text-align':'center'});
+  el.append(el.divCont, el.fixedDiv);
+  return el;
 }
 
 
-majax=function(oAJAX,vecIn){  // Each argument of vecIn is an array: [serverSideFunc, serverSideFuncArg, returnFunc]
-"use strict"
-  var makeRetF=function(vecT){ return function(data,textStatus,jqXHR){
-      var dataArr=data.dataArr;  // Each argument of dataArr is an array, either [argument] or [altFuncArg,altFunc]
-      delete data.dataArr;
-      beRet(data,textStatus,jqXHR);
-      for(var i=0;i<dataArr.length;i++){
-        var r=dataArr[i];
-        if(r.length==1) {var f=vecT[i][2]; if(f) f(r[0]);} else { window[r[1]].call(window,r[0]);   }
-      }
-    };
-  }
 
-  var oOut=$.extend(true, [], oAJAX);
-  if('boFormData' in oAJAX && oAJAX.boFormData){
+'use strict';
+majax=function(oAJAX, vecIn){  // Each argument of vecIn is an array: [serverSideFunc, serverSideFuncArg, returnFunc]
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', uBE, true);
+  var arrRet=[]; vecIn.forEach(function(el,i){var f=null; if(el.length==3) f=el.pop(); arrRet[i]=f;}); // Put return functions in a separate array
+  vecIn.push(['page',queredPage]);
+  if(vecIn.length==2 && vecIn[0][1] instanceof FormData){
     var formData=vecIn[0][1]; vecIn[0][1]=0; // First element in vecIn contains the formData object. Rearrange it as "root object" and add the remainder to a property 'vec'
-    var vecMod=$.extend(true, [], vecIn);
-    for(var i=0; i<vecMod.length; i++){delete vecMod[i][2];}
-    vecMod.push(['page',queredPage],['tMod',tMod],['CSRFCode',CSRFCode]);  
-    oOut.data=formData; oOut.data.append('vec', JSON.stringify(vecMod));
-  }else{
-    var vecMod=$.extend(true, [], vecIn);
-    for(var i=0; i<vecMod.length; i++){delete vecMod[i][2];}
-    vecMod.push(['page',queredPage]);
-    if(oAJAX!==oAJAXCacheable){   vecMod.push(['CSRFCode',CSRFCode],['tMod',tMod]);   }  
-    oOut.data=JSON.stringify(vecMod);
+    vecIn.push(['tMod',tMod],['CSRFCode',CSRFCode]); 
+    formData.append('vec', JSON.stringify(vecIn));
+    var tmp=window.btoa(Math.random().toString()).substr(0, 12);
+    var dataOut=formData;
+    xhr.setRequestHeader('x-type','single');
+  } else {
+    if(oAJAX!==oAJAXCacheable){   vecIn.push(['CSRFCode',CSRFCode],['tMod',tMod]);   }  
+    var dataOut=JSON.stringify(vecIn);
   }
-  oOut.success=makeRetF(vecIn);    $.ajax(oOut);
-  $busyLarge.show();
+  
+  xhr.onload=function () {
+    var dataFetched=this.response;
+    var data; try{ data=JSON.parse(this.response); }catch(e){ setMess(e);  return; }
+    
+    var dataArr=data.dataArr;  // Each argument of dataArr is an array, either [argument] or [altFuncArg,altFunc]
+    delete data.dataArr;
+    beRet(data);
+    for(var i=0;i<dataArr.length;i++){
+      var r=dataArr[i];
+      if(r.length==1) {var f=arrRet[i]; if(f) f(r[0]);} else { window[r[1]].call(window,r[0]);   }
+    }
+  }
+  xhr.onerror=function(e){ var tmp='statusText : '+xhr.statusText;  setMess(tmp); console.log(tmp);   throw 'bla';}
+  
+  xhr.send(dataOut); 
+  busyLarge.show();
 }
 
 
-beRet=function(data,textStatus,jqXHR){
+beRet=function(data){
 "use strict"
-  if(typeof jqXHR!='undefined') var tmp=jqXHR.responseText;
+  //if(typeof jqXHR!='undefined') var tmp=jqXHR.responseText;
   for(var key in data){
     window[key].call(this,data[key]); 
   }
-  $busyLarge.hide();
-}
+  busyLarge.hide();
+}  
+
+
 
 GRet=function(data){
 "use strict"
@@ -3432,46 +3616,46 @@ GRet=function(data){
   tmp=data.idPage;   if(typeof tmp!="undefined") { objPage.idPage=tmp;  }
   tmp=data.objRev;   if(typeof tmp!="undefined") {
     objRev=tmp; 
-    tMod=objRev.tMod; $editDiv.$spanLastMod.html(mySwedDate(tMod));
+    tMod=objRev.tMod; //editDiv.spanLastMod.myText(mySwedDate(tMod));
   }
-  //tmp=data.tMod;   if(typeof tmp!="undefined") { tMod=tmp; $editDiv.$spanLastMod.html(mySwedDate(tMod)); }
+  //tmp=data.tMod;   if(typeof tmp!="undefined") { tMod=tmp; editDiv.spanLastMod.myText(mySwedDate(tMod)); }
   tmp=data.objPage;   if(typeof tmp!="undefined") {
     overwriteProperties(objPage, tmp);
     //objPage=tmp; 
-    $editButton.setImg(objPage.boOW);  $editDiv.$spanSave.toggle(Boolean(objPage.boOW));
-    $adminMoreDiv.setMod();
+    editButton.setImg(objPage.boOW);  editDiv.spanSave.toggle(Boolean(objPage.boOW));   //editDiv.spanCreated.myText(mySwedDate(objPage.tCreated));
+    adminMoreDiv.setMod();
   }
-  //tmp=data.boOW;   if(typeof tmp!="undefined") { objPage.boOW=tmp; $editButton.setImg(tmp);  $editDiv.$spanSave.toggle(Boolean(tmp));}
+  //tmp=data.boOW;   if(typeof tmp!="undefined") { objPage.boOW=tmp; editButton.setImg(tmp);  editDiv.spanSave.toggle(Boolean(tmp));}
   //tmp=data.boOR;   if(typeof tmp!="undefined") { objPage.boOR=tmp;  }
   //tmp=data.boSiteMap;   if(typeof tmp!="undefined") { objPage.boSiteMap=tmp;  }
 
-  //$adminMoreDiv.setMod();
-  $spanMod.setup(objPage);
-  $pageView.setFixedDivColor(objPage.boOR);
+  //adminMoreDiv.setMod();
+  spanMod.setup(objPage);
+  pageView.setFixedDivColor(objPage.boOR);
 
   tmp=data.arrVersionCompared;   if(typeof tmp!="undefined") arrVersionCompared=tmp;
 
-  tmp=data.matVersion;   if(typeof tmp!='undefined') {  nVersion=tmp.length;  matVersion=tmp; $versionTable.setTable(); $pageView.setDetail(); }
+  tmp=data.matVersion;   if(typeof tmp!='undefined') {  nVersion=tmp.length;  matVersion=tmp; versionTable.setTable(); pageView.setDetail(); }
 
-  tmp=data.strDiffText;   if(typeof tmp!="undefined") {$diffDiv.setUp(tmp);  }  
-  tmp=data.strHtmlText;   if(typeof tmp!="undefined") {$pageText.html(tmp); $pageText.modStuff();}
-  tmp=data.strEditText;   if(typeof tmp!="undefined") $editText.val(tmp);
-  //tmp=data.templateHtml;   if(typeof tmp!="undefined") $templateList.empty().append(tmp);
-  tmp=data.objTemplateE;   if(typeof tmp!="undefined") $templateList.setUp(tmp);
+  tmp=data.strDiffText;   if(typeof tmp!="undefined") {diffDiv.setUp(tmp);  }  
+  tmp=data.strHtmlText;   if(typeof tmp!="undefined") {pageText.myHtml(tmp); pageText.modStuff();}
+  tmp=data.strEditText;   if(typeof tmp!="undefined") editText.value=tmp;
+  //tmp=data.templateHtml;   if(typeof tmp!="undefined") templateList.empty().append(tmp);
+  tmp=data.objTemplateE;   if(typeof tmp!="undefined") templateList.setUp(tmp);
   tmp=data.strMessageText;   if(typeof tmp!="undefined") setMess(tmp,15);
-  tmp=data.boTalkExist;   if(typeof tmp!="undefined") $commentButton.setUp(tmp);
+  tmp=data.boTalkExist;   if(typeof tmp!="undefined") commentButton.setUp(tmp);
   //tmp=data.strMessageText;   if(typeof tmp!="undefined") setMess(tmp,5);
   tmp=data.CSRFCode;   if(typeof tmp!="undefined") CSRFCode=tmp;
-  if(!(boVLoggedIn || objPage.boOR)) $vLoginDiv.setVis();  
+  if(!(boVLoggedIn || objPage.boOR)) vLoginDiv.setVis();  
 
-  //$adminButton.setStat();
-  $adminDiv.setAdminStat();
+  //adminButton.setStat();
+  adminDiv.setAdminStat();
 
   
   if(timerALogout) { clearTimeout(timerALogout); }
   timerALogout=setTimeout(function(){
     boALoggedIn=0; //histGoTo('adminDiv');
-    $adminDiv.setAdminStat();
+    adminDiv.setAdminStat();
   },maxAdminUnactivityTime*1000);
   
 }
@@ -3503,17 +3687,13 @@ helpBub={}
 setUp1=function(){
 
 
-  elHtml=document.documentElement;  elBody=document.body
-  $body=$('body');  $html=$('html');
-  $bodyNHtml=$body.add($html);  
-  $body.css({margin:'0px'}); //, position:'relative'
-  $document=$(document);
-  $window=$(window);
+  elHtml=document.documentElement;  elBody=document.body;
+  elBody.css({margin:'0px'}); //, position:'relative'
   
   boTouch = Boolean('ontouchstart' in document.documentElement);
   //boTouch=1;
 
-  $boLCacheObs=$('#boLCacheObs'); if($boLCacheObs.val().length) { $boLCacheObs.val(""); location.reload(); return} //$boLCacheObs.val(1);
+  boLCacheObs=document.querySelector('#boLCacheObs'); if(boLCacheObs.value.length) { boLCacheObs.value=""; location.reload(); return} //boLCacheObs.value=1;
 
   browser=getBrowser();
   var intBrowserVersion=parseInt(browser.version.slice(0, 2));
@@ -3538,14 +3718,13 @@ setUp1=function(){
   
   if(boTouch){
     if(boIOS) {  
-      //$bodyNHtml.css({height:'100%'}); // , overflow:'hidden'
     } 
     else {
       //var h=screen.height, w=screen.width;
       var h=window.innerHeight, w=window.innerWidth;
       //alert(window.devicePixelRatio+' '+ screen.height+' '+screen.width);
-      //if(boTouch && h*w>230400) $body.css({'font-size':'120%'}); // between 320*480=153600 and 480*640=307200
-      //if(boTouch && h*w<115200) { $body.css({'font-size':'85%'}); boSmallAndroid=1;} // between 240*320=76800 and 320*480=153600
+      //if(boTouch && h*w>230400) elBody.css({'font-size':'120%'}); // between 320*480=153600 and 480*640=307200
+      //if(boTouch && h*w<115200) { elBody.css({'font-size':'85%'}); boSmallAndroid=1;} // between 240*320=76800 and 320*480=153600
     }
   } 
 
@@ -3559,12 +3738,12 @@ setUp1=function(){
   charPublicRead='<span style="font-family:courier">͡°</span>'; //☉͡°
   charPublicRead='<span class=eye>(∘)</span>'; //☉͡° ·
   charPublicRead='👀&#xFE0E;'; //☉͡° ·
-  charPublicRead='r'; //☉͡° ·
+  charPublicRead='😶'; //☉͡° ·
   charPublicWrite='✎&#xFE0E;'; //✎
-  charPublicWrite='w'; //✎
+  charPublicWrite='✎'; //✎
   charPromote='&#1f62e;&#10006;';  //😱😭😮&#xFE0E;
   charPromote='📣&#xFE0E;';  //😱😭😮&#xFE0E;
-  charPromote='p';  //😱😭😮&#xFE0E;
+  charPromote='😮';  //😗😱😭😮&#xFE0E;
   charDelete='✖'; //x, ❌, X, ✕, ☓, ✖, ✗, ✘
   charLink='☞'; //☞🔗
   charThumbsUp='☝'; //👍☝
@@ -3621,7 +3800,7 @@ setUp1=function(){
   if(typeof objTemplateE=='undefined') objTemplateE={};
   if(typeof arrVersionCompared=='undefined') arrVersionCompared=[null,1];
   if(typeof matVersion=='undefined') matVersion=[];
-  if(typeof objPage=='undefined') objPage={boOR:1, boOW:1, boSiteMap:1, idPage:null}; 
+  if(typeof objPage=='undefined') objPage={boOR:1, boOW:1, boSiteMap:1, idPage:null, tCreated:null}; 
   if(typeof objRev=='undefined') objRev={tMod:0}; 
   tMod=objRev.tMod;
 
@@ -3684,10 +3863,10 @@ setUp1=function(){
   uDelete1=uLibImageFolder+'delete1.png';
 
 
-  $imgHelp=$('<img>').prop({src:uHelpFile}).css({'vertical-align':'-0.4em'});
+  imgHelp=createElement('img').prop({src:uHelpFile}).css({'vertical-align':'-0.4em'});
 
   sizeIcon=1.5; strSizeIcon=sizeIcon+'em';
-  $imgProt=$('<img>').css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom','user-drag':'none'}); 
+  imgProt=createElement('img').css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable'); 
 
   zip.workerScriptsPath = flFoundOnTheInternetFolder+'/';
 
@@ -3702,7 +3881,7 @@ setUp1=function(){
   history.StateMy=[];
 
 
-  window.addEventListener('popstate', function(event) {
+  window.on('popstate', function(event) {
     var dir=history.state.ind-stateTrans.ind;
     if(Math.abs(dir)>1) alert('dir='+dir);
     var boSameHash=history.state.hash==stateTrans.hash;
@@ -3716,13 +3895,13 @@ setUp1=function(){
 
       var stateMy=history.StateMy[history.state.ind];
       if(typeof stateMy!='object' ) {var tmpStr=window.location.href +" Error: typeof stateMy: "+(typeof stateMy); if(!boEpiphany) alert(tmpStr); else  console.log(tmpStr); return; }
-      var $view=stateMy.$view;
-      $view.setVis();
-      if(typeof $view.getScroll=='function') {
-        var scrollT=$view.getScroll();
-        setTimeout(function(){$window.scrollTop(scrollT);},1);
+      var view=stateMy.view;
+      view.setVis();
+      if(typeof view.getScroll=='function') {
+        var scrollT=view.getScroll();
+        setTimeout(function(){window.scrollTop(scrollT);},1);
       } else {
-        //var scrollT=stateMy.scroll;  setTimeout(function(){  $window.scrollTop(scrollT);},1);
+        //var scrollT=stateMy.scroll;  setTimeout(function(){  window.scrollTop(scrollT);},1);
       }
 
 
@@ -3731,21 +3910,22 @@ setUp1=function(){
         if('fun' in stateMy && stateMy.fun) {var fun=stateMy.fun(stateMy); }
       }
 
-      stateTrans=$.extend({},tmpObj);
+      stateTrans=extend({},tmpObj);
     }else{
-      stateTrans=history.state; $.extend(stateTrans,{hash:randomHash()}); history.replaceState(stateTrans,'',uCanonical);
+      stateTrans=history.state; extend(stateTrans,{hash:randomHash()}); history.replaceState(stateTrans,'',uCanonical);
       history.go(sign(dir));
     }
   });
 
   
   if(boFF){
-    $(window).on('beforeunload', function(){   });
+    window.on('beforeunload', function(){   });
   } 
 
   if(!boTouch){
-    $(window).on('beforeunload',function(){
-      setItem('hEditText',$editText.height()); 
+    window.on('beforeunload',function(){
+      var h=editText.style.height.slice(0,-2);
+      setItem('hEditText',h); 
     })
   }
 
@@ -3760,120 +3940,120 @@ setUp1=function(){
   //versionC.sel=createChildInd(versionC.backSel);
   //versionC.vis=createChildInd(versionC.backVis);    var tmp=createColJIndexNamesObj(versionC.KeyCol); $.extend(versionC,tmp);
 
-  //$top=$('html');  str=$top[0].outerHTML;  alert(str);  
 
   strClickOutside='Click outside the textarea to get back the buttons';
 
-  $warningDiv=$('<div>').append("The page has unconfirmed changes. Use the buttons below to see older versions.").css({'background':'yellow','padding':'0.2em','text-align':'center','font-weight':'bold','font-size':'0.9em'}).hide();
-  $warningDivW=$('<div>').append($warningDiv);
+  warningDiv=createElement('div').myText("The page has unconfirmed changes. Use the buttons below to see older versions.").css({'background':'yellow','padding':'0.2em','text-align':'center','font-weight':'bold','font-size':'0.9em'}).hide();
+  warningDivW=createElement('div').myAppend(warningDiv);
   
-  //$viewDiv=$('<div>');
-  $pageText=$('#pageText').detach();
-  $pageText=pageTextExtend($pageText).css({'overflow-y': 'hidden'});   $pageText.modStuff();
-  $imgBusy=$('<img>').prop({src:uBusy});
-  $messageText=messExtend($("<span>"));  window.setMess=$messageText.setMess;  window.resetMess=$messageText.resetMess;   $body.append($messageText); 
-   
-  $busyLarge=$('<img>').prop({src:uBusyLarge}).css({position:'fixed',top:'50%',left:'50%','margin-top':'-42px','margin-left':'-42px','z-index':'1000',border:'black solid 1px'}).hide();
-  $body.append($busyLarge);
-  //$loginInfo=loginInfoExtend($('<div>')); $body.prepend($loginInfo);
+  //viewDiv=createElement('div');
+  pageText=document.querySelector('#pageText').detach();
+  pageText=pageTextExtend(pageText).css({'overflow-y': 'hidden'});   pageText.modStuff();
+  imgBusy=createElement('img').prop({src:uBusy});
+  //messageText=messExtend(createElement('span'));  window.setMess=messageText.setMess;  window.resetMess=messageText.resetMess;   elBody.append(messageText); 
+  spanMessageText=spanMessageTextCreate();  window.setMess=spanMessageText.setMess;  window.setMessHtml=spanMessageText.setMess;  window.resetMess=spanMessageText.resetMess;  window.appendMess=spanMessageText.appendMess;  elBody.append(spanMessageText)
+
+  busyLarge=createElement('img').prop({src:uBusyLarge}).css({position:'fixed',top:'50%',left:'50%','margin-top':'-42px','margin-left':'-42px','z-index':'1000',border:'black solid 1px'}).hide();
+  elBody.append(busyLarge);
+  //loginInfo=loginInfoExtend(createElement('div')); elBody.prepend(loginInfo);
   
   
-  //$commentButton=commentButtonExtend($('<a>')).css({'margin-left':'1em'});
-  $commentButton=commentButtonExtend($('<span>')).css({'margin-left':''});
+  //commentButton=commentButtonExtend(createElement('a')).css({'margin-left':'1em'});
+  commentButton=commentButtonExtend(createElement('span')).css({'margin-left':'','line-height':'2.5em'});
   boEditDivVis=getItemS('boEditDivVis');  if(boEditDivVis===null)  boEditDivVis=0;
-  $editButton=editButtonExtend($('<button>')).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).click(function(){
-    doHistPush({$view:$editDiv});
-    $editDiv.setVis();
+  editButton=editButtonExtend(createElement('button')).addClass('fixWidth', ).css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
+    doHistPush({view:editDiv});
+    editDiv.setVis();
   });
-  $spanMod=spanModExtend($('<span>')).css({'margin-right':'0.5em','font-family':'monospace'});
+  spanMod=spanModExtend(createElement('span')).css({'margin-right':'0.5em','font-family':'monospace'});
 
-  //$paymentButton=$('<button>').append('Pay/Donate');
-  //$versionButton=$('<button>').append('Versions');
+  //paymentButton=createElement('button').myText('Pay/Donate');
+  //versionButton=createElement('button').myText('Versions');
 
   
-  $commentButton.setUp(boTalkExist);
+  commentButton.setUp(boTalkExist);
 
-  $dragHR=dragHRExtend($('<hr>')); $dragHR.css({height:'0.3em',background:'grey',margin:0});
-  if(boTouch) $dragHR="";
-  //$divReCaptcha=divReCaptchaExtend($('<div>'));
-  //$divReCaptcha=$('<div>');
-  $editText=editTextExtend($('<textarea>'));
+  dragHR=dragHRExtend(createElement('hr')); dragHR.css({height:'0.3em',background:'grey',margin:0});
+  if(boTouch) dragHR="";
+  //divReCaptcha=divReCaptchaExtend(createElement('div'));
+  //divReCaptcha=createElement('div');
+  editText=editTextExtend(createElement('textarea'));
 
-  $pageView=pageViewExtend($('<div>')); 
-  $editDiv=editDivExtend($('<div>')).css({width:'100%'}); $editDiv.$spanLastMod.html(mySwedDate(tMod));
-  $templateList=templateListExtend($('<div>'));
+  pageView=pageViewExtend(createElement('div')); 
+  editDiv=editDivExtend(createElement('div')).css({width:'100%'}); //editDiv.spanLastMod.myText(mySwedDate(tMod));
+  templateList=templateListExtend(createElement('div'));
   
   
-  $divReCaptcha=divReCaptchaExtend($('<div>'));
-  $editDiv.$spanSave.prepend($divReCaptcha);
+  divReCaptcha=divReCaptchaExtend(createElement('div'));
+  editDiv.spanSave.prepend(divReCaptcha);
 
 
 
-  $adminDiv=adminDivExtend($('<div>')).css({width:'100%'});  
-  $adminDiv.setAdminStat();
+  adminDiv=adminDivExtend(createElement('div')).css({width:'100%'});  
+  adminDiv.setAdminStat();
 
-  $adminMoreDiv=adminMoreDivExtend($('<div>'));
-  $uploadUserDiv=uploadUserDivExtend($('<div>')); //$body.append($uploadUserDiv);
+  adminMoreDiv=adminMoreDivExtend(createElement('div'));
+  uploadUserDiv=uploadUserDivExtend(createElement('div')); //elBody.append(uploadUserDiv);
   
-  $menuPageSingle=menuPageSingleExtend($('<div>'));
-  $grandParentSelPop=grandParentSelPopExtend($('<div>'));
-  $divRowParent=new DivRowParentT();
-  $pageList=pageListExtend($('<div>'));
-  $imageList=imageListExtend($('<div>'));
-  $renamePop=renamePopExtend($('<div>'));
-  $areYouSurePop=areYouSurePopExtend($('<div>'));
+  menuPageSingle=menuPageSingleExtend(createElement('div'));
+  grandParentSelPop=grandParentSelPopExtend(createElement('div'));
+  divRowParent=new DivRowParentT();
+  pageList=pageListExtend(createElement('div'));
+  imageList=imageListExtend(createElement('div'));
+  renamePop=renamePopExtend(createElement('div'));
+  areYouSurePop=areYouSurePopExtend(createElement('div'));
 
 
-  $paymentDiv=paymentDivExtend($('<div>')); 
+  paymentDiv=paymentDivExtend(createElement('div')); 
 
       //filter colors
   colButtAllOn='#9f9', colButtOn='#0f0', colButtOff='#ddd', colFiltOn='#bfb', colFiltOff='#ddd', colFontOn='#000', colFontOff='#777', colActive='#65c1ff', colStapleOn='#f70', colStapleOff='#bbb';  
   maxStaple=20;
 
-  $.extend(Filt.tmpPrototype,MmmWikiFiltExtention);
-  $pageFilterDiv=PageFilterDiv(PropPage, langHtml.label, StrOrderFiltPage, function(){ $pageList.histReplace(-1); $pageList.loadTab();}); 
-  $imageFilterDiv=ImageFilterDiv(PropImage, langHtml.label, StrOrderFiltImage, function(){ $imageList.histReplace(-1); $imageList.loadTab();});  
+  extend(Filt.tmpPrototype,MmmWikiFiltExtention);
+  pageFilterDiv=PageFilterDiv(PropPage, langHtml.label, StrOrderFiltPage, function(){ pageList.histReplace(-1); pageList.loadTab();}); 
+  imageFilterDiv=ImageFilterDiv(PropImage, langHtml.label, StrOrderFiltImage, function(){ imageList.histReplace(-1); imageList.loadTab();});  
 
 
 
       // apply "plugin changes"
   var StrCompact=['boOR', 'boOW', 'boSiteMap', 'boTalk', 'boTemplate', 'boOther'];
-  var tmpRowButtf=function($span,val,boOn){   $span.html(Number(val)?'Yes':'No');   };
+  var tmpRowButtf=function(span,val,boOn){   span.myText(Number(val)?'Yes':'No');   };
   for(var i=0;i<StrCompact.length;i++) {
     var strName=StrCompact[i];
-    $.extend(PropPage[strName], {    setRowButtF:tmpRowButtf  });
+    extend(PropPage[strName], {    setRowButtF:tmpRowButtf  });
   }
-  $.extend(PropImage.boOther, {    setRowButtF:tmpRowButtf  });
+  extend(PropImage.boOther, {    setRowButtF:tmpRowButtf  });
 
-  $pageFilterDiv.createDivs();   
-  $imageFilterDiv.createDivs();   
+  pageFilterDiv.divCont.createDivs();   pageFilterDiv.Filt=pageFilterDiv.divCont.Filt;
+  imageFilterDiv.divCont.createDivs();  imageFilterDiv.Filt=imageFilterDiv.divCont.Filt; 
 
 
 
   
-  //$editorLoginDiv=loginDivExtend($('<div>'),'editor');
-  $vLoginDiv=vLoginDivExtend($('<div>'));
+  //editorLoginDiv=loginDivExtend(createElement('div'),'editor');
+  vLoginDiv=vLoginDivExtend(createElement('div'));
 
 
-  $versionTable=versionTableExtend($('<div>')).css({'margin-top':'2em','text-align':'center'});   $versionTable.setTable();  $pageView.setDetail();
-  $diffDiv=diffDivExtend($('<div>')).css({'text-align':'center'});
-  //$versionDiv=$('<div>').append($versionTable,$diffDiv).css({clear:'both'});
+  versionTable=versionTableExtend(createElement('div')).css({'margin-top':'2em','text-align':'center'});   versionTable.setTable();  pageView.setDetail();
+  diffDiv=diffDivExtend(createElement('div')).css({'text-align':'center'});
+  //versionDiv=createElement('div').append(versionTable,diffDiv).css({clear:'both'});
 
-  $slideShow=slideShowExtend($('<div>'));
+  slideShow=slideShowExtend(createElement('div'));
 
-  $redirectSetPop=redirectSetPopExtend($("<div>"));
-  $redirectDeletePop=redirectDeletePopExtend($('<div>'));
-  $redirectTab=redirectTabExtend($('<div>'));
-  $siteSetPop=siteSetPopExtend($("<div>"));
-  $siteDeletePop=siteDeletePopExtend($('<div>'));
-  $siteTab=siteTabExtend($('<div>'));
+  redirectSetPop=redirectSetPopExtend(createElement('div'));
+  redirectDeletePop=redirectDeletePopExtend(createElement('div'));
+  redirectTab=redirectTabExtend(createElement('div'));
+  siteSetPop=siteSetPopExtend(createElement('div'));
+  siteDeletePop=siteDeletePopExtend(createElement('div'));
+  siteTab=siteTabExtend(createElement('div'));
   
-  $diffBackUpDiv=$('<div>');
+  diffBackUpDiv=createElement('div');
   if(boIsGeneratorSupported) {
-    $diffBackUpDiv=diffBackUpDivExtend($('<div>'));
+    diffBackUpDiv=diffBackUpDivExtend(createElement('div'));
   }
-  $dumpDiv=dumpDivExtend($('<div>'));
-  $tabBUDiv=tabBUDivExtend($('<div>'));
+  dumpDiv=dumpDivExtend(createElement('div'));
+  tabBUDiv=tabBUDivExtend(createElement('div'));
 
  
 
@@ -3881,215 +4061,208 @@ setUp1=function(){
   StrMainDiv=['vLoginDiv', 'warningDivW', 'pageText', 'pageView', 'adminDiv', 'adminMoreDiv', 'pageList', 'imageList', 'editDiv', 'templateList', 'versionTable', 'diffDiv', 'paymentDiv', 'slideShow', 'pageFilterDiv', 'imageFilterDiv', 'uploadUserDiv', 'renamePop', 'grandParentSelPop', 'areYouSurePop', 'redirectTab', 'redirectSetPop', 'redirectDeletePop', 'siteTab', 'siteSetPop', 'siteDeletePop', 'diffBackUpDiv', 'dumpDiv', 'tabBUDiv'];  //, 'menuDiv'
 
 
-  MainDiv=[];  for(var i=0;i<StrMainDiv.length;i++){    var key=StrMainDiv[i], $el=window['$'+key];   MainDiv[i]=$el;  };
-  $MainDiv=$([]); $MainDiv.push.apply($MainDiv,MainDiv); 
+  MainDiv=[];  for(var i=0;i<StrMainDiv.length;i++){    var key=StrMainDiv[i]; MainDiv.push(window[key]);  };
+  history.StateMy[history.state.ind]={view:pageView};
+  MainDiv.forEach(ele=>ele.hide());
+  elBody.append(...MainDiv);
 
-  $MainDiv.hide();
 
-
-  history.StateMy[history.state.ind]={$view:$pageView};
-
-  $bodyHtmlSlide= $bodyNHtml.add($slideShow);
-  $mainDivsTogglable=$MainDiv;
   
-  $vLoginDiv.setVis=function(){
-    var $tmp=this;    $mainDivsTogglable.not($tmp).hide(); $tmp.show();  //if(!boTouch)
-    $tmp.$vPass.focus();
-    //$pageText.css({'margin-bottom':285+'px'});
+  vLoginDiv.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); this.show();
+    this.vPass.focus();
+    //pageText.css({'margin-bottom':285+'px'});
     //fillScreenF(false);
     return true;
   }
-  $pageView.setVis=function(){
-    var $tmp=this;    $tmp.push($warningDivW, $pageText);        $mainDivsTogglable.not($tmp).hide(); $tmp.show();  //if(!boTouch)
-    //$pageText.css({'margin-bottom':285+'px'});
+  pageView.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); [this, warningDivW, pageText].forEach(ele=>ele.show());
+    //pageText.css({'margin-bottom':285+'px'});
     //fillScreenF(false);
     return true;
   }
-  $adminDiv.setVis=function(){
-    var $tmp=this;    $tmp.push($pageText);        $mainDivsTogglable.not($tmp).hide(); $tmp.show();  //if(!boTouch)
-    $tmp.setUp();
-    $pageText.css({'margin-bottom':285+'px'});  
+  adminDiv.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); [this, pageText].forEach(ele=>ele.show());
+    this.setUp();
+    pageText.css({'margin-bottom':285+'px'});  
     //fillScreenF(false);
     return true;
   }
-  $adminMoreDiv.setVis=function(){
-    var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();
-    $tmp.setUp();
-    $tmp.$divCont.css({'margin-bottom':285+'px'});
+  adminMoreDiv.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); this.show();
+    this.setUp();
+    this.divCont.css({'margin-bottom':285+'px'});
     //fillScreenF(false);
-    $redirectTab.boStale=1; $siteTab.boStale=1;
+    redirectTab.boStale=1; siteTab.boStale=1;
     return true; 
   }
-  $pageList.setVis=function(){
-    var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();
-    $tmp.setCBStat(0); 
-    $tmp.$headW.prepend($divRowParent);
-    $tmp.$divCont.css({'margin-bottom':285+'px'});
+  pageList.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); this.show();
+    this.setCBStat(0); 
+    this.headW.prepend(divRowParent);
+    this.divCont.css({'margin-bottom':285+'px'});
     //fillScreenF(false);
     return true;
   }
-  $imageList.setVis=function(){
-    var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();
-    //$tmp.setCBStat(0);
-    $tmp.$headW.prepend($divRowParent);
-    $tmp.$divCont.css({'margin-bottom':285+'px'});
+  imageList.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); this.show();
+    //this.setCBStat(0);
+    this.headW.prepend(divRowParent);
+    this.divCont.css({'margin-bottom':285+'px'});
     //fillScreenF(false);
     return true;
   }
   
-  $editDiv.setVis=function(){
-    var $tmp=this;    $tmp.push($pageText);        $mainDivsTogglable.not($tmp).hide(); $tmp.show();   //if(!boTouch)
-    $pageText.css({'margin-bottom':285+'px'});
+  editDiv.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); [this, pageText].forEach(ele=>ele.show());
+    pageText.css({'margin-bottom':285+'px'});
     //fillScreenF(false);
-    $tmp.setUp();
+    this.setUp();
   }
-  $templateList.setVis=function(){
-    var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();
-    $pageText.css({'margin-bottom':285+'px'});
+  templateList.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); this.show();
+    pageText.css({'margin-bottom':285+'px'});
     //fillScreenF(false);
     return true;
   }
 
-  $versionTable.setVis=function(){
-    var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();
-    $tmp.$table.css({'margin-bottom':285+'px'});
+  versionTable.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); this.show();
+    this.table.css({'margin-bottom':285+'px'});
     //fillScreenF(false);
     return true;
   }
-  $diffDiv.setVis=function(){
-    var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();
-    $tmp.$divCont.css({'margin-bottom':285+'px'});
+  diffDiv.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); this.show();
+    this.divCont.css({'margin-bottom':285+'px'});
     //fillScreenF(false);
     return true;
   }
-  $paymentDiv.setVis=function(){
-    var $tmp=this;  $tmp.push($pageText);    $mainDivsTogglable.not($tmp).hide(); $tmp.show();
-    $pageText.css({'margin-bottom':285+'px'});
+  paymentDiv.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); [this, pageText].forEach(ele=>ele.show());
+    pageText.css({'margin-bottom':285+'px'});
     //fillScreenF(false);
   }
-  $slideShow.setVis=function(){
-    var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();
+  slideShow.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); this.show();
     //fillScreenF(true);
   } 
 /*
-  $menuDiv.setVis=function(){
-    var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();
+  menuDiv.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); this.show(); 
     //fillScreenF(false);
     return true;
   }
 */
-  $pageFilterDiv.setVis=function(){
-    var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();   return true;
+  pageFilterDiv.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); this.show();   return true;
   }
-  $imageFilterDiv.setVis=function(){
-    var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();   return true;
+  imageFilterDiv.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); this.show();  return true;
   }
-  $diffBackUpDiv.setVis=function(){
-    var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();   return true;
+  diffBackUpDiv.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); this.show();  return true;
   }
-  $dumpDiv.setVis=function(){
-    var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();   return true;
+  dumpDiv.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); this.show();   return true;
   }
-  $tabBUDiv.setVis=function(){
-    var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();   return true;
+  tabBUDiv.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); this.show();  return true;
   }
-  $redirectTab.setVis=function(){
-    var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();
-    $tmp.setUp();
+  redirectTab.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); this.show();
+    this.setUp();
     //fillScreenF(false);
     return true;
   }
-  $siteTab.setVis=function(){
-    var $tmp=this;  $mainDivsTogglable.not($tmp).hide(); $tmp.show();
-    $tmp.setUp();
+  siteTab.setVis=function(){
+    MainDiv.forEach(ele=>ele.hide()); this.show();
+    this.setUp();
     //fillScreenF(false);
-    $redirectTab.boStale=1;
+    redirectTab.boStale=1;
     return true;
   }
   //fillScreenF=function(boFill){    
-    //if(boIOS) $bodyHtmlSlide.toggleClass('fillScreen',boFill);
-    //$bodyNHtml.toggleClass('fillScreen',boFill);
+    //if(boIOS) bodyHtmlSlide.toggleClass('fillScreen',boFill);
+    //bodyNHtml.toggleClass('fillScreen',boFill);
   //}
   
   
-  var setScroll=function(x){ $pageText.intScroll=x;}
-  var getScroll=function(){ return $pageText.intScroll;}
-  $pageView.setScroll=$adminDiv.setScroll=$editDiv.setScroll=$paymentDiv.setScroll=setScroll;
-  $pageView.getScroll=$adminDiv.getScroll=$editDiv.getScroll=$paymentDiv.getScroll=getScroll;
+  var setScroll=function(x){ pageText.intScroll=x;}
+  var getScroll=function(){ return pageText.intScroll;}
+  pageView.setScroll=adminDiv.setScroll=editDiv.setScroll=paymentDiv.setScroll=setScroll;
+  pageView.getScroll=adminDiv.getScroll=editDiv.getScroll=paymentDiv.getScroll=getScroll;
   
 
-  $body.append($MainDiv);
+  editText.value=strEditText;  templateList.setUp(objTemplateE);  
   
 
-  $editText.val(strEditText);  $templateList.setUp(objTemplateE);  
+  editButton.setImg(objPage.boOW);
+  spanMod.setup(objPage);
+  pageView.setFixedDivColor(objPage.boOR);
   
-
-  $editButton.setImg(objPage.boOW);
-  $spanMod.setup(objPage);
-  $pageView.setFixedDivColor(objPage.boOR);
-  
-  $editDiv.$spanSave.toggle(Boolean(objPage.boOW));
+  editDiv.spanSave.toggle(Boolean(objPage.boOW));
 
   boMakeFirstScroll=1;
   
   
   if(objPage.boOR==0) { 
-    if(boVLoggedIn){  var vec=[['pageLoad',1]];   majax(oAJAXCacheable,vec); $pageView.setVis();  }   else $vLoginDiv.setVis();  
-  } else {   var vec=[['specSetup',1]];   majax(oAJAX,vec); $pageView.setVis(); } 
+    if(boVLoggedIn){  var vec=[['pageLoad',1]];   majax(oAJAXCacheable,vec); pageView.setVis();  }   else vLoginDiv.setVis();  
+  } else {   var vec=[['specSetup',1]];   majax(oAJAX,vec); pageView.setVis(); } 
   
   
-  var $fixedDivsCoveringPageText=$pageView.$fixedDiv.add($editDiv.$fixedDiv).add($adminDiv.$fixedDiv).add($paymentDiv.$fixedDiv);
+  var fixedDivsCoveringPageText=[pageView.fixedDiv, editDiv.fixedDiv, adminDiv.fixedDiv, paymentDiv.fixedDiv];
   setBottomMargin=function() { // This is not very beautiful. But how should one else make a fixed div at the bottom without hiding the bottom of the scrollable content behind??
-    if($pageText.is(':visible')){
-      var $tmp=$fixedDivsCoveringPageText.filter(":visible"); $pageText.css({'margin-bottom':$tmp.height()+'px'});
+    if(pageText.style.display!='none'){
+      //var tmp=fixedDivsCoveringPageText.map(ele=>ele.style.display!='none'); pageText.css({'margin-bottom':tmp[0].offsetHeight+'px'});
+      var hMax=0; for(var i=0;i<fixedDivsCoveringPageText.length;i++){var tmp=fixedDivsCoveringPageText[i], hTmp=tmp.offsetHeight; if(tmp.style.display!='none' && hTmp>hMax) hMax=hTmp;}
+      pageText.css({'margin-bottom':hMax+'px'});
     }
-    else if($versionTable.$table.is(':visible')){$versionTable.$table.css({'margin-bottom':$versionTable.$fixedDiv.height()+'px'});}
-    else if($diffDiv.$divCont.is(':visible')){$diffDiv.$divCont.css({'margin-bottom':$diffDiv.$fixedDiv.height()+'px'});}
-    else if($pageList.$divCont.is(':visible')){
-      $pageList.$divCont.css({'margin-bottom':$pageList.$fixedDiv.height()+'px'});
-      //$pageList.$divCont.css({'margin-top':$pageList.$fixedTop.height()+'px'});
+    else if(versionTable.style.display!='none'){versionTable.table.css({'margin-bottom':versionTable.fixedDiv.offsetHeight+'px'});}
+    else if(diffDiv.style.display!='none'){diffDiv.divCont.css({'margin-bottom':diffDiv.fixedDiv.offsetHeight+'px'});}
+    else if(pageList.style.display!='none'){
+      pageList.divCont.css({'margin-bottom':pageList.fixedDiv.offsetHeight+'px'});
+      //pageList.divCont.css({'margin-top':pageList.fixedTop.offsetHeight+'px'});
     }
-    else if($imageList.$divCont.is(':visible')){
-      $imageList.$divCont.css({'margin-bottom':$imageList.$fixedDiv.height()+'px'});
-      //$imageList.$divCont.css({'margin-top':$imageList.$fixedTop.height()+'px'});
+    else if(imageList.style.display!='none'){
+      imageList.divCont.css({'margin-bottom':imageList.fixedDiv.offsetHeight+'px'});
+      //imageList.divCont.css({'margin-top':imageList.fixedTop.offsetHeight+'px'});
     }
-    else if($redirectTab.$divCont.is(':visible')){$redirectTab.$divCont.css({'margin-bottom':$redirectTab.$fixedDiv.height()+'px'});}
-    else if($siteTab.$divCont.is(':visible')){$siteTab.$divCont.css({'margin-bottom':$siteTab.$fixedDiv.height()+'px'});}
-    //else if($menuDiv.$divCont.is(':visible')){$menuDiv.$divCont.css({'margin-bottom':$menuDiv.$fixedDiv.height()+'px'});}
-    else if($pageFilterDiv.$divCont.is(':visible')){$pageFilterDiv.$divCont.css({'margin-bottom':$pageFilterDiv.$fixedDiv.height()+'px'});}
-    else if($imageFilterDiv.$divCont.is(':visible')){$imageFilterDiv.$divCont.css({'margin-bottom':$imageFilterDiv.$fixedDiv.height()+'px'});}
-    else if($adminMoreDiv.$divCont.is(':visible')){$adminMoreDiv.$divCont.css({'margin-bottom':$adminMoreDiv.$fixedDiv.height()+'px'});}
+    else if(redirectTab.style.display!='none'){redirectTab.divCont.css({'margin-bottom':redirectTab.fixedDiv.offsetHeight+'px'});}
+    else if(siteTab.style.display!='none'){siteTab.divCont.css({'margin-bottom':siteTab.fixedDiv.offsetHeight+'px'});}
+    //else if(menuDiv.divCont.style.display!='none'){menuDiv.divCont.css({'margin-bottom':menuDiv.fixedDiv.offsetHeight+'px'});}
+    else if(pageFilterDiv.style.display!='none'){pageFilterDiv.divCont.css({'margin-bottom':pageFilterDiv.fixedDiv.offsetHeight+'px'});}
+    else if(imageFilterDiv.style.display!='none'){imageFilterDiv.divCont.css({'margin-bottom':imageFilterDiv.fixedDiv.offsetHeight+'px'});}
+    else if(adminMoreDiv.style.display!='none'){adminMoreDiv.divCont.css({'margin-bottom':adminMoreDiv.fixedDiv.offsetHeight+'px'});}
   }
-  if(boFF) window.addEventListener("DOMMouseScroll", setBottomMargin, false); else   $(window).bind('mousewheel', setBottomMargin);
-  $(window).scroll(setBottomMargin);
-  $body.click(setBottomMargin);
+  if(boFF) window.on("DOMMouseScroll", setBottomMargin, false); else   window.on('mousewheel', setBottomMargin);
+  if(boTouch) elBody.on('touchstart',setBottomMargin); else { elBody.on('click',setBottomMargin);  window.scroll(setBottomMargin); }
 
+ 
 
-  $(window).scroll(function(){ 
+  window.scroll(function(){ 
     var stateMy=history.StateMy[history.state.ind];
-    var $view=stateMy.$view;
-    var scrollT=$window.scrollTop(); 
+    var view=stateMy.view;
+    var scrollT=window.scrollTop(); 
     if('boFirstScroll' in history && history.boFirstScroll){
     //if(false){
       history.boFirstScroll=false;
-      if(typeof $view.getScroll=='function') {
-        var scrollT=$view.getScroll();
+      if(typeof view.getScroll=='function') {
+        var scrollT=view.getScroll();
         setTimeout(function(){
-          $window.scrollTop(scrollT);},1);
+          window.scrollTop(scrollT);},1);
       } else {
-        //var scrollT=stateMy.scroll;  setTimeout(function(){  $window.scrollTop(scrollT);},1);
+        //var scrollT=stateMy.scroll;  setTimeout(function(){  window.scrollTop(scrollT);},1);
       }      
     } else {
-      if(typeof $view.setScroll=='function') $view.setScroll(scrollT); else stateMy.scroll=scrollT;  //$view.intScroll=scrollT;
+      if(typeof view.setScroll=='function') view.setScroll(scrollT); else stateMy.scroll=scrollT;  //view.intScroll=scrollT;
     }    
   });
-
 }
 
 
 
-//window.onload=function(){  setUp1(); };
-$(function(){  setUp1(); });
+window.onload=function(){  setUp1(); };
 
 })();
 

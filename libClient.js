@@ -1,43 +1,14 @@
 
 
-
 //
 // Storage, DOM etc
 //
-/*
-if(typeof(sessionStorage) == 'undefined'){
-    sessionStorage = {
-        getItem: function(){return null;},
-        setItem: function(){}
-    };
-}
-if(typeof(localStorage) == 'undefined'){
-    localStorage = {
-        getItem: function(){return null;},
-        setItem: function(){}
-    };
-}*/
+
 getItem=function(name){    var tmp=localStorage.getItem(name);   if(tmp!==null) tmp=JSON.parse(tmp);  return tmp;   }
 setItem=function(name,value){  if(typeof value=='undefined') value=null; localStorage[name]=JSON.stringify(value); }
 getItemS=function(name){    var tmp=sessionStorage.getItem(name);    if(tmp!==null) tmp=JSON.parse(tmp);   return tmp;   }
 setItemS=function(name,value){  sessionStorage[name]=JSON.stringify(value); }
 
-
-uVipp0="lib/image/vipp0.png";
-uVipp1="lib/image/vipp1.png";
-var vippButtonExtend=function($el){
-"use strict"
-  $el.setStat=function(bo1){
-    if(!bo1) {$el.css(o0);} else {$el.css(o1);} 
-    $el.attr({boOn:bo1});
-  }
-  var o0={background:'url('+uVipp0+') no-repeat'}, o1={background:'url('+uVipp1+') no-repeat'};
-    
-  $el.attr({boOn:0});
-  $el.css({'background':'url('+uVipp0+') no-repeat',height:'54px',width:'102px',zoom:'60%','vertical-align':'-0.5em',cursor:'pointer',display:'inline-block'}).addClass('unselectable');
-  $el.on('click',function(){var t=1-$el.attr('boOn');   $el.setStat(t);});
-  return $el;
-}
 
 httpGetAsync=function(theUrl, callback){
   var xmlHttp = new XMLHttpRequest();
@@ -103,95 +74,7 @@ isGeneratorSupported = function(){
     }
 }
 
-//
-// JQuery extentions
-//
 
-// $.fn.push = function(selector) {    Array.prototype.push.apply(this, $.makeArray($(selector)));   return this;   };
-$.fn.pushOne = function(selector){
-    Array.prototype.push.apply(this, $.makeArray($(selector)));
-    return this;
-};
-$.fn.push = function(){
-  for(var i=0; i<arguments.length; i++){
-    this.pushOne(arguments[i]);
-  }
-  return this;
-}
-$.fn.visible = function() {    return this.css('visibility', 'visible');  };
-$.fn.invisible = function() {    return this.css('visibility', 'hidden');  };
-$.fn.visibilityToggle = function() {
-    if(arguments.length) return this.css('visibility', arguments[0]?'visible':'hidden');
-    return this.css('visibility', function(i, visibility) {
-        return (visibility == 'visible') ? 'hidden' : 'visible';
-    });
-};
-$.fn.sortElements = (function(){
- 
-    var funcSort = [].sort;
-    //var funcSort=merge_sort;
-    var funcSort = [].msort;
- 
-    return function(comparator, getSortable){
- 
-        getSortable = getSortable || function(){return this;};
- 
-        var placements = this.map(function(){   // A vector of functions, each function asumes that its 'this' will be the moved object, which will then be moved to the corresponding 'flagNode'
- 
-            var sortElement = getSortable.call(this),
-                parentNode = sortElement.parentNode,
- 
-                // Since the element itself will change position, we have
-                // to have some way of storing it's original position in
-                // the DOM. The easiest way is to have a 'flag' node:
-                flagNode = parentNode.insertBefore(
-                    document.createTextNode(''),
-                    sortElement.nextSibling
-                );
- 
-            return function(){
- 
-                if (parentNode === this){
-                    throw new Error(
-                        "You can't sort elements if any one is a descendant of another."
-                    );
-                }
- 
-                // Insert before flag:
-                parentNode.insertBefore(this, flagNode);
-                // Remove flag:
-                parentNode.removeChild(flagNode);
- 
-            };
- 
-        });
- 
-
-        //var tmp=funcSort.call(this, comparator); 
-        //var tmp=this.msort(comparator); 
-        var tmp=msort.call(this,comparator); 
-
-        //var tmp=merge_sort(this, comparator); 
-        return tmp.forEach(function(v,i){
-            placements[i].call(getSortable.call(v));
-        });
-        /*return this.each(function(i){
-            placements[i].call(getSortable.call(this));
-        });*/
-        //return funcSort.call(this, comparator).each(function(i){
-        //    placements[i].call(getSortable.call(this));
-        //});
- 
-    };
- 
-})();
-
-
-
-// Add stable merge sort to Array and jQuery prototypes
-
-  // expose to Array and jQuery
-//Array.prototype.msort = $.fn.msort = msort;
 
 msort=function(compare){
 "use strict"
@@ -219,7 +102,7 @@ merge=function(left, right, compare){
   return result;
 }
 
-  
+
 var extend=function(out) {
   out=out||{};
   for(var i=1; i<arguments.length; i++) {
@@ -229,8 +112,33 @@ var extend=function(out) {
   return out;
 };
 
+var deepExtend=function(oA, oB) {
+    // Handle the 3 simple types, and null or undefined
+  if(oB==null || typeof oB != "object" ) return oB;
+  
+    // Handle Date
+  if(oB instanceof Date){  oA = new Date(); oA.setTime(oB.getTime()); return oA;  }
+
+    // Handle Array
+  if(oB instanceof Array) {
+    if(typeof oA=='undefined') oA=[];
+    for(var i=0; i<oB.length; i++) oA[i]=deepExtend(oA[i],oB[i]);
+    return oA;
+  }
+    // Handle Object
+  if(oB instanceof Object) {
+    if(typeof oA=='undefined') oA={};
+    for(var key in oB) {
+      if(oB.hasOwnProperty(key)) oA[key] = deepExtend(oA[key],oB[key]);
+    }
+    return oA;
+  }
+ 
+  throw new Error("Unable to copy oB! Its type isn't supported.");
+};
+
 /*******************************************************************************************************************
- * DOM handling (non-jQuery)
+ * DOM handling
  *******************************************************************************************************************/
 
 var findPos=function(el) {
@@ -247,59 +155,152 @@ var findPos=function(el) {
   //return { left: curleft, top: curtop };
 //}
 
+
 var removeChildren=function(myNode){
   while (myNode.firstChild) {
       myNode.removeChild(myNode.firstChild);
   }
 }
-var jQueryObjToFragment=function($items){
-"use strict"
-  var fragment = createFragment();
-  for(var i=0; i<$items.length; i++){ fragment.append($items[i]); }
-  return fragment;
-}
 
 var scrollTop=function(){ return window.pageYOffset || (document.documentElement || document.body.parentNode || document.body).scrollTop; }
 var scrollLeft=function(){ return window.pageXOffset || (document.documentElement || document.body.parentNode || document.body).scrollLeft; }
 
-EventTarget.prototype.on=EventTarget.prototype.addEventListener;
-EventTarget.prototype.off=EventTarget.prototype.removeEventListener;
+EventTarget.prototype.on=function(){ this.addEventListener.apply(this, [...arguments]); return this; }
+EventTarget.prototype.off=function(){ this.removeEventListener.apply(this, [...arguments]); return this; }
 if(!Node.prototype.append) Node.prototype.append=Node.prototype.appendChild;
 if(!Node.prototype.prepend) Node.prototype.prepend=function(el){ this.insertBefore(el, this.firstChild);  }
-
-Node.prototype.appendChildren=function() {
-  for(var i=0; i<arguments.length; i++)
-    this.append(arguments[i]);
+Node.prototype.myAppend=function(){ this.append.apply(this, [...arguments]); return this; }
+Node.prototype.myAppendB=function(){
+  var arg=[...arguments], elTmp=null, argB=[];
+  arg.forEach(ele=>{
+    if(typeof ele=='string') {
+      if(!elTmp) elTmp=createElement('div');
+      elTmp.innerHTML=ele; argB.push(...elTmp.childNodes);
+    } else argB.push(ele);
+  }); 
+  this.append.call(this, ...argB); return this;
+}
+Node.prototype.myBefore=function(elN){
+  this.parentNode.insertBefore(elN,this); return this;
+}
+Node.prototype.empty = function() {
+  while (this.lastChild) {
+    this.lastChild.remove();
+  }
   return this;
 }
-Node.prototype.css=function(styles, boChildren=false){
-  if(this instanceof DocumentFragment) boChildren=true;
-  if(!boChildren) Object.assign(this.style, styles);
-  else 
-    this.childNodes.forEach(function(elA){ Object.assign(elA.style, styles);  });
+Element.prototype.insertChildAtIndex=function(child, index){
+  if(!index) index=0;
+  if(index >= this.children.length){
+    this.appendChild(child);
+  }else{
+    this.insertBefore(child, this.children[index]);
+  }
+}
+Element.prototype.attr=function(attr, value) {
+  if(!attr) return;
+  if(typeof attr=='string') {
+    if(arguments.length<2) return this.getAttribute(attr);
+    this.setAttribute(attr, value); return this;
+  }
+  for(var key in attr) { this.setAttribute(key, attr[key]);}
+  return this;
+}
+Element.prototype.prop=function(prop, value) {
+  if(!prop) return;
+  if(typeof prop=='string') {
+    if(arguments.length<2) return this[prop];
+    this[prop]=value; return this;
+  }
+  for(var key in prop) { this[key]=prop[key];}
+  return this;
+}
+Element.prototype.css=function(style, value) {
+  if(!style) return;
+  if(typeof style=='string') {
+    if(arguments.length<2) return this.style[style];
+    this.style[style]=value; return this;
+  }
+  for(var key in style) { this.style[key]=style[key];}
+  return this;
+}
+Element.prototype.addClass=function() {this.classList.add(...arguments);return this;}
+Element.prototype.removeClass=function() {this.classList.remove(...arguments);return this;}
+Element.prototype.toggleClass=function() {this.classList.toggle(...arguments);return this;}
+Element.prototype.hasClass=function() {return this.classList.contains(...arguments);}
+Node.prototype.cssChildren=function(styles){  this.childNodes.forEach(function(elA){ Object.assign(elA.style, styles);  }); return this;  }
+Node.prototype.myText=function(str){
+  if(typeof str=='undefined') { return this.textContent; }
+  if(typeof str!='string') { if(str===null) str=' '; str=str.toString(); }
+  if(this.childNodes.length==1 && this.firstChild.nodeName=="#text" ) { this.firstChild.nodeValue=str||' ';  return this;} // Being a bit GC-friendly
+  this.textContent=str||' '; return this;
+}
+Node.prototype.myHtml=function(str=' '){
+  if(typeof str!='string') { if(str===null) str=' '; str=str.toString(); }
+  this.innerHTML=str||' '; return this;
+}
+Node.prototype.hide=function(){
+  if(this.style.display=='none') return this;
+  this.displayLast=this.style.display;
+  this.style.display='none';
+  return this;
+}
+Node.prototype.show=function(){
+  if(this.style.display!='none') return this;
+  if(typeof this.displayLast!='undefined') var tmp=this.displayLast; else var tmp='';
+  this.style.display=tmp;
+  return this;
+}
+Node.prototype.toggle=function(b){
+  if(typeof b=='undefined') b=this.style.display=='none'?1:0;
+  if(b==0) this.hide(); else this.show();
+  return this;
+}
+NodeList.prototype.toggle=function(b){
+  if(typeof b=='undefined') {if(this.length) b=this[0].style.display=='none'?1:0; else return this;}
+  this.forEach(function(ele){ ele.toggle(b); });
   return this;
 }
 createTextNode=function(str){ return document.createTextNode(str); }
 createElement=function(str){ return document.createElement(str); }
-createFragment=function(str){ return document.createDocumentFragment(); }
+createFragment=function(){ fr=document.createDocumentFragment(); if(arguments.length) fr.append(...arguments); return fr; }
+
+getNodeIndex=function( elm ){ return [...elm.parentNode.childNodes].indexOf(elm); }
+Element.prototype.myIndex=function() {return [...this.parentNode.childNodes].indexOf(this);}
+
+Element.prototype.offset=function() {
+  var rect = this.getBoundingClientRect();
+  return { top: rect.top + document.body.scrollTop,  left: rect.left + document.body.scrollLeft  };
+}
+
+Element.prototype.visible = function() {    this.style.visibility='';  return this;};
+Element.prototype.invisible = function() {    this.style.visibility='hidden'; return this; };
+Element.prototype.visibilityToggle=function(b){
+  if(typeof b=='undefined') b=this.style.visibility=='hidden'?1:0;
+  this.style.visibility= b?'':'hidden';
+  return this;
+};
+
+Node.prototype.detach=function(){ this.remove(); return this; }
 
 isVisible=function(el) {
-    return !!( el.offsetWidth || el.offsetHeight || el.getClientRects().length );
+  return !!( el.offsetWidth || el.offsetHeight || el.getClientRects().length );
 }
+
+
+
 
 
 /*******************************************************************************************************************
  * popupHover: popup a elBubble when you hover over elArea
  *******************************************************************************************************************/
-function popupHover(elArea,elBubble){
+popupHover=function(elArea,elBubble){
   elBubble.css({position:'absolute', 'box-sizing':'border-box', margin:'0px'}); //
   function setBubblePos(e){
     var xClear=6, yClear=6;
     var x = e.pageX, y = e.pageY;
 
     var borderMarg=10;
-    //var $win = $(window), $doc=$(document);
-    //var winW=$win.width(),winH=$win.height(),   bubW=$(elBubble).width(),bubH=$(elBubble).height(),   scrollX=$doc.scrollLeft(),scrollY=$doc.scrollTop();
     var winW=window.innerWidth,winH=window.innerHeight,   bubW=elBubble.clientWidth,bubH=elBubble.clientHeight,   scrollX=scrollLeft(),scrollY=scrollTop();
 
 
@@ -336,60 +337,51 @@ function popupHover(elArea,elBubble){
   var closeFunc=function(){ 
     if(boTouch){ 
       elBubble.remove(); 
-      if(boIOS) elBlanket.remove();
+      if(boIOSTmp) elBlanket.remove();
     } 
     else { elBubble.remove();  }
   }
-  var elBlanket;
-  if(boIOS){
-    //$blanket=$('<div>').css({'background':'#555',opacity:0,'z-index': 9001,top:'0px',left:'0px',width:'100%',position:'fixed',height:'100%'}).click(closeFunc);
+  var elBlanket, timer, boIOSTmp=boTouch;
+  if(boIOSTmp){
     elBlanket=createElement('div').css({'background':'#555',opacity:0,'z-index': 9001,top:'0px',left:'0px',width:'100%',position:'fixed',height:'100%'});
     elBlanket.on('click', closeFunc);
   }
   if(boTouch){
-    elArea.on('click', function(e){ e.stopPropagation();  elBody.append(elBubble); setBubblePos(e); setTimeout(closeFunc, 4000); if(boIOS) elBody.append(elBlanket);  });
-    elBubble.on('click', function(e){ closeFunc(); });
-    elHtml.on('click', function(e){ closeFunc(); });
+    elArea.on('click', function(e){
+      e.stopPropagation();
+      if(elBubble.parentNode) closeFunc();
+      else {
+        elBody.append(elBubble); setBubblePos(e);
+        clearTimeout(timer); timer=setTimeout(closeFunc, 4000);
+        if(boIOSTmp) elBody.append(elBlanket);
+      }
+    });
+    elBubble.on('click', closeFunc);
+    elHtml.on('click', closeFunc);
     
   }else{
     elArea.on('mousemove', setBubblePos);  
     elArea.on('mouseenter', function(e){elBody.append(elBubble);});
-    elArea.on('mouseleave', function(){elBubble.remove();});
+    elArea.on('mouseleave', closeFunc);
   }
   elBubble.classList.add('popupHover'); 
 }
 
-  // Wrappers of popupHover
-function popupHoverM(elArea,elBubble){
-  elBubble.css({'z-index':9005,'text-align':'left',padding:'0.4em'}); 
-  popupHover(elArea,elBubble);    
-  return elArea;
-}
-function popupHoverJQ($area,$bubble){
-  $bubble.css({'z-index':9005,'text-align':'left',padding:'0.4em'});  
-  popupHover($area[0],$bubble[0]);    
-  return $area;
-}
 
-//document.onmousemove = function(e){
-//var x = e.pageX;
-//var y = e.pageY;
-//e.target.title = "X is "+x+" and Y is "+y;
-//};
 
 /*******************************************************************************************************************
  * menuExtend (Display a menu under (or above) a button (when button is clicked))       (mousedown, drag, mouseup-on-option)
  *******************************************************************************************************************/
-var menuExtend=function(el, elItems){
 "use strict"
+var menuExtend=function(el, ElItem=[]){
   //  var objEdgeDist=$menu[0].getBoundingClientRect();
-  el.openFunc=function(e,elButton,elItemsT){ 
+  el.openFunc=function(e,elButton,ElItemT){ 
     e.stopPropagation();
     if(el.parentNode) { el.closeFunc();  return; }
     if(e.which==3) return;
 
-    if(typeof elItemsT!='undefined') {
-      elItems=elItemsT;  removeChildren(el);   el.append(elItems);
+    if(typeof ElItemT!='undefined') {
+      ElItem=ElItemT;  el.empty();   el.append(...ElItem);
     }
     //elItems.classList.add('menuItem');
     el.childNodes.forEach(function(elA){ elA.classList.add('menuItem');});
@@ -433,10 +425,12 @@ var menuExtend=function(el, elItems){
     }
     el.css(cssEl);
   }
-  if(typeof elItems=='undefined') {elItems=createFragment();}  
+  if(typeof ElItem=='undefined') {ElItem=[];}  
   else { 
-    el.append(elItems);
-    elItems.childNodes.forEach(function(){this.classList.add('menuItem');});
+    el.append(...ElItem);
+    //elItems.childNodes.forEach(function(){this.classList.add('menuItem');});
+    ElItem.forEach(ele=>ele.classList.add('menuItem'));
+    
   }
   
   el.closeFunc=function() {  
@@ -614,18 +608,24 @@ function popupDragExtend(elBubble,strTitle,elParent){
   elDeleteButton.css({flex:'0 0 '+floatSize+'em', cursor:'pointer', background:'red'}); 
 
   var elDragBarA=createElement('div'), elDragBarB=createElement('div'), elDragBarC=createElement('div');
-  var fragDragBar=createFragment();
-  fragDragBar.appendChildren(elDragBarA, elDragBarB, elDragBarC);
-  fragDragBar.css({ background:'darkgrey', flex:'1 1 33%'});
-  fragDragBar.append(elDeleteButton);
-  fragDragBar.css({ height:'100%', 'box-sizing':'border-box', 'text-align':'center'});
-  if(boIOS) {  fragDragBar.css({width:'25%', 'box-sizing':'border-box', display:'inline-block', 'vertical-align':'top'});  }
+  
+  var arrDragBar=[elDragBarA, elDragBarB, elDragBarC]; arrDragBar.forEach(ele=>ele.css({ background:'darkgrey', flex:'1 1 33%'}));
+  arrDragBar.push(elDeleteButton); arrDragBar.forEach(ele=>ele.css({ height:'100%', 'box-sizing':'border-box', 'text-align':'center'})); 
+  if(boIOS) {  arrDragBar.forEach(ele=>ele.css({width:'25%', 'box-sizing':'border-box', display:'inline-block', 'vertical-align':'top'}));  }
+  
+  //var fragDragBar=createFragment();
+  //fragDragBar.append(elDragBarA, elDragBarB, elDragBarC);
+  //fragDragBar.css({ background:'darkgrey', flex:'1 1 33%'});
+  //fragDragBar.append(elDeleteButton);
+  //fragDragBar.css({ height:'100%', 'box-sizing':'border-box', 'text-align':'center'});
+  //if(boIOS) {  fragDragBar.css({width:'25%', 'box-sizing':'border-box', display:'inline-block', 'vertical-align':'top'});  }
+  
   elDragBarB.css({background:'grey'});
 
   var elTitle=createElement('div').css({color:'white', position:'absolute', top:'0px', 'text-align':'center', width:'100%', 'white-space':'nowrap'});
   elTitle.append(createTextNode(strTitle));
   var elBar=createElement('div').css({height:floatSize+'em',position:'relative',display:'flex'});
-  elBar.appendChildren(elDragBarA, elDragBarB, elDeleteButton, elDragBarC, elTitle);
+  elBar.append(elDragBarA, elDragBarB, elDeleteButton, elDragBarC, elTitle);
   elBubble.prepend(elBar);
  
   elDragBarA.on(strEventStart,mouseDownNW); elDragBarA.css({cursor:'nw-resize'});

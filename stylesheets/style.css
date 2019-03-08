@@ -176,7 +176,7 @@ pre {
 }
 
 
-body {	font-family:verdana, arial, helvetica;font-size:100%}
+body {	font-family:verdana, arial, helvetica;font-size:100%; overscroll-behavior: contain;}
 
 body { -webkit-text-size-adjust: 100%; }
 
@@ -280,7 +280,7 @@ button.fixWidth{} /*width:2em*/
 
   /* parentRow, pageHead and pageList */
 .pageList span[name=nChild], .pageList span[name=nImage] { min-width:1.5em; float: right;}
-.pageList span[name=boOR], .pageList span[name=boOW], .pageList span[name=boSiteMap] { margin-left:0.3em; width:.7em;font-family:courier}
+.pageList span[name=boOR], .pageList span[name=boOW], .pageList span[name=boSiteMap] { width:.7em;font-family:courier}
 .pageList span[name=siteName] { margin-right:0.5em}
 
 .pageList span[name=nChild] > button, .pageList span[name=nImage] > button { padding:0; min-width:1.4em}
@@ -397,3 +397,26 @@ button.fixWidth{} /*width:2em*/
     -o-user-select: none;
     user-select: none; /* CSS3 */
 }
+
+*.undraggable {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+.boardTransition {transition-property: left; transition-duration: 1s;}
+
+span.message{
+  border:black 1px solid;
+  position:fixed;
+  /*_position:absolute;*/
+  bottom:0%;
+  /*_top:expression(eval(document.body.scrollTop+0.975*document.body.clientHeight));*/
+  /*_bottom:expression(eval(document.body.scrollBottom+0.975*document.body.clientHeight));*/
+  right:0%;
+  margin:0;
+  padding:1px;
+  /*#background:lightgray;*/
+  background-color:#F7F700;
+  font-size: 0.8em;
+  z-index: 10000;
+ }

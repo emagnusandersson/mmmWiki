@@ -81,7 +81,7 @@ parse=function*(flow, arg) {
   var len=StrTemplate.length, objTemplate={};   
   if(len) {
     var strQ=array_fill(len,'?').join(', ');
-    var sql="SELECT pageName, data FROM "+pageLastView+" p JOIN "+fileTab+" f WHERE f.idFile=p.idFile AND "+sqlSiteQuery+" AND pageName IN ("+strQ+")";
+    var sql="SELECT pageName, data FROM "+pageLastSiteView+" p JOIN "+fileTab+" f WHERE f.idFile=p.idFile AND "+sqlSiteQuery+" AND pageName IN ("+strQ+")";
     var Val=[siteArg].concat(StrTemplate);
     var [err, results]=yield* arg.myMySql.query(flow, sql, Val);  if(err) return [err, []]; 
      
@@ -99,7 +99,7 @@ parse=function*(flow, arg) {
   var len=StrSub.length, objExistingSub={};
   if(len) {
     var strQ=array_fill(len,'?').join(', ');
-    var sql="SELECT pageName FROM "+pageLastView+" WHERE pageName IN ("+strQ+") AND "+sqlSiteQuery+"";
+    var sql="SELECT pageName FROM "+pageLastSiteView+" WHERE pageName IN ("+strQ+") AND "+sqlSiteQuery+"";
     var Val=StrSub.concat(siteArg);
     var [err, results]=yield* arg.myMySql.query(flow, sql, Val);  if(err) return [err, []]; 
     

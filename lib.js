@@ -47,6 +47,12 @@ ucfirst=function(string){  return string.charAt(0).toUpperCase() + string.slice(
 isAlpha=function(star){  var regEx = /^[a-zA-Z0-9]+$/;  return str.match(regEx); } 
 String.prototype.trim = function() { return this.replace(/^\s+|\s+$/g,"");}
 
+
+trim=function(str,charlist){
+  if (charlist === undefined) charlist = "\\s";
+  return str.replace(new RegExp("^[" + charlist + "]+([^" + charlist + "]*)[" + charlist + "]+$"), function(m,n){return n;});
+}
+
 arrArrange=function(arrV,arrI){
   var arrNew=[]; if(typeof arrV=='String') arrNew='';
   //for(var i=0;i<arrI.length;i++){    arrNew.push(arrV[arrI[i]]);    }
@@ -94,6 +100,10 @@ endsWith=function(str,end){return str.substr(-end.length)==end;}
 
 arr_max=function(arr){return Math.max.apply(null, arr);}
 arr_min=function(arr){return Math.min.apply(null, arr);}
+
+AMinusB=function(A,B){var ANew=[]; for(var i=0;i<A.length;i++){var a=A[i]; if(B.indexOf(a)==-1) ANew.push(a);} return ANew;}  // Does not change A, returns ANew
+isAWithinB=function(A,B){ for(var i=0; i<A.length; i++){if(B.indexOf(A[i])==-1) return false;} return true;}  
+
 
 array_flip=function(A){ var B={}; for(var i=0;i<A.length;i++){B[A[i]]=i;} return B;}
 array_fill=function(n, val){ return Array.apply(null, new Array(n)).map(String.prototype.valueOf,val); }
@@ -156,6 +166,8 @@ isEmpty=function(obj) {    return Object.keys(obj).length === 0;  }
 
 Date.prototype.toUnix=function(){return Math.round(this.valueOf()/1000);}
 Date.prototype.toISOStringMy=function(){return this.toISOString().substr(0,19);}
+Date.prototype.toISODateMy=function(){return this.toISOString().substr(0,10);}
+Date.prototype.toISOTimeOfDayMy=function(){return this.toISOString().substr(11,8);}
 arrMonths=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 arrDay=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 arrDay=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -183,6 +195,10 @@ mySwedDate=function(tmp){
 swedDate=function(tmp, sep=''){ if(tmp){tmp=UTC2JS(tmp);  tmp=tmp.getFullYear()+sep+pad2(tmp.getMonth()+1)+sep+pad2(tmp.getDate());}  return tmp;}
 swedTime=function(tmp){ if(tmp){tmp=UTC2JS(tmp);  tmp=tmp.getFullYear()+'-'+pad2(tmp.getMonth()+1)+'-'+pad2(tmp.getDate())+' '+pad2(tmp.getHours())+':'+pad2(tmp.getMinutes());}  return tmp;}
 UTC2JS=function(utcTime){ var tmp=new Date(Number(utcTime)*1000);  return tmp;  }
+UTC2TimeOrDate=function(utcTime){ 
+  var tDate=new Date(Number(utcTime)*1000), tNow=new Date(), tDiff=(tNow-tDate)/1000;
+  if(Math.abs(tDiff)<24*3600) return tDate.toISOTimeOfDayMy(); else return tDate.toISODateMy();
+}
 UTC2Readable=function(utcTime){ var tmp=new Date(Number(utcTime)*1000);   return tmp.toLocaleString();  }
 //myISODATE=function(d){ return d.toISOString().substr(0,19);}
 //unixNowMS=function(){var tmp=new Date(); return Number(tmp);}

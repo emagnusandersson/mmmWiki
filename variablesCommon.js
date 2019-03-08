@@ -54,6 +54,7 @@ boSiteMap:           {b:'01',feat:{kind:'BN',span:1}},
 boTalk:              {b:'01',feat:{kind:'BN',span:1}},
 boTemplate:          {b:'01',feat:{kind:'BN',span:1}},
 boOther:             {b:'01',feat:{kind:'BN',span:1}},
+tCreated:            {b:'11',feat:tFeat},
 tMod:                {b:'11',feat:tFeat},
 tModCache:           {b:'11',feat:tFeat}
 };
@@ -67,17 +68,19 @@ idFile:              {b:'00'},
 nChild:              {b:'00'},
 nImage:              {b:'00'},
 nParent:             {b:'00'},
-nameParent:          {b:'00'},
 www:                 {b:'00'}});
 
 
-PropPage.tMod.cond0F=function(name, val){  return "UNIX_TIMESTAMP(p.tMod)<=UNIX_TIMESTAMP(now())-"+val; };
-PropPage.tModCache.cond0F=function(name, val){  return "UNIX_TIMESTAMP(p.tModCache)<=UNIX_TIMESTAMP(now())-"+val; };
-PropPage.size.cond0F=function(name, val){ return "p.size>"+val;};
+  // Note! cond0F and cond1F uses whole (like "p.tMod" (tableName+'.'+columnName)) as name whether all others uses only "tMod"
+  // Either I should supply the tableName separately (like in the neo4j-version), or all other methods (condBNameF...) should use the whole (long) version of the name.
 
-PropPage.tMod.cond1F=function(name, val){ return "UNIX_TIMESTAMP(p.tMod)>UNIX_TIMESTAMP(now())-"+val;};
-PropPage.tModCache.cond1F=function(name, val){ return "UNIX_TIMESTAMP(p.tModCache)>UNIX_TIMESTAMP(now())-"+val;};
-PropPage.size.cond1F=function(name, val){ return "p.size<="+val;};
+tmpCond0F=function(name, val){  return "UNIX_TIMESTAMP("+name+")<=UNIX_TIMESTAMP(now())-"+val; };
+PropPage.tCreated.cond0F=PropPage.tMod.cond0F=PropPage.tModCache.cond0F=tmpCond0F;
+//PropPage.size.cond0F=function(name, val){ return "p.size>"+val;};
+
+
+tmpCond1F=function(name, val){  return "UNIX_TIMESTAMP("+name+")>UNIX_TIMESTAMP(now())-"+val; };
+PropPage.tCreated.cond1F=PropPage.tMod.cond1F=PropPage.tModCache.cond1F=tmpCond1F;
 
 //PropPage.parentSite.condBNameF=function(name, Val){ return "siteName";} // Becomes "pp.siteName"
 PropPage.parent.condBNameF=function(name, Val){ return "idPage";} // Becomes "pp.idPage"
@@ -86,29 +89,13 @@ PropPage.siteName.boIncludeNull=1;
 
 //PropPage.parentSite.pre='pp.';
 PropPage.parent.pre='pp.';
-PropPage.size.pre = PropPage.tMod.pre = PropPage.tModCache.pre = PropPage.boOther.pre = 'p.';
-PropPage.nChild.pre='p.';
-PropPage.nImage.pre='p.';
- 
-//PropPage.parentSite.relaxCountExp=function(name){ return "count(DISTINCT p.idPage, p.idSite)"; }  
-//PropPage.parent.relaxCountExp=function(name){ return "count(DISTINCT p.idPage, p.idSite, p.pageName)"; }  
+//PropPage.size.pre = PropPage.tCreated.pre = PropPage.tMod.pre = PropPage.tModCache.pre = PropPage.boOther.pre = 'p.';
+//PropPage.nChild.pre='p.';
+//PropPage.nImage.pre='p.';
+
+
 PropPage.parent.relaxCountExp=function(name){ return "count(DISTINCT p.idPage, p.idSite, p.pageName)"; }  
-/*PropPage.parent.histF=function(name, strTableRef,strCond,strOrder){
-  return "SELECT aaa.tmpBinName AS bin, count(*) AS groupCount FROM \n\
-(SELECT p.*, pp.pageName AS tmpBinName FROM \n\
-"+strTableRef+" \n\
-"+strCond+"\n\
-GROUP BY p.idPage, p.pageName ) aaa\n\
-GROUP BY bin ORDER BY "+strOrder+";";
-}*/
-/*PropPage.parentSite.histF=function(name, strTableRef,strCond,strOrder){
-  return "SELECT aaa.tmpBinName AS bin, count(*) AS groupCount FROM \n\
-(SELECT p.*, pp.siteName AS tmpBinName FROM \n\
-"+strTableRef+" \n\
-"+strCond+"\n\
-GROUP BY p.idPage, p.siteName ) aaa\n\
-GROUP BY bin ORDER BY "+strOrder+";";
-}*/
+
 PropPage.parent.histF=function(name, strTableRef,strCond,strOrder){
   return "SELECT aaa.tmpBinName AS bin, count(*) AS groupCount FROM \n\
 (SELECT p.*, pp.idPage AS tmpBinName FROM \n\
@@ -120,7 +107,7 @@ GROUP BY bin ORDER BY "+strOrder+";";
 
 PropPage.parent.histF=function(name, strTableRef,strCond,strOrder){
   return `SELECT pp.idPage AS bin, count(*) AS groupCount FROM 
-`+pageLastView+` p 
+`+pageLastSiteView+` p 
 LEFT JOIN (
   `+subTab+` s 
   JOIN `+pageTab+` pp ON pp.idPage=s.idPage
@@ -130,14 +117,13 @@ GROUP BY bin ORDER BY `+strOrder+`;`;
 }
 
 
-var tmpF=function(name){ return "COUNT(DISTINCT p.idSite, p.pageName, p."+name+")";}
-var StrTmp=['siteName','size','boOR','boOW','boSiteMap','boTalk','boTemplate','boOther','tMod','tModCache'];
-for(var i=0;i<StrTmp.length;i++){  var name=StrTmp[i]; PropPage[name].binValueF=tmpF; }
+var tmpBinValueF=function(name){ return "COUNT(DISTINCT p.idSite, p.pageName, p."+name+")";}
+var StrTmp=['parent', 'siteName','size','boOR','boOW','boSiteMap','boTalk','boTemplate','boOther','tCreated','tMod','tModCache'];
+for(var i=0;i<StrTmp.length;i++){  var name=StrTmp[i]; PropPage[name].binValueF=tmpBinValueF; }
 
 
-PropPage.tMod.histCondF=function(name){ return "-UNIX_TIMESTAMP(p.tMod)+UNIX_TIMESTAMP(now())";};
-PropPage.tModCache.histCondF=function(name){ return "-UNIX_TIMESTAMP(p.tModCache)+UNIX_TIMESTAMP(now())";};
-PropPage.size.histCondF=function(name){ return "p.size";};
+var tmpHistCondF=function(name){ return "-UNIX_TIMESTAMP(p."+name+")+UNIX_TIMESTAMP(now())";};
+PropPage.tCreated.histCondF=PropPage.tMod.histCondF=PropPage.tModCache.histCondF=tmpHistCondF;
 
 
 
@@ -161,14 +147,17 @@ extend(PropImage,{
 imageName:           {b:'00'},
 idImage:             {b:'00'},
 idFile:              {b:'00'},
-nParent:             {b:'00'},
-nameParent:          {b:'00'}});
+nParent:             {b:'00'}
+});
 
-PropImage.tCreated.cond0F=function(name, val){  return "UNIX_TIMESTAMP(i.tCreated)<=UNIX_TIMESTAMP(now())-"+val; };
-PropImage.size.cond0F=function(name, val){ return "i.size>"+val;};
+tmpCond0F=function(name, val){  return "UNIX_TIMESTAMP("+name+")<=UNIX_TIMESTAMP(now())-"+val; };
+PropImage.tCreated.cond0F=tmpCond0F;
 
-PropImage.tCreated.cond1F=function(name, val){ return "UNIX_TIMESTAMP(i.tCreated)>UNIX_TIMESTAMP(now())-"+val; };
-PropImage.size.cond1F=function(name, val){ return "i.size<="+val;};
+//PropImage.size.cond0F=function(name, val){ return "i.size>"+val;};
+
+tmpCond1F=function(name, val){  return "UNIX_TIMESTAMP("+name+")>UNIX_TIMESTAMP(now())-"+val; };
+PropImage.tCreated.cond1F=tmpCond1F;
+//PropImage.size.cond1F=function(name, val){ return "i.size<="+val;};
 
 PropImage.parentSite.condBNameF=function(name, Val){ return "siteName";} // Becomes "pp.siteName"
 PropImage.parent.condBNameF=function(name, Val){ return "idPage";}  // Becomes "pp.pageName"
@@ -191,7 +180,7 @@ PropImage.parentSite.histF=function(name, strTableRef,strCond,strOrder){
 `+imageTab+` i 
 LEFT JOIN (
   `+subImageTab+` s 
-  JOIN `+pageWWWView+` pp ON pp.idPage=s.idPage
+  JOIN `+pageSiteView+` pp ON pp.idPage=s.idPage
 ) ON s.imageName=i.imageName 
 `+strCond+`
 GROUP BY bin ORDER BY `+strOrder+`;`;
@@ -209,7 +198,7 @@ PropImage.parent.histF=function(name, strTableRef,strCond,strOrder){
 `+imageTab+` i 
 LEFT JOIN (
   `+subImageTab+` s 
-  JOIN `+pageWWWView+` pp ON pp.idPage=s.idPage
+  JOIN `+pageSiteView+` pp ON pp.idPage=s.idPage
 ) ON s.imageName=i.imageName 
 `+strCond+`
 GROUP BY bin ORDER BY `+strOrder+`;`;
@@ -219,8 +208,8 @@ var tmpF=function(name){ return "COUNT(DISTINCT i.imageName, i."+name+")";}
 var StrTmp=['size','tCreated','boOther'];
 for(var i=0;i<StrTmp.length;i++){  var name=StrTmp[i]; PropImage[name].binValueF=tmpF; }
 
-PropImage.tCreated.histCondF=function(name){ return "-UNIX_TIMESTAMP(i.tCreated)+UNIX_TIMESTAMP(now())";};
-PropImage.size.histCondF=function(name){ return "i.size";};
+var tmpHistCondF=function(name){ return "-UNIX_TIMESTAMP(i."+name+")+UNIX_TIMESTAMP(now())";};
+PropImage.tCreated.histCondF=tmpHistCondF;
 
 //PropImage.tCreated.selF=selTimeF;
 
@@ -280,7 +269,8 @@ sqlTmpSubNewImageCreate="CREATE TEMPORARY TABLE IF NOT EXISTS tmpSubNewImage (im
 strDBPrefix='mmmWiki';
 StrTableKey=["sub", "subImage", "version", "page", "thumb", "image", "video", "file", "setting", "redirect", "redirectDomain", "site", "nParent", "nParentI"]; //,"cache" , "siteDefault"
 //StrTableKey=["sub", "statNChild", "statParent", "subImage", "version", "page", "thumb", "image", "video", "file", "setting", "redirect", "redirectDomain", "site"];
-StrViewsKey=["pageWWW", "pageLastSlim", "pageLast", "redirectWWW", "parentInfo", "parentImInfo", "childInfo", "childImInfo", "subWChildID", "subWExtra"]; 
+//StrViewsKey=["pageWWW", "pageLastSlim", "pageLast", "redirectWWW", "parentInfo", "parentImInfo", "childInfo", "childImInfo", "subWChildID", "subWExtra"]; 
+StrViewsKey=["pageSite", "pageLast", "pageLastSite", "redirectSite", "parentInfo", "parentImInfo", "childInfo", "childImInfo", "subWChildID", "subWExtra"]; 
 TableName={};for(var i=0;i<StrTableKey.length;i++) {var name=StrTableKey[i]; TableName[StrTableKey[i]+"Tab"]=strDBPrefix+'_'+name;}
 ViewName={};for(var i=0;i<StrViewsKey.length;i++) {var name=StrViewsKey[i]; ViewName[StrViewsKey[i]+"View"]=strDBPrefix+'_'+name;}
 
@@ -288,44 +278,8 @@ extract(TableName);
 extract(ViewName);
 
 
-strTableRefPage="("+pageLastView+" p) \n\
-LEFT JOIN "+subTab+" s ON s.idSite=p.idSite AND s.pageName=p.pageName \n\
-LEFT JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage\n\
-LEFT JOIN "+subTab+" sc ON sc.idPage=p.idPage \n\
-LEFT JOIN "+subImageTab+" sI ON sI.idPage=p.idPage \n\
-LEFT JOIN (\n\
-  ("+pageWWWView+" pParCount)  \n\
-  JOIN \n\
-  "+subTab+" sParCount ON pParCount.idPage=sParCount.idPage \n\
-)ON sParCount.idSite=p.idSite AND sParCount.pageName=p.pageName";
-// Starting with the list of pages
-// The 1:st join: adds idPage of parent (The table is expanded if there are multiple parents)
-// The 2:nd join: adds pageName of parent(s)
-// The 3:rd join: adds pageName of child(ren) (The table is expanded if there are multiple children)
-// The 4:th join: adds imageName of image(s) (The table is expanded if there are multiple images)
-// The query inside the parantheses creates a table with all parent-child relations: pParCount.siteName, pParCount.pageName (parent) <-> sParCount.siteName, sParCount.pageName (child). 
-//   alt explanation:The query inside the parantheses extends subTab (sParCount) with info about the parents
-// The 5:th join will again add info about parents. (The table is expanded if there are multiple parents)
 
-//LEFT JOIN "+subTab+" sc ON sc.idPage=p.idPage \n\
-//LEFT JOIN "+subImageTab+" sI ON sI.idPage=p.idPage \n\
-
-strTableRefPage="("+pageLastView+" p) \n\
-LEFT JOIN "+subTab+" s ON s.idSite=p.idSite AND s.pageName=p.pageName \n\
-LEFT JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage\n\
-LEFT JOIN (\n\
-  ("+pageWWWView+" pParCount)  \n\
-  JOIN \n\
-  "+subTab+" sParCount ON pParCount.idPage=sParCount.idPage \n\
-)ON sParCount.idSite=p.idSite AND sParCount.pageName=p.pageName";
-
-strTableRefPage="("+pageLastView+" p) \n\
-LEFT JOIN "+subTab+" s ON s.idSite=p.idSite AND s.pageName=p.pageName \n\
-LEFT JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage\n\
-LEFT JOIN ("+nParentTab+" np) ON p.pageName=np.pageName AND p.idSite=np.idSite";
-
-
-strTableRefPage="("+pageLastView+" p) \n\
+strTableRefPage="("+pageLastSiteView+" p) \n\
 LEFT JOIN "+subTab+" s ON s.idSite=p.idSite AND s.pageName=p.pageName \n\
 LEFT JOIN ("+pageTab+" pp) ON pp.idPage=s.idPage\n\
 LEFT JOIN ("+nParentTab+" np) ON p.pageName=np.pageName AND p.idSite=np.idSite";
@@ -336,36 +290,14 @@ LEFT JOIN ("+nParentTab+" np) ON p.pageName=np.pageName AND p.idSite=np.idSite";
 // The 3:rd join: adds nParent
 
 
-
-
-// AND pp.lastRev=s.rev
 strTableRefImage=imageTab+" i \n\
 LEFT JOIN "+subImageTab+" s ON s.imageName=i.imageName \n\
-LEFT JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage \n\
-LEFT JOIN (\n\
-  ("+pageWWWView+" pParCount)  \n\
-  JOIN \n\
-  "+subImageTab+" sParCount ON pParCount.idPage=sParCount.idPage \n\
-)ON sParCount.imageName=i.imageName";
-// Starting with the list of images
-// The 1:st join: adds idPage of parent (The table is expanded if there are multiple parents)
-// The 2:nd join: adds pageName of parent(s)
-// The query inside the parantheses creates a table with all parent-child relations: pParCount.siteName, pParCount.pageName (parent) <-> sParCount.imageName (child). 
-// The 3:rd join will again add info about parents. (The table is expanded if there are multiple parents)
-
-strTableRefImage=imageTab+" i \n\
-LEFT JOIN "+subImageTab+" s ON s.imageName=i.imageName \n\
-LEFT JOIN ("+pageLastView+" pp) ON pp.idPage=s.idPage \n\
-LEFT JOIN ("+nParentITab+" np) ON i.imageName=np.imageName";
-
-strTableRefImage=imageTab+" i \n\
-LEFT JOIN "+subImageTab+" s ON s.imageName=i.imageName \n\
-LEFT JOIN ("+pageWWWView+" pp) ON pp.idPage=s.idPage \n\
+LEFT JOIN ("+pageSiteView+" pp) ON pp.idPage=s.idPage \n\
 LEFT JOIN ("+nParentITab+" np) ON i.imageName=np.imageName";
 
 
 
-strTableRefPageHist="("+pageLastView+" p) \n\
+strTableRefPageHist="("+pageLastSiteView+" p) \n\
 LEFT JOIN (\n\
   "+subTab+" s \n\
   JOIN "+pageTab+" pp ON pp.idPage=s.idPage\n\
@@ -377,7 +309,7 @@ LEFT JOIN (\n\
 strTableRefImageHist=imageTab+" i \n\
 LEFT JOIN (\n\
   "+subImageTab+" s \n\
-  JOIN "+pageWWWView+" pp ON pp.idPage=s.idPage\n\
+  JOIN "+pageSiteView+" pp ON pp.idPage=s.idPage\n\
 ) ON s.imageName=i.imageName";
 // The query inside the parantheses creates a table with all parent-child relations: pp.siteName, pp.pageName (parent) <-> s.imageName (child). 
 // Should be used with COUNT(DISTINCT i.imageName, XXX) 
