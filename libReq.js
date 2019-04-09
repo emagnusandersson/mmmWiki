@@ -178,16 +178,25 @@ app.reqBUMeta=function*(strArg) {
   }
   StrData.push(StrFile.join("\n")); StrFileName.push('redirect.csv');
 
+    // Create zip 
+  for(var i=0;i<StrData.length;i++){ zipfile.file(StrFileName[i], StrData[i], {compression:'DEFLATE'}); }
+  var objArg={type:'string'}, outdata = zipfile.generate(objArg);
+  
     // Output data 
+  var boOutputZip=1;
   if(strArg=='Serv'){
-    var fsBU=path.join(__dirname, '..', 'mmmWikiBU'); 
-    for(var i=0;i<StrData.length;i++){ 
-      var fsTmp=path.join(fsBU, StrFileName[i]), err;  fs.writeFile(fsTmp, StrData[i], function(errT){ err=errT;  flow.next();  });   yield;     if(err) { console.log(err); res.out500(err); }
-    }  //, 'binary'
-    res.out200('OK');
+    var fsBU=path.join(__dirname, '..', 'mmmWikiBU'), strMess;
+    if(boOutputZip){
+      var fsTmp=path.join(fsBU, 'meta.zip'), err;  fs.writeFile(fsTmp, outdata, 'binary', function(errT){ err=errT;  flow.next();  });   yield;     if(err) { console.log(err); res.out500(err); }
+      strMess='Zip created';
+    }else{
+      for(var i=0;i<StrData.length;i++){ 
+        var fsTmp=path.join(fsBU, StrFileName[i]), err;  fs.writeFile(fsTmp, StrData[i], function(errT){ err=errT;  flow.next();  });   yield;     if(err) { console.log(err); res.out500(err); }
+      }  //, 'binary'
+      strMess=StrData.length+' files created';
+    }
+    res.out200(strMess);
   }else{
-    for(var i=0;i<StrData.length;i++){ zipfile.file(StrFileName[i], StrData[i], {compression:'DEFLATE'}); }
-    var objArg={type:'string'}, outdata = zipfile.generate(objArg);
     //var outFileName=calcBUFileName(matWWWCommon[0].wwwCommon,'meta','zip');  
     var outFileName=matWWWCommon[0].siteName+'_'+swedDate(unixNow())+'_meta.zip';
     
@@ -1095,10 +1104,14 @@ app.SetupSqlT.prototype.createTable=function(boDropOnly){
   aPassword varchar(128) NOT NULL DEFAULT '', \n\
   vPassword varchar(128) NOT NULL DEFAULT '', \n\
   tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
+  boORDefault int(1) NOT NULL DEFAULT 0, \n\
+  boOWDefault int(1) NOT NULL DEFAULT 0, \n\
+  boSiteMapDefault int(1) NOT NULL DEFAULT 0, \n\
   PRIMARY KEY (idSite), \n\
   UNIQUE KEY (siteName), \n\
   UNIQUE KEY (www) \n\
   ) ENGINE="+engine+" COLLATE "+collate+"");
+
 
   SqlTab.push("CREATE TABLE "+fileTab+" ( \n\
   idFile int(4) NOT NULL auto_increment, \n\
@@ -1119,6 +1132,9 @@ app.SetupSqlT.prototype.createTable=function(boDropOnly){
   nChild int(4) NOT NULL DEFAULT 0, \n\
   nImage int(4) NOT NULL DEFAULT 0, \n\
   tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
+  tLastAccess TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
+  nAccess int(4) NOT NULL DEFAULT 0, \n\
+  intPriority int(4) NOT NULL DEFAULT 50, \n\
   PRIMARY KEY (idPage), \n\
   UNIQUE KEY (idSite,pageName), \n\
   FOREIGN KEY (idSite) REFERENCES "+siteTab+"(idSite)  \n\
@@ -1175,6 +1191,14 @@ app.SetupSqlT.prototype.createTable=function(boDropOnly){
   tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
   eTag varchar(32) NOT NULL, \n\
   size int(4) NOT NULL, \n\
+  widthSkipThumb int(4) NOT NULL DEFAULT 1000, \n\
+  width int(4) NOT NULL DEFAULT 0, \n\
+  height int(4) NOT NULL DEFAULT 0, \n\
+  extension varchar(10) NOT NULL DEFAULT '', \n\
+  tLastAccess TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
+  nAccess int(4) NOT NULL DEFAULT 0, \n\
+  tMod TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
+  hash varchar(32) NOT NULL DEFAULT '', \n\
   PRIMARY KEY (idImage), \n\
   UNIQUE KEY (imageName), \n\
   FOREIGN KEY (idFile) REFERENCES "+fileTab+"(idFile) \n\
@@ -1188,6 +1212,7 @@ app.SetupSqlT.prototype.createTable=function(boDropOnly){
   height int(4) NOT NULL, \n\
   tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
   eTag varchar(32) NOT NULL, \n\
+  size int(4) NOT NULL, \n\
   UNIQUE KEY (idImage,width,height), \n\
   FOREIGN KEY (idImage) REFERENCES "+imageTab+"(idImage), \n\
   FOREIGN KEY (idFile) REFERENCES "+fileTab+"(idFile) \n\
@@ -1236,45 +1261,28 @@ app.SetupSqlT.prototype.createTable=function(boDropOnly){
   url varchar(128) NOT NULL, \n\
   tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
   PRIMARY KEY (www) \n\
-  ) ENGINE="+engine+" COLLATE "+collate+""); 
+  ) ENGINE="+engine+" COLLATE "+collate+"");
+  
   SqlTab.push("CREATE TABLE "+nParentTab+" ( \n\
   idSite int(4) NOT NULL, \n\
   pageName varchar(128) NOT NULL, \n\
   nParent int(4) NOT NULL, \n\
   PRIMARY KEY (idSite,pageName) \n\
   ) ENGINE="+engine+" COLLATE "+collate+""); 
-  
   SqlTab.push("CREATE TABLE "+nParentITab+" ( \n\
   imageName varchar(128) NOT NULL, \n\
   nParent int(4) NOT NULL, \n\
   PRIMARY KEY (imageName) \n\
   ) ENGINE="+engine+" COLLATE "+collate+""); 
 
+    // Create sql for binTables of PropPage:
   addBinTableSql(SqlTabDrop,SqlTab,strDBPrefix,PropPage,engine,collate);
-  var SqlTabTmp=[];  // Temporary workaround (to add size image bin table)
+    // Create sql for binTables of ImagePage:
+    // Since some of the tables look the same they can be skipped:
+  var SqlTabTmp=[];
   addBinTableSql(SqlTabDrop,SqlTabTmp,strDBPrefix,PropImage,engine,collate);
-  for(var i=0;i<SqlTabTmp.length;i++){ if(!RegExp('size','i').test(SqlTabTmp[i])) SqlTab.push(SqlTabTmp[i]); }
+  for(var i=0;i<SqlTabTmp.length;i++){ if(!RegExp('size|tCreated|tMod|tLastAccess|nAccess|nParent','i').test(SqlTabTmp[i])) SqlTab.push(SqlTabTmp[i]); }
 
-  
-  //SqlTabDrop.push("DROP VIEW IF EXISTS "+pageSiteView+"");  // pageTab with siteTab-fields: boDefault, boTLS, siteName and www
-  //SqlTab.push("CREATE VIEW "+pageSiteView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev) AS \n\
-//SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev FROM "+pageTab+" p JOIN "+siteTab+" st ON p.idSite=st.idSite");
-
-  //SqlTabDrop.push("DROP VIEW IF EXISTS "+pageLastView+"");  // pageTab with versionTab-fields: boOther, tMod, tModCache, eTag, size, idFile and idFileCache for the last version
-  //SqlTab.push("CREATE VIEW "+pageLastView+" (idPage, idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage) AS \n\
-//SELECT p.idPage, p.idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev");
-
-  //SqlTabDrop.push("DROP VIEW IF EXISTS "+pageLastSiteView+"");  // A combination of the above two views.
-  //SqlTab.push("CREATE VIEW "+pageLastSiteView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage) AS \n\
-//SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev JOIN "+siteTab+" st ON p.idSite=st.idSite");
-
-
-  //SqlTabDrop.push("DROP VIEW IF EXISTS "+redirectSiteView+"");
-  //SqlTab.push("CREATE VIEW "+redirectSiteView+" (idSite, siteName, www, pageName, url, tCreated, nAccess, tLastAccess, tMod) AS \n\
-//SELECT r.idSite, st.siteName, st.www, r.pageName, url, r.tCreated, nAccess, tLastAccess, tMod FROM "+redirectTab+" r JOIN "+siteTab+" st ON r.idSite=st.idSite");
-
-
-  
 
   if(boDropOnly) return SqlTabDrop;
   else return array_merge(SqlTabDrop, SqlTab);
@@ -1291,16 +1299,16 @@ app.SetupSqlT.prototype.createView=function(boDropOnly){
   SqlViewDrop.push("DROP VIEW IF EXISTS mmmWiki_pageLast, mmmWiki_pageLastSlim, mmmWiki_pageWWW, mmmWiki_redirectWWW");
   
   SqlViewDrop.push("DROP VIEW IF EXISTS "+pageSiteView+"");  // pageTab with siteTab-fields: boDefault, boTLS, siteName and www
-  SqlView.push("CREATE VIEW "+pageSiteView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, tCreated) AS \n\
-SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, p.tCreated FROM "+pageTab+" p JOIN "+siteTab+" st ON p.idSite=st.idSite");
+  SqlView.push("CREATE VIEW "+pageSiteView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, tCreated, intPriority, tLastAccess, nAccess) AS \n\
+SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, p.tCreated, intPriority, tLastAccess, nAccess FROM "+pageTab+" p JOIN "+siteTab+" st ON p.idSite=st.idSite");
 
   SqlViewDrop.push("DROP VIEW IF EXISTS "+pageLastView+"");  // pageTab with versionTab-fields: boOther, tMod, tModCache, eTag, size, idFile and idFileCache for the last version
-  SqlView.push("CREATE VIEW "+pageLastView+" (idPage, idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage) AS \n\
-SELECT p.idPage, p.idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev");
+  SqlView.push("CREATE VIEW "+pageLastView+" (idPage, idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage) AS \n\
+SELECT p.idPage, p.idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev");
 
   SqlViewDrop.push("DROP VIEW IF EXISTS "+pageLastSiteView+"");  // A combination of the above two views.
-  SqlView.push("CREATE VIEW "+pageLastSiteView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage) AS \n\
-SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, p.tCreated, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev JOIN "+siteTab+" st ON p.idSite=st.idSite");
+  SqlView.push("CREATE VIEW "+pageLastSiteView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage) AS \n\
+SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, p.tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev JOIN "+siteTab+" st ON p.idSite=st.idSite");
 
 
   SqlViewDrop.push("DROP VIEW IF EXISTS "+redirectSiteView+"");
@@ -1478,6 +1486,7 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
 
               -- Delete/subtract VidPage's children's nParent-value in nParentTab
           -- Delete any rows with 1 (or less) in nParentTab
+          -- (Stubs that this page pointed to (and no one else pointed to) are deleted.)
         DELETE n FROM `+nParentTab+` n JOIN `+subTab+` s ON n.pageName=s.pageName AND n.idSite=VidSite WHERE s.idPage=VidPage AND nParent<=1;
           -- Subtract 1 from nParentTab.nParent for each row in (old) subTab
         UPDATE `+nParentTab+` n JOIN `+subTab+` s ON n.pageName=s.pageName AND n.idSite=VidSite SET n.nParent=n.nParent-1 WHERE s.idPage=VidPage;
@@ -2074,15 +2083,16 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"storeThumb");
   SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"storeThumb(IidImage INT, Iwidth INT, Iheight INT, Idata MEDIUMBLOB, IeTag varchar(32)) \n\
       BEGIN \n\
-        DECLARE VidFile, Vc INT; \n\
+        DECLARE VidFile, Vc, Vlen INT; \n\
         #START TRANSACTION; \n\
         SELECT idFile, count(*) INTO VidFile,Vc FROM "+thumbTab+" WHERE idImage=IidImage AND width=Iwidth AND height=Iheight; \n\
+        SET Vlen=LENGTH(Idata); \n\
         IF Vc=0 THEN \n\
           INSERT INTO "+fileTab+" (data) VALUES (Idata); \n\
           SELECT LAST_INSERT_ID() INTO VidFile; \n\
-          INSERT INTO "+thumbTab+" (idImage,width,height,idFile,tCreated,eTag) VALUES (IidImage,Iwidth,Iheight,VidFile,now(),IeTag); \n\
+          INSERT INTO "+thumbTab+" (idImage,width,height,idFile,tCreated,eTag, size) VALUES (IidImage,Iwidth,Iheight,VidFile,now(),IeTag, Vlen); \n\
         ELSEIF Vc=1 THEN \n\
-          UPDATE "+thumbTab+" SET tCreated=now(),eTag=IeTag WHERE idImage=IidImage AND width=Iwidth AND height=Iheight; \n\
+          UPDATE "+thumbTab+" SET tCreated=now(),eTag=IeTag, size=Vlen WHERE idImage=IidImage AND width=Iwidth AND height=Iheight; \n\
           UPDATE "+fileTab+" SET data=Idata WHERE idFile=VidFile; \n\
         END IF; \n\
         #SET OtCreated=UNIX_TIMESTAMP(now()); \n\

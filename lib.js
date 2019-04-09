@@ -88,6 +88,7 @@ extract=function(obj,par){
   //return 'var '+Str.join(', ')+';';
 //}
 
+isUpperCase=function(c){return c == c.toUpperCase(); }
 
 
 
@@ -101,6 +102,7 @@ endsWith=function(str,end){return str.substr(-end.length)==end;}
 arr_max=function(arr){return Math.max.apply(null, arr);}
 arr_min=function(arr){return Math.min.apply(null, arr);}
 
+intersectionAB=function(A,B){var Rem=[]; for(var i=A.length-1;i>=0;i--){var a=A[i]; if(B.indexOf(a)==-1) A.splice(i,1); else Rem.push(a);} return Rem.reverse();}  // Changes A, returns the remainder
 AMinusB=function(A,B){var ANew=[]; for(var i=0;i<A.length;i++){var a=A[i]; if(B.indexOf(a)==-1) ANew.push(a);} return ANew;}  // Does not change A, returns ANew
 isAWithinB=function(A,B){ for(var i=0; i<A.length; i++){if(B.indexOf(A[i])==-1) return false;} return true;}  
 
@@ -286,6 +288,8 @@ preferedValue=function(x,IntPref){  var len=IntPref.length; for(var i=0;i<len;i+
 
 numWithUnitPrefix=function(n){ if(n<1000) return n;     n=n/1000; if(n<1000) return n+'k';     n=n/1000; if(n<1000) return n+'M';     n=n/1000; if(n<1000) return n+'G';  return n+'T';}
 numWithUnitPrefixArr=function(N){var l=N.length, StrOut=Array(l);for(var i=0;i<l;i++){ StrOut[i]=numWithUnitPrefix(N[i]); } return StrOut; }
+
+
 //
 // Data Formatting
 //
@@ -338,7 +342,30 @@ parsePageNameHD=function(strPage){ // parsePageNameHD (PageNameHD = pageName tha
   return obj;
 }
 
-
+csvParseMy=function*(flow, strCSV){
+  var indNL=strCSV.search('\n'), strHead=strCSV.substr(0,indNL), arrHead=strHead.split(','), arrType=Array(arrHead.length); arrHead.forEach(function(str,ind){
+    str=trim(str,'"'); arrHead[ind]=str;
+    var strType;
+    if(str.slice(0,2)=='bo' && isUpperCase(str[2])) strType='boolean';
+    else if(str.slice(0,3)=='int' && isUpperCase(str[3])) strType='number';
+    else if(str[0]=='n' && isUpperCase(str[1])) strType='number';
+    else if(str[0]=='t' && isUpperCase(str[1])) strType='number';
+    else strType='string';
+    arrType[ind]=strType;
+  });
+  
+  var arrData;
+  papaparse.parse(strCSV.substr(indNL).trim(), { complete: function(results, file) { //dynamicTyping:true,
+    arrData=results.data;
+  }, transform:function(val, col){
+    if(arrType[col]=='boolean') return val.toLowerCase()=='true';
+    else if(arrType[col]=='number') return Number(val);
+    return val;
+  }
+  });
+  
+  return [arrHead,arrData];
+}
 
 
 

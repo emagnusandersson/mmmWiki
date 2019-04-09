@@ -485,12 +485,12 @@ adminMoreDivExtend=function(el){
   }
 
   var statLink=createElement('a').prop({href:'stat.html'}).myText('stat');
-  var pageListButton=createElement('button').myText('List').addClass('fixWidth').on('click',function(){
+  var pageListButton=createElement('button').myText('pageList').addClass('fixWidth').on('click',function(){
     //var idTmp=objPage.idPage; if(isNaN(idTmp)) idTmp=null;
     var idTmp=objPage.idPage; if(typeof idTmp=='string' && idTmp.length==0) idTmp=null;
     pageFilterDiv.Filt.setSingleParent(idTmp);  pageList.histPush(); pageList.loadTab();  pageList.setVis();
   });    
-  var imageListButton=createElement('button').myText('List').addClass('fixWidth').on('click',function(){
+  var imageListButton=createElement('button').myText('imageList').addClass('fixWidth').css({'background':'lightblue'}).on('click',function(){
     //var idTmp=objPage.idPage; if(isNaN(idTmp)) idTmp=null;
     var idTmp=objPage.idPage; if(typeof idTmp=='string' && idTmp.length==0) idTmp=null;
     imageFilterDiv.Filt.setSingleParent(idTmp);   imageList.histPush();  imageList.loadTab();  imageList.setVis();  // pageFilterDiv.Filt.filtAll();
@@ -505,45 +505,45 @@ adminMoreDivExtend=function(el){
   })
 
   //var imgHDownload=imgHelp.cloneNode().css({'margin-left':'1em','margin-right':'1em'}); popupHover(imgHDownload,createElement('div').myText('Put all pages (or images or videos) in a zip-file and download.'));
-  var aBUFilesToComp=createElement('a').prop({rel:'nofollow', download:''}).myText('(pages).zip');
+  var aBUFilesToComp=createElement('a').prop({rel:'nofollow', download:''}).myText('(...)page.zip');
   aBUFilesToComp.setUp=function(boUsePrefix){
     var tmpUrl='BUPage'+(boUsePrefix?'':'?{"boUsePrefixOnDefaultSitePages":0}'); this.prop({href:tmpUrl});
   };  aBUFilesToComp.setUp(boUsePrefix);
-  var aBUImageToComp=createElement('a').prop({href:'BUImage', rel:'nofollow', download:''}).myText('(images).zip');
-  var aBUVideoToComp=createElement('a').prop({href:'BUVideo', rel:'nofollow', download:''}).myText('(vidoes).zip');
-  var aBUMeta=createElement('a').prop({href:'BUMeta', rel:'nofollow', download:''}).myText('(MetaData).zip');
-  var aBUMetaSQL=createElement('a').prop({href:'BUMetaSQL', rel:'nofollow', download:''}).myText('(MetaData).sql');
+  var aBUImageToComp=createElement('a').prop({href:'BUImage', rel:'nofollow', download:''}).myText('(...)image.zip');
+  var aBUVideoToComp=createElement('a').prop({href:'BUVideo', rel:'nofollow', download:''}).myText('(...)video.zip');
+  var aBUMeta=createElement('a').prop({href:'BUMeta', rel:'nofollow', download:''}).myText('(...)meta.zip');
+  var aBUMetaSQL=createElement('a').prop({href:'BUMetaSQL', rel:'nofollow', download:''}).myText('(...)meta.sql');
   var imgHSql=imgHelp.cloneNode().css({'margin':'0 1em'}); popupHover(imgHSql,createElement('div').myHtml('<p>Download "meta-data":<br>-extra data for pages/images (modification dates, access rights ...). <br>-redirect table.'));
   
   var butBUPageServ=createElement('button').myText('page.zip').on('click',  function(){    httpGetAsync('BUPageServ',function(str) {setMess(str,3);});    });
   var butBUImageServ=createElement('button').myText('image.zip').on('click',function(){    httpGetAsync('BUImageServ',function(str) {setMess(str,3);});   });
-  var butBUMetaServ=createElement('button').myText('Meta-data (4 files)').on('click',function(){      httpGetAsync('BUMetaServ',function(str) {setMess(str,3);});    });
+  var butBUMetaServ=createElement('button').myText('meta.zip').on('click',function(){      httpGetAsync('BUMetaServ',function(str) {setMess(str,3);});    });
   
   var strOverwrite='This will overwrite data in the db?';
-  var butLoadFromServerP=createElement('button').myText('page.zip').on('click',function(){  if(confirm(strOverwrite)==0) return; var vec=[['uploadAdminServ',{file:'page.zip'}]];   majax(oAJAX,vec);    });
-  var butLoadFromServerI=createElement('button').myText('image.zip').on('click',function(){  if(confirm(strOverwrite)==0) return; var vec=[['uploadAdminServ',{file:'image.zip'}]];   majax(oAJAX,vec);    });
-  var butLoadFromServerM=createElement('button').myText('meta').on('click',function(){  if(confirm(strOverwrite)==0) return; var vec=[['loadMeta',{}]];   majax(oAJAX,vec);    });
+  var butLoadFromServerP=createElement('button').myText('page.zip').on('click',function(){  if(confirm(strOverwrite)==0) return; var vec=[['loadFrBUOnServ',{File:['page.zip']}]];   majax(oAJAX,vec);    });
+  var butLoadFromServerI=createElement('button').myText('image.zip').on('click',function(){  if(confirm(strOverwrite)==0) return; var vec=[['loadFrBUOnServ',{File:['image.zip']}]];   majax(oAJAX,vec);    });
+  var butLoadFromServerM=createElement('button').myText('meta.zip').on('click',function(){  if(confirm(strOverwrite)==0) return; var vec=[['loadFrBUOnServ',{File:['meta.zip']}]];   majax(oAJAX,vec);    });
   
   var siteButton=createElement('button').myText('Site table').addClass('fixWidth').on('click',function(){    doHistPush({view:siteTab}); siteTab.setVis();   });
   var redirectButton=createElement('button').myText('Redirect table').addClass('fixWidth').on('click',function(){   doHistPush({view:redirectTab}); redirectTab.setVis();   });
 
-  var imgHRename=imgHelp.cloneNode().css({'margin-left':'1em'}); popupHover(imgHRename,createElement('div').myHtml('"Rename" will <b>not</b> rename any links to the page. (maybe something for future versions)'));  
   var renameButton=createElement('button').myText('Rename').css({'margin-left':'0.5em'}).on('click',function(){
     renamePop.openFunc('page', null, objPage.idPage, queredPage);
   });
   var objBottomLine={'border-bottom':'gray solid 1px'};
-  var menuA=createElement('div').myAppend(butModRead, butModWrite, butModSiteMap, imgH, ' | ', renameButton, imgHRename).css(objBottomLine);
+  var menuA0=createElement('div').myAppend(pageListButton, imageListButton).css(objBottomLine);
+  var menuA=createElement('div').myAppend(butModRead, butModWrite, butModSiteMap, imgH, ' | ', renameButton).css(objBottomLine);
   var menuB0=createElement('div').myHtml("<b>BU download: </b>");
-  var menuB=createElement('div').myHtml("<b>Page: </b>").myAppend(pageListButton, ' | ', aBUFilesToComp, ', Use prefix on default-site-pages: ', cb, imgHPrefix);
-  var menuC=createElement('div').myHtml("<b>Image: </b>").myAppend(imageListButton, ' | ', aBUImageToComp, ' | ', buttonDiffBackUpDiv).css({'background':'lightblue'});
-  var menuD=createElement('div').myHtml("<b>Video: </b>").myAppend(aBUVideoToComp);
-  var menuE=createElement('div').myHtml("<b>Other: </b>").myAppend(aBUMeta, imgHSql, ' | ', statLink, ' | ', aBUMetaSQL).css(objBottomLine);
-  var menuF=createElement('div').myAppend(uploadAdminDiv).css(objBottomLine);
-  var menuG=createElement('div').myAppend(siteButton,redirectButton).css(objBottomLine);
-  var menuH=createElement('div').myHtml("<b>Save to server-BU-Folder: </b>").myAppend(butBUPageServ,butBUImageServ,butBUMetaServ).css(objBottomLine);
-  var menuI=createElement('div').myHtml("<b>Load from server-BU-Folder: </b>").myAppend(butLoadFromServerP, butLoadFromServerI, butLoadFromServerM).css(objBottomLine);
-  var menuJ=createElement('div').myText('DB: '+strDBType);
-  var Menu=[menuA,menuB0, menuB,menuC,menuE,menuF,menuG, menuH, menuI, menuJ]; Menu.forEach(ele=>ele.css({margin:'0.5em 0'})); //,menuD
+  var menuB=createElement('div').myAppend(aBUFilesToComp, ', Use prefix on default-site-pages: ', cb, imgHPrefix);
+  var menuC=createElement('div').myAppend(aBUImageToComp, ' | ', buttonDiffBackUpDiv).css({'background':'lightblue'});
+  //var menuD=createElement('div').myAppend(aBUVideoToComp);
+  var menuE=createElement('div').myAppend(aBUMeta, imgHSql).css(objBottomLine);  // , ' | ', aBUMetaSQL
+  var menuF=createElement('div').myHtml("Save to server-BU-Folder: ").myAppend(butBUPageServ,butBUImageServ,butBUMetaServ).css(objBottomLine);
+  var menuG=createElement('div').myAppend(uploadAdminDiv).css(objBottomLine);
+  var menuH=createElement('div').myAppend(siteButton,redirectButton).css(objBottomLine);
+  //var menuI=createElement('div').myHtml("<b>Load from server-BU-Folder: </b>").myAppend(butLoadFromServerP, butLoadFromServerI, butLoadFromServerM).css(objBottomLine);
+  var menuJ=createElement('div').myAppend('DB: '+strDBType, ' | ', statLink);
+  var Menu=[menuA0, menuA, menuB0, menuB,menuC,menuE,menuF,menuG, menuH, menuJ]; Menu.forEach(ele=>ele.css({margin:'0.5em 0'})); //,menuD , menuI
 
   el.divCont=createElement('div').myAppend(...Menu);
   el.divCont.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'1em auto'});
@@ -1111,7 +1111,7 @@ uploadAdminDivExtend=function(el){
   }
 
   var strTmpExt=StrImageExt.join(', ');
-  var imgHUpload=imgHelp.cloneNode().css({'margin-left':'1em'}); popupHover(imgHUpload,createElement('div').myText('Accepted file endings: '+strTmpExt+', txt or zips file containing these formats (no folders in the zip file)'));
+  var imgHUpload=imgHelp.cloneNode().css({'margin-left':'1em'}); popupHover(imgHUpload,createElement('div').myText('Accepted file endings: '+strTmpExt+', txt or zip files containing these formats (no folders in the zip file)'));
 
 
   var formFile=createElement('form').prop({enctype:"multipart/form-data"});
@@ -3951,7 +3951,7 @@ setUp1=function(){
   pageText=pageTextExtend(pageText).css({'overflow-y': 'hidden'});   pageText.modStuff();
   imgBusy=createElement('img').prop({src:uBusy});
   //messageText=messExtend(createElement('span'));  window.setMess=messageText.setMess;  window.resetMess=messageText.resetMess;   elBody.append(messageText); 
-  spanMessageText=spanMessageTextCreate();  window.setMess=spanMessageText.setMess;  window.setMessHtml=spanMessageText.setMess;  window.resetMess=spanMessageText.resetMess;  window.appendMess=spanMessageText.appendMess;  elBody.append(spanMessageText)
+  spanMessageText=spanMessageTextCreate();  window.setMess=spanMessageText.setMess;  window.setMessHtml=spanMessageText.setHtml;  window.resetMess=spanMessageText.resetMess;  window.appendMess=spanMessageText.appendMess;  elBody.append(spanMessageText)
 
   busyLarge=createElement('img').prop({src:uBusyLarge}).css({position:'fixed',top:'50%',left:'50%','margin-top':'-42px','margin-left':'-42px','z-index':'1000',border:'black solid 1px'}).hide();
   elBody.append(busyLarge);

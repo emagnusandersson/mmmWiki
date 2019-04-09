@@ -59,28 +59,36 @@ StrValidLoadMeta=['site.csv', 'page.csv', 'image.csv', 'redirect.csv'];  // Vali
 
 helpTextExit=function(){
   var arr=[];
-  arr.push('USAGE script [OPTION]...');
-  arr.push('  -h, --help          Display this text');
-  arr.push('  -p, --port [PORT]   Port number (default: 5000)');
-  arr.push('  --sql [SQL_ACTION]  Run a sql action.');
-  arr.push('    SQL_ACTION='+StrValidSqlCalls.join('|'));
+  arr.push(`USAGE script [OPTION]...
+  -h, --help          Display this text
+  -p, --port [PORT]   Port number (default: 5000)
+  --sql [SQL_ACTION]  Run a sql action.
+    SQL_ACTION=`+StrValidSqlCalls.join('|')+`
 
-  arr.push('  --loadFrBU [FILE[+FILE...]] Load from BU folder.');
-  arr.push('    FILE can be any of page.zip, image.zip, '+StrValidLoadMeta.join(', ')+'');
-  //arr.push('    FILE= A file of any of the following formats:');
-  //arr.push('          txt-file with wiki-text');
-  //arr.push('          image-file (acceptable formats: jpg, jpeg, png, gif, svg)');
-  //arr.push('          zip-file containing one or multiple files of the above formats.');
-  //arr.push('          zip-file containing one or multiple files of the above formats.');
-  //arr.push('          Any of "'+StrValidLoadMeta.join('", "')+'" "');
-  arr.push('    NOTE!!! the order in which the files are supplied matters. Check the website for this program for valid combinations.');
+  --loadFrBUOnServ [fileOrDirPath]
+    Looks for (and loads) txt-files (pages), image-files, csv-files (meta-files) (the meta-files must be named any of: `+StrValidLoadMeta.join(', ')+`) or zip-files.
+    zip-files which name DOESN'T contain the string "meta", may contain further txt/image-files.
+    zip-files which name DOES contain the string "meta" are assumed to contain any of the above named csv-files.
+    fileOrDirPath is a path relative to the "mmmWikiBU"-folder (a sibling of the "mmmWiki"-program folder).
+    If fileOrDirPath is a folder, then the files in that folder is loaded.
+    The fileOrDirPath-string is "splitted" on "+"-characters, (so one can supply multiple files like: fileA+fileB+fileC) .
+    If fileOrDirPath is empty, the program looks for files in the "mmmWikiBU"-folder.
+    Files named page.zip, image.zip resp meta.zip in the top level of "mmmWikiBU" are overwritten by the program (when the admin clicks resp BU-to-server-button in the web interface).
+
+    Ex: 
+      node --loadFrBUOnServ               // Loads all files (not entering any folders) in "mmmWikiBU"
+      node --loadFrBUOnServ myDir         // Loads all files (not entering any folders) in "mmmWikiBU/myDir"
+      node --loadFrBUOnServ myPage.txt    // Loads "mmmWikiBU/myPage.txt"
+      node --loadFrBUOnServ myPages.zip   // Loads "mmmWikiBU/myPages.zip"
+      node --loadFrBUOnServ mymeta.zip    // Loads "mmmWikiBU/mymeta.zip". mymeta.zip must only contain meta-files (as named above)
+      node --loadFrBUOnServ site.csv+myPage.txt+myImage.jpg+myPages.zip     // Loads site.csv, myPage.txt, myImage.jpg and myPages.zip`);
   console.log(arr.join('\n'));
   process.exit(0);
 }
 
 var argv = minimist(process.argv.slice(2), {alias: {h:'help', p:'port'}} );  // Perhaps use yargs !? (according to https://www.youtube.com/watch?v=S-_Fx4-nal8)
 
-var C=AMinusB(Object.keys(argv),['_', 'h', 'help', 'p', 'port', 'sql', 'loadFrBU']);
+var C=AMinusB(Object.keys(argv),['_', 'h', 'help', 'p', 'port', 'sql', 'loadFrBUOnServ']);
 var tmp=[].concat(C,argv._);
 if(tmp.length){ console.log(tmp.join(', ')+' are unknown options'); helpTextExit(); return;}
 
@@ -165,7 +173,10 @@ var flow=( function*(){
   SiteName=[strDBPrefix]; // To make the code analog to my other programs :-)
 
       // Load fr BU-folder
-  if(typeof argv.loadFrBU!='undefined'){    yield* loadFrBU(flow, argv.loadFrBU);   process.exit(0); return;   }
+  if(typeof argv.loadFrBUOnServ!='undefined'){
+    var StrFile; if(typeof argv.loadFrBUOnServ=='string') StrFile=argv.loadFrBUOnServ.split('+');
+    var [err]=yield* loadFrBUOnServ(flow, StrFile); if(err) console.error(err);  process.exit(0); return;
+  }
     // Do db-query if --sql XXXX was set in the argument
   if(typeof argv.sql!='undefined'){
     if(typeof argv.sql!='string') {console.log('sql argument is not a string'); process.exit(-1); return; }
@@ -273,43 +284,34 @@ var flow=( function*(){
       req.wwwSite=wwwSite;
       req.sessionID=sessionID; req.objUrl=objUrl;    req.boTLS=boTLS;  req.strSchemeLong=strSchemeLong;    req.pathName=pathName; 
       
-       
-
+      
       var objReqRes={req:req, res:res};
-      if(pathName.substr(0,5)=='/sql/'){
-        //if(!boDbg && !boAllowSql){ res.out200('Set boAllowSql=1 (or boDbg=1) in the config.js-file');  return }
-        //var reqSql=new ReqSql(req, res),  SetupSql=new SetupSqlT();
-        //req.pathNameWOPrefix=pathName.substr(5);
-        //if(req.pathNameWOPrefix=='zip'){       reqSql.createZip(SetupSql);     }
-        //else {  reqSql.toBrowser(SetupSql); }
+      if(levelMaintenance){res.outCode(503, "Down for maintenance, try again in a little while."); return;}
+      objReqRes.myMySql=new MyMySql(mysqlPool);
+      //if(pathName=='/'+leafPageLoadBE){ var reqPageLoadBE=new ReqPageLoadBE(objReqRes);  yield* reqPageLoadBE.go();    }
+      if(pathName=='/'+leafBE){ var reqBE=new ReqBE(objReqRes);  yield* reqBE.go();    }
+      //else if(pathName.indexOf('/image/')==0){  yield* reqImage.call(objReqRes);   } //RegExp('^/image/').test(pathName)
+      else if(regexpLib.test(pathName) || regexpLooseJS.test(pathName) || regexpPakoJS.test(pathName) || pathName=='/conversion.html'){    yield* reqStatic.call(objReqRes);   }
+      else if(regexpImage.test(pathName)){    yield* reqMediaImage.call(objReqRes);    }
+      else if(regexpVideo.test(pathName)){  yield* reqMediaVideo.call(objReqRes);    }
+      else if(pathName=='/monitor.html'){   yield* reqMonitor.call(objReqRes);  }
+      else if(pathName.toLowerCase()=='/sitemap.xml'){  yield* reqSiteMap.call(objReqRes);  }
+      else if(pathName=='/robots.txt'){  yield* reqRobots.call(objReqRes);  }
+      else if(pathName=='/stat.html'){     yield* reqStat.call(objReqRes);  }
+      else if(pathName=='/createDumpCommand'){  var str=createDumpCommand(); res.out200(str);     }
+      else if(pathName=='/BUMetaSQL'){    yield* reqBUMetaSQL.call(objReqRes,pathName);    }
+      else if(pathName.substr(0,7)=='/BUMeta'){    yield* reqBUMeta.call(objReqRes,pathName.substr(7));    }
+      else if(pathName.substr(0,3)=='/BU'){    yield* reqBU.call(objReqRes,pathName.substr(3));    }
+      else if(pathName=='/debug'){    debugger;  res.end();}
+      else if(pathName=='/mini'){
+        var tserver=(new Date()).valueOf();  
+        res.end('<script>tserver='+tserver+";tclient=(new Date()).valueOf(); console.log('tserver: '+tserver/1000);console.log('tclient: '+tclient/1000);console.log('tdiff: '+(tclient-tserver)/1000);</script>");
       }
-      else {
-        if(levelMaintenance){res.outCode(503, "Down for maintenance, try again in a little while."); return;}
-        objReqRes.myMySql=new MyMySql(mysqlPool);
-        //if(pathName=='/'+leafPageLoadBE){ var reqPageLoadBE=new ReqPageLoadBE(objReqRes);  yield* reqPageLoadBE.go();    }
-        if(pathName=='/'+leafBE){ var reqBE=new ReqBE(objReqRes);  yield* reqBE.go();    }
-        //else if(pathName.indexOf('/image/')==0){  yield* reqImage.call(objReqRes);   } //RegExp('^/image/').test(pathName)
-        else if(regexpLib.test(pathName) || regexpLooseJS.test(pathName) || regexpPakoJS.test(pathName) || pathName=='/conversion.html'){    yield* reqStatic.call(objReqRes);   }
-        else if(regexpImage.test(pathName)){    yield* reqMediaImage.call(objReqRes);    }
-        else if(regexpVideo.test(pathName)){  yield* reqMediaVideo.call(objReqRes);    }
-        else if(pathName=='/monitor.html'){   yield* reqMonitor.call(objReqRes);  }
-        else if(pathName.toLowerCase()=='/sitemap.xml'){  yield* reqSiteMap.call(objReqRes);  }
-        else if(pathName=='/robots.txt'){  yield* reqRobots.call(objReqRes);  }
-        else if(pathName=='/stat.html'){     yield* reqStat.call(objReqRes);  }
-        else if(pathName=='/createDumpCommand'){  var str=createDumpCommand(); res.out200(str);     }
-        else if(pathName=='/BUMetaSQL'){    yield* reqBUMetaSQL.call(objReqRes,pathName);    }
-        else if(pathName.substr(0,7)=='/BUMeta'){    yield* reqBUMeta.call(objReqRes,pathName.substr(7));    }
-        else if(pathName.substr(0,3)=='/BU'){    yield* reqBU.call(objReqRes,pathName.substr(3));    }
-        else if(pathName=='/debug'){    debugger;  res.end();}
-        else if(pathName=='/mini'){
-          var tserver=(new Date()).valueOf();  
-          res.end('<script>tserver='+tserver+";tclient=(new Date()).valueOf(); console.log('tserver: '+tserver/1000);console.log('tclient: '+tclient/1000);console.log('tdiff: '+(tclient-tserver)/1000);</script>");
-        }
-        else if(pathName=='/timeZoneTest'){var dateTrash=new Date();  res.end(''+dateTrash.getTimezoneOffset());}
-        else if(pathName=='/'+googleSiteVerification) res.end('google-site-verification: '+googleSiteVerification);
-        else { yield* reqIndex.call(objReqRes);   }
-        objReqRes.myMySql.fin(); 
-      }
+      else if(pathName=='/timeZoneTest'){var dateTrash=new Date();  res.end(''+dateTrash.getTimezoneOffset());}
+      else if(pathName=='/'+googleSiteVerification) res.end('google-site-verification: '+googleSiteVerification);
+      else { yield* reqIndex.call(objReqRes);   }
+      objReqRes.myMySql.fin();
+      
     })(); req.flow.next();
   }
 

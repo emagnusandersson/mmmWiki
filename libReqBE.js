@@ -115,7 +115,7 @@ ReqBE.prototype.go=function*(){
 
            // Arrays of functions
     // Functions that changes something must check and refresh CSRF-code
-  var arrCSRF=['myChMod', 'myChModImage', 'saveByAdd', 'saveByReplace', 'uploadUser', 'uploadAdmin', 'uploadAdminServ', 'getPageInfo', 'getImageInfo', 'getLastTModNTLastBU', 'setUpPageListCond','getPageList','getPageHist', 'setUpImageListCond','getImageList','getImageHist', 'getParent','getParentOfImage','getSingleParentExtraStuff', 'deletePage','deleteImage','renamePage','renameImage', 'redirectTabGet','redirectTabSet','redirectTabDelete', 'redirectTabResetNAccess', 'siteTabGet', 'siteTabSet', 'siteTabDelete', 'siteTabSetDefault'];
+  var arrCSRF=['myChMod', 'myChModImage', 'saveByAdd', 'saveByReplace', 'uploadUser', 'uploadAdmin', 'loadFrServW', 'getPageInfo', 'getImageInfo', 'getLastTModNTLastBU', 'setUpPageListCond','getPageList','getPageHist', 'setUpImageListCond','getImageList','getImageHist', 'getParent','getParentOfImage','getSingleParentExtraStuff', 'deletePage','deleteImage','renamePage','renameImage', 'redirectTabGet','redirectTabSet','redirectTabDelete', 'redirectTabResetNAccess', 'siteTabGet', 'siteTabSet', 'siteTabDelete', 'siteTabSetDefault'];
   var arrNoCSRF=['specSetup','vLogin','aLogin','aLogout','pageLoad','pageCompare','getPreview'];  
   allowed=arrCSRF.concat(arrNoCSRF);
 
@@ -850,15 +850,7 @@ ReqBE.prototype.getSingleParentExtraStuff=function*(inObj){
 ReqBE.prototype.getPageList=function*(inObj) {
   var req=this.req, res=this.res;
   var Sql=[], flow=req.flow;
-  //var sql="SELECT pageName, boOR, boOW, boSiteMap, UNIX_TIMESTAMP(v.tMod) AS tMod, lastRev, boOther, p.idPage, idFile FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev";
   var tmpCond=array_filter(this.Where), strCond=''; if(tmpCond.length) strCond='WHERE '+tmpCond.join(' AND ');
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(v.tMod) AS tMod, p.lastRev, v.boOther AS boOther, p.idPage AS idPage, v.idFile AS idFile, v.size AS size, COUNT(DISTINCT sc.pageName) AS nChild, COUNT(DISTINCT sI.imageName) AS nImage  FROM "+strTableRefPage+" "+strCond+" GROUP BY pageName;"); 
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(v.tMod) AS tMod, p.lastRev, v.boOther AS boOther, p.idPage AS idPage, v.idFile AS idFile, v.size AS size, COUNT(DISTINCT sc.pageName) AS nChild, COUNT(DISTINCT sI.imageName) AS nImage, COUNT(DISTINCT pp.pageName) AS nParent, pp.pageName AS nameParent  FROM "+strTableRefPage+" "+strCond+" GROUP BY pageName;"); 
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(v.tMod) AS tMod, p.lastRev, v.boOther AS boOther, p.idPage AS idPage, v.idFile AS idFile, v.size AS size, COUNT(DISTINCT sc.pageName) AS nChild, COUNT(DISTINCT sI.imageName) AS nImage, COUNT(DISTINCT sParCount.idPage) AS nParent, pParCount.pageName AS nameParent  FROM "+strTableRefPage+" "+strCond+" GROUP BY pageName;"); 
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther AS boOther, p.idPage AS idPage, p.idFile AS idFile, p.size AS size, COUNT(DISTINCT sc.pageName) AS nChild, COUNT(DISTINCT sI.imageName) AS nImage, COUNT(DISTINCT sParCount.idPage) AS nParent, pParCount.pageName AS nameParent  FROM "+strTableRefPage+" "+strCond+" GROUP BY pageName;"); 
-//, pParCount.siteName AS siteParent
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS p.boTLS, p.siteName AS siteName, p.www AS www, p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther AS boOther, p.idPage AS idPage, p.idFile AS idFile, p.size AS size, COUNT(DISTINCT sc.idSite, sc.pageName) AS nChild, COUNT(DISTINCT sI.imageName) AS nImage, COUNT(DISTINCT sParCount.idPage) AS nParent, pParCount.idPage AS idParent, pParCount.pageName AS nameParent  FROM "+strTableRefPage+" "+strCond+" GROUP BY siteName, pageName;"); 
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS p.boTLS, p.siteName AS siteName, p.www AS www, p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther AS boOther, p.idPage AS idPage, p.idFile AS idFile, p.size AS size, p.nChild AS nChild, p.nImage AS nImage, COUNT(DISTINCT sParCount.idPage) AS nParent, pParCount.idPage AS idParent, pParCount.pageName AS nameParent  FROM "+strTableRefPage+" "+strCond+" GROUP BY siteName, pageName;"); 
 
   Sql.push("SELECT SQL_CALC_FOUND_ROWS p.boTLS, p.siteName AS siteName, p.www AS www, p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(p.tCreated) AS tCreated, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther AS boOther, p.idPage AS idPage, p.idFile AS idFile, p.size AS size, p.nChild AS nChild, p.nImage AS nImage, np.nParent, pp.idPage AS idParent, pp.pageName AS parent  FROM "+strTableRefPage+" "+strCond+" GROUP BY siteName, pageName;"); 
 
@@ -908,11 +900,6 @@ ReqBE.prototype.getImageList=function*(inObj) {
   var Sql=[], flow=req.flow;
   //var sql="SELECT imageName, UNIX_TIMESTAMP(tCreated) AS tCreated, boOther, idImage, idFile FROM "+imageTab+"";
   var tmpCond=array_filter(this.Where), strCond=''; if(tmpCond.length) strCond='WHERE '+tmpCond.join(' AND ');
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.tCreated) AS tCreated, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.tCreated) AS tCreated, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, COUNT(DISTINCT pp.pageName) AS nParent, pp.pageName AS nameParent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.tCreated) AS tCreated, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, COUNT(DISTINCT sParCount.idPage) AS nParent, pParCount.pageName AS nameParent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
-// , pParCount.siteName AS siteParent
-  //Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.tCreated) AS tCreated, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, COUNT(DISTINCT sParCount.idPage) AS nParent, pParCount.idPage AS idParent, pParCount.pageName AS nameParent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
   Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.tCreated) AS tCreated, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, np.nParent, pp.idPage AS idParent, pp.pageName AS parent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
 
   Sql.push("SELECT FOUND_ROWS() AS n;"); // nFound
@@ -1164,6 +1151,81 @@ ReqBE.prototype.siteTabSetDefault=function*(inObj){
 // Uploading
 ////////////////////////////////////////////////////////////////////////
 
+/*********************************************************************
+ * Loading pages / images / meta data
+ * * a.txt b.txt c.txt
+ * * meta.zip page.zip image.zip
+ * * site.csv page.csv image.csv redirect.csv page.zip image.zip
+ * 
+ * ReqBE.prototype.uploadUser
+ * app.storeFile
+ * app.storeFileMult (with wrapper: ReqBE.prototype.uploadAdmin)
+ * 
+ * app.loadFrBUOnServ (with wrapper: ReqBE.prototype.loadFrBUOnServ) internally calls:
+ *   app.loadMetaFrBU
+ *********************************************************************/
+
+ReqBE.prototype.uploadUser=function*(inObj){
+  var self=this, req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
+  var Ou={};
+  var regImg=RegExp("^(png|jpeg|jpg|gif|svg)$"), regVid=RegExp('^(mp4|ogg|webm)$');
+
+  //var redisVar=req.sessionID+'_captcha';
+  //var tmp=yield* wrapRedisSendCommand.call(req, 'get',[redisVar]);
+  //if(this.captchaIn!=tmp) { Ou.strMessage='Wrong captcha'; return [null, [Ou]];}
+
+    // Check reCaptcha with google
+  var strCaptchaIn=this.captchaIn;
+  var uGogCheck = "https://www.google.com/recaptcha/api/siteverify"; 
+  var objForm={  secret:strReCaptchaSecretKey, response:strCaptchaIn, remoteip:req.connection.remoteAddress  };
+  var semY=0, semCB=0, err, response, body;
+  var reqStream=requestMod.post({url:uGogCheck, form:objForm}, function(errT, responseT, bodyT) { err=errT; response=responseT; body=bodyT; if(semY)flow.next(); semCB=1;  }); if(!semCB){semY=1; yield;}
+  var buf=body;
+  try{ var data = JSON.parse(buf.toString()); }catch(e){ return [e]; }
+  //console.log('Data: ', data);
+  if(!data.success) return [new ErrorClient('reCaptcha test not successfull')];
+  
+  var File=this.File;
+  var n=File.length; this.mes("nFile: "+n);
+  
+  var file=File[0], tmpname=file.path, fileName=file.name; if(this.strName.length) fileName=this.strName;
+  var Match=RegExp('\\.(\\w{1,3})$').exec(fileName); 
+  if(!Match){ Ou.strMessage="The file name should be in the form xxxx.xxx"; return [null, [Ou]]; }
+  var type=Match[1].toLowerCase(), err, buf;
+  fs.readFile(tmpname, function(errT, bufT) { err=errT; buf=bufT; flow.next(); });  yield; if(err) return [err];
+  var data=buf;
+  if(data.length==0){ this.mes("data.length==0"); return [null, [Ou]]; }
+
+  if(regImg.test(type)){
+      // autoOrient
+    var semY=0, semCB=0, err;
+    var myCollector=concat(function(buf){  data=buf;  if(semY) flow.next(); semCB=1;  });
+    var streamImg=gm(data).autoOrient().stream(function streamOut(errT, stdout, stderr) {
+      err=errT; if(err){ if(semY) flow.next(); semCB=1; return; }
+      stdout.pipe(myCollector);
+    });
+    if(!semCB) { semY=1; yield;}
+    if(err) return [err];
+
+    var eTag=md5(data);
+    //var dim=imageSize(data);  console.log(fileName+', w/h: '+dim.width+' / '+dim.height);
+    var sql="CALL "+strDBPrefix+"storeImage(?,?,?,?,@boOK);";
+    sql="START TRANSACTION; "+sql+" COMMIT;";
+    var Val=[fileName,1,data,eTag];
+    var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
+  }else if(regVid.test(type)){ 
+    var eTag=md5(data);
+    var sql="CALL "+strDBPrefix+"storeVideo(?,?,?);";
+    sql="START TRANSACTION; "+sql+" COMMIT;";
+    var Val=[fileName,data,eTag];
+    var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
+  }
+  else{ Ou.strMessage="Unrecognized file type: "+type; return [null, [Ou]]; }
+
+  Ou.strMessage="Done";
+  return [null, [Ou]];
+}
 
 app.storeFile=function*(fileName, type, data, flow){
   var regImg=RegExp("^(png|jpeg|jpg|gif|svg)$"), regVid=RegExp('^(mp4|ogg|webm)$');
@@ -1183,8 +1245,6 @@ app.storeFile=function*(fileName, type, data, flow){
 
     var eTag='upload'; //randomHash();
     
-  
-   
       // saveByReplace
     var tStart=new Date();
     var Sql=[];
@@ -1236,7 +1296,6 @@ app.storeFile=function*(fileName, type, data, flow){
   //process.stdout.write("*");
 }
 
-
 app.storeFileMult=function*(flow, File){
   var regBoTalk=RegExp('(template_)?talk:');
   var FileOrg=File;
@@ -1268,7 +1327,7 @@ app.storeFileMult=function*(flow, File){
         //var type=Match[1].toLowerCase(), bufT=new Buffer(fileInZip._data,'binary');//b.toString();
         var type=Match[1].toLowerCase(), bufT=Buffer.from(fileInZip._data,'binary');//b.toString();
 
-        console.log(j+'/'+Key.length+' '+fileName);
+        console.log((j+1)+'/'+Key.length+' '+fileName);
         var [err]=yield* storeFile.call(this, fileName, type, bufT, flow);  if(err) return [err];
       } 
 
@@ -1277,7 +1336,7 @@ app.storeFileMult=function*(flow, File){
       var Match=RegExp('\\.(\\w{1,4})$').exec(fileName);
       var type=Match[1].toLowerCase();
  
-      console.log(i+'/'+FileOrg.length+' '+fileName+' '+dataOrg.length);
+      console.log((i+1)+'/'+FileOrg.length+' '+fileName+' '+dataOrg.length);
       var [err]=yield* storeFile.call(this, fileName, type, dataOrg, flow);  if(err) return [err];
     } 
   }
@@ -1288,35 +1347,6 @@ app.storeFileMult=function*(flow, File){
   
   return [null];
 }
-
-app.loadDataFrBU=function*(flow, strFile){  // Can be called both from commandline and from BE-request (not)
-  var strFileToLoadFolder=path.join(__dirname, '..', 'mmmWikiBU'); 
-  var files=[strFile];
-  //if(strFile) files=[strFile];
-  //else {  var err;  fs.readdir(strFileToLoadFolder, function(errT, filesT){ err=errT; files=filesT; flow.next(); }); yield;  if(err) return [err];   }  
-
-  var File=Array(files.length);
-  for(var i=0;i<files.length;i++){
-    var file=files[i], strPath=path.join(strFileToLoadFolder,file);
-    var strType=''; if(file.substr(-4)=='.zip') strType='application/zip';
-    File[i]={name:file, path:strPath,type:strType};
-  }
-  
-  var [err]=yield* storeFileMult.call(this, flow, File); if(err) return [err];
-  return [null, [0]];
-}
-
-
-ReqBE.prototype.uploadAdminServ=function*(inObj){
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
-  this.mes("Working... (check server console for progress) ");
-  var [err]=yield* loadDataFrBU.call(this, flow, inObj.file); if(err) return [err];
-  return [null, [0]];
-}
-
-
 ReqBE.prototype.uploadAdmin=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
@@ -1327,112 +1357,17 @@ ReqBE.prototype.uploadAdmin=function*(inObj){
   return [null, [0]];
 }
 
-ReqBE.prototype.uploadUser=function*(inObj){
-  var self=this, req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
-  var Ou={};
-  var regImg=RegExp("^(png|jpeg|jpg|gif|svg)$"), regVid=RegExp('^(mp4|ogg|webm)$');
 
-  //var redisVar=req.sessionID+'_captcha';
-  //var tmp=yield* wrapRedisSendCommand.call(req, 'get',[redisVar]);
-  //if(this.captchaIn!=tmp) { Ou.strMessage='Wrong captcha'; return [null, [Ou]];}
-
-    // Check reCaptcha with google
-  var strCaptchaIn=this.captchaIn;
-  var uGogCheck = "https://www.google.com/recaptcha/api/siteverify"; 
-  var objForm={  secret:strReCaptchaSecretKey, response:strCaptchaIn, remoteip:req.connection.remoteAddress  };
-  var semY=0, semCB=0, err, response, body;
-  var reqStream=requestMod.post({url:uGogCheck, form:objForm}, function(errT, responseT, bodyT) { err=errT; response=responseT; body=bodyT; if(semY)flow.next(); semCB=1;  }); if(!semCB){semY=1; yield;}
-  var buf=body;
-  try{ var data = JSON.parse(buf.toString()); }catch(e){ return [e]; }
-  //console.log('Data: ', data);
-  if(!data.success) return [new ErrorClient('reCaptcha test not successfull')];
-  
-  var File=this.File;
-  var n=File.length; this.mes("nFile: "+n);
-  
-  var file=File[0], tmpname=file.path, fileName=file.name; if(this.strName.length) fileName=this.strName;
-  var Match=RegExp('\\.(\\w{1,3})$').exec(fileName); 
-  if(!Match){ Ou.strMessage="The file name should be in the form xxxx.xxx"; return [null, [Ou]]; }
-  var type=Match[1].toLowerCase(), err, buf;
-  fs.readFile(tmpname, function(errT, bufT) { err=errT; buf=bufT; flow.next(); });  yield; if(err) return [err];
-  var data=buf;
-  if(data.length==0){ this.mes("data.length==0"); return [null, [Ou]]; }
-
-  if(regImg.test(type)){
-      // autoOrient
-    var semY=0, semCB=0, err;
-    var myCollector=concat(function(buf){  data=buf;  if(semY) flow.next(); semCB=1;  });
-    var streamImg=gm(data).autoOrient().stream(function streamOut(errT, stdout, stderr) {
-      err=errT; if(err){ if(semY) flow.next(); semCB=1; return; }
-      stdout.pipe(myCollector);
-    });
-    if(!semCB) { semY=1; yield;}
-    if(err) return [err];
-
-
-    var eTag=md5(data);
-    //var dim=imageSize(data);  console.log(fileName+', w/h: '+dim.width+' / '+dim.height);
-    var sql="CALL "+strDBPrefix+"storeImage(?,?,?,?,@boOK);";
-    sql="START TRANSACTION; "+sql+" COMMIT;";
-    var Val=[fileName,1,data,eTag];
-    var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
-  }else if(regVid.test(type)){ 
-    var eTag=md5(data);
-    var sql="CALL "+strDBPrefix+"storeVideo(?,?,?);";
-    sql="START TRANSACTION; "+sql+" COMMIT;";
-    var Val=[fileName,data,eTag];
-    var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
+app.loadMetaFrBU=function*(flow, oFile){
+  var strFile=oFile.strName, strCSV=oFile.strData;
+  if(typeof strCSV=='undefined'){
+    //var strFileLong=path.join(__dirname, '..', 'mmmWikiBU', strFile);
+    var strFileLong=oFile.path;
+    var err, buf;  fs.readFile(strFileLong, function(errT, bufT) {  err=errT; buf=bufT;  flow.next(); });   yield;  if(err) return [err];
+    strCSV=buf.toString().trim();
   }
-  else{ Ou.strMessage="Unrecognized file type: "+type; return [null, [Ou]]; }
 
-  Ou.strMessage="Done";
-  return [null, [Ou]];
-}
-
-
-app.isUpperCase=function(c){return c == c.toUpperCase(); }
-app.csvParseMy=function*(flow, strFile){
-  var err, buf;
-  fs.readFile(strFile, function(errT, bufT) {  err=errT; buf=bufT;  flow.next(); });   yield;  if(err) return [err];
-  var strCSV=buf.toString();
-  var strCSV=strCSV.trim();
-  
-  var indNL=strCSV.search('\n'), strHead=strCSV.substr(0,indNL), arrHead=strHead.split(','), arrType=Array(arrHead.length); arrHead.forEach(function(str,ind){
-    str=trim(str,'"'); arrHead[ind]=str;
-    var strType;
-    if(str.slice(0,2)=='bo' && isUpperCase(str[2])) strType='boolean';
-    else if(str.slice(0,3)=='int' && isUpperCase(str[3])) strType='number';
-    else if(str[0]=='n' && isUpperCase(str[1])) strType='number';
-    else if(str[0]=='t' && isUpperCase(str[1])) strType='number';
-    else strType='string';
-    arrType[ind]=strType;
-  });
-  
-  var arrData;
-  papaparse.parse(strCSV.substr(indNL).trim(), { complete: function(results, file) { //dynamicTyping:true,
-    arrData=results.data;
-  }, transform:function(val, col){
-    if(arrType[col]=='boolean') return val.toLowerCase()=='true';
-    else if(arrType[col]=='number') return Number(val);
-    return val;
-  }
-  });
-  
-  return [arrHead,arrData];
-}
-
-
-app.loadMetaFrBU=function*(flow, strFile){
-  var strFileLong=path.join(__dirname, '..', 'mmmWikiBU', strFile);
-  //var buf;
-  //fs.readFile(strFileLong, function(errT, bufT) {  err=errT; buf=bufT;  flow.next(); });   yield;  if(err) return [err];
-  //var strCSV=buf.toString();
-  
-  //var arrT=csvParse(strCSV, {comment: '#'}), arrHead=arrT[0], arrData=arrT.slice(1);
-  //var arrT=strCSV.split('\n'), arrCSV=arrT.slice(1), arrHead=arrT[0].split(',');
-  //var [arrHead,arrData]=csvParseMy(strCSV);
-  var [arrHead,arrData]= yield* csvParseMy(flow, strFileLong);
+  var [arrHead,arrData]= yield* csvParseMy(flow, strCSV);
 
   var nRow=arrData.length;
   var ICol=array_flip(arrHead);
@@ -1484,30 +1419,73 @@ app.loadMetaFrBU=function*(flow, strFile){
   return [null, [0]];
 }
 
-
-app.loadFrBU=function*(flow, strFileArg){
-  var StrValidZip=['page.zip', 'image.zip'];
-  var StrFile;
-  if(typeof strFileArg!='string') StrFile=['site.csv', 'page.zip', 'image.zip', 'page.csv', 'image.csv', 'redirect.csv'];
-  else {
-    StrFile=strFileArg.split('+');  
-    for(var i=0;i<StrFile.length;i++){
-      var strFile=StrFile[i];
-      //if(strFile=='all') { StrFile=StrValidLoadMeta.concat([]); break; }
-      if(StrValidLoadMeta.indexOf(strFile)==-1 && StrValidZip.indexOf(strFile)==-1) {helpTextExit(); return [];}
+app.loadFrBUOnServ=function*(flow, StrFile){ 
+  var strFileToLoadFolder=path.join(__dirname, '..', 'mmmWikiBU'); 
+  //if(typeof StrFile=='undefined') {
+    //var err, ObjFile;  fs.readdir(strFileToLoadFolder, {withFileTypes:true}, function(errT, filesT){ err=errT; ObjFile=filesT; flow.next(); }); yield;  if(err) return [err];
+    //StrFile=[]; ObjFile.forEach((objFile)=>{if(objFile.isFile()) StrFile.push(objFile.name);});
+  //}
+  if(typeof StrFile=='undefined') { StrFile=['.']; }
+  if( StrFile.length==1) {
+    var pathTmp=path.join(__dirname, '..', 'mmmWikiBU',StrFile[0]); 
+    var err, stats; fs.lstat(pathTmp, function(errT, statsT){ err=errT; stats=statsT; flow.next(); }); yield;  if(err) return [err];
+    if(stats.isDirectory()){
+      var err, DirEnt;  fs.readdir(pathTmp, {withFileTypes:true}, function(errT, filesT){ err=errT; DirEnt=filesT; flow.next(); }); yield;  if(err) return [err];
+      StrFile=[]; DirEnt.forEach((objFile)=>{if(objFile.isFile()) StrFile.push(objFile.name);});
+      strFileToLoadFolder=pathTmp;
     }
   }
-  var obj={myMySql:new MyMySql(mysqlPool)};
-    
+    // Reorder/extract csv (meta data) files:
+    // Look for csv files (also in any meta.zip) and make sure files named "site.csv" comes first, pages/images in the middle, and lastly the remaining csv-files.
+  var ObjFile=[], ObjFileStart=[], ObjFileEnd=[], regExt=/\.([a-z]+)/;
   for(var i=0;i<StrFile.length;i++){
-    var strFile=StrFile[i];
-    var Match=/\.([a-z]+)/.exec(strFile);
-    if(Match[1].toLowerCase()=='csv') yield* loadMetaFrBU.call(obj, flow, strFile);
-    else yield* loadDataFrBU.call(obj, flow, strFile);
-    console.log(strFile+' done');
+    var strName=StrFile[i];
+    var Match=regExt.exec(strName), strExt=Match[1].toLowerCase();
+    var boMeta=/meta/i.test(strName);
+    var strFileLong=path.join(strFileToLoadFolder, strName);
+    if(strExt=='csv') { var oFile={strName:strName, strExt:strExt, path:strFileLong}; if(strName=='site.csv') ObjFileStart.unshift(oFile); else ObjFileEnd.push(oFile); }
+    else if(strExt=='zip' && boMeta) {
+      var err, buf; fs.readFile(strFileLong, function(errT, bufT) { err=errT; buf=bufT; flow.next(); }); yield;  if(err) return [err];
+      var dataOrg=buf; 
+      
+      var zip=new NodeZip(dataOrg, {base64: false, checkCRC32: true});
+      var FileInZip=zip.files;
+      var Key=Object.keys(FileInZip);  
+      for(var j=0;j<Key.length;j++){
+        var strFileZ=Key[j];
+        var Match=regExt.exec(strFileZ), strExt=Match[1].toLowerCase();
+        var fileInZip=FileInZip[strFileZ];
+        var bufT=Buffer.from(fileInZip._data,'binary');
+        var strCSV=bufT.toString().trim();
+        var oFile={strName:strFileZ, strExt:strExt, strData:strCSV}; if(strFileZ=='site.csv') ObjFileStart.push(oFile); else ObjFileEnd.push(oFile);
+        
+        console.log((j+1)+'/'+Key.length+' '+strFileZ);
+      }
+    }
+    else { ObjFile.push({strName:strName, strExt:strExt, path:strFileLong}); }
+  }
+  ObjFile=ObjFileStart.concat(ObjFile, ObjFileEnd);
+  
+    // Load respective file
+  var obj={myMySql:new MyMySql(mysqlPool)};
+  for(var i=0;i<ObjFile.length;i++){
+    var {strName,strExt}=oFile=ObjFile[i];
+    if(strExt=='csv') {var [err]=yield* loadMetaFrBU.call(obj, flow, oFile); if(err) return [err]; }
+    else {
+      var fileTmp={name:oFile.strName, path:oFile.path}; if(strExt=='zip') fileTmp.type='application/zip';
+      var [err]=yield* storeFileMult.call(obj, flow, [fileTmp]); if(err) return [err];
+    }
+    console.log(oFile.strName+' done');
   }
   obj.myMySql.fin(); 
-  
   return [null, [0]];
 }
-
+ReqBE.prototype.loadFrBUOnServ=function*(inObj){
+  var req=this.req, res=this.res;
+  var GRet=this.GRet, flow=req.flow;
+  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+  this.mes("Working... (check server console for progress) ");
+  var StrFile=inObj.File;
+  var [err]=yield* loadFrBUOnServ(flow, StrFile); if(err) return [err];
+  return [null, [0]];
+}
