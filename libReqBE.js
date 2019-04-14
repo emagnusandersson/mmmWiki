@@ -274,13 +274,19 @@ ReqBE.prototype.deletePage=function*(inObj){
   var Sql=[], len=File.length;
   if(len>=3){ // This way is quicker if many pages are to be deleted
     Sql.push("START TRANSACTION;");
-    Sql.push("CREATE TEMPORARY TABLE IF NOT EXISTS arrPageID (idPage int(4) NOT NULL);");
-    Sql.push("TRUNCATE arrPageID; INSERT INTO arrPageID VALUES "+array_fill(len,'(?)').join(', ')+';');
+    //Sql.push("CREATE TEMPORARY TABLE IF NOT EXISTS arrPageID (idPage int(4) NOT NULL);");
+    //Sql.push("TRUNCATE arrPageID; INSERT INTO arrPageID VALUES "+array_fill(len,'(?)').join(', ')+';');
+    Sql.push("DROP TEMPORARY TABLE IF EXISTS arrPageID;");
+    Sql.push("CREATE TEMPORARY TABLE arrPageID (idPage int(4) NOT NULL);");
+    Sql.push("INSERT INTO arrPageID VALUES "+array_fill(len,'(?)').join(', ')+';');
     Sql.push("CALL "+strDBPrefix+"deletePageIDMult();"); 
     Sql.push("COMMIT;");
     var sql=Sql.join('\n');
   }else{
-    var sql=array_fill(File.length, "CALL "+strDBPrefix+"deletePageID(?);").join('\n'); 
+    Sql.push("START TRANSACTION;");
+    Sql=Sql.concat(array_fill(File.length, "CALL "+strDBPrefix+"deletePageID(?);")); 
+    Sql.push("COMMIT;");
+    var sql=Sql.join('\n');
   }  
   var Val=File;
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
@@ -300,8 +306,11 @@ ReqBE.prototype.deleteImage=function*(inObj){
   var Sql=[], len=File.length;
   if(len>=3){ // This way is quicker if many pages are to be deleted
     Sql.push("START TRANSACTION;");
-    Sql.push("CREATE TEMPORARY TABLE IF NOT EXISTS arrImageID (idImage int(4) NOT NULL);");
-    Sql.push("TRUNCATE arrImageID; INSERT INTO arrImageID VALUES "+array_fill(len,'(?)').join(', ')+';');
+    //Sql.push("CREATE TEMPORARY TABLE IF NOT EXISTS arrImageID (idImage int(4) NOT NULL);");
+    //Sql.push("TRUNCATE arrImageID; INSERT INTO arrImageID VALUES "+array_fill(len,'(?)').join(', ')+';');
+    Sql.push("DROP TEMPORARY TABLE IF EXISTS arrImageID;");
+    Sql.push("CREATE TEMPORARY TABLE arrImageID (idImage int(4) NOT NULL);");
+    Sql.push("INSERT INTO arrImageID VALUES "+array_fill(len,'(?)').join(', ')+';');
     Sql.push("CALL "+strDBPrefix+"deleteImageIDMult();"); 
     Sql.push("COMMIT;");
     var sql=Sql.join('\n');
@@ -533,8 +542,10 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   var Sql=[], Val=[];
   var [strSubQ,arrSubV]=createSubStr(arrSub);
   var strSubImageQ=createSubImageStr(StrSubImage);
-  Sql.push(sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';');
-  Sql.push("TRUNCATE tmpSubNew; "+strSubQ,   "TRUNCATE tmpSubNewImage; "+strSubImageQ);
+  //Sql.push(sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';');
+  //Sql.push("TRUNCATE tmpSubNew; "+strSubQ,   "TRUNCATE tmpSubNewImage; "+strSubImageQ);
+  Sql.push("DROP TEMPORARY TABLE IF EXISTS tmpSubNew;", sqlTmpSubNewCreate+';', strSubQ);
+  Sql.push("DROP TEMPORARY TABLE IF EXISTS tmpSubNewImage;", sqlTmpSubNewImageCreate+';', strSubImageQ);
   var Val=array_merge(arrSubV, StrSubImage);
   var sql=Sql.join('\n'); 
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {arrRet=[err]; break stuff;}
@@ -548,9 +559,16 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   Sql.push("SET @pageName=?; SET @boTalk=?; SET @boTemplate=?;");   Val.push(this.queredPage, boTalk, boTemplate);
   Sql.push("INSERT INTO "+pageTab+" (idSite, pageName, boTalk, boTemplate) VALUES (@idSite, @pageName, @boTalk, @boTemplate)  ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=@pageName, boTalk=@boTalk, boTemplate=@boTemplate, lastRev=0;");
   Sql.push("SELECT @idPage:=LAST_INSERT_ID() AS idPage;");
+  Sql.push("SELECT ROW_COUNT()=1 AS boInsert;");
   Sql.push("CALL "+strDBPrefix+"markStaleParentsOfPage(@idSite, @pageName, 1, @boTemplate);");
   var sql=Sql.join('\n'); 
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {arrRet=[err]; break stuff;}
+  if(results[5][0].boInsert){
+    sql=`# Calculate nParent if page was inserted
+      SELECT COUNT(*) INTO @VnParent FROM `+subTab+` s WHERE pageName=Iname;
+      UPDATE `+pageTab+` SET nParent=@VnParent WHERE idPage=OidPage;`;
+    var Val=[], [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {arrRet=[err]; break stuff;}
+  }
   
   var len=strEditText.length;
   if(len==0){
@@ -852,7 +870,7 @@ ReqBE.prototype.getPageList=function*(inObj) {
   var Sql=[], flow=req.flow;
   var tmpCond=array_filter(this.Where), strCond=''; if(tmpCond.length) strCond='WHERE '+tmpCond.join(' AND ');
 
-  Sql.push("SELECT SQL_CALC_FOUND_ROWS p.boTLS, p.siteName AS siteName, p.www AS www, p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(p.tCreated) AS tCreated, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther AS boOther, p.idPage AS idPage, p.idFile AS idFile, p.size AS size, p.nChild AS nChild, p.nImage AS nImage, np.nParent, pp.idPage AS idParent, pp.pageName AS parent  FROM "+strTableRefPage+" "+strCond+" GROUP BY siteName, pageName;"); 
+  Sql.push("SELECT SQL_CALC_FOUND_ROWS p.boTLS, p.siteName AS siteName, p.www AS www, p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(p.tCreated) AS tCreated, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther AS boOther, p.idPage AS idPage, p.idFile AS idFile, p.size AS size, p.nChild AS nChild, p.nImage AS nImage, p.nParent, pp.idPage AS idParent, pp.pageName AS parent  FROM "+strTableRefPage+" "+strCond+" GROUP BY siteName, pageName;"); 
 
   Sql.push("SELECT FOUND_ROWS() AS n;"); // nFound
   Sql.push("SELECT count(idPage) AS n FROM "+pageTab+";"); // nUnFiltered
@@ -900,7 +918,7 @@ ReqBE.prototype.getImageList=function*(inObj) {
   var Sql=[], flow=req.flow;
   //var sql="SELECT imageName, UNIX_TIMESTAMP(tCreated) AS tCreated, boOther, idImage, idFile FROM "+imageTab+"";
   var tmpCond=array_filter(this.Where), strCond=''; if(tmpCond.length) strCond='WHERE '+tmpCond.join(' AND ');
-  Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.tCreated) AS tCreated, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, np.nParent, pp.idPage AS idParent, pp.pageName AS parent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
+  Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.tCreated) AS tCreated, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, i.nParent, pp.idPage AS idParent, pp.pageName AS parent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
 
   Sql.push("SELECT FOUND_ROWS() AS n;"); // nFound
   Sql.push("SELECT count(idImage) AS n FROM "+imageTab+";"); // nUnFiltered
@@ -1250,9 +1268,12 @@ app.storeFile=function*(fileName, type, data, flow){
     var Sql=[];
     var [strSubQ,arrSubV]=createSubStr(arrSub);
     var strSubImageQ=createSubImageStr(StrSubImage);
-    Sql.push(sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';');
-    Sql.push("TRUNCATE tmpSubNew; "+strSubQ,   "TRUNCATE tmpSubNewImage; "+strSubImageQ);
+    //Sql.push(sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';');
+    //Sql.push("TRUNCATE tmpSubNew; "+strSubQ,   "TRUNCATE tmpSubNewImage; "+strSubImageQ);
+    Sql.push("DROP TEMPORARY TABLE IF EXISTS tmpSubNew;", sqlTmpSubNewCreate+';', strSubQ);
+    Sql.push("DROP TEMPORARY TABLE IF EXISTS tmpSubNewImage;", sqlTmpSubNewImageCreate+';', strSubImageQ);
     Sql.push("CALL "+strDBPrefix+"saveByReplace(?,?,?,?,?,?, @Omess, @idPage);");
+    Sql.push("COMMIT;");
     Sql.push("SELECT @Omess AS mess");
     var sql=Sql.join('\n');
     var Val=array_merge(arrSubV, StrSubImage, siteName, '', pageName, strEditText, strHtmlText, eTag);
@@ -1303,7 +1324,8 @@ app.storeFileMult=function*(flow, File){
   var tmp=n+" files."; console.log(tmp); 
   var FileTalk=[]; for(var i=FileOrg.length-1;i>=0;i--){ if(regBoTalk.test(FileOrg[i].name)) { var item=mySplice1(FileOrg,i);  FileTalk.push(item);  }  } FileOrg=FileTalk.concat(FileOrg);
   
-  var sql="START TRANSACTION;", Val=[];
+  //var sql="START TRANSACTION;", Val=[];
+  //Sql.push(`LOCK TABLES `+pageTab+` WRITE;`);
   var sql="SET autocommit=0;", Val=[];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   

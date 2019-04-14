@@ -160,9 +160,12 @@ createSubImageStr=function(StrT){
 createSaveByAddSQL=function(wwwSite, strName, summary, signature, strEditText, strHtmlText, eTag, arrSub, StrSubImage){ 
   var [strSubQ,arrSubV]=createSubStr(arrSub);
   var strSubImageQ=createSubImageStr(StrSubImage);
-  var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  Sql.push("TRUNCATE tmpSubNew; "+strSubQ); // START TRANSACTION; 
-  Sql.push("TRUNCATE tmpSubNewImage; "+strSubImageQ);
+  //var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
+  //Sql.push("TRUNCATE tmpSubNew; "+strSubQ); // START TRANSACTION; 
+  //Sql.push("TRUNCATE tmpSubNewImage; "+strSubImageQ);
+  var Sql=[];
+  Sql.push("DROP TEMPORARY TABLE IF EXISTS tmpSubNew;", sqlTmpSubNewCreate+';', strSubQ);
+  Sql.push("DROP TEMPORARY TABLE IF EXISTS tmpSubNewImage;", sqlTmpSubNewImageCreate+';', strSubImageQ);
   Sql.push("CALL "+strDBPrefix+"saveByAdd(?,?,?,?,?,?,?);"); //  COMMIT;
   var sql=Sql.join('\n');
   var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, summary, signature, strEditText, strHtmlText, eTag]);
@@ -172,9 +175,12 @@ createSaveByAddSQL=function(wwwSite, strName, summary, signature, strEditText, s
 createSetNewCacheSQL=function(wwwSite, strName, rev, strHtmlText, eTag, arrSub, StrSubImage){
   var [strSubQ,arrSubV]=createSubStr(arrSub);
   var strSubImageQ=createSubImageStr(StrSubImage);
-  var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  Sql.push("TRUNCATE tmpSubNew; "+strSubQ); // START TRANSACTION; 
-  Sql.push("TRUNCATE tmpSubNewImage; "+strSubImageQ);
+  //var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
+  //Sql.push("TRUNCATE tmpSubNew; "+strSubQ); // START TRANSACTION; 
+  //Sql.push("TRUNCATE tmpSubNewImage; "+strSubImageQ);
+  var Sql=[];
+  Sql.push("DROP TEMPORARY TABLE IF EXISTS tmpSubNew;", sqlTmpSubNewCreate+';', strSubQ);
+  Sql.push("DROP TEMPORARY TABLE IF EXISTS tmpSubNewImage;", sqlTmpSubNewImageCreate+';', strSubImageQ);
   Sql.push("CALL "+strDBPrefix+"setNewCache(?,?,?,?,?);"); //  COMMIT;
   var sql=Sql.join('\n');
   var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, rev, strHtmlText, eTag]);

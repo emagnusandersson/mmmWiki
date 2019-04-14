@@ -72,7 +72,7 @@ nImage:              {b:'10',feat:nChildFeat},
 intPriority:         {b:'10',feat:intPriorityFeat},
 tLastAccess:         {b:'10',feat:tFeat},
 nAccess:             {b:'10',feat:nAccessFeat},
-//nParent:             {b:'10',feat:nParentFeat},
+nParent:             {b:'10',feat:nParentFeat},
 lastRev:             {b:'10',feat:lastRevFeat}
 };
 StrOrderFiltPage=Object.keys(PropPage);
@@ -84,7 +84,7 @@ idPage:              {b:'00'},
 idFile:              {b:'00'},
 //nChild:              {b:'00'},
 //nImage:              {b:'00'},
-nParent:             {b:'00'},
+//nParent:             {b:'00'},
 www:                 {b:'00'}});
 
 
@@ -133,7 +133,7 @@ GROUP BY bin ORDER BY `+strOrder+`;`;
 }
 
 var tmpBinValueF=function(name){ return "COUNT(DISTINCT p.idSite, p.pageName, p."+name+")";}
-var StrTmp=['parent', 'siteName','size','boOR','boOW','boSiteMap','boTalk','boTemplate','boOther','tCreated','tMod','tModCache', 'nChild', 'nImage','intPriority', 'tLastAccess', 'nAccess', 'lastRev'];
+var StrTmp=['parent', 'siteName','size','boOR','boOW','boSiteMap','boTalk','boTemplate','boOther','tCreated','tMod','tModCache', 'nChild', 'nImage','intPriority', 'tLastAccess', 'nAccess', 'nParent', 'lastRev'];
 for(var i=0;i<StrTmp.length;i++){  var name=StrTmp[i]; PropPage[name].binValueF=tmpBinValueF; }
 
 
@@ -160,16 +160,16 @@ tCreated:            {b:'10',feat:tFeat},
 tMod:                {b:'11',feat:tFeat},
 tLastAccess:         {b:'10',feat:tFeat},
 nAccess:             {b:'10',feat:nAccessFeat},
-boOther:             {b:'01',feat:{kind:'BN',span:1}}
-//nParent:             {b:'10',feat:nParentFeat}
+boOther:             {b:'01',feat:{kind:'BN',span:1}},
+nParent:             {b:'10',feat:nParentFeat}
 };
 StrOrderFiltImage=Object.keys(PropImage);
 
 extend(PropImage,{
 imageName:           {b:'00'},
 idImage:             {b:'00'},
-idFile:              {b:'00'},
-nParent:             {b:'00'}
+idFile:              {b:'00'}
+//nParent:             {b:'00'}
 });
 
 tmpCond0F=function(name, val){  return "UNIX_TIMESTAMP("+name+")<=UNIX_TIMESTAMP(now())-"+val; };
@@ -187,7 +187,7 @@ PropImage.parent.boIncludeNull=1;
 
 PropImage.parentSite.pre='pp.';
 PropImage.parent.pre='pp.';
-PropImage.extension.pre = PropImage.size.pre = PropImage.width.pre = PropImage.height.pre = PropImage.tCreated.pre = PropImage.tMod.pre=PropImage.tLastAccess.pre = PropImage.nAccess.pre = PropImage.boOther.pre = 'i.';
+PropImage.extension.pre = PropImage.size.pre = PropImage.width.pre = PropImage.height.pre = PropImage.tCreated.pre = PropImage.tMod.pre=PropImage.tLastAccess.pre = PropImage.nAccess.pre = PropImage.boOther.pre = PropImage.nParent.pre = 'i.';
 
 
 
@@ -276,14 +276,15 @@ objOthersActivityDefault={nEdit:0, pageName:'',  nImage:0, imageName:''};
 // tLastBackup=0; tLastEdit=0; tImageLastBackup=0; tImageLastChange=0;
 
 
-//tmpSubNew='tmpSubNew';
-sqlTmpSubNewCreate="CREATE TEMPORARY TABLE IF NOT EXISTS tmpSubNew (pageName varchar(128) NOT NULL,  boOn TINYINT(1) NOT NULL)";  //,  UNIQUE KEY (pageName)
-//tmpSubNewImage='tmpSubNewImage';
-sqlTmpSubNewImageCreate="CREATE TEMPORARY TABLE IF NOT EXISTS tmpSubNewImage (imageName varchar(128) NOT NULL)";  //,  UNIQUE KEY (imageName)
+//sqlTmpSubNewCreate="CREATE TEMPORARY TABLE IF NOT EXISTS tmpSubNew (pageName varchar(128) NOT NULL,  boOn TINYINT(1) NOT NULL)";  //,  UNIQUE KEY (pageName)
+//sqlTmpSubNewImageCreate="CREATE TEMPORARY TABLE IF NOT EXISTS tmpSubNewImage (imageName varchar(128) NOT NULL)";  //,  UNIQUE KEY (imageName)
+sqlTmpSubNewCreate="CREATE TEMPORARY TABLE tmpSubNew (pageName varchar(128) NOT NULL,  boOn TINYINT(1) NOT NULL)";  //,  UNIQUE KEY (pageName)
+sqlTmpSubNewImageCreate="CREATE TEMPORARY TABLE tmpSubNewImage (imageName varchar(128) NOT NULL)";  //,  UNIQUE KEY (imageName)
 
 
 strDBPrefix='mmmWiki';
-StrTableKey=["sub", "subImage", "version", "page", "thumb", "image", "video", "file", "setting", "redirect", "redirectDomain", "site", "nParent", "nParentI"]; //,"cache" , "siteDefault"
+//StrTableKey=["sub", "subImage", "version", "page", "thumb", "image", "video", "file", "setting", "redirect", "redirectDomain", "site", "nParent", "nParentI"]; //,"cache" , "siteDefault"
+StrTableKey=["sub", "subImage", "version", "page", "thumb", "image", "video", "file", "setting", "redirect", "redirectDomain", "site"]; //, "nParent", "nParentI"
 //StrTableKey=["sub", "statNChild", "statParent", "subImage", "version", "page", "thumb", "image", "video", "file", "setting", "redirect", "redirectDomain", "site"];
 //StrViewsKey=["pageWWW", "pageLastSlim", "pageLast", "redirectWWW", "parentInfo", "parentImInfo", "childInfo", "childImInfo", "subWChildID", "subWExtra"]; 
 StrViewsKey=["pageSite", "pageLast", "pageLastSite", "redirectSite", "parentInfo", "parentImInfo", "childInfo", "childImInfo", "subWChildID", "subWExtra"]; 
@@ -295,20 +296,28 @@ extract(ViewName);
 
 
 
+//strTableRefPage="("+pageLastSiteView+" p) \n\
+//LEFT JOIN "+subTab+" s ON s.idSite=p.idSite AND s.pageName=p.pageName \n\
+//LEFT JOIN ("+pageTab+" pp) ON pp.idPage=s.idPage\n\
+//LEFT JOIN ("+nParentTab+" np) ON p.pageName=np.pageName AND p.idSite=np.idSite";
+
 strTableRefPage="("+pageLastSiteView+" p) \n\
 LEFT JOIN "+subTab+" s ON s.idSite=p.idSite AND s.pageName=p.pageName \n\
-LEFT JOIN ("+pageTab+" pp) ON pp.idPage=s.idPage\n\
-LEFT JOIN ("+nParentTab+" np) ON p.pageName=np.pageName AND p.idSite=np.idSite";
+LEFT JOIN ("+pageTab+" pp) ON pp.idPage=s.idPage";
 // Starting with the list of pages
 // The 1:st join: adds idPage of parent (The table is expanded if there are multiple parents)
 // The 2:nd join: adds pageName of parent(s)
 // The 3:rd join: adds nParent
 
+
+//strTableRefImage=imageTab+" i \n\
+//LEFT JOIN "+subImageTab+" s ON s.imageName=i.imageName \n\
+//LEFT JOIN ("+pageSiteView+" pp) ON pp.idPage=s.idPage \n\
+//LEFT JOIN ("+nParentITab+" np) ON i.imageName=np.imageName";
+
 strTableRefImage=imageTab+" i \n\
 LEFT JOIN "+subImageTab+" s ON s.imageName=i.imageName \n\
-LEFT JOIN ("+pageSiteView+" pp) ON pp.idPage=s.idPage \n\
-LEFT JOIN ("+nParentITab+" np) ON i.imageName=np.imageName";
-
+LEFT JOIN ("+pageSiteView+" pp) ON pp.idPage=s.idPage";
 
 strTableRefPageHist="("+pageLastSiteView+" p) \n\
 LEFT JOIN (\n\

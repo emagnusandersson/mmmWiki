@@ -1135,6 +1135,7 @@ app.SetupSqlT.prototype.createTable=function(boDropOnly){
   tLastAccess TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
   nAccess int(4) NOT NULL DEFAULT 0, \n\
   intPriority int(4) NOT NULL DEFAULT 50, \n\
+  nParent int(4) NOT NULL DEFAULT 0, \n\
   PRIMARY KEY (idPage), \n\
   UNIQUE KEY (idSite,pageName), \n\
   FOREIGN KEY (idSite) REFERENCES "+siteTab+"(idSite)  \n\
@@ -1199,6 +1200,7 @@ app.SetupSqlT.prototype.createTable=function(boDropOnly){
   nAccess int(4) NOT NULL DEFAULT 0, \n\
   tMod TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
   hash varchar(32) NOT NULL DEFAULT '', \n\
+  nParent int(4) NOT NULL DEFAULT 0, \n\
   PRIMARY KEY (idImage), \n\
   UNIQUE KEY (imageName), \n\
   FOREIGN KEY (idFile) REFERENCES "+fileTab+"(idFile) \n\
@@ -1263,17 +1265,18 @@ app.SetupSqlT.prototype.createTable=function(boDropOnly){
   PRIMARY KEY (www) \n\
   ) ENGINE="+engine+" COLLATE "+collate+"");
   
-  SqlTab.push("CREATE TABLE "+nParentTab+" ( \n\
-  idSite int(4) NOT NULL, \n\
-  pageName varchar(128) NOT NULL, \n\
-  nParent int(4) NOT NULL, \n\
-  PRIMARY KEY (idSite,pageName) \n\
-  ) ENGINE="+engine+" COLLATE "+collate+""); 
-  SqlTab.push("CREATE TABLE "+nParentITab+" ( \n\
-  imageName varchar(128) NOT NULL, \n\
-  nParent int(4) NOT NULL, \n\
-  PRIMARY KEY (imageName) \n\
-  ) ENGINE="+engine+" COLLATE "+collate+""); 
+  SqlTab.push("DROP TABLE IF EXISTS mmmWiki_nParent, mmmWiki_nParentI");
+  //SqlTab.push("CREATE TABLE "+nParentTab+" ( \n\
+  //idSite int(4) NOT NULL, \n\
+  //pageName varchar(128) NOT NULL, \n\
+  //nParent int(4) NOT NULL, \n\
+  //PRIMARY KEY (idSite,pageName) \n\
+  //) ENGINE="+engine+" COLLATE "+collate+""); 
+  //SqlTab.push("CREATE TABLE "+nParentITab+" ( \n\
+  //imageName varchar(128) NOT NULL, \n\
+  //nParent int(4) NOT NULL, \n\
+  //PRIMARY KEY (imageName) \n\
+  //) ENGINE="+engine+" COLLATE "+collate+""); 
 
     // Create sql for binTables of PropPage:
   addBinTableSql(SqlTabDrop,SqlTab,strDBPrefix,PropPage,engine,collate);
@@ -1299,16 +1302,16 @@ app.SetupSqlT.prototype.createView=function(boDropOnly){
   SqlViewDrop.push("DROP VIEW IF EXISTS mmmWiki_pageLast, mmmWiki_pageLastSlim, mmmWiki_pageWWW, mmmWiki_redirectWWW");
   
   SqlViewDrop.push("DROP VIEW IF EXISTS "+pageSiteView+"");  // pageTab with siteTab-fields: boDefault, boTLS, siteName and www
-  SqlView.push("CREATE VIEW "+pageSiteView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, tCreated, intPriority, tLastAccess, nAccess) AS \n\
-SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, p.tCreated, intPriority, tLastAccess, nAccess FROM "+pageTab+" p JOIN "+siteTab+" st ON p.idSite=st.idSite");
+  SqlView.push("CREATE VIEW "+pageSiteView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, tCreated, intPriority, tLastAccess, nAccess, nParent) AS \n\
+SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, p.tCreated, intPriority, tLastAccess, nAccess, nParent FROM "+pageTab+" p JOIN "+siteTab+" st ON p.idSite=st.idSite");
 
   SqlViewDrop.push("DROP VIEW IF EXISTS "+pageLastView+"");  // pageTab with versionTab-fields: boOther, tMod, tModCache, eTag, size, idFile and idFileCache for the last version
-  SqlView.push("CREATE VIEW "+pageLastView+" (idPage, idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage) AS \n\
-SELECT p.idPage, p.idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev");
+  SqlView.push("CREATE VIEW "+pageLastView+" (idPage, idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage, nParent) AS \n\
+SELECT p.idPage, p.idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage, nParent FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev");
 
   SqlViewDrop.push("DROP VIEW IF EXISTS "+pageLastSiteView+"");  // A combination of the above two views.
-  SqlView.push("CREATE VIEW "+pageLastSiteView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage) AS \n\
-SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, p.tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev JOIN "+siteTab+" st ON p.idSite=st.idSite");
+  SqlView.push("CREATE VIEW "+pageLastSiteView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage, nParent) AS \n\
+SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, p.tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage, nParent FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev JOIN "+siteTab+" st ON p.idSite=st.idSite");
 
 
   SqlViewDrop.push("DROP VIEW IF EXISTS "+redirectSiteView+"");
@@ -1404,14 +1407,9 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
 
         DELETE FROM `+subTab+` WHERE idSite=@VidSite AND pageName=@VpageNameCur;
 
-          -- Set up nParentTab appropriately
-        IF @VnParent THEN
-          INSERT INTO `+nParentTab+` (idSite, pageName, nParent) VALUES (@VidSite, @VpageNameNew, @VnParent) ON DUPLICATE KEY UPDATE nParent=@VnParent;
-        ELSE
-          DELETE FROM `+nParentTab+` WHERE idSite=@VidSite AND pageName=@VpageNameNew;
-        END IF;
         
-        UPDATE `+pageTab+` SET pageName=@VpageNameNew WHERE idPage=@VidPage;
+        UPDATE `+pageTab+` SET pageName=@VpageNameNew, nParent=@VnParent WHERE idPage=@VidPage;
+        
       END`);
       
   SqlFunctionDrop.push(`DROP PROCEDURE IF EXISTS `+strDBPrefix+`renameImage`);
@@ -1454,14 +1452,9 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
 
         DELETE FROM `+subImageTab+` WHERE imageName=@VimageNameCur;
 
-          -- Set up nParentITab appropriately
-        IF @VnParent THEN
-          INSERT INTO `+nParentITab+` (imageName, nParent) VALUES (@VimageNameNew, @VnParent) ON DUPLICATE KEY UPDATE nParent=@VnParent;
-        ELSE
-          DELETE FROM `+nParentITab+` WHERE imageName=@VimageNameNew;
-        END IF;
         
-        UPDATE `+imageTab+` SET imageName=@VimageNameNew WHERE idImage=@VidImage;
+        
+        UPDATE `+imageTab+` SET imageName=@VimageNameNew, nParent=@VnParent WHERE idImage=@VidImage;
       END`);
       
         
@@ -1484,19 +1477,12 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
         DELETE f FROM `+fileTab+` f JOIN tmp t ON t.idFileCache=f.idFile WHERE 1;
         
 
-              -- Delete/subtract VidPage's children's nParent-value in nParentTab
-          -- Delete any rows with 1 (or less) in nParentTab
-          -- (Stubs that this page pointed to (and no one else pointed to) are deleted.)
-        DELETE n FROM `+nParentTab+` n JOIN `+subTab+` s ON n.pageName=s.pageName AND n.idSite=VidSite WHERE s.idPage=VidPage AND nParent<=1;
-          -- Subtract 1 from nParentTab.nParent for each row in (old) subTab
-        UPDATE `+nParentTab+` n JOIN `+subTab+` s ON n.pageName=s.pageName AND n.idSite=VidSite SET n.nParent=n.nParent-1 WHERE s.idPage=VidPage;
 
-              -- Delete/subtract VidPage's images's nParent-value in nParentITab
-          -- Delete any rows with 1 (or less) in nParentITab
-        DELETE n FROM `+nParentITab+` n JOIN `+subImageTab+` s ON n.imageName=s.imageName WHERE s.idPage=VidPage AND nParent<=1;
-          -- Subtract 1 from nParentITab.nParent for each row in (old) subImageTab
-        UPDATE `+nParentITab+` n JOIN `+subImageTab+` s ON n.imageName=s.imageName SET n.nParent=n.nParent-1 WHERE s.idPage=VidPage;
-
+              -- Subtract VidPage's children's nParent-value in pageTab and imageTab
+          -- Children that this page pointed to, get their nParent decreased.
+          -- Subtract 1 from nParent in pageTab/imageTab for each row in (old) subTab/subImageTab
+        UPDATE `+pageTab+` p JOIN `+subTab+` s ON p.pageName=s.pageName AND p.idSite=VidSite SET p.nParent=GREATEST(p.nParent-1,0) WHERE s.idPage=VidPage;
+        UPDATE `+imageTab+` i JOIN `+subImageTab+` s ON i.imageName=s.imageName SET i.nParent=GREATEST(i.nParent-1,0) WHERE s.idPage=VidPage;
 
         DELETE FROM `+pageTab+` WHERE idPage=VidPage;
         COMMIT;
@@ -1506,7 +1492,7 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
       BEGIN
         DECLARE VidSite, VidPage, VboTalk, VboTemplate INT;
         DECLARE Vname varchar(128);
-        START TRANSACTION;
+        #START TRANSACTION;
         SELECT idSite, pageName INTO VidSite, Vname FROM `+pageTab+` WHERE idPage=IidPage;
         #CALL testIfTalkOrTemplate(Vname, VboTalk, VboTemplate);
         SET VboTemplate=isTemplate(Vname);
@@ -1521,21 +1507,16 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
         DELETE f FROM `+fileTab+` f JOIN tmp t ON t.idFile=f.idFile WHERE 1;
         DELETE f FROM `+fileTab+` f JOIN tmp t ON t.idFileCache=f.idFile WHERE 1;
        
-              -- Delete/subtract VidPage's children's nParent-value in nParentTab
-          -- Delete any rows with 1 (or less) in nParentTab
-        DELETE n FROM `+nParentTab+` n JOIN `+subTab+` s ON n.pageName=s.pageName AND n.idSite=VidSite WHERE s.idPage=VidPage AND nParent<=1;
-          -- Subtract 1 from nParentTab.nParent for each row in (old) subTab
-        UPDATE `+nParentTab+` n JOIN `+subTab+` s ON n.pageName=s.pageName AND n.idSite=VidSite SET n.nParent=n.nParent-1 WHERE s.idPage=VidPage;
 
-              -- Delete/subtract VidPage's images's nParent-value in nParentITab
-          -- Delete any rows with 1 (or less) in nParentITab
-        DELETE n FROM `+nParentITab+` n JOIN `+subImageTab+` s ON n.imageName=s.imageName WHERE s.idPage=VidPage AND nParent<=1;
-          -- Subtract 1 from nParentITab.nParent for each row in (old) subImageTab
-        UPDATE `+nParentITab+` n JOIN `+subImageTab+` s ON n.imageName=s.imageName SET n.nParent=n.nParent-1 WHERE s.idPage=VidPage;
-
+              -- Subtract VidPage's children's nParent-value in pageTab and imageTab
+          -- Children that this page pointed to, get their nParent decreased.
+          -- Subtract 1 from nParent in pageTab/imageTab for each row in (old) subTab/subImageTab
+        UPDATE `+pageTab+` p JOIN `+subTab+` s ON p.pageName=s.pageName AND p.idSite=VidSite SET p.nParent=GREATEST(p.nParent-1,0) WHERE s.idPage=VidPage;
+        UPDATE `+imageTab+` i JOIN `+subImageTab+` s ON i.imageName=s.imageName SET i.nParent=GREATEST(i.nParent-1,0) WHERE s.idPage=VidPage;
+        
 
         DELETE FROM `+pageTab+` WHERE idPage=VidPage;
-        COMMIT;
+        #COMMIT;
       END`);
 
   SqlFunctionDrop.push(`DROP PROCEDURE IF EXISTS `+strDBPrefix+`deletePageIDMult`);
@@ -1550,16 +1531,13 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
         DELETE f FROM `+fileTab+` f JOIN tmp t ON t.idFile=f.idFile WHERE 1;
         DELETE f FROM `+fileTab+` f JOIN tmp t ON t.idFileCache=f.idFile WHERE 1;
        
-
+        #DELETE p FROM `+pageTab+` p JOIN arrPageID arr ON p.idPage=arr.idPage WHERE 1;
+        
+        
+        UPDATE `+pageTab+` p JOIN (arrPageID arr JOIN `+subTab+` s ON arr.idPage=s.idPage) ON p.pageName=s.pageName AND p.idSite=s.idSite SET p.nParent=GREATEST(p.nParent,0);
+        UPDATE `+imageTab+` i JOIN (arrPageID arr JOIN `+subImageTab+` s ON arr.idPage=s.idPage) ON i.imageName=s.imageName SET i.nParent=GREATEST(i.nParent,0);
+        
         DELETE p FROM `+pageTab+` p JOIN arrPageID arr ON p.idPage=arr.idPage WHERE 1;
-        
-          -- Recalculate nParentTab
-        TRUNCATE `+nParentTab+`;
-        INSERT INTO `+nParentTab+` SELECT idSite, pageName, COUNT(idPage IS NOT NULL) AS nParent FROM `+subTab+` GROUP BY idSite, pageName;
-        
-          -- Recalculate nParentITab
-        TRUNCATE `+nParentITab+`;
-        INSERT INTO `+nParentITab+` SELECT imageName, COUNT(idPage IS NOT NULL) AS nParent FROM `+subImageTab+` GROUP BY imageName;
       END`);
   //SqlFunction.push("CALL "+strDBPrefix+"deletePage('www.common.com','mmm')");
 
@@ -1607,13 +1585,14 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
   SqlFunctionDrop.push(`DROP PROCEDURE IF EXISTS `+strDBPrefix+`deleteImageIDMult`);
   SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`deleteImageIDMult()
       BEGIN
-        DROP TABLE IF EXISTS tmp;
-        CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4));
+        DROP TABLE IF EXISTS tmp;    CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4));
         INSERT INTO tmp SELECT idFile FROM `+thumbTab+` t JOIN arrImageID arr ON t.idImage=arr.idImage;
         DELETE t FROM `+thumbTab+` t JOIN arrImageID arr ON t.idImage=arr.idImage WHERE 1;
         DELETE f FROM `+fileTab+` f JOIN tmp ON tmp.idFile=f.idFile WHERE 1;
         
-        TRUNCATE tmp; INSERT INTO tmp SELECT idFile FROM `+imageTab+` i JOIN arrImageID arr ON i.idImage=arr.idImage;
+        #TRUNCATE tmp;
+        DROP TABLE IF EXISTS tmp;    CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4));
+        INSERT INTO tmp SELECT idFile FROM `+imageTab+` i JOIN arrImageID arr ON i.idImage=arr.idImage;
         
         DELETE i FROM `+imageTab+` i JOIN arrImageID arr ON i.idImage=arr.idImage WHERE 1;
         DELETE f FROM `+fileTab+` f JOIN tmp ON tmp.idFile=f.idFile WHERE 1;
@@ -1684,26 +1663,19 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
            # Set nChild and nImage
         UPDATE `+pageTab+` SET nChild=VnChild, nImage=vnImage WHERE idPage=IidPage;
 
-           # Make changes to nParentTab and nParentITab
-        # CALL `+strDBPrefix+`makeNParentDiff(VidSite, IidPage);
-        # CALL `+strDBPrefix+`makeNParentIDiff(IidPage);
+        
+              -- Differentially change IidPage's children's pageTab.nParent value
+          -- Subtract 1 from pageTab.nParent for each row in (old) subTab
+        UPDATE `+pageTab+` p JOIN `+subTab+` s ON p.pageName=s.pageName AND p.idSite=VidSite SET p.nParent=GREATEST(p.nParent-1, 0) WHERE s.idPage=IidPage;
+          -- Add 1 to pageTab.nParent for each row in tmpSubNew
+        UPDATE `+pageTab+` p JOIN tmpSubNew tsn ON p.pageName=tsn.pageName AND p.idSite=VidSite SET nParent=nParent+1;
 
+              -- Differentially change IidPage's children's imageTab.nParent value
+          -- Subtract 1 from imageTab.nParent for each row in (old) subImageTab
+        UPDATE `+imageTab+` i JOIN `+subImageTab+` s ON i.imageName=s.imageName SET i.nParent=GREATEST(i.nParent-1, 0) WHERE s.idPage=IidPage;
+          -- Add 1 to imageTab.nParent for each row in tmpSubNewImage
+        UPDATE `+imageTab+` i JOIN tmpSubNewImage tsn ON i.imageName=tsn.imageName SET nParent=nParent+1;
 
-              -- Add/subtract(delete) IidPage's children's nParent-value in nParentTab
-          -- Subtract 1 from nParentTab.nParent for each row in (old) subTab
-        UPDATE `+nParentTab+` n JOIN `+subTab+` s ON n.pageName=s.pageName AND n.idSite=VidSite SET n.nParent=n.nParent-1 WHERE s.idPage=IidPage;
-          -- Insert (or add) 1 to nParentTab for each row in tmpSubTab
-        INSERT INTO `+nParentTab+` SELECT VidSite, tsn.pageName, 1 FROM tmpSubNew tsn ON DUPLICATE KEY UPDATE nParent=nParent+1;
-          -- Delete any rows with 0 (or less) in nParentTab
-        DELETE n FROM `+nParentTab+` n WHERE nParent<=0;
-
-              -- Add/subtract(delete) IidPage's images's nParent-value in nParentITab
-          -- Subtract 1 from nParentITab.nParent for each row in (old) subImageTab
-        UPDATE `+nParentITab+` n JOIN `+subImageTab+` s ON n.imageName=s.imageName SET n.nParent=n.nParent-1 WHERE s.idPage=IidPage;
-          -- Insert (or add) 1 to nParentITab for each row in tmpSubTab
-        INSERT INTO `+nParentITab+` SELECT tsn.imageName, 1 FROM tmpSubNewImage tsn ON DUPLICATE KEY UPDATE nParent=nParent+1;
-          -- Delete any rows with 0 (or less) in nParentITab
-        DELETE n FROM `+nParentITab+` n WHERE nParent<=0;
 
 
           # Replace subpages
@@ -1883,59 +1855,69 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
   //
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"saveByReplace");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"saveByReplace(IsiteName varchar(128), Iwww varchar(128), Iname varchar(128), Idata MEDIUMBLOB, Ihtml MEDIUMBLOB, IeTag varchar(32), OUT Omess varchar(128), OUT OidPage INT) \n\
-      proc_label:BEGIN \n\
-        DECLARE Vc, VidSite, VidFile, VidFileCache, VboTalk, VboTemplate, Vlen INT; \n\
-\n\
-          # Get VidSite \n\
-        IF(LENGTH(Iwww)) THEN \n\
-          SELECT SQL_CALC_FOUND_ROWS idSite INTO VidSite FROM "+siteTab+" WHERE www=Iwww; \n\
-          IF FOUND_ROWS()=0 THEN SET Omess='IwwwNotFound'; LEAVE proc_label; END IF; \n\
-        ELSEIF(LENGTH(IsiteName)) THEN \n\
-          SELECT SQL_CALC_FOUND_ROWS idSite, www INTO VidSite, Iwww FROM "+siteTab+" WHERE siteName=IsiteName; \n\
-          IF FOUND_ROWS()=0 THEN SET Omess='IsiteNameNotFound'; LEAVE proc_label; END IF; \n\
-        ELSE \n\
-          SELECT SQL_CALC_FOUND_ROWS idSite, www INTO VidSite, Iwww FROM "+siteTab+" WHERE boDefault=1; \n\
-          IF FOUND_ROWS()=0 THEN SET Omess='noDefault'; LEAVE proc_label; END IF; \n\
-        END IF; \n\
-\n\
-        #CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); \n\
-        SET VboTalk=isTalk(Iname);   SET VboTemplate=isTemplate(Iname); \n\
-        SET VidFile=NULL, VidFileCache=NULL; \n\
-\n\
-        INSERT INTO "+pageTab+" (idSite, pageName, boTalk, boTemplate) VALUES (VidSite, Iname, VboTalk, VboTemplate)  \n\
-          ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=Iname, boTalk=VboTalk, boTemplate=VboTemplate, lastRev=0; \n\
-        SELECT LAST_INSERT_ID() INTO OidPage; \n\
-        CALL "+strDBPrefix+"markStaleParentsOfPage(VidSite, Iname, 1, VboTemplate); \n\
-\n\
-        IF LENGTH(Idata)=0 THEN    CALL "+strDBPrefix+"deletePageID(OidPage); SET Omess='deleting'; LEAVE proc_label;        END IF;    # Delete all \n\
-  \n\
-          # Delete old versions \n\
-        CALL "+strDBPrefix+"deleteAllButFirst(OidPage, Iname); \n\
-        SELECT count(*), idFile, idFileCache INTO Vc, VidFile, VidFileCache FROM "+versionTab+" WHERE idPage=OidPage AND rev=0; \n\
-  \n\
-        IF VidFile IS NULL THEN \n\
-          INSERT INTO "+fileTab+" (data) VALUES (Idata);    SELECT LAST_INSERT_ID() INTO VidFile; \n\
-        ELSE \n\
-          UPDATE "+fileTab+" SET data=Idata WHERE idFile=VidFile; \n\
-        END IF; \n\
-        IF VidFileCache IS NULL THEN \n\
-          INSERT INTO "+fileTab+" (data) VALUES (Ihtml);    SELECT LAST_INSERT_ID() INTO VidFileCache; \n\
-        ELSE \n\
-          UPDATE "+fileTab+" SET data=Ihtml WHERE idFile=VidFileCache; \n\
-        END IF; \n\
-  \n\
-        SET Vlen=LENGTH(Idata); \n\
-        IF Vc=0 THEN \n\
-          INSERT INTO "+versionTab+" (idPage,rev,idFile,tMod,idFileCache,tModCache,eTag,size) VALUES (OidPage,0,VidFile,now(),VidFileCache,now(),IeTag,Vlen); \n\
-        ELSE \n\
-          UPDATE "+versionTab+" SET idFile=VidFile, boOther=0, tMod=now(), idFileCache=VidFileCache, tModCache=now(), eTag=IeTag, size=Vlen WHERE idPage=OidPage AND rev=0; \n\
-        END IF; \n\
-  \n\
-        CALL "+strDBPrefix+"writeSubTables(OidPage); \n\
-        SET Omess='done'; \n\
-        SELECT UNIX_TIMESTAMP(now()) AS tMod, UNIX_TIMESTAMP(now()) AS tModCache; \n\
-      END");
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`saveByReplace(IsiteName varchar(128), Iwww varchar(128), Iname varchar(128), Idata MEDIUMBLOB, Ihtml MEDIUMBLOB, IeTag varchar(32), OUT Omess varchar(128), OUT OidPage INT) 
+      proc_label:BEGIN 
+        DECLARE Vc, VidSite, VidFile, VidFileCache, VboTalk, VboTemplate, Vlen, VboInsert INT; 
+
+          # Get VidSite 
+        IF(LENGTH(Iwww)) THEN 
+          SELECT SQL_CALC_FOUND_ROWS idSite INTO VidSite FROM `+siteTab+` WHERE www=Iwww; 
+          IF FOUND_ROWS()=0 THEN SET Omess='IwwwNotFound'; LEAVE proc_label; END IF; 
+        ELSEIF(LENGTH(IsiteName)) THEN 
+          SELECT SQL_CALC_FOUND_ROWS idSite, www INTO VidSite, Iwww FROM `+siteTab+` WHERE siteName=IsiteName; 
+          IF FOUND_ROWS()=0 THEN SET Omess='IsiteNameNotFound'; LEAVE proc_label; END IF; 
+        ELSE 
+          SELECT SQL_CALC_FOUND_ROWS idSite, www INTO VidSite, Iwww FROM `+siteTab+` WHERE boDefault=1; 
+          IF FOUND_ROWS()=0 THEN SET Omess='noDefault'; LEAVE proc_label; END IF; 
+        END IF; 
+
+        #CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); 
+        SET VboTalk=isTalk(Iname);   SET VboTemplate=isTemplate(Iname); 
+        SET VidFile=NULL, VidFileCache=NULL; 
+
+        INSERT INTO `+pageTab+` (idSite, pageName, boTalk, boTemplate) VALUES (VidSite, Iname, VboTalk, VboTemplate)  
+          ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=Iname, boTalk=VboTalk, boTemplate=VboTemplate, lastRev=0; 
+        SELECT LAST_INSERT_ID() INTO OidPage; 
+        SELECT ROW_COUNT()=1 INTO VboInsert; 
+        
+        
+        CALL `+strDBPrefix+`markStaleParentsOfPage(VidSite, Iname, 1, VboTemplate); 
+
+        IF LENGTH(Idata)=0 THEN    CALL `+strDBPrefix+`deletePageID(OidPage); SET Omess='deleting'; LEAVE proc_label;        END IF;    # Delete all 
+  
+          # Delete old versions 
+        CALL `+strDBPrefix+`deleteAllButFirst(OidPage, Iname); 
+        SELECT count(*), idFile, idFileCache INTO Vc, VidFile, VidFileCache FROM `+versionTab+` WHERE idPage=OidPage AND rev=0; 
+  
+        IF VidFile IS NULL THEN 
+          INSERT INTO `+fileTab+` (data) VALUES (Idata);    SELECT LAST_INSERT_ID() INTO VidFile; 
+        ELSE 
+          UPDATE `+fileTab+` SET data=Idata WHERE idFile=VidFile; 
+        END IF; 
+        IF VidFileCache IS NULL THEN 
+          INSERT INTO `+fileTab+` (data) VALUES (Ihtml);    SELECT LAST_INSERT_ID() INTO VidFileCache; 
+        ELSE 
+          UPDATE `+fileTab+` SET data=Ihtml WHERE idFile=VidFileCache; 
+        END IF; 
+  
+        SET Vlen=LENGTH(Idata); 
+        IF Vc=0 THEN 
+          INSERT INTO `+versionTab+` (idPage,rev,idFile,tMod,idFileCache,tModCache,eTag,size) VALUES (OidPage,0,VidFile,now(),VidFileCache,now(),IeTag,Vlen); 
+        ELSE 
+          UPDATE `+versionTab+` SET idFile=VidFile, boOther=0, tMod=now(), idFileCache=VidFileCache, tModCache=now(), eTag=IeTag, size=Vlen WHERE idPage=OidPage AND rev=0; 
+        END IF; 
+  
+        CALL `+strDBPrefix+`writeSubTables(OidPage); 
+        
+          # Calculate nParent if page was inserted
+        IF VboInsert THEN
+          SELECT COUNT(*) INTO @VnParent FROM `+subTab+` s WHERE pageName=Iname;
+          UPDATE `+pageTab+` SET nParent=@VnParent WHERE idPage=OidPage;
+        END IF; 
+        
+        SET Omess='done'; 
+        SELECT UNIX_TIMESTAMP(now()) AS tMod, UNIX_TIMESTAMP(now()) AS tModCache; 
+      END`);
 
 
   if(0){
@@ -1966,35 +1948,44 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
 
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"saveByAdd");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"saveByAdd(Iwww varchar(128), Iname varchar(128), Isummary varchar(128), Isignature varchar(128), Idata MEDIUMBLOB, Ihtml MEDIUMBLOB, IeTag varchar(32)) \n\
-      proc_label:BEGIN \n\
-        DECLARE nversion, VidSite, VidPage, VidFile, VidFileCache, VboTalk, VboTemplate INT; \n\
-\n\
-          # Get VidSite \n\
-        SELECT SQL_CALC_FOUND_ROWS idSite INTO VidSite FROM "+siteTab+" WHERE www=Iwww; \n\
-        IF FOUND_ROWS()=0 THEN SELECT 'IwwwNotFound' AS mess; LEAVE proc_label; END IF; \n\
-\n\
-        #CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); \n\
-        SET VboTalk=isTalk(Iname);   SET VboTemplate=isTemplate(Iname); \n\
-        INSERT INTO "+pageTab+" (idSite, pageName, boTalk, boTemplate, lastRev, boOR, boOW, boSiteMap) VALUES (VidSite, Iname, VboTalk, VboTemplate, 0, 1,1,1) \n\
-          ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=Iname, boTalk=VboTalk, boTemplate=VboTemplate, lastRev=lastRev+1; \n\
-        SELECT LAST_INSERT_ID() INTO VidPage; \n\
-        CALL "+strDBPrefix+"markStaleParentsOfPage(VidSite, Iname, 1, VboTemplate); \n\
-  \n\
-        SELECT count(*) INTO nversion FROM "+versionTab+" WHERE idPage=VidPage; \n\
-         \n\
-          #Write to fileTab \n\
-        INSERT INTO "+fileTab+" (data) VALUES (Idata);  \n\
-        SELECT LAST_INSERT_ID() INTO VidFile; \n\
-        INSERT INTO "+fileTab+" (data) VALUES (Ihtml);  \n\
-        SELECT LAST_INSERT_ID() INTO VidFileCache;     \n\
-       \n\
-        INSERT INTO "+versionTab+" (idPage,rev,summary,signature,boOther,idFile,tMod,idFileCache,tModCache,eTag,size)  \n\
-  VALUES (VidPage,nversion,Isummary,Isignature,1,VidFile,now(),VidFileCache,now(),IeTag,LENGTH(Idata)); \n\
-          \n\
-        CALL "+strDBPrefix+"writeSubTables(VidPage); \n\
-        SELECT 'done' AS mess, UNIX_TIMESTAMP(now()) AS tMod, UNIX_TIMESTAMP(now()) AS tModCache; LEAVE proc_label;\n\
-      END");
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`saveByAdd(Iwww varchar(128), Iname varchar(128), Isummary varchar(128), Isignature varchar(128), Idata MEDIUMBLOB, Ihtml MEDIUMBLOB, IeTag varchar(32)) 
+      proc_label:BEGIN 
+        DECLARE nversion, VidSite, VidPage, VidFile, VidFileCache, VboTalk, VboTemplate, VboInsert INT; 
+
+          # Get VidSite 
+        SELECT SQL_CALC_FOUND_ROWS idSite INTO VidSite FROM `+siteTab+` WHERE www=Iwww; 
+        IF FOUND_ROWS()=0 THEN SELECT 'IwwwNotFound' AS mess; LEAVE proc_label; END IF; 
+
+        #CALL testIfTalkOrTemplate(Iname, VboTalk, VboTemplate); 
+        SET VboTalk=isTalk(Iname);   SET VboTemplate=isTemplate(Iname); 
+        INSERT INTO `+pageTab+` (idSite, pageName, boTalk, boTemplate, lastRev, boOR, boOW, boSiteMap) VALUES (VidSite, Iname, VboTalk, VboTemplate, 0, 1,1,1) 
+          ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=Iname, boTalk=VboTalk, boTemplate=VboTemplate, lastRev=lastRev+1; 
+        SELECT LAST_INSERT_ID() INTO VidPage; 
+        SELECT ROW_COUNT()=1 INTO VboInsert; 
+        
+        CALL `+strDBPrefix+`markStaleParentsOfPage(VidSite, Iname, 1, VboTemplate); 
+  
+        SELECT count(*) INTO nversion FROM `+versionTab+` WHERE idPage=VidPage; 
+         
+          #Write to fileTab 
+        INSERT INTO `+fileTab+` (data) VALUES (Idata);  
+        SELECT LAST_INSERT_ID() INTO VidFile; 
+        INSERT INTO `+fileTab+` (data) VALUES (Ihtml);  
+        SELECT LAST_INSERT_ID() INTO VidFileCache;     
+       
+        INSERT INTO `+versionTab+` (idPage,rev,summary,signature,boOther,idFile,tMod,idFileCache,tModCache,eTag,size)  
+        VALUES (VidPage,nversion,Isummary,Isignature,1,VidFile,now(),VidFileCache,now(),IeTag,LENGTH(Idata)); 
+          
+        CALL `+strDBPrefix+`writeSubTables(VidPage); 
+        
+          # Calculate nParent if page was inserted
+        IF VboInsert THEN
+          SELECT COUNT(*) INTO @VnParent FROM `+subTab+` s WHERE pageName=Iname;
+          UPDATE `+pageTab+` SET nParent=@VnParent WHERE idPage=VidPage;
+        END IF; 
+        
+        SELECT 'done' AS mess, UNIX_TIMESTAMP(now()) AS tMod, UNIX_TIMESTAMP(now()) AS tModCache; LEAVE proc_label;
+      END`);
 
   if(0){
     SqlFunction.push("START TRANSACTION");
@@ -2058,26 +2049,29 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
 
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"storeImage");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"storeImage(Iname varchar(128), IboOther TINYINT, Idata MEDIUMBLOB, IeTag varchar(32), OUT OboOk INT) \n\
-      proc_label:BEGIN \n\
-        DECLARE VidImage, VidFile, Vc, Vlen INT; \n\
-  \n\
-        #START TRANSACTION; \n\
-        SELECT idImage, idFile, count(*) INTO VidImage,VidFile,Vc FROM "+imageTab+" WHERE imageName=Iname; \n\
-        SET OboOk=1, Vlen=LENGTH(Idata); \n\
-        IF Vc=0 THEN \n\
-          INSERT INTO "+fileTab+" (data) VALUES (Idata);  \n\
-          SELECT LAST_INSERT_ID() INTO VidFile; \n\
-          INSERT INTO "+imageTab+" (imageName,idFile,boOther,tCreated,eTag,size) VALUES (Iname,VidFile,IboOther,now(),IeTag,Vlen); \n\
-        ELSEIF Vc=1 THEN \n\
-          IF IboOther THEN SET OboOk=0; LEAVE proc_label; END IF; \n\
-          UPDATE "+imageTab+" SET imageName=Iname,boOther=IboOther,tCreated=now(),eTag=IeTag,size=Vlen WHERE idImage=VidImage; \n\
-          UPDATE "+fileTab+" SET data=Idata WHERE idFile=VidFile; \n\
-          #DELETE FROM "+thumbTab+" WHERE idImage=VidImage; \n\
-          CALL "+strDBPrefix+"deleteThumb(VidImage); \n\
-        END IF; \n\
-        #COMMIT; \n\
-      END");
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`storeImage(Iname varchar(128), IboOther TINYINT, Idata MEDIUMBLOB, IeTag varchar(32), OUT OboOk INT)
+      proc_label:BEGIN
+        DECLARE VidImage, VidFile, Vc, Vlen INT;
+ 
+        #START TRANSACTION;
+        SELECT idImage, idFile, count(*) INTO VidImage,VidFile,Vc FROM `+imageTab+` WHERE imageName=Iname;
+        SET OboOk=1, Vlen=LENGTH(Idata);
+        IF Vc=0 THEN
+          INSERT INTO `+fileTab+` (data) VALUES (Idata); 
+          SELECT LAST_INSERT_ID() INTO VidFile;
+          INSERT INTO `+imageTab+` (imageName,idFile,boOther,tCreated,eTag,size) VALUES (Iname,VidFile,IboOther,now(),IeTag,Vlen);
+            # Calculate nParent 
+          SELECT COUNT(*) INTO @VnParent FROM `+subImageTab+` s WHERE imageName=Iname;
+          UPDATE `+imageTab+` SET nParent=@VnParent WHERE idImage=VidImage;
+        ELSEIF Vc=1 THEN
+          IF IboOther THEN SET OboOk=0; LEAVE proc_label; END IF;
+          UPDATE `+imageTab+` SET imageName=Iname,boOther=IboOther,tCreated=now(),eTag=IeTag,size=Vlen WHERE idImage=VidImage;
+          UPDATE `+fileTab+` SET data=Idata WHERE idFile=VidFile;
+          #DELETE FROM `+thumbTab+` WHERE idImage=VidImage;
+          CALL `+strDBPrefix+`deleteThumb(VidImage);
+        END IF;
+        #COMMIT;
+      END`);
 
   // , OUT OtCreated INT
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"storeThumb");
