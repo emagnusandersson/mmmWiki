@@ -458,7 +458,17 @@ filterDivICreator.tmpPrototype.interpretHistPHP=function(HistPHP){
         if(el.Filt[i][listType].indexOf(name)==-1) el.Filt[i][listAlt].push(name);  // Keep el.Filt[i][listType] as is and add any potential new "name"'s
       }
     }
-  } 
+  }
+  //var Sum=new Array(HistPHP.length).fill(0);
+  //for(var i=0;i<HistPHP.length;i++){
+    //var histPHP=HistPHP[i];
+    //var strName=el.StrOrderFilt[i];
+    //for(var j=0;j<histPHP.length;j++){
+      //Sum[i]=Sum[i]+histPHP[j][1];
+    //}
+    //console.log(strName+': '+Sum[i]);
+  //}
+  //console.log('------------');
 }
 
   // gatherFiltData closebymarket

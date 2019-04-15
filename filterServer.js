@@ -77,14 +77,18 @@ getHist=function*(flow, mysqlPool, arg){
     var kind=v.kind;
     
     var WhereTmp=[].concat(WhereWExtra); WhereTmp.splice(i,1);
+    Sql.push("\n  -- "+name);
     
     var boIsButt=(kind[0]=='B'); 
     if(boIsButt){ 
       var strOrder; if(kind=='BF') strOrder='bin ASC'; else strOrder="groupCount DESC, bin ASC";
       var WhereTmp=array_filter(WhereTmp), strCond=''; if(WhereTmp.length) strCond='WHERE '+WhereTmp.join(' AND ');
-
+      
       var relaxCountExp; if('relaxCountExp' in arg.Prop[name]) { relaxCountExp=arg.Prop[name].relaxCountExp(name);  }  else relaxCountExp='count(*)';
-      Sql.push("SELECT "+relaxCountExp+" AS n FROM \n"+arg.strTableRef+" "+strCond+";");
+      if(relaxCountExp!==null){
+        Sql.push("SELECT "+relaxCountExp+" AS n FROM \n"+arg.strTableRef+" "+strCond+";");
+        TypeNInd.push(['c',i]);
+      }
 
       var sqlHist;
       if('histF' in arg.Prop[name]) { sqlHist=arg.Prop[name].histF(name, arg.strTableRef, strCond, strOrder);  }
@@ -92,11 +96,13 @@ getHist=function*(flow, mysqlPool, arg){
         var colExp;  if('binKeyF' in arg.Prop[name]) { colExp=arg.Prop[name].binKeyF(name);  }  else if(kind=='BF') colExp=pre+"`"+name+"`-1";   else colExp=pre+"`"+name+"`";
         var countExp;  if('binValueF' in arg.Prop[name]) { countExp=arg.Prop[name].binValueF(name);  }   else countExp="COUNT("+pre+"`"+name+"`)";
         //Sql.push("SELECT "+colExp+" AS bin, "+countExp+" AS groupCount FROM \n"+arg.strTableRef+" \n"+strCond+"\nGROUP BY bin ORDER BY "+strOrder+";");
-        sqlHist="SELECT "+colExp+" AS bin, "+countExp+" AS groupCount FROM \n"+arg.strTableRef+" \n"+strCond+"\nGROUP BY bin ORDER BY "+strOrder+";";
+        var SqlHist=["SELECT "+colExp+" AS bin, "+countExp+" AS groupCount FROM", arg.strTableRef, strCond, "GROUP BY bin ORDER BY "+strOrder];
+        var sqlHist=SqlHist.filter(el=>{return el;}).join('\n')+";";
+        //sqlHist="SELECT "+colExp+" AS bin, "+countExp+" AS groupCount FROM \n"+arg.strTableRef+" \n"+strCond+"\nGROUP BY bin ORDER BY "+strOrder+";";
       }
       Sql.push(sqlHist);
 
-      TypeNInd.push(['c',i]); TypeNInd.push([kind,i]);
+      TypeNInd.push([kind,i]);
     }else{
       var countExp;  if('binValueF' in arg.Prop[name]) { countExp=arg.Prop[name].binValueF(name);  } else countExp="SUM("+pre+"`"+name+"` IS NOT NULL)";
       var colExpCond;  if('histCondF' in arg.Prop[name]) { colExpCond=arg.Prop[name].histCondF(name);  }    else colExpCond=pre+"`"+name+"`";
@@ -128,6 +134,7 @@ getHist=function*(flow, mysqlPool, arg){
         nWOTrunk+=val;
         Hist[ii].push(tmpR);
       }
+        // Note! calculating the trunk this way is wrong (when you have nxn relations). Should be done with a query with a "NOT IN(...)" condition.
       if(boTrunk){Hist[ii].push(['',NInRelaxedCond[ii]-nWOTrunk]); } // (if boTrunk) the second-last-item is the trunk (remainder)
       Hist[ii].push(boTrunk);  // The last item marks if the second-last-item is a trunk (remainder)
     }

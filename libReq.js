@@ -1080,7 +1080,7 @@ app.SetupSqlT.prototype.createTable=function(boDropOnly){
   SqlTabDrop.push('DROP TABLE IF EXISTS '+pageTab+', '+imageTab+'');
   SqlTabDrop.push('DROP TABLE IF EXISTS '+fileTab+', '+siteTab+'');
   SqlTabDrop.push('DROP TABLE IF EXISTS '+siteTab+'');   
-  var tmp=object_values(ViewName).join(', ');   if(tmp.length) SqlTabDrop.push("DROP VIEW IF EXISTS "+tmp+"");
+  var tmp=object_values(ViewName).join(', ');   if(tmp.length) SqlTabDrop.push("DROP VIEW IF EXISTS "+tmp);
 
   var collate=this.collate="utf8_general_ci";
   var engine=this.engine='INNODB';  //engine=this.engine='MyISAM';
@@ -1090,193 +1090,197 @@ app.SetupSqlT.prototype.createTable=function(boDropOnly){
   SqlTab.push("CREATE TABLE "+siteDefaultTab+" ( \n\
   idSite int(4) NOT NULL, \n\
   FOREIGN KEY (idSite) REFERENCES "+siteTab+"(idSite)  \n\
-  ) ENGINE="+engine+" COLLATE "+collate+"");
+  ) ENGINE="+engine+" COLLATE "+collate);
 */
-  SqlTab.push("CREATE TABLE "+siteTab+" ( \n\
-  boDefault int(1) NOT NULL DEFAULT 0, \n\
-  boTLS int(1) NOT NULL, \n\
-  idSite int(4) NOT NULL auto_increment, \n\
-  siteName varchar(128) NOT NULL, \n\
-  www varchar(128) NOT NULL, \n\
-  googleAnalyticsTrackingID varchar(16) NOT NULL DEFAULT '', \n\
-  urlIcon16 varchar(128) NOT NULL DEFAULT '', \n\
-  urlIcon200 varchar(128) NOT NULL DEFAULT '', \n\
-  aPassword varchar(128) NOT NULL DEFAULT '', \n\
-  vPassword varchar(128) NOT NULL DEFAULT '', \n\
-  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
-  boORDefault int(1) NOT NULL DEFAULT 0, \n\
-  boOWDefault int(1) NOT NULL DEFAULT 0, \n\
-  boSiteMapDefault int(1) NOT NULL DEFAULT 0, \n\
-  PRIMARY KEY (idSite), \n\
-  UNIQUE KEY (siteName), \n\
-  UNIQUE KEY (www) \n\
-  ) ENGINE="+engine+" COLLATE "+collate+"");
+  SqlTab.push(`CREATE TABLE `+siteTab+` (
+  boDefault int(1) NOT NULL DEFAULT 0,
+  boTLS int(1) NOT NULL,
+  idSite int(4) NOT NULL auto_increment,
+  siteName varchar(128) NOT NULL,
+  www varchar(128) NOT NULL,
+  googleAnalyticsTrackingID varchar(16) NOT NULL DEFAULT '',
+  urlIcon16 varchar(128) NOT NULL DEFAULT '',
+  urlIcon200 varchar(128) NOT NULL DEFAULT '',
+  aPassword varchar(128) NOT NULL DEFAULT '',
+  vPassword varchar(128) NOT NULL DEFAULT '',
+  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  boORDefault int(1) NOT NULL DEFAULT 0,
+  boOWDefault int(1) NOT NULL DEFAULT 0,
+  boSiteMapDefault int(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (idSite),
+  UNIQUE KEY (siteName),
+  UNIQUE KEY (www)
+  ) ENGINE=`+engine+` COLLATE `+collate);
 
 
-  SqlTab.push("CREATE TABLE "+fileTab+" ( \n\
-  idFile int(4) NOT NULL auto_increment, \n\
-  data MEDIUMBLOB NOT NULL, \n\
-  PRIMARY KEY (idFile) \n\
-  ) ENGINE="+engine+" COLLATE "+collate+""); 
+  SqlTab.push(`CREATE TABLE `+fileTab+` (
+  idFile int(4) NOT NULL auto_increment,
+  data MEDIUMBLOB NOT NULL,
+  PRIMARY KEY (idFile)
+  ) ENGINE=`+engine+` COLLATE `+collate); 
 
-  SqlTab.push("CREATE TABLE "+pageTab+" ( \n\
-  idPage int(4) NOT NULL auto_increment, \n\
-  idSite int(4) NOT NULL, \n\
-  pageName varchar(128) NOT NULL, \n\
-  boTalk TINYINT(1) NOT NULL, \n\
-  boTemplate TINYINT(1) NOT NULL, \n\
-  boOR TINYINT(1) NOT NULL DEFAULT 0, \n\
-  boOW TINYINT(1) NOT NULL DEFAULT 0, \n\
-  boSiteMap TINYINT(1) NOT NULL DEFAULT 0, \n\
+  SqlTab.push(`CREATE TABLE `+pageTab+` (
+  idPage int(4) NOT NULL auto_increment,
+  idSite int(4) NOT NULL,
+  pageName varchar(128) NOT NULL,
+  boTalk TINYINT(1) NOT NULL,
+  boTemplate TINYINT(1) NOT NULL,
+  boOR TINYINT(1) NOT NULL DEFAULT 0,
+  boOW TINYINT(1) NOT NULL DEFAULT 0,
+  boSiteMap TINYINT(1) NOT NULL DEFAULT 0,
   lastRev int(4) NOT NULL DEFAULT 0,     # rev (and lastRev) is 0-indexed, version is 1-indexed\n\
-  nChild int(4) NOT NULL DEFAULT 0, \n\
-  nImage int(4) NOT NULL DEFAULT 0, \n\
-  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
-  tLastAccess TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
-  nAccess int(4) NOT NULL DEFAULT 0, \n\
-  intPriority int(4) NOT NULL DEFAULT 50, \n\
-  nParent int(4) NOT NULL DEFAULT 0, \n\
-  PRIMARY KEY (idPage), \n\
-  UNIQUE KEY (idSite,pageName), \n\
-  FOREIGN KEY (idSite) REFERENCES "+siteTab+"(idSite)  \n\
-  ) ENGINE="+engine+" COLLATE "+collate+""); 
+  nChild int(4) NOT NULL DEFAULT 0,
+  nImage int(4) NOT NULL DEFAULT 0,
+  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  tLastAccess TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  nAccess int(4) NOT NULL DEFAULT 0,
+  intPriority int(4) NOT NULL DEFAULT 50,
+  nParent int(4) NOT NULL DEFAULT 0,
+  PRIMARY KEY (idPage),
+  UNIQUE KEY (idSite,pageName),
+  FOREIGN KEY (idSite) REFERENCES `+siteTab+`(idSite) 
+  ) ENGINE=`+engine+` COLLATE `+collate); 
          // 
 
-  //SqlTab.push("CREATE INDEX "+pageTab+"IdSitePageNameIndex ON "+pageTab+"(idSite,pageName)"); //CREATE INDEX mmmWiki_pageIdSitePageNameIndex ON mmmWiki_page(idSite,pageName);
+  //SqlTab.push(`CREATE INDEX `+pageTab+`IdSitePageNameIndex ON `+pageTab+`(idSite,pageName)`); //CREATE INDEX mmmWiki_pageIdSitePageNameIndex ON mmmWiki_page(idSite,pageName);
 
   
-  SqlTab.push("CREATE TABLE "+versionTab+" ( \n\
-  idPage int(4) NOT NULL, \n\
-  rev int(4) NOT NULL, \n\
-  summary varchar(128) NOT NULL DEFAULT '', \n\
-  signature varchar(128) NOT NULL DEFAULT '', \n\
-  boOther TINYINT(1) NOT NULL DEFAULT 0, \n\
-  idFile int(4) NOT NULL, \n\
-  idFileCache int(4) NOT NULL, \n\
-  tMod TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
-  tModCache TIMESTAMP, \n\
-  eTag varchar(32) NOT NULL, \n\
-  size int(4) NOT NULL, \n\
-  PRIMARY KEY (idPage,rev), \n\
-   \n\
-  FOREIGN KEY (idPage) REFERENCES "+pageTab+"(idPage), \n\
-  FOREIGN KEY (idFile) REFERENCES "+fileTab+"(idFile), \n\
-  FOREIGN KEY (idFileCache) REFERENCES "+fileTab+"(idFile) \n\
-  #UNIQUE KEY (idFile), \n\
-  #UNIQUE KEY (idFileCache) \n\
-  ) ENGINE="+engine+" COLLATE "+collate+""); 
+  SqlTab.push(`CREATE TABLE `+versionTab+` (
+  idPage int(4) NOT NULL,
+  rev int(4) NOT NULL,
+  summary varchar(128) NOT NULL DEFAULT '',
+  signature varchar(128) NOT NULL DEFAULT '',
+  boOther TINYINT(1) NOT NULL DEFAULT 0,
+  idFile int(4) NOT NULL,
+  idFileCache int(4) NOT NULL,
+  tMod TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  tModCache TIMESTAMP,
+  eTag varchar(32) NOT NULL,
+  size int(4) NOT NULL,
+  PRIMARY KEY (idPage,rev),
+  
+  FOREIGN KEY (idPage) REFERENCES `+pageTab+`(idPage),
+  FOREIGN KEY (idFile) REFERENCES `+fileTab+`(idFile),
+  FOREIGN KEY (idFileCache) REFERENCES `+fileTab+`(idFile)
+  #UNIQUE KEY (idFile),
+  #UNIQUE KEY (idFileCache)
+  ) ENGINE=`+engine+` COLLATE `+collate); 
 
-  SqlTab.push("CREATE TABLE "+subTab+" ( \n\
-  idPage int(4) NOT NULL, \n\
-  idSite int(4) NOT NULL, \n\
-  pageName varchar(128) NOT NULL, \n\
-  boOnWhenCached TINYINT(1) NOT NULL, \n\
-  PRIMARY KEY (idPage, pageName, idSite), \n\
-  #FOREIGN KEY (idPage, idSite) REFERENCES "+pageTab+"(idPage, idSite) ON DELETE CASCADE \n\
-  FOREIGN KEY (idPage) REFERENCES "+pageTab+"(idPage) ON DELETE CASCADE \n\
-  ) ENGINE="+engine+" COLLATE "+collate+""); 
+  SqlTab.push(`CREATE TABLE `+subTab+` (
+  idPage int(4) NOT NULL,
+  idSite int(4) NOT NULL,
+  pageName varchar(128) NOT NULL,
+  boOnWhenCached TINYINT(1) NOT NULL,
+  PRIMARY KEY (idPage, pageName, idSite),
+  #FOREIGN KEY (idPage, idSite) REFERENCES `+pageTab+`(idPage, idSite) ON DELETE CASCADE
+  FOREIGN KEY (idPage) REFERENCES `+pageTab+`(idPage) ON DELETE CASCADE
+  ) ENGINE=`+engine+` COLLATE `+collate); 
 
 
   // subTab used for: get info about parent, getting nSub of page, storing old data for nParentTab, get templateExistanceArray, get histograms for parents
   // Why is subTab (parent-child-links) needed: 
   //   so that when templates (pages) are changed, then those who depend on it can be marked stale. 
   //   so that one can make statistics (calculate nParents, nChildren etc) without reParsing the page
-  //SqlTab.push("CREATE INDEX "+subTab+"IdPageRevIndex ON "+subTab+"(idPage)"); //CREATE INDEX mmmWiki_subIdPageRevIndex ON mmmWiki_sub(idPage, rev);
-  //SqlTab.push("CREATE INDEX "+subTab+"IdSitePageNameIndex ON "+subTab+"(idSite,pageName)"); //CREATE INDEX mmmWiki_subIdSitePageNameIndex ON mmmWiki_sub(idSite, pageName);
+  //SqlTab.push(`CREATE INDEX `+subTab+`IdPageRevIndex ON `+subTab+`(idPage)`); //CREATE INDEX mmmWiki_subIdPageRevIndex ON mmmWiki_sub(idPage, rev);
+  //SqlTab.push(`CREATE INDEX `+subTab+`IdSitePageNameIndex ON `+subTab+`(idSite,pageName)`); //CREATE INDEX mmmWiki_subIdSitePageNameIndex ON mmmWiki_sub(idSite, pageName);
 
-  SqlTab.push("CREATE TABLE "+imageTab+" ( \n\
-  idImage int(4) NOT NULL auto_increment, \n\
-  imageName varchar(128) NOT NULL, \n\
-  idFile int(4) NOT NULL, \n\
-  boOther TINYINT(1) NOT NULL DEFAULT 0, \n\
-  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
-  eTag varchar(32) NOT NULL, \n\
-  size int(4) NOT NULL, \n\
-  widthSkipThumb int(4) NOT NULL DEFAULT 1000, \n\
-  width int(4) NOT NULL DEFAULT 0, \n\
-  height int(4) NOT NULL DEFAULT 0, \n\
-  extension varchar(10) NOT NULL DEFAULT '', \n\
-  tLastAccess TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
-  nAccess int(4) NOT NULL DEFAULT 0, \n\
-  tMod TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
-  hash varchar(32) NOT NULL DEFAULT '', \n\
-  nParent int(4) NOT NULL DEFAULT 0, \n\
-  PRIMARY KEY (idImage), \n\
-  UNIQUE KEY (imageName), \n\
-  FOREIGN KEY (idFile) REFERENCES "+fileTab+"(idFile) \n\
-  #UNIQUE KEY (idFile)  \n\
-  ) ENGINE="+engine+" COLLATE "+collate+""); 
+  SqlTab.push(`CREATE TABLE `+imageTab+` (
+  idImage int(4) NOT NULL auto_increment,
+  imageName varchar(128) NOT NULL,
+  idFile int(4) NOT NULL,
+  boOther TINYINT(1) NOT NULL DEFAULT 0,
+  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  eTag varchar(32) NOT NULL,
+  size int(4) NOT NULL,
+  widthSkipThumb int(4) NOT NULL DEFAULT 1000,
+  width int(4) NOT NULL DEFAULT 0,
+  height int(4) NOT NULL DEFAULT 0,
+  extension varchar(10) NOT NULL DEFAULT '',
+  tLastAccess TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  nAccess int(4) NOT NULL DEFAULT 0,
+  tMod TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  hash varchar(32) NOT NULL DEFAULT '',
+  nParent int(4) NOT NULL DEFAULT 0,
+  PRIMARY KEY (idImage),
+  UNIQUE KEY (imageName),
+  FOREIGN KEY (idFile) REFERENCES `+fileTab+`(idFile)
+  #UNIQUE KEY (idFile) 
+  ) ENGINE=`+engine+` COLLATE `+collate); 
 
-  SqlTab.push("CREATE TABLE "+thumbTab+" ( \n\
-  idImage int(4) NOT NULL, \n\
-  idFile int(4) NOT NULL, \n\
-  width int(4) NOT NULL, \n\
-  height int(4) NOT NULL, \n\
-  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
-  eTag varchar(32) NOT NULL, \n\
-  size int(4) NOT NULL, \n\
-  UNIQUE KEY (idImage,width,height), \n\
-  FOREIGN KEY (idImage) REFERENCES "+imageTab+"(idImage), \n\
-  FOREIGN KEY (idFile) REFERENCES "+fileTab+"(idFile) \n\
-  #UNIQUE KEY (idFile) \n\
-  ) ENGINE="+engine+" COLLATE "+collate+""); 
-
-  SqlTab.push("CREATE TABLE "+subImageTab+" ( \n\
-  idPage int(4) NOT NULL, \n\
-  imageName varchar(128) NOT NULL, \n\
-  PRIMARY KEY (idPage,imageName), \n\
-  FOREIGN KEY (idPage) REFERENCES "+pageTab+"(idPage) ON DELETE CASCADE \n\
-  ) ENGINE="+engine+" COLLATE "+collate+""); 
+  SqlTab.push(`CREATE TABLE `+thumbTab+` (
+  idImage int(4) NOT NULL,
+  idFile int(4) NOT NULL,
+  width int(4) NOT NULL,
+  height int(4) NOT NULL,
+  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  eTag varchar(32) NOT NULL,
+  size int(4) NOT NULL,
+  UNIQUE KEY (idImage,width,height),
+  FOREIGN KEY (idImage) REFERENCES `+imageTab+`(idImage),
+  FOREIGN KEY (idFile) REFERENCES `+fileTab+`(idFile)
+  #UNIQUE KEY (idFile)
+  ) ENGINE=`+engine+` COLLATE `+collate); 
 
 
-  SqlTab.push("CREATE TABLE "+videoTab+" ( \n\
-  idVideo int(4) NOT NULL auto_increment, \n\
-  name varchar(128) NOT NULL, \n\
-  idFile int(4) NOT NULL, \n\
-  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
-  size int(4) NOT NULL, \n\
-  eTag varchar(32) NOT NULL, \n\
-  PRIMARY KEY (idVideo), \n\
-  UNIQUE KEY (name), \n\
-  FOREIGN KEY (idFile) REFERENCES "+fileTab+"(idFile) ON DELETE CASCADE \n\
-  ) ENGINE="+engine+" COLLATE "+collate+""); 
 
-  SqlTab.push("CREATE TABLE "+settingTab+" ( \n\
-  name varchar(65) CHARSET utf8 NOT NULL, \n\
-  value TEXT CHARSET utf8 NOT NULL, \n\
-  UNIQUE KEY (name) \n\
-  ) ENGINE="+engine+" COLLATE "+collate+"");
+  SqlTab.push(`CREATE TABLE `+subImageTab+` (
+  idPage int(4) NOT NULL,
+  idSite int(4) NOT NULL, # Denormalization
+  imageName varchar(128) NOT NULL,
+  PRIMARY KEY (idPage,imageName),
+  #FOREIGN KEY (idSite) REFERENCES `+siteTab+`(idSite) ON DELETE CASCADE,
+  FOREIGN KEY (idPage) REFERENCES `+pageTab+`(idPage) ON DELETE CASCADE
+  ) ENGINE=`+engine+` COLLATE `+collate); 
 
-  SqlTab.push("CREATE TABLE "+redirectTab+" ( \n\
-  idSite int(4) NOT NULL, \n\
-  pageName varchar(128) NOT NULL, \n\
-  url varchar(128) NOT NULL, \n\
-  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
-  nAccess int(4) NOT NULL DEFAULT 0, \n\
-  tLastAccess TIMESTAMP NOT NULL, \n\
-  tMod TIMESTAMP NOT NULL, \n\
-  PRIMARY KEY (idSite,pageName) \n\
-  ) ENGINE="+engine+" COLLATE "+collate+""); 
 
-  SqlTab.push("CREATE TABLE "+redirectDomainTab+" ( \n\
-  www varchar(128) NOT NULL, \n\
-  url varchar(128) NOT NULL, \n\
-  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \n\
-  PRIMARY KEY (www) \n\
-  ) ENGINE="+engine+" COLLATE "+collate+"");
+  SqlTab.push(`CREATE TABLE `+videoTab+` (
+  idVideo int(4) NOT NULL auto_increment,
+  name varchar(128) NOT NULL,
+  idFile int(4) NOT NULL,
+  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  size int(4) NOT NULL,
+  eTag varchar(32) NOT NULL,
+  PRIMARY KEY (idVideo),
+  UNIQUE KEY (name),
+  FOREIGN KEY (idFile) REFERENCES `+fileTab+`(idFile) ON DELETE CASCADE
+  ) ENGINE=`+engine+` COLLATE `+collate); 
+
+  SqlTab.push(`CREATE TABLE `+settingTab+` (
+  name varchar(65) CHARSET utf8 NOT NULL,
+  value TEXT CHARSET utf8 NOT NULL,
+  UNIQUE KEY (name)
+  ) ENGINE=`+engine+` COLLATE `+collate);
+
+  SqlTab.push(`CREATE TABLE `+redirectTab+` (
+  idSite int(4) NOT NULL,
+  pageName varchar(128) NOT NULL,
+  url varchar(128) NOT NULL,
+  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  nAccess int(4) NOT NULL DEFAULT 0,
+  tLastAccess TIMESTAMP NOT NULL,
+  tMod TIMESTAMP NOT NULL,
+  PRIMARY KEY (idSite,pageName)
+  ) ENGINE=`+engine+` COLLATE `+collate); 
+
+  SqlTab.push(`CREATE TABLE `+redirectDomainTab+` (
+  www varchar(128) NOT NULL,
+  url varchar(128) NOT NULL,
+  tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (www)
+  ) ENGINE=`+engine+` COLLATE `+collate);
   
   SqlTab.push("DROP TABLE IF EXISTS mmmWiki_nParent, mmmWiki_nParentI");
-  //SqlTab.push("CREATE TABLE "+nParentTab+" ( \n\
-  //idSite int(4) NOT NULL, \n\
-  //pageName varchar(128) NOT NULL, \n\
-  //nParent int(4) NOT NULL, \n\
-  //PRIMARY KEY (idSite,pageName) \n\
-  //) ENGINE="+engine+" COLLATE "+collate+""); 
-  //SqlTab.push("CREATE TABLE "+nParentITab+" ( \n\
-  //imageName varchar(128) NOT NULL, \n\
-  //nParent int(4) NOT NULL, \n\
-  //PRIMARY KEY (imageName) \n\
-  //) ENGINE="+engine+" COLLATE "+collate+""); 
+  //SqlTab.push(`CREATE TABLE `+nParentTab+` (
+  //idSite int(4) NOT NULL,
+  //pageName varchar(128) NOT NULL,
+  //nParent int(4) NOT NULL,
+  //PRIMARY KEY (idSite,pageName)
+  //) ENGINE=`+engine+` COLLATE `+collate); 
+  //SqlTab.push(`CREATE TABLE `+nParentITab+` (
+  //imageName varchar(128) NOT NULL,
+  //nParent int(4) NOT NULL,
+  //PRIMARY KEY (imageName)
+  //) ENGINE=`+engine+` COLLATE `+collate); 
 
     // Create sql for binTables of PropPage:
   addBinTableSql(SqlTabDrop,SqlTab,strDBPrefix,PropPage,engine,collate);
@@ -1296,25 +1300,28 @@ app.SetupSqlT.prototype.createView=function(boDropOnly){
   eval(extractLoc(TableName,'TableName'));
   eval(extractLoc(ViewName,'ViewName'));
   
-  var tmp=object_values(ViewName).join(', ');   if(tmp.length) SqlViewDrop.push("DROP VIEW IF EXISTS "+tmp+"");
+  var tmp=object_values(ViewName).join(', ');   if(tmp.length) SqlViewDrop.push("DROP VIEW IF EXISTS "+tmp);
 
 
-  SqlViewDrop.push("DROP VIEW IF EXISTS mmmWiki_pageLast, mmmWiki_pageLastSlim, mmmWiki_pageWWW, mmmWiki_redirectWWW");
+  //SqlViewDrop.push("DROP VIEW IF EXISTS mmmWiki_pageLast, mmmWiki_pageLastSlim, mmmWiki_pageWWW, mmmWiki_redirectWWW");
   
-  SqlViewDrop.push("DROP VIEW IF EXISTS "+pageSiteView+"");  // pageTab with siteTab-fields: boDefault, boTLS, siteName and www
+  
+  //Sql.push("SELECT SQL_CALC_FOUND_ROWS p.boTLS, p.siteName AS siteName, p.www AS www, p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(p.tCreated) AS tCreated, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther AS boOther, p.idPage AS idPage, p.idFile AS idFile, p.size AS size, p.nChild AS nChild, p.nImage AS nImage, p.nParent, s.idPage AS idParent, pp.pageName AS parent  FROM "+strTableRefPage+" "+strCond+" GROUP BY siteName, pageName;"); 
+  
+  SqlViewDrop.push("DROP VIEW IF EXISTS "+pageSiteView);  // pageTab with siteTab-fields: boDefault, boTLS, siteName and www
   SqlView.push("CREATE VIEW "+pageSiteView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, tCreated, intPriority, tLastAccess, nAccess, nParent) AS \n\
 SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, p.tCreated, intPriority, tLastAccess, nAccess, nParent FROM "+pageTab+" p JOIN "+siteTab+" st ON p.idSite=st.idSite");
 
-  SqlViewDrop.push("DROP VIEW IF EXISTS "+pageLastView+"");  // pageTab with versionTab-fields: boOther, tMod, tModCache, eTag, size, idFile and idFileCache for the last version
+  SqlViewDrop.push("DROP VIEW IF EXISTS "+pageLastView);  // pageTab with versionTab-fields: boOther, tMod, tModCache, eTag, size, idFile and idFileCache for the last version
   SqlView.push("CREATE VIEW "+pageLastView+" (idPage, idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage, nParent) AS \n\
 SELECT p.idPage, p.idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage, nParent FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev");
 
-  SqlViewDrop.push("DROP VIEW IF EXISTS "+pageLastSiteView+"");  // A combination of the above two views.
+  SqlViewDrop.push("DROP VIEW IF EXISTS "+pageLastSiteView);  // A combination of the above two views.
   SqlView.push("CREATE VIEW "+pageLastSiteView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage, nParent) AS \n\
 SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, p.tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage, nParent FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev JOIN "+siteTab+" st ON p.idSite=st.idSite");
 
 
-  SqlViewDrop.push("DROP VIEW IF EXISTS "+redirectSiteView+"");
+  SqlViewDrop.push("DROP VIEW IF EXISTS "+redirectSiteView);
   SqlView.push("CREATE VIEW "+redirectSiteView+" (idSite, siteName, www, pageName, url, tCreated, nAccess, tLastAccess, tMod) AS \n\
 SELECT r.idSite, st.siteName, st.www, r.pageName, url, r.tCreated, nAccess, tLastAccess, tMod FROM "+redirectTab+" r JOIN "+siteTab+" st ON r.idSite=st.idSite");
 
@@ -1428,25 +1435,22 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
         
           # Create tmpParentCur, (all the parents of the new name)
         DROP TABLE IF EXISTS tmpParentCur;
-        CREATE TEMPORARY TABLE IF NOT EXISTS tmpParentCur ( idPage int(4) NOT NULL, idFile int(4) NOT NULL) ENGINE=INNODB COLLATE utf8_general_ci;
-        #TRUNCATE tmpParentCur;
-        -- INSERT INTO tmpParentCur SELECT idPage FROM `+subImageTab+` WHERE imageName=@VimageNameCur;  -- image parents
-        INSERT INTO tmpParentCur SELECT s.idPage, p.idFile FROM `+subImageTab+` s JOIN `+pageLastView+` p ON s.idPage=p.idPage WHERE s.imageName=@VimageNameCur;  -- image parents
+        CREATE TEMPORARY TABLE IF NOT EXISTS tmpParentCur ( idPage int(4) NOT NULL, idSite int(4) NOT NULL, idFile int(4) NOT NULL) ENGINE=INNODB COLLATE utf8_general_ci;
+        INSERT INTO tmpParentCur SELECT s.idPage, s.idPage, p.idFile FROM `+subImageTab+` s JOIN `+pageLastView+` p ON s.idPage=p.idPage WHERE s.imageName=@VimageNameCur;  -- image parents
         -- SELECT * FROM tmpParentCur;
         
         SELECT t.idPage, t.idFile, data FROM tmpParentCur t JOIN `+fileTab+` f ON f.idFile=t.idFile WHERE 1;  -- output
 
           # Create tmpParentAll, (all the parents of the new name + all the parents of the old name)
         DROP TABLE IF EXISTS tmpParentAll;
-        CREATE TEMPORARY TABLE IF NOT EXISTS tmpParentAll ( idPage int(4) NOT NULL ) ENGINE=INNODB COLLATE utf8_general_ci;
-        #TRUNCATE tmpParentAll;
+        CREATE TEMPORARY TABLE IF NOT EXISTS tmpParentAll ( idPage int(4) NOT NULL, idSite int(4) NOT NULL ) ENGINE=INNODB COLLATE utf8_general_ci;
         INSERT INTO tmpParentAll
-          SELECT idPage FROM `+subImageTab+` WHERE imageName=@VimageNameNew  -- stub parents
+          SELECT idPage, idSite FROM `+subImageTab+` WHERE imageName=@VimageNameNew  -- stub parents
             UNION
-          SELECT idPage FROM tmpParentCur; -- image parents
+          SELECT idPage, idSite FROM tmpParentCur; -- image parents
         -- SELECT * FROM tmpParentAll;
 
-        REPLACE INTO `+subImageTab+` SELECT idPage, @VimageNameNew FROM tmpParentAll;
+        REPLACE INTO `+subImageTab+` SELECT idPage, idSite, @VimageNameNew FROM tmpParentAll;
           
         SELECT COUNT(*) INTO @VnParent FROM tmpParentAll WHERE 1;
 
@@ -1684,10 +1688,10 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
 
           # Replace images
         DELETE FROM `+subImageTab+` WHERE idPage=IidPage;
-        INSERT INTO `+subImageTab+` (idPage, `+subImageTab+`.imageName) SELECT IidPage, t.imageName FROM tmpSubNewImage t;
+        INSERT INTO `+subImageTab+` (idPage, idSite, imageName) SELECT IidPage, VidSite, t.imageName FROM tmpSubNewImage t;
 
       END`);
-
+//`+subImageTab+`.
 
   //
   // Getting info

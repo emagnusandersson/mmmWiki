@@ -870,7 +870,7 @@ ReqBE.prototype.getPageList=function*(inObj) {
   var Sql=[], flow=req.flow;
   var tmpCond=array_filter(this.Where), strCond=''; if(tmpCond.length) strCond='WHERE '+tmpCond.join(' AND ');
 
-  Sql.push("SELECT SQL_CALC_FOUND_ROWS p.boTLS, p.siteName AS siteName, p.www AS www, p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(p.tCreated) AS tCreated, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther AS boOther, p.idPage AS idPage, p.idFile AS idFile, p.size AS size, p.nChild AS nChild, p.nImage AS nImage, p.nParent, pp.idPage AS idParent, pp.pageName AS parent  FROM "+strTableRefPage+" "+strCond+" GROUP BY siteName, pageName;"); 
+  Sql.push("SELECT SQL_CALC_FOUND_ROWS p.boTLS, p.siteName AS siteName, p.www AS www, p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(p.tCreated) AS tCreated, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther AS boOther, p.idPage AS idPage, p.idFile AS idFile, p.size AS size, p.nChild AS nChild, p.nImage AS nImage, p.nParent, s.idPage AS idParent, pp.pageName AS parent  FROM "+strTableRefPage+" "+strCond+" GROUP BY siteName, pageName;"); 
 
   Sql.push("SELECT FOUND_ROWS() AS n;"); // nFound
   Sql.push("SELECT count(idPage) AS n FROM "+pageTab+";"); // nUnFiltered
@@ -881,6 +881,8 @@ ReqBE.prototype.getPageList=function*(inObj) {
   return [null, [Ou]];
 }
 
+
+
 ReqBE.prototype.getPageHist=function*(inObj){
   var req=this.req, res=this.res;
   var Ou={}, flow=req.flow
@@ -890,17 +892,23 @@ ReqBE.prototype.getPageHist=function*(inObj){
   
   var [err, Hist]=yield* getHist(flow, mysqlPool, arg); if(err) return [err];  Ou.Hist=Hist;
 
-    // Removing null parent
-  var iColParent=KeyColPageFlip.parent, arrTmpA=Ou.Hist[iColParent], arrTmpB=[];
-  for(var i=0;i<arrTmpA.length;i++){var tmp=arrTmpA[i], boKeep=(tmp instanceof Array) && (typeof tmp[0]==='number'); if(boKeep) arrTmpB.push(tmp[0]);  }
+  
+    // Fetching the names of (non-null) parents
+  var iColParent=KeyColPageFlip.parent, arrTmpA=Ou.Hist[iColParent], IdParent=[];
+  for(var i=0;i<arrTmpA.length;i++){var tmp=arrTmpA[i], boKeep=(tmp instanceof Array) && (typeof tmp[0]==='number'); if(boKeep) IdParent.push(tmp[0]);  }
 
-    // Fetching the names of the parents
-  var len=arrTmpB.length;
+  var len=IdParent.length;
   if(len){
-    var sql="SELECT idPage, boTLS, www, siteName, pageName FROM "+pageSiteView+" WHERE idPage IN ("+arrTmpB.join(', ')+")",  Val=[];
+    var sql="SELECT idPage, boTLS, www, siteName, pageName FROM "+pageSiteView+" WHERE idPage IN ("+IdParent.join(', ')+")",  Val=[];
     var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
     Ou.ParentName=arrObj2TabNStrCol(results);
   }
+  
+    // Fetching the names of the sites
+  var sql="SELECT idSite, boTLS, www, siteName FROM "+siteTab,  Val=[];
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
+  Ou.SiteName=arrObj2TabNStrCol(results);
+  
 
   return [null, [Ou]];
 }
@@ -918,7 +926,7 @@ ReqBE.prototype.getImageList=function*(inObj) {
   var Sql=[], flow=req.flow;
   //var sql="SELECT imageName, UNIX_TIMESTAMP(tCreated) AS tCreated, boOther, idImage, idFile FROM "+imageTab+"";
   var tmpCond=array_filter(this.Where), strCond=''; if(tmpCond.length) strCond='WHERE '+tmpCond.join(' AND ');
-  Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.tCreated) AS tCreated, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, i.nParent, pp.idPage AS idParent, pp.pageName AS parent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
+  Sql.push("SELECT SQL_CALC_FOUND_ROWS i.imageName AS imageName, UNIX_TIMESTAMP(i.tCreated) AS tCreated, i.boOther AS boOther, i.idImage AS idImage, i.idFile AS idFile, i.size AS size, i.nParent, s.idPage AS idParent, pp.pageName AS parent  FROM "+strTableRefImage+" "+strCond+" GROUP BY imageName;"); 
 
   Sql.push("SELECT FOUND_ROWS() AS n;"); // nFound
   Sql.push("SELECT count(idImage) AS n FROM "+imageTab+";"); // nUnFiltered
@@ -939,16 +947,21 @@ ReqBE.prototype.getImageHist=function*(inObj){
   var [err, Hist]=yield* getHist(flow, mysqlPool, arg); if(err) return [err];
   Ou.Hist=Hist;
 
-  var iColParent=KeyColImageFlip.parent, arrTmpA=Ou.Hist[iColParent], arrTmpB=[];
-  //for(var i=arrTmpA.length-1;i>=0;i--){var boKeep=(arrTmpA[i] instanceof Array) && (typeof arrTmpA[i][0]==='number') if(!boKeep) mysplice1(arrTmpA,i); else arrTmpA[i]=arrTmpA[i][0]; }
-  for(var i=0;i<arrTmpA.length;i++){var tmp=arrTmpA[i], boKeep=(tmp instanceof Array) && (typeof tmp[0]==='number'); if(boKeep) arrTmpB.push(tmp[0]);  }
+    // Fetching the names of (non-null) parents
+  var iColParent=KeyColImageFlip.parent, arrTmpA=Ou.Hist[iColParent], IdParent=[];
+  for(var i=0;i<arrTmpA.length;i++){var tmp=arrTmpA[i], boKeep=(tmp instanceof Array) && (typeof tmp[0]==='number'); if(boKeep) IdParent.push(tmp[0]);  }
 
-  var len=arrTmpB.length;
+  var len=IdParent.length;
   if(len){
-    var sql="SELECT idPage, boTLS, www, siteName, pageName FROM "+pageSiteView+" WHERE idPage IN ("+arrTmpB.join(', ')+")",  Val=[];
+    var sql="SELECT idPage, boTLS, www, siteName, pageName FROM "+pageSiteView+" WHERE idPage IN ("+IdParent.join(', ')+")",  Val=[];
     var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
     Ou.ParentName=arrObj2TabNStrCol(results);
   }
+
+    // Fetching the names of the sites
+  var sql="SELECT idSite, boTLS, www, siteName FROM "+siteTab,  Val=[];
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
+  Ou.SiteName=arrObj2TabNStrCol(results);
 
   return [null, [Ou]];
 }

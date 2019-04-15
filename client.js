@@ -1520,19 +1520,24 @@ pageListExtend=function(el){
   var histRet=function(data){
     var tmp, HistPHP=data.Hist||[];
     
-      // If there are pages with the same "pageName" (on different sites) then use siteName:pageName (when the page is listed). 
-    ParentName=[]; if('ParentName' in data) ParentName=tabNStrCol2ArrObj(data.ParentName);  
+      // Create IndSiteName
+    var SiteName=[]; if('SiteName' in data) SiteName=tabNStrCol2ArrObj(data.SiteName);  
+    IndSiteName={}; for(var i=0;i<SiteName.length;i++) { var row=SiteName[i]; IndSiteName[row.idSite]=row; }
+      // Create IndParentName
+      // If there are pages (parents) with the same "pageName" (on different sites) then use siteName:pageName (when the page is listed). 
+    var ParentName=[]; if('ParentName' in data) ParentName=tabNStrCol2ArrObj(data.ParentName);  
     IndParentName={}; var objOne={}, objMult={};
     for(var i=0;i<ParentName.length;i++) {
       var row=ParentName[i];
       if(row.pageName in objOne) objMult[row.pageName]=1; else objOne[row.pageName]=1;
-      IndParentName[row.idPage]=ParentName[i];
+      IndParentName[row.idPage]=row;
     }
     for(var i=0;i<ParentName.length;i++) {
       var row=ParentName[i];
       if(row.pageName in objMult) row.text=row.siteName+':'+row.pageName; else row.text=row.pageName;
     }
-
+  
+    
     pageFilterDiv.divCont.interpretHistPHP(HistPHP);
     pageFilterDiv.divCont.update();
     //pageList.setCBStat(0);
@@ -1582,7 +1587,12 @@ pageListExtend=function(el){
   }
 
 
-  var ParentName, IndParentName;
+  var IndSiteName, IndParentName;
+  PropPage.siteName.setRowButtF=function(span,val,boOn){
+    var text=''; if(val in IndSiteName) text=IndSiteName[val].siteName;
+    else if(val===null) text='(no parent)';
+    span.myText(text);
+  }
   PropPage.parent.setRowButtF=function(span,val,boOn){
     var text=''; if(val in IndParentName) text=IndParentName[val].text;
     else if(val===null) text='(no parent)';
@@ -2182,18 +2192,24 @@ imageListExtend=function(el){
   }
   var histRet=function(data){
     var tmp, HistPHP=data.Hist||[];
-    
-    ParentName=[]; if('ParentName' in data) ParentName=tabNStrCol2ArrObj(data.ParentName);  
+      
+      // Create IndSiteName
+    var SiteName=[]; if('SiteName' in data) SiteName=tabNStrCol2ArrObj(data.SiteName);  
+    IndSiteName={}; for(var i=0;i<SiteName.length;i++) { var row=SiteName[i]; IndSiteName[row.idSite]=row; }
+      // Create IndParentName
+      // If there are pages (parents) with the same "pageName" (on different sites) then use siteName:pageName (when the page (parent) is written). 
+    var ParentName=[]; if('ParentName' in data) ParentName=tabNStrCol2ArrObj(data.ParentName);  
     IndParentName={}; var objOne={}, objMult={};
     for(var i=0;i<ParentName.length;i++) {
       var row=ParentName[i];
       if(row.pageName in objOne) objMult[row.pageName]=1; else objOne[row.pageName]=1;
-      IndParentName[row.idPage]=ParentName[i];
+      IndParentName[row.idPage]=row;
     }
     for(var i=0;i<ParentName.length;i++) {
       var row=ParentName[i];
       if(row.pageName in objMult) row.text=row.siteName+':'+row.pageName; else row.text=row.pageName;
     }
+    
 
     imageFilterDiv.divCont.interpretHistPHP(HistPHP);
     imageFilterDiv.divCont.update();         
@@ -2251,7 +2267,12 @@ imageListExtend=function(el){
     doHistReplace({view:imageList, Filt:o, fun:funPopped}, indDiff); //
   }
 
-  var ParentName, IndParentName;
+  var IndSiteName, IndParentName;
+  PropImage.siteName.setRowButtF=function(span,val,boOn){
+    var text=''; if(val in IndSiteName) text=IndSiteName[val].siteName;
+    else if(val===null) text='(no parent)';
+    span.myText(text);
+  }
   PropImage.parent.setRowButtF=function(span,val,boOn){
     var text=''; if(val in IndParentName) text=IndParentName[val].text;
     else if(val===null) text='(no parent)';
