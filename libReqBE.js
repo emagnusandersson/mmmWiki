@@ -1,7 +1,6 @@
 "use strict"
 
 
-
 /******************************************************************************
  * ReqBE
  ******************************************************************************/
@@ -402,8 +401,12 @@ ReqBE.prototype.pageLoad=function*(inObj) {
       var objTemplateE=createObjTemplateE(results[7]);
       var eTag=md5(strHtmlText +JSON.stringify(objTemplateE) +tMod +boOR +boOW +boSiteMap +boTalkExist +JSON.stringify(matVersion));
       
-      var sql=`UPDATE `+versionTab+` SET tModCache=now(), eTag=? WHERE idPage=? AND rev=?;     SELECT UNIX_TIMESTAMP(now()) AS tModCache`;
-      var Val=[eTag, objPage.idPage, rev];
+      var Sql=[];
+      Sql.push(`UPDATE `+versionTab+` SET tModCache=now(), eTag=? WHERE idPage=? AND rev=?;`);
+      Sql.push(`SELECT UNIX_TIMESTAMP(now()) AS tModCache;`); 
+      Sql.push(`UPDATE `+pageTab+` SET tModCache=now() WHERE idPage=?;`);
+      var sql=Sql.join('\n');
+      var Val=[eTag, objPage.idPage, rev, objPage.idPage];
       var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err]
       var rowA=results[1][0];
       //var tModCache=new Date(rowA.tModCache*1000);
@@ -522,7 +525,7 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   var Sql=[], Val=[];
   Sql.push("START TRANSACTION;");
   Sql.push("SELECT SQL_CALC_FOUND_ROWS boDefault, @boTLS:=boTLS AS boTLS, @idSite:=idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+" WHERE www=?;"), Val.push(req.wwwSite);
-  Sql.push("SELECT boOW, UNIX_TIMESTAMP(tMod) AS tMod FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev WHERE idSite=@idSite AND pageName=?;"), Val.push(this.queredPage);
+  Sql.push("SELECT boOW, UNIX_TIMESTAMP(v.tMod) AS tMod FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev WHERE idSite=@idSite AND pageName=?;"), Val.push(this.queredPage);
   var sql=Sql.join('\n'); 
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {arrRet=[err]; break stuff;}
   if(results[2].length){
@@ -534,7 +537,7 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   } else {var boOW=1, tMod=0;}
   
     // parse
-  var strEditText=inObj.strEditText;
+  var strEditText=inObj.strEditText, len=strEditText.length;
   var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW, myMySql:this.myMySql};
   var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) {arrRet=[err]; break stuff;}
   
@@ -556,8 +559,10 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   
     // Insert (or update)
   var Sql=[], Val=[];
-  Sql.push("SET @pageName=?; SET @boTalk=?; SET @boTemplate=?;");   Val.push(this.queredPage, boTalk, boTemplate);
-  Sql.push("INSERT INTO "+pageTab+" (idSite, pageName, boTalk, boTemplate) VALUES (@idSite, @pageName, @boTalk, @boTemplate)  ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=@pageName, boTalk=@boTalk, boTemplate=@boTemplate, lastRev=0;");
+  Sql.push("SET @pageName=?; SET @boTalk=?; SET @boTemplate=?; SET @len=?;");   Val.push(this.queredPage, boTalk, boTemplate, len);
+  //Sql.push("INSERT INTO "+pageTab+" (idSite, pageName, boTalk, boTemplate) VALUES (@idSite, @pageName, @boTalk, @boTemplate)  ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=@pageName, boTalk=@boTalk, boTemplate=@boTemplate, lastRev=0;");
+  Sql.push(`INSERT INTO `+pageTab+` (idSite, pageName, boTalk, boTemplate, size) VALUES (@idSite, @pageName, @boTalk, @boTemplate, @len)  
+          ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=@pageName, boTalk=@boTalk, boTemplate=@boTemplate, lastRev=0, boOther=0, tMod=now(), tModCache=now(), size=@len;`); 
   Sql.push("SELECT @idPage:=LAST_INSERT_ID() AS idPage;");
   Sql.push("SELECT ROW_COUNT()=1 AS boInsert;");
   Sql.push("CALL "+strDBPrefix+"markStaleParentsOfPage(@idSite, @pageName, 1, @boTemplate);");
@@ -570,7 +575,6 @@ ReqBE.prototype.saveByReplace=function*(inObj){
     var Val=[], [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {arrRet=[err]; break stuff;}
   }
   
-  var len=strEditText.length;
   if(len==0){
     var sql="CALL "+strDBPrefix+"deletePageID(@idPage);", Val=[];
     var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {arrRet=[err]; break stuff;}
@@ -735,22 +739,30 @@ ReqBE.prototype.renamePage=function*(inObj){
   var Val=[inObj.id, strNewName];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   if(results[1][0].err=='nameExist') { return [new ErrorClient('nameExist')]; }
-  var nameLCO=results[1][0].nameO.toLowerCase(), records=results[2];
+  var nameLCO=results[1][0].nameO.toLowerCase(), resIdPage=results[2], resIdFileData=results[3];
   
-  var nRec=records.length;
-  if(nRec==0) { this.mes('OK'); Ou.boOK=1;  return [null, [Ou]]; }
   var Sql=[], Val=[];
-  for(var i=0;i<nRec;i++){
-    var strEditText=records[i].data.toString();
+  var nIdPage=resIdPage.length;
+  if(nIdPage==0) { this.mes('OK (No parent links needed to be renamed)'); Ou.boOK=1;  return [null, [Ou]]; }
+  for(var i=0;i<nIdPage;i++){ Val.push(resIdPage[i].idPage); }
+  var tmp=array_fill(nIdPage, "?").join(',');
+  Sql.push("UPDATE "+pageTab+" SET tModCache=FROM_UNIXTIME(1) WHERE idPage IN ("+tmp+");");
+  
+  var nIdFileData=resIdFileData.length;
+  for(var i=0;i<nIdFileData;i++){
+    var strEditText=resIdFileData[i].data.toString();
     var mPa=new Parser(), strEditText=mPa.renameILinkOrImage(strEditText, nameLCO, strNewName);
-    Val.push(records[i].idFile, strEditText);
+    Val.push(resIdFileData[i].idFile, strEditText);
   }
-  var tmp=array_fill(nRec, "(?,?)").join(',');
+  
+  var tmp=array_fill(nIdFileData, "(?,?)").join(',');
   Sql.push("INSERT INTO "+fileTab+" (idFile, data) VALUES "+tmp+" ON DUPLICATE KEY UPDATE data=VALUES(data);");
   
-  for(var i=0;i<nRec;i++){ Val.push(records[i].idFile); }
-  var tmp=array_fill(nRec, "?").join(',');
+  for(var i=0;i<nIdFileData;i++){ Val.push(resIdFileData[i].idFile); }
+  var tmp=array_fill(nIdFileData, "?").join(',');
   Sql.push("UPDATE "+versionTab+" SET tModCache=FROM_UNIXTIME(1) WHERE idFile IN ("+tmp+");");
+  
+  //Sql.push("UPDATE "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage SET p.tModCache=FROM_UNIXTIME(1), v.tModCache=FROM_UNIXTIME(1) WHERE idFile IN ("+tmp+");");
   Sql.push("COMMIT;");
   var sql=Sql.join('\n');
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
@@ -776,21 +788,26 @@ ReqBE.prototype.renameImage=function*(inObj){
   var Val=[inObj.id, strNewName];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   if(results[1][0].err=='nameExist') { return [new ErrorClient('nameExist')]; }
-  var nameLCO=results[1][0].nameO.toLowerCase(), records=results[2];
+  var nameLCO=results[1][0].nameO.toLowerCase(), resIdPage=results[2], resIdFileData=results[3];
   
-  var nRec=records.length;
-  if(nRec==0) { this.mes('OK'); Ou.boOK=1;  return [null, [Ou]]; }
   var Sql=[], Val=[];
-  for(var i=0;i<nRec;i++){
-    var strEditText=records[i].data.toString();
+  var nIdPage=resIdPage.length;
+  if(nIdPage==0) { this.mes('OK (No parent links needed to be renamed)'); Ou.boOK=1;  return [null, [Ou]]; }
+  for(var i=0;i<nIdPage;i++){ Val.push(resIdPage[i].idPage); }
+  var tmp=array_fill(nIdPage, "?").join(',');
+  Sql.push("UPDATE "+pageTab+" SET tModCache=FROM_UNIXTIME(1) WHERE idPage IN ("+tmp+");");
+  
+  var nIdFileData=resIdFileData.length;
+  for(var i=0;i<nIdFileData;i++){
+    var strEditText=resIdFileData[i].data.toString();
     var mPa=new Parser(), strEditText=mPa.renameILinkOrImage(strEditText, '', '', nameLCO, strNewName);
-    Val.push(records[i].idFile, strEditText);
+    Val.push(resIdFileData[i].idFile, strEditText);
   }
-  var tmp=array_fill(nRec, "(?,?)").join(',');
+  var tmp=array_fill(nIdFileData, "(?,?)").join(',');
   Sql.push("INSERT INTO "+fileTab+" (idFile, data) VALUES "+tmp+" ON DUPLICATE KEY UPDATE data=VALUES(data);");
   
-  for(var i=0;i<nRec;i++){ Val.push(records[i].idFile); }
-  var tmp=array_fill(nRec, "?").join(',');
+  for(var i=0;i<nIdFileData;i++){ Val.push(resIdFileData[i].idFile); }
+  var tmp=array_fill(nIdFileData, "?").join(',');
   Sql.push("UPDATE "+versionTab+" SET tModCache=FROM_UNIXTIME(1) WHERE idFile IN ("+tmp+");");
   Sql.push("COMMIT;");
   var sql=Sql.join('\n');
@@ -870,7 +887,7 @@ ReqBE.prototype.getPageList=function*(inObj) {
   var Sql=[], flow=req.flow;
   var tmpCond=array_filter(this.Where), strCond=''; if(tmpCond.length) strCond='WHERE '+tmpCond.join(' AND ');
 
-  Sql.push("SELECT SQL_CALC_FOUND_ROWS p.boTLS, p.siteName AS siteName, p.www AS www, p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(p.tCreated) AS tCreated, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther AS boOther, p.idPage AS idPage, p.idFile AS idFile, p.size AS size, p.nChild AS nChild, p.nImage AS nImage, p.nParent, s.idPage AS idParent, pp.pageName AS parent  FROM "+strTableRefPage+" "+strCond+" GROUP BY siteName, pageName;"); 
+  Sql.push("SELECT SQL_CALC_FOUND_ROWS p.boTLS, p.siteName AS siteName, p.www AS www, p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(p.tCreated) AS tCreated, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther AS boOther, p.idPage AS idPage, p.size AS size, p.nChild AS nChild, p.nImage AS nImage, p.nParent, s.idPage AS idParent, pp.pageName AS parent  FROM "+strTableRefPage+" "+strCond+" GROUP BY siteName, pageName;"); //, p.idFile AS idFile
 
   Sql.push("SELECT FOUND_ROWS() AS n;"); // nFound
   Sql.push("SELECT count(idPage) AS n FROM "+pageTab+";"); // nUnFiltered
@@ -1020,7 +1037,7 @@ ReqBE.prototype.getLastTModNTLastBU=function*(inObj){
 
   //var sql='SELECT UNIX_TIMESTAMP(MAX(tMod)) AS tLastMod FROM '+versionTab;
   //var sql='SELECT pageName, UNIX_TIMESTAMP(MAX(tMod)) AS tLastMod FROM '+pageTab+' p JOIN '+versionTab+' v USING (idPage)';
-  var sql='SELECT pageName, UNIX_TIMESTAMP(tMod) AS tLastMod FROM '+pageTab+' p JOIN '+versionTab+' v USING (idPage) WHERE  tMod=(SELECT MAX(tMod) FROM '+versionTab+')';
+  var sql='SELECT pageName, UNIX_TIMESTAMP(v.tMod) AS tLastMod FROM '+pageTab+' p JOIN '+versionTab+' v USING (idPage) WHERE  v.tMod=(SELECT MAX(tMod) FROM '+versionTab+')';
 
   var Val={};
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
@@ -1422,11 +1439,11 @@ app.loadMetaFrBU=function*(flow, oFile){
     }
     var Val=[].concat.apply([], arrDataN);
   } else if(strFile=='page.csv'){
-    var strProt="UPDATE "+pageSiteView+" p JOIN "+versionTab+" v ON p.idPage=v.idPage SET boOR=?, boOW=?, boSiteMap=?, tCreated=FROM_UNIXTIME(GREATEST(1,?)), tMod=FROM_UNIXTIME(GREATEST(1,?)) WHERE p.siteName=? AND pageName=?;";
+    var strProt="UPDATE "+pageSiteView+" p JOIN "+versionTab+" v ON p.idPage=v.idPage SET boOR=?, boOW=?, boSiteMap=?, tCreated=FROM_UNIXTIME(GREATEST(1,?)), p.tMod=FROM_UNIXTIME(GREATEST(1,?)), v.tMod=FROM_UNIXTIME(GREATEST(1,?)) WHERE p.siteName=? AND pageName=?;";
     Sql=array_fill(nRow, strProt);
     var arrDataN=Array(nRow);
     for(var j=0;j<nRow;j++){
-      arrDataN[j]=arrArrange(arrData[j],[ICol.boOR, ICol.boOW, ICol.boSiteMap, ICol.tCreated, ICol.tCreated, ICol.siteName, ICol.strName]);
+      arrDataN[j]=arrArrange(arrData[j],[ICol.boOR, ICol.boOW, ICol.boSiteMap, ICol.tCreated, ICol.tMod, ICol.tMod, ICol.siteName, ICol.strName]);
     }
     var Val=[].concat.apply([], arrDataN);
   } else if(strFile=='image.csv'){

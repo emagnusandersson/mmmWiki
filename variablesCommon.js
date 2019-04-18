@@ -11,8 +11,6 @@ flLibImageFolder=flLibFolder+"/image";
 
   // Files: 
 leafBE='be.json';
-//leafPageLoadBE='pageloadbe.json';
-//leafSiteSpecific='siteSpecific.js';
 leafCommon='common.js';
 
 
@@ -268,10 +266,7 @@ sqlTmpSubNewImageCreate="CREATE TEMPORARY TABLE tmpSubNewImage (imageName varcha
 
 
 strDBPrefix='mmmWiki';
-//StrTableKey=["sub", "subImage", "version", "page", "thumb", "image", "video", "file", "setting", "redirect", "redirectDomain", "site", "nParent", "nParentI"]; //,"cache" , "siteDefault"
 StrTableKey=["sub", "subImage", "version", "page", "thumb", "image", "video", "file", "setting", "redirect", "redirectDomain", "site"]; //, "nParent", "nParentI"
-//StrTableKey=["sub", "statNChild", "statParent", "subImage", "version", "page", "thumb", "image", "video", "file", "setting", "redirect", "redirectDomain", "site"];
-//StrViewsKey=["pageWWW", "pageLastSlim", "pageLast", "redirectWWW", "parentInfo", "parentImInfo", "childInfo", "childImInfo", "subWChildID", "subWExtra"]; 
 StrViewsKey=["pageSite", "pageLast", "pageLastSite", "redirectSite", "parentInfo", "parentImInfo", "childInfo", "childImInfo", "subWChildID", "subWExtra"]; 
 TableName={};for(var i=0;i<StrTableKey.length;i++) {var name=StrTableKey[i]; TableName[StrTableKey[i]+"Tab"]=strDBPrefix+'_'+name;}
 ViewName={};for(var i=0;i<StrViewsKey.length;i++) {var name=StrViewsKey[i]; ViewName[StrViewsKey[i]+"View"]=strDBPrefix+'_'+name;}
@@ -283,7 +278,7 @@ extract(ViewName);
 //CREATE TEMPORARY TABLE IF NOT EXISTS pageRef AS SELECT p.*, s.idPage AS idParent FROM mmmWiki_pageLastSite p LEFT JOIN mmmWiki_sub s  ON s.idSite=p.idSite AND s.pageName=p.pageName;
 
 
-strTableRefPage=pageLastSiteView+" p \n\
+strTableRefPage=pageSiteView+" p \n\
 LEFT JOIN "+subTab+" s ON s.idSite=p.idSite AND s.pageName=p.pageName \n\
 LEFT JOIN "+pageTab+" pp ON pp.idPage=s.idPage";
 // Starting with the list of pages
@@ -294,7 +289,7 @@ strTableRefImage=imageTab+" i \n\
 LEFT JOIN "+subImageTab+" s ON s.imageName=i.imageName \n\
 LEFT JOIN "+pageTab+" pp ON pp.idPage=s.idPage";
 
-strTableRefPageHist=pageLastSiteView+" p LEFT JOIN "+subTab+" s  ON s.idSite=p.idSite AND s.pageName=p.pageName";  // Should be used with a COUNT(DISTINCT p.idPage)  
+strTableRefPageHist=pageSiteView+" p LEFT JOIN "+subTab+" s  ON s.idSite=p.idSite AND s.pageName=p.pageName";  // Should be used with a COUNT(DISTINCT p.idPage)  
 strTableRefImageHist=imageTab+" i LEFT JOIN "+subImageTab+" s ON s.imageName=i.imageName";  // Should be used with COUNT(DISTINCT i.idImage) 
 
 
