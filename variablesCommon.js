@@ -253,8 +253,17 @@ featCalcValExtend(PropPage);
 featCalcValExtend(PropImage);
 
 
-aPassword=SHA1(aPassword+strSalt);
-vPassword=SHA1(vPassword+strSalt);
+nHash=1000;
+//aRPassword=SHA1(aRPassword+strSalt);
+//aWPassword=SHA1(aWPassword+strSalt);
+var data=aRPassword+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data); aRPassword=data;
+var data=aWPassword+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data); aWPassword=data;
+
+//aRPassword=Sha256.hash(aRPassword+strSalt);
+//aWPassword=Sha256.hash(aWPassword+strSalt);
+//var data=aRPassword+strSalt; for(var i=0;i<nHash;i++) data=Sha256.hash(data); aRPassword=data;
+//var data=aWPassword+strSalt; for(var i=0;i<nHash;i++) data=Sha256.hash(data); aWPassword=data;
+
 
 objOthersActivity=null; boPageBUNeeded=null; boImageBUNeeded=null;
 objOthersActivityDefault={nEdit:0, pageName:'',  nImage:0, imageName:''};

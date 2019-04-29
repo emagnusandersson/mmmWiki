@@ -107,30 +107,26 @@ if(  (urlRedis=process.env.REDISTOGO_URL)  || (urlRedis=process.env.REDISCLOUD_U
 }
 
 
-// Create a Neo4j client instance 
-/*
-var client = Neo4j({
-  url: 'http://localhost:7474',
-  credentials: {
-    username: 'neo4j',
-    password: 'jh10k'
-  }
-})
-*/
+  // Default config variables
+boDbg=0; boAllowSql=1; port=5000; levelMaintenance=0; googleSiteVerification='googleXXX.html';
+domainPayPal='www.paypal.com';
+urlPayPal='https://www.paypal.com/cgi-bin/webscr';
+maxAdminRUnactivityTime=24*60*60;
+maxAdminWUnactivityTime=5*60;  
+intDDOSMax=100; tDDOSBan=5; 
+strSalt='abcdef';
+strBTC="";
+ppStoredButt="";
+
+
+
+var StrCookiePropProt=["HttpOnly", "Path=/","max-age="+3600*24*30];
+//if(boDO) { StrCookiePropProt.push("secure"); }
+var StrCookiePropStrict=StrCookiePropProt.concat("SameSite=Strict"),   StrCookiePropLax=StrCookiePropProt.concat("SameSite=Lax"),   StrCookiePropAll=StrCookiePropProt.concat();
+strCookiePropStrict=";"+StrCookiePropStrict.join(';');  strCookiePropLax=";"+StrCookiePropLax.join(';');  strCookiePropAll=";"+StrCookiePropAll.join(';');
 
 var flow=( function*(){
 
-    // Default config variables
-  boDbg=0; boAllowSql=1; port=5000; levelMaintenance=0; googleSiteVerification='googleXXX.html';
-  domainPayPal='www.paypal.com';
-  urlPayPal='https://www.paypal.com/cgi-bin/webscr';
-  maxViewUnactivityTime=24*60*60;
-  maxAdminUnactivityTime=5*60;  
-  intDDOSMax=100; tDDOSBan=5; 
-  strSalt='abcdef';
-  strBTC="";
-  ppStoredButt="";
-  
   port=argv.p||argv.port||5000;
   if(argv.h || argv.help) {helpTextExit(); return;}
 
@@ -149,13 +145,15 @@ var flow=( function*(){
   var strMd5Config=md5(strConfig);
   eval(strConfig);
   var redisVar='str'+ucfirst(strAppName)+'Md5Config';
-  var tmp=yield* wrapRedisSendCommand.call({flow:flow}, 'get',[redisVar]);
+  var [err,tmp]=yield* wrapRedisSendCommand.call({flow:flow}, 'get',[redisVar]);
   var boNewConfig=strMd5Config!==tmp; 
-  if(boNewConfig) { var tmp=yield* wrapRedisSendCommand.call({flow:flow}, 'set',[redisVar,strMd5Config]);  }
+  if(boNewConfig) { var [err,tmp]=yield* wrapRedisSendCommand.call({flow:flow}, 'set',[redisVar,strMd5Config]);  }
 
   if('levelMaintenance' in process.env) levelMaintenance=process.env.levelMaintenance;
 
   tmp=require('./lib/foundOnTheInternet/sha1.js');
+  //tmp=require('./lib/foundOnTheInternet/sha256libNode.js'); Sha256=tmp.Sha256;
+  //import Sha256 from  './lib/foundOnTheInternet/sha256lib.js';
   require('./filterServer.js'); 
   require('./variablesCommon.js');
   require('./libReqBE.js');
@@ -227,33 +225,51 @@ var flow=( function*(){
         var tmpUrl=isRedirAppropriate(req); if(tmpUrl) { res.out200('The domain name has changed, use: '+tmpUrl+' instead'); return; }
       }
     
-      var cookies = parseCookies(req);
-      var sessionID;  if('sessionID' in cookies) sessionID=cookies.sessionID; else { sessionID=randomHash();   res.setHeader("Set-Cookie", "sessionID="+sessionID+"; SameSite=Lax"); }  //+ " HttpOnly" 
-
-
-      var ipClient=getIP(req);
-      var redisVarSession=sessionID+'_Main', redisVarCounter=sessionID+'_Counter', redisVarCounterIP=ipClient+'_Counter'; 
-
-
-        // get intCount
-      var semY=0, semCB=0, err, intCount;
-      var tmp=redisClient.send_command('eval',[luaCountFunc, 3, redisVarSession, redisVarCounter, redisVarCounterIP, tDDOSBan], function(errT,intCountT){
-        err=errT; intCount=intCountT; if(semY) { req.flow.next(); } semCB=1;
-      });
-      if(!semCB) { semY=1; yield;}
-      if(err) {console.error(err); return;}
-      if(intCount>intDDOSMax) {res.outCode(429,"Too Many Requests ("+intCount+"), wait "+tDDOSBan+"s\n"); return; }
-
+      //res.setHeader("X-Frame-Options", "deny");  // Deny for all (note: this header is removed for images (see reqMediaImage) (should also be removed for videos))
+      res.setHeader("Content-Security-Policy", "frame-ancestors 'none'");  // Deny for all (note: this header is removed for images (see reqMediaImage) (should also be removed for videos))
+      res.setHeader("X-Content-Type-Options", "nosniff");  // Don't try to guess the mime-type (I prefer the rendering of the page to fail if the mime-type is wrong)
+      //if(boDO) res.setHeader("Strict-Transport-Security", "max-age="+3600*24*365); // All future requests must be with https (forget this after a year)
 
       var domainName=req.headers.host; 
       var objUrl=url.parse(req.url),  pathNameOrg=objUrl.pathname;
       var wwwReq=domainName+pathNameOrg;
-
-      //if(endsWith(wwwReq,'be.json')) debugger
       
-      //var strSite=Site.getSite(wwwReq);
-      //if(!strSite){ res.out404("404 Nothing at that url\n"); return; }
-      //var site=Site[strSite], wwwSite=site.wwwSite, pathName=wwwReq.substr(wwwSite.length); if(pathName.length==0) pathName='/';
+      
+      var cookies = parseCookies(req);
+      req.cookies=cookies;
+      
+
+      req.boCookieGotStrict=req.boCookieGotLax=false;
+      
+        // Check if a valid sessionID-cookie came in
+      var boSessionExist=0, sessionID=null;
+      if('sessionIDAll' in cookies) {
+        sessionID=cookies.sessionIDAll;
+        var redisVarSessionMain=sessionID+'_Main';
+        var [err, boSessionExist]=yield* wrapRedisSendCommand.call(req, 'EXISTS', redisVarSessionMain);
+          // Check if Lax / Strict -cookies are OK
+        if(boSessionExist){
+          req.boCookieGotLax=('sessionIDLax' in cookies) && cookies.sessionIDLax===sessionID;
+          req.boCookieGotStrict=('sessionIDStrict' in cookies) && cookies.sessionIDStrict===sessionID;
+        }
+      } 
+      
+        // Increase DDOS counter (IP or sessionID) 
+      var luaCountFunc=`local c=redis.call('INCR',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+      var ipClient=getIP(req), redisVarCounterTmp=(sessionID||ipClient)+'_Counter';
+      var [err, intCount]=yield* wrapRedisSendCommand.call(req, 'EVAL',[luaCountFunc, 1, redisVarCounterTmp, tDDOSBan]);
+      
+      
+        // Set / refresh redisVarSessionMain
+      sessionID=sessionID||randomHash();  req.sessionID=sessionID;
+      var redisVarSessionMain=sessionID+'_Main';
+      var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'SET',[redisVarSessionMain,1,'EX', maxAdminRUnactivityTime]);
+      res.setHeader("Set-Cookie", ["sessionIDAll="+sessionID+strCookiePropAll, "sessionIDLax="+sessionID+strCookiePropLax, "sessionIDStrict="+sessionID+strCookiePropStrict]);
+       
+      
+        // Check if to many requests comes in a short time (DDOS)
+      if(intCount>intDDOSMax) {res.outCode(429,"Too Many Requests ("+intCount+"), wait "+tDDOSBan+"s\n"); return; }
+
 
 
       var wwwSite=domainName, pathName=pathNameOrg;

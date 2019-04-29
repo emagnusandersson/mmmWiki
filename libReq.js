@@ -14,13 +14,15 @@
  ******************************************************************************/
 app.reqBU=function*(strArg) {
   var req=this.req, res=this.res;
-  var sessionID=req.sessionID, flow=req.flow;
+  var flow=req.flow;
+  
+  if(!req.boCookieGotStrict) { res.outCode(401, "Strict cookie not set");  return;   }
   
       // Conditionally push deadlines forward
-  this.boVLoggedIn=yield* wrapRedisSendCommand.call(req, 'expire',[this.req.sessionID+'_viewTimer',maxViewUnactivityTime]);
-  this.boALoggedIn=yield* wrapRedisSendCommand.call(req, 'expire',[this.req.sessionID+'_adminTimer',maxAdminUnactivityTime]);
+  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
+  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
 
-  if(this.boALoggedIn!=1) {res.outCode(401,'not logged in'); return;}
+  if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
 
   var Match=RegExp('(.*?)(Serv)?$').exec(strArg);
   if(!Match){ res.out500(new Error('Cant read backup argument'));   return; } 
@@ -104,7 +106,7 @@ app.reqBU=function*(strArg) {
     res.writeHead(200,objHead);
     res.end(outdata,'binary');
   }
-  var redisVar='mmmWiki_tLastBU', strTmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,unixNow()]);
+  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'SET',['mmmWiki_tLastBU',unixNow()]);
 }
 
 
@@ -113,16 +115,18 @@ app.reqBU=function*(strArg) {
  ******************************************************************************/
 app.reqBUMeta=function*(strArg) {
   var req=this.req, res=this.res;
-  var sessionID=req.sessionID, flow=req.flow;
+  var flow=req.flow;
 
+  if(!req.boCookieGotStrict) {res.outCode(401, "Strict cookie not set");  return;  }
+  
         // Conditionally push deadlines forward
-  this.boVLoggedIn=yield* wrapRedisSendCommand.call(req, 'expire',[this.req.sessionID+'_viewTimer',maxViewUnactivityTime]);
-  this.boALoggedIn=yield* wrapRedisSendCommand.call(req, 'expire',[this.req.sessionID+'_adminTimer',maxAdminUnactivityTime]);
-  if(this.boALoggedIn!=1) {res.outCode(401,'not logged in'); return;}
+  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
+  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
   
 
   var Sql=[];
-  Sql.push("SELECT boDefault, boTLS, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+";");
+  Sql.push("SELECT boDefault, boTLS, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aWPassword, aRPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+";");
   Sql.push("SELECT boTLS, siteName, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod FROM "+pageLastSiteView+";");
   Sql.push("SELECT imageName, boOther, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+imageTab+";");
   Sql.push("SELECT name, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+videoTab+";");
@@ -147,9 +151,9 @@ app.reqBUMeta=function*(strArg) {
   var StrData=[], StrFileName=[];
   
     // Site
-  var StrFile=['"boDefault","boTLS","urlIcon16","urlIcon200","googleAnalyticsTrackingID","aPassword","vPassword","name","www"'];
+  var StrFile=['"boDefault","boTLS","urlIcon16","urlIcon200","googleAnalyticsTrackingID","aWPassword","aRPassword","name","www"'];
   for(var k=0;k<matSite.length;k++){
-    var r=matSite[k], StrRow=[Boolean(r.boDefault), Boolean(r.boTLS), myEscapeB(r.urlIcon16), myEscapeB(r.urlIcon200), myEscapeB(r.googleAnalyticsTrackingID), myEscapeB(r.aPassword), myEscapeB(r.vPassword), myEscapeB(r.siteName), myEscapeB(r.www)];
+    var r=matSite[k], StrRow=[Boolean(r.boDefault), Boolean(r.boTLS), myEscapeB(r.urlIcon16), myEscapeB(r.urlIcon200), myEscapeB(r.googleAnalyticsTrackingID), myEscapeB(r.aWPassword), myEscapeB(r.aRPassword), myEscapeB(r.siteName), myEscapeB(r.www)];
     StrFile.push(StrRow.join(','));
   } 
   StrData.push(StrFile.join("\n")); StrFileName.push('site.csv');
@@ -208,12 +212,14 @@ app.reqBUMeta=function*(strArg) {
 
 app.reqBUMetaSQL=function*() {
   var req=this.req, res=this.res;
-  var sessionID=req.sessionID, flow=req.flow;
+  var flow=req.flow;
 
+  if(!req.boCookieGotStrict) {res.outCode(401, "Strict cookie not set");  return;  }
+  
         // Conditionally push deadlines forward
-  this.boVLoggedIn=yield* wrapRedisSendCommand.call(req, 'expire',[this.req.sessionID+'_viewTimer',maxViewUnactivityTime]);
-  this.boALoggedIn=yield* wrapRedisSendCommand.call(req, 'expire',[this.req.sessionID+'_adminTimer',maxAdminUnactivityTime]);
-  if(this.boALoggedIn!=1) {res.outCode(401,'not logged in'); return;}
+  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
+  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
   
 
   var Sql=[];
@@ -275,7 +281,7 @@ app.reqBUMetaSQL=function*() {
  ******************************************************************************/
 app.reqIndex=function*() {
   var req=this.req, res=this.res; 
-  var sessionID=req.sessionID, flow=req.flow;
+  var flow=req.flow;
   var qs=req.objUrl.query||'', objQS=querystring.parse(qs);
   var pathName=decodeURIComponent(req.pathName);
 
@@ -286,18 +292,19 @@ app.reqIndex=function*() {
     if('page' in objQS) { res.out301Loc(objQS.page); return;}
     var queredPage='start';
   }
+  
 
       // Conditionally push deadlines forward
-  this.boVLoggedIn=yield* wrapRedisSendCommand.call(req, 'expire',[this.req.sessionID+'_viewTimer',maxViewUnactivityTime]);
-  this.boALoggedIn=yield* wrapRedisSendCommand.call(req, 'expire',[this.req.sessionID+'_adminTimer',maxAdminUnactivityTime]);
+  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
+  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
 
   // Private:
-  //                                                           index.html  first ajax (pageLoad)
-  //Shall look the same (be cacheable (not include CSRFcode))     no           yes
+  //                                                                 index.html  first ajax (pageLoad)
+  //Shall look the same (be cacheable (not include boARLoggedIn etc))     no           yes
 
   // Public:
-  //                                                           index.html  first ajax (specSetup)
-  //Shall look the same (be cacheable (not include CSRFcode))     yes          no
+  //                                                                 index.html  first ajax (specSetup)
+  //Shall look the same (be cacheable (not include boARLoggedIn etc))     yes          no
 
   var CSRFCode='';  // If public then No CSRFCode since the page is going to be cacheable (look the same each time)
 
@@ -305,6 +312,8 @@ app.reqIndex=function*() {
   //var tmpS=req.boTLS?'s':'';
   //res.setHeader("Content-Security-Policy", "default-src http"+tmpS+": 'this'  *.google.com; img-src *");
   //res.setHeader("Content-Security-Policy", "default-src http");
+  
+  
   
   var version=NaN, rev=-1;
   //var version, rev; if('version' in objQS) {  version=objQS.version;  rev=version-1 } else {  version=NaN; rev=-1; }
@@ -314,7 +323,7 @@ app.reqIndex=function*() {
     // getInfoNData
   //var arg={boFront:1, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:queredPage, rev:rev, eTagIn:eTagIn, requesterCacheTime:requesterCacheTime, myMySql:this.myMySql}
   //var [err, Ou]=yield* getInfoNData(flow, arg); if(err) { res.out500(err); return;   }
-  //var {mess, version, rev, eTag, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
+  //var {mess, version, rev, eTag, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aWPassword, aRPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
   
   var Sql=[];
   Sql.push("CALL "+strDBPrefix+"getInfoNData(?, ?, ?, ?, ?, ?);"); 
@@ -335,9 +344,8 @@ app.reqIndex=function*() {
     if(!objPage.boOR){   // Private
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0"); // no-cache    
       var CSRFCode=randomHash(); 
-      var redisVar=sessionID+'_'+queredPage+'_CSRF';
-      var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,CSRFCode]);
-      var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
+      var redisVar=req.sessionID+'_'+queredPage+'_CSRF';
+      var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'SET',[redisVar,CSRFCode,'EX', maxAdminRUnactivityTime]);
     }else {   // Public
       var {boTalkExist}=results[6][0];
       if(results[7].length==0) { res.out500('no versions?!?'); return;   }
@@ -449,6 +457,8 @@ app.reqIndex=function*() {
 
   Str.push('<script src="'+uCommon+'/lib/foundOnTheInternet/zip.js"></script>');
   Str.push('<script src="'+uCommon+'/lib/foundOnTheInternet/sha1.js"></script>');
+  //Str.push('<script type="module" src="'+uCommon+'/lib/foundOnTheInternet/sha256lib.js"></script>');
+
 
 
   var strTracker, tmpID=objSite.googleAnalyticsTrackingID||null;
@@ -499,8 +509,8 @@ app.reqIndex=function*() {
     Str.push("objPage="+JSON.stringify(tmp)+";");
     if(!objPage.boOR) {
       Str.push("CSRFCode="+JSON.stringify(CSRFCode)+";");
-      Str.push("boVLoggedIn="+JSON.stringify(this.boVLoggedIn)+";");
-      Str.push("boALoggedIn="+JSON.stringify(this.boALoggedIn)+";");
+      Str.push("boARLoggedIn="+JSON.stringify(this.boARLoggedIn)+";");
+      Str.push("boAWLoggedIn="+JSON.stringify(this.boAWLoggedIn)+";");
     }
   }
   Str.push("queredPage="+JSON.stringify(queredPage)+";");
@@ -518,6 +528,9 @@ app.reqIndex=function*() {
   
   var strDBType=(typeof mysql!='undefined')?'mysql':'neo4j';
   Str.push("strDBType="+JSON.stringify(strDBType)+";");
+  Str.push("aRPasswordStart="+JSON.stringify(aRPassword.substr(0,2))+";");
+  Str.push("aWPasswordStart="+JSON.stringify(aWPassword.substr(0,2))+";");
+  Str.push("nHash="+JSON.stringify(nHash)+";");
   
   Str.push("strBTC="+JSON.stringify(strBTC)+";");
   Str.push("ppStoredButt="+JSON.stringify(ppStoredButt)+";");
@@ -574,8 +587,11 @@ app.reqStatic=function*() {
  ******************************************************************************/
 app.reqMediaImage=function*(){
   var req=this.req, res=this.res;
-  var sessionID=req.sessionID;
   var flow=req.flow;
+  
+  //res.removeHeader("X-Frame-Options"); // Allow to be shown in frame, iframe, embed, object
+  res.removeHeader("Content-Security-Policy"); // Allow to be shown in frame, iframe, embed, object
+  
   
   var Match=RegExp('^/(.*?)$').exec(req.pathName);
   if(!Match) {res.out404('Not Found'); return;}
@@ -787,7 +803,7 @@ app.reqMediaImageThumb=function*(){
  ******************************************************************************/
 app.reqMediaVideo=function*(){
   var req=this.req, res=this.res;
-  var sessionID=req.sessionID, flow=req.flow;
+  var flow=req.flow;
   
   var Match=RegExp('^/(.*?)$').exec(req.pathName);
   if(!Match) {res.out404('Not Found'); return;}
@@ -862,7 +878,7 @@ app.reqMediaVideo=function*(){
  ******************************************************************************/
 app.reqSiteMap=function*() {
   var req=this.req, res=this.res;
-  var sessionID=req.sessionID, flow=req.flow;
+  var flow=req.flow;
   var wwwSite=req.wwwSite;
 
   //xmlns:image="http://www.google.com/schemas/sitemap-image/1.1
@@ -891,7 +907,7 @@ app.reqSiteMap=function*() {
  ******************************************************************************/
 app.reqRobots=function*() {
   var req=this.req, res=this.res;
-  var sessionID=req.sessionID, flow=req.flow;
+  var flow=req.flow;
 
   if(1) {
     var Str=[];
@@ -924,7 +940,14 @@ app.reqRobots=function*() {
  ******************************************************************************/
 app.reqMonitor=function*(){
   var req=this.req, res=this.res;
-  var sessionID=req.sessionID, flow=req.flow;
+  var flow=req.flow;
+  
+  if(!req.boCookieGotLax) {res.outCode(401, "Lax cookie not set");  return;  }
+  
+        // Conditionally push deadlines forward
+  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
+  //var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in as admin read'); return;}
 
   if(!objOthersActivity){  //  && boPageBUNeeded===null && boImageBUNeeded===null
     var Sql=[];
@@ -959,8 +982,16 @@ app.reqMonitor=function*(){
  ******************************************************************************/
 app.reqStat=function*(){
   var req=this.req, res=this.res;
-  var sessionID=req.sessionID, flow=req.flow;
+  var flow=req.flow;
 
+  if(!req.boCookieGotLax) {res.outCode(401, "Lax cookie not set");  return;  }
+  
+        // Conditionally push deadlines forward
+  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
+  //var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in as admin read'); return;}
+  
+  
   var Sql=[]; 
   Sql.push("SELECT count(*) AS n FROM "+versionTab+";"); 
   Sql.push("SELECT count(*) AS n FROM "+imageTab+";"); 
@@ -1093,8 +1124,8 @@ app.SetupSqlT.prototype.createTable=function(boDropOnly){
   googleAnalyticsTrackingID varchar(16) NOT NULL DEFAULT '',
   urlIcon16 varchar(128) NOT NULL DEFAULT '',
   urlIcon200 varchar(128) NOT NULL DEFAULT '',
-  aPassword varchar(128) NOT NULL DEFAULT '',
-  vPassword varchar(128) NOT NULL DEFAULT '',
+  aWPassword varchar(128) NOT NULL DEFAULT '',
+  aRPassword varchar(128) NOT NULL DEFAULT '',
   tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   boORDefault int(1) NOT NULL DEFAULT 0,
   boOWDefault int(1) NOT NULL DEFAULT 0,
@@ -1709,7 +1740,7 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
       DECLARE VboTLS, VboRedirectCase, VboOR INT(1); \n\
 \n\
           # Get site \n\
-      SELECT SQL_CALC_FOUND_ROWS boDefault, @boTLS:=boTLS AS boTLS, @VidSite:=idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+" WHERE www=Iwww;#  <-- result #0 \n\
+      SELECT SQL_CALC_FOUND_ROWS boDefault, @boTLS:=boTLS AS boTLS, @VidSite:=idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aWPassword, aRPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+" WHERE www=Iwww;#  <-- result #0 \n\
       IF FOUND_ROWS()!=1 THEN LEAVE proc_label; END IF; \n\
       SET VboTLS=@boTLS, VidSite=@VidSite; \n\
 \n\

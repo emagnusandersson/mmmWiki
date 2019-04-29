@@ -143,35 +143,42 @@ MimeType={
 
 
 genRandomString=function(len) {
-  var characters = 'abcdefghijklmnopqrstuvwxyz';
-  //var characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  //var characters = 'abcdefghijklmnopqrstuvwxyz';
+  var characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   var str ='';    
   for(var p=0; p<len; p++) {
     str+=characters[randomInt(0, characters.length-1)];
   }
-  return string;
+  return str;
 }
 md5=function(str){return crypto.createHash('md5').update(str).digest('hex');}
 
 
+//wrapRedisSendCommand=function*(strCommand,arr){
+//  var flow=this.flow, value;
+//  redisClient.send_command(strCommand,arr, function(err, valueT){  value=valueT; flow.next();  }); yield;
+//  return value;
+//}
+
 wrapRedisSendCommand=function*(strCommand,arr){
-  var flow=this.flow, value;
-  redisClient.send_command(strCommand,arr, function(err, valueT){  value=valueT; flow.next();  }); yield;
-  return value;
-}
-getSessionMain=function*(){ 
-  var redisVar=this.req.sessionID+'_Main', strTmp=yield* wrapRedisSendCommand.call(this.req, 'get', [redisVar]);   this.sessionMain=JSON.parse(strTmp);
-}
-setSessionMain=function*(){
-  var strA=JSON.stringify(this.sessionMain);
-  var redisVar=this.req.sessionID+'_Main', strTmp=yield* wrapRedisSendCommand.call(this.req, 'set',[redisVar,strA]);   var tmp=yield* wrapRedisSendCommand.call(this.req, 'expire',[redisVar,maxUnactivity]);
-}
-resetSessionMain=function*(){
-  var userInfoFrIPTmp={};
-  this.sessionMain={userInfoFrDB:extend({},specialistDefault),   userInfoFrIP:userInfoFrIPTmp};
-  yield* setSessionMain.call(this);
+  if(!(arr instanceof Array)) arr=[arr];
+  var flow=this.flow, err, value;
+  redisClient.send_command(strCommand,arr, function(errT, valueT){  err=errT; value=valueT; flow.next();  }); yield;
+  return [err,value];
 }
 
+    // closebymarket
+  //var StrSuffix=['_LoginIdP', '_LoginIdUser', '_UserInfoFrDB', '_Counter'];  var StrCaller=['index'], for(var i=0;i<StrCaller.length;i++){  StrSuffix.push('_CSRFCode'+ucfirst(StrCaller[i])); }
+  //var err=yield* changeSessionId.call(this, sessionIDNew, StrSuffix);
+changeSessionId=function*(sessionIDNew, StrSuffix){
+  for(var i=0;i<StrSuffix.length;i++){
+    var strSuffix=StrSuffix[i];
+    var redisVarO=this.req.sessionID+strSuffix, redisVarN=sessionIDNew+strSuffix; 
+    var [err,value]=yield* wrapRedisSendCommand.call(this.req, 'rename', [redisVarO, redisVarN]); //if(err) return err;
+  }
+  this.req.sessionID=sessionIDNew;
+  return null;
+}
 
 
 getIP=function(req){
@@ -207,6 +214,14 @@ if(boSessionExist>0) then c=redis.call('INCR',KEYS[2]); redis.call('EXPIRE',KEYS
 else c=redis.call('INCR',KEYS[3]); redis.call('EXPIRE', KEYS[3], ARGV[1]);\n\
 end;\n\
 return c";
+
+luaCountFunc=`
+local boSessionExist=redis.call('EXISTS',KEYS[1]);
+local c;
+if(boSessionExist>0) then c=redis.call('INCR',KEYS[2]); redis.call('EXPIRE',KEYS[2], ARGV[1]);
+else c=redis.call('INCR',KEYS[3]); redis.call('EXPIRE', KEYS[3], ARGV[1]);
+end;
+return {boSessionExist, c}`;
 
 
 CacheUriT=function(){

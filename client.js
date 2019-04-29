@@ -202,18 +202,21 @@ commentButtonExtend=function(el){
 vLoginDivExtend=function(el){
 "use strict"
   var vPassF=function(){  
-    var tmp=SHA1(vPass.value+strSalt);
-    var vec=[['vLogin',{pass:tmp},pageLoadF]];   majax(oAJAX,vec);  
+    //var tmp=SHA1(vPass.value+strSalt);
+    var data=vPass.value+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data);
+    //var data=vPass.value+strSalt; for(var i=0;i<nHash;i++) data=Sha256.hash(data);
+    if(data.substr(0,2)!=aRPasswordStart) {setMess('Wrong pw'); return;}
+    var vec=[['vLogin',{pass:data},pageLoadF]];   majax(oAJAX,vec);  
     vPass.value='';
   }
   var pageLoadF=function(){
-    if(boVLoggedIn) pageView.setVis(); else return;
+    if(boARLoggedIn) pageView.setVis(); else return;
     var vec=[['pageLoad',1]];   majax(oAJAXCacheable,vec);
   }
   var vPass=createElement('input').prop('type', 'password').on('keypress',  function(e){ if(e.which==13) {vPassF();return false;} });     
   var vPassButt=createElement('button').myText('Login').on('click',vPassF);
   el.vPass=vPass;
-  el.addClass('vPassword').myAppend(vPass, vPassButt);
+  el.addClass('aRPassword').myAppend(vPass, vPassButt);
 
   return el;
 }
@@ -381,14 +384,42 @@ adminDivExtend=function(el){
     //dragHR.after(editText);
   }
   el.setAdminStat=function(){
-    var boT=Boolean(boALoggedIn);
+    var boT=Boolean(boAWLoggedIn);
     [infoDiv, logoutButt, handyButton].forEach(ele=>ele.toggle(boT));
     //loginButt.add(password).add(password2).toggle(!boT);
     [password, password2].forEach(ele=>ele.toggle(!boT));
   }
-  var aPassF=function(){  
-    var tmp=SHA1(password.value+strSalt);
-    var vec=[['aLogin',{pass:tmp}]];   majax(oAJAX,vec); 
+  var aPassF=function(){
+    //var tmp=SHA1(password.value);
+    //var tmp=Sha256.hash(password.value+strSalt);
+    var data=password.value+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data);
+    //var data=password.value+strSalt; for(var i=0;i<nHash;i++) data=Sha256.hash(data);
+    
+    
+    //var txt=password.value+strSalt;
+    //function hexString(buffer) {
+      //const byteArray = new Uint8Array(buffer);
+
+      //const hexCodes = [...byteArray].map(value => {
+        //const hexCode = value.toString(16);
+        //const paddedHexCode = hexCode.padStart(2, '0');
+        //return paddedHexCode;
+      //});
+
+      //return hexCodes.join('');
+    //}
+    //var digestMessage=function(message) {
+      //const encoder = new TextEncoder();
+      //const data = encoder.encode(message);
+      //return window.crypto.subtle.digest('SHA-1', data);
+    //}
+
+    //digestMessage(txt).then(digestValue => {
+      ////console.log(digestValue.byteLength);
+      //console.log(hexString(digestValue));
+    //});
+    if(data.substr(0,2)!=aWPasswordStart) {setMess('Wrong pw'); return;}
+    var vec=[['aLogin',{pass:data}]];   majax(oAJAX,vec); 
     password.value='';
   }
   //var loginButt=createElement('button').myText('Login').on('click',aPassF).hide();
@@ -398,12 +429,20 @@ adminDivExtend=function(el){
   var password=createElement('input').prop({type:'password', placeholder:"Login"}).on('keypress',  function(e){   if(e.which==13) { aPassF(); return false;}   }); 
 
   var aPass2F=function(){  
-    var tmp=SHA1(password2.value+strSalt); 
-    var vec=[['aLogin',{pass:tmp}],['saveByReplace',{strEditText:editText.value}]];   majax(oAJAX,vec); 
+    //var tmp=SHA1(password2.value+strSalt); 
+    //var tmp=Sha256.hash(password2.value+strSalt);
+    var data=password2.value+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data);
+    //var data=password2.value+strSalt; for(var i=0;i<nHash;i++) data=Sha256.hash(data);
+    if(data.substr(0,2)!=aWPasswordStart) {setMess('Wrong pw'); return;}
+    var vec=[['aLogin',{pass:data}],['saveByReplace',{strEditText:editText.value}]];   majax(oAJAX,vec); 
     password2.value='';
     boLCacheObs.value=1;
   }
-  var handyButton=createElement('button').myText('Overwrite').on('click',aPass2F); 
+  var handyClickF=function(){  
+    var vec=[['saveByReplace',{strEditText:editText.value}]];   majax(oAJAX,vec); 
+    boLCacheObs.value=1;
+  }
+  var handyButton=createElement('button').myText('Overwrite').on('click',handyClickF); 
   var password2=createElement('input').prop({type:'password', placeholder:"Overwrite"}).on('keypress',  function(e){   if(e.which==13) {aPass2F(); return false;}   }); 
   var imgH=imgHelp.cloneNode().css({margin:'0em 1em'}); popupHover(imgH,createElement('div').myHtml('Write password for:<li>Login: logging in<li>Overwrite: A brutal but handy quick route for saving plus deleting all old versions.'));
   //var handySpan=createElement('span').myAppend();  
@@ -854,6 +893,7 @@ diffBackUpDivExtend=function(el){
     var semCB=0, semY=0, dataFetched;
     var xhr = new XMLHttpRequest();
     xhr.open('POST', 'BUimage', true);
+    xhr.setRequestHeader('X-Requested-With','XMLHttpRequest'); 
     xhr.responseType = 'blob';
     xhr.addEventListener("progress", progressHandlingFunction, false);
     xhr.onload=function(e) {
@@ -1082,6 +1122,7 @@ uploadAdminDivExtend=function(el){
     formData.append('vec', JSON.stringify(vecIn));
     var xhr = new XMLHttpRequest();
     xhr.open('POST', uBE, true);
+    xhr.setRequestHeader('X-Requested-With','XMLHttpRequest'); 
     var dataOut=formData;
     xhr.setRequestHeader('x-type','multi');
     
@@ -1179,6 +1220,7 @@ uploadUserDivExtend=function(el){
     formData.append('vec', JSON.stringify(vecIn));
     var xhr = new XMLHttpRequest();
     xhr.open('POST', uBE, true);
+    xhr.setRequestHeader('X-Requested-With','XMLHttpRequest'); 
     var dataOut=formData;
     xhr.setRequestHeader('x-type','single');
     
@@ -3585,6 +3627,7 @@ siteTabExtend=function(el){
 majax=function(oAJAX, vecIn){  // Each argument of vecIn is an array: [serverSideFunc, serverSideFuncArg, returnFunc]
   var xhr = new XMLHttpRequest();
   xhr.open('POST', uBE, true);
+  xhr.setRequestHeader('X-Requested-With','XMLHttpRequest'); 
   var arrRet=[]; vecIn.forEach(function(el,i){var f=null; if(el.length==3) f=el.pop(); arrRet[i]=f;}); // Put return functions in a separate array
   vecIn.push(['page',queredPage]);
   if(vecIn.length==2 && vecIn[0][1] instanceof FormData){
@@ -3632,8 +3675,8 @@ beRet=function(data){
 GRet=function(data){
 "use strict"
   var tmp;
-  tmp=data.boALoggedIn;   if(typeof tmp!="undefined") boALoggedIn=tmp;
-  tmp=data.boVLoggedIn;   if(typeof tmp!="undefined") { boVLoggedIn=tmp;  }
+  tmp=data.boAWLoggedIn;   if(typeof tmp!="undefined") boAWLoggedIn=tmp;
+  tmp=data.boARLoggedIn;   if(typeof tmp!="undefined") { boARLoggedIn=tmp;  }
   tmp=data.idPage;   if(typeof tmp!="undefined") { objPage.idPage=tmp;  }
   tmp=data.objRev;   if(typeof tmp!="undefined") {
     objRev=tmp; 
@@ -3667,7 +3710,7 @@ GRet=function(data){
   tmp=data.boTalkExist;   if(typeof tmp!="undefined") commentButton.setUp(tmp);
   //tmp=data.strMessageText;   if(typeof tmp!="undefined") setMess(tmp,5);
   tmp=data.CSRFCode;   if(typeof tmp!="undefined") CSRFCode=tmp;
-  if(!(boVLoggedIn || objPage.boOR)) vLoginDiv.setVis();  
+  if(!(boARLoggedIn || objPage.boOR)) vLoginDiv.setVis();  
 
   //adminButton.setStat();
   adminDiv.setAdminStat();
@@ -3675,9 +3718,9 @@ GRet=function(data){
   
   if(timerALogout) { clearTimeout(timerALogout); }
   timerALogout=setTimeout(function(){
-    boALoggedIn=0; //histGoTo('adminDiv');
+    boAWLoggedIn=0; //histGoTo('adminDiv');
     adminDiv.setAdminStat();
-  },maxAdminUnactivityTime*1000);
+  },maxAdminWUnactivityTime*1000);
   
 }
 
@@ -3807,7 +3850,7 @@ setUp1=function(){
 
 
   indexAssign();
-  CSRFCode=typeof CSRFCode!=='undefined'?CSRFCode:'';  boVLoggedIn=typeof boVLoggedIn!=='undefined'?boVLoggedIn:'';     boALoggedIn=typeof boALoggedIn!=='undefined'?boALoggedIn:'';
+  CSRFCode=typeof CSRFCode!=='undefined'?CSRFCode:'';  boARLoggedIn=typeof boARLoggedIn!=='undefined'?boARLoggedIn:'';     boAWLoggedIn=typeof boAWLoggedIn!=='undefined'?boAWLoggedIn:'';
   assignCommonJS();
   //assignWWWJS();
 
@@ -4228,7 +4271,7 @@ setUp1=function(){
   
   
   if(objPage.boOR==0) { 
-    if(boVLoggedIn){  var vec=[['pageLoad',1]];   majax(oAJAXCacheable,vec); pageView.setVis();  }   else vLoginDiv.setVis();  
+    if(boARLoggedIn){  var vec=[['pageLoad',1]];   majax(oAJAXCacheable,vec); pageView.setVis();  }   else vLoginDiv.setVis();  
   } else {   var vec=[['specSetup',1]];   majax(oAJAX,vec); pageView.setVis(); } 
   
   

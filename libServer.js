@@ -277,7 +277,7 @@ createCommonJS=function() {
 boDbg="+JSON.stringify(boDbg)+";\n\
 urlPayPal="+JSON.stringify(urlPayPal)+";\n\
 \n\
-maxAdminUnactivityTime="+JSON.stringify(maxAdminUnactivityTime)+";\n\
+maxAdminWUnactivityTime="+JSON.stringify(maxAdminWUnactivityTime)+";\n\
 version="+JSON.stringify(version)+";\n\
 intMax="+JSON.stringify(intMax)+";\n\
 leafBE="+JSON.stringify(leafBE)+";\n\

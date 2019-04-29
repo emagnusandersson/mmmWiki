@@ -61,6 +61,8 @@ ReqBE.prototype.go=function*(){
   
   this.Out={GRet:{boSpecialistExistDiff:{}}, dataArr:[]}; this.GRet=this.Out.GRet;
 
+  if('x-requested-with' in req.headers && req.headers['x-requested-with']=="XMLHttpRequest") ; else { this.mesEO("Ajax-request: req.headers['x-requested-with']!='XMLHttpRequest'");  return; }
+
     // Extract input data either 'POST' or 'GET'
   var jsonInput;
   if(req.method=='POST'){
@@ -87,14 +89,13 @@ ReqBE.prototype.go=function*(){
   }
   
   try{ var beArr=JSON.parse(jsonInput); }catch(e){ this.mesEO(e);  return; }
-
-
-  var redisVar=req.sessionID+'_Main', strTmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,1]);   var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
-
-      // Conditionally push deadlines forward
-  this.boVLoggedIn=yield* wrapRedisSendCommand.call(req, 'expire',[req.sessionID+'_viewTimer',maxViewUnactivityTime]);
-  this.boALoggedIn=yield* wrapRedisSendCommand.call(req, 'expire',[req.sessionID+'_adminTimer',maxAdminUnactivityTime]);
- 
+  
+  if(!req.boCookieGotStrict) {this.mesEO('Strict cookie not set');  return;   }
+  
+    // Get boARLoggedIn / boAWLoggedIn.  Conditionally push deadlines forward ("expire" returns 1 if timer was set or 0 if variable doesn't exist)
+  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE', [req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);  this.boARLoggedIn=tmp;
+  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE', [req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  
 
   res.setHeader("Content-type", "application/json");
 
@@ -125,25 +126,24 @@ ReqBE.prototype.go=function*(){
   
   if(boDbg) boCheckCSRF=0;
   // Private:
-  //                                                             index  first ajax (pageLoad)
-  //Shall look the same (be cacheable (not include CSRFcode))     no           yes
+  //                                                                 index.html  first ajax (pageLoad)
+  //Shall look the same (be cacheable (not include boARLoggedIn etc))     no           yes
 
   // Public:
-  //                                                             index  first ajax (specSetup)
-  //Shall look the same (be cacheable (not include CSRFcode))     yes          no
+  //                                                                 index.html  first ajax (specSetup)
+  //Shall look the same (be cacheable (not include boARLoggedIn etc))     yes          no
 
 
     // cecking/set CSRF-code
   var redisVar=req.sessionID+'_'+this.queredPage+'_CSRF', CSRFCode;
   if(boCheckCSRF){
     if(!CSRFIn){ this.mesO('CSRFCode not set (try reload page)'); return;}
-    var tmp=yield* wrapRedisSendCommand.call(req, 'get',[redisVar]);
+    var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'GET', [redisVar]); 
     if(CSRFIn!==tmp){ this.mesO('CSRFCode err (try reload page)'); return;}
   }
   if(boSetNewCSRF) {
     var CSRFCode=randomHash();
-    var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,CSRFCode]);
-    var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
+    var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'SET', [redisVar,CSRFCode,'EX', maxAdminRUnactivityTime]);
     this.GRet.CSRFCode=CSRFCode;
   }
   
@@ -177,39 +177,45 @@ ReqBE.prototype.go=function*(){
 
 
 ReqBE.prototype.vLogin=function*(inObj){
-  var req=this.req, sessionID=req.sessionID;
+  var req=this.req;
   var GRet=this.GRet;
   var Ou={};  
-  if(this.boVLoggedIn!=1 ){
+  if(this.boARLoggedIn!=1 ){
     if('pass' in inObj) {
       var vPass=inObj.pass; 
-      if(vPass==vPassword){
-        var tmp=unixNow()+maxViewUnactivityTime;
-        var redisVar=sessionID+'_viewTimer';
-        var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,tmp]);
-        var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxViewUnactivityTime]);
-        this.boVLoggedIn=1; this.mes('Logged in (viewing)');
+      if(vPass==aRPassword){
+        var sessionIDOld=req.sessionID;
+        var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'SET', [sessionIDOld+'_adminRTimer',1,'EX', maxAdminRUnactivityTime]);
+        this.boARLoggedIn=1; this.mes('Logged in (viewing)');
+          // Changing session-token at login (as recomended by security recomendations) (to prevent session fixation)
+        var sessionID=randomHash();
+        var StrSuffix=['_Main', '_adminRTimer', '_adminWTimer', '_Counter', '_'+this.queredPage+'_CSRF'];
+        var err=yield* changeSessionId.call(this, sessionID, StrSuffix);
+        this.res.setHeader("Set-Cookie", ["sessionIDAll="+sessionID+strCookiePropAll, "sessionIDLax="+sessionID+strCookiePropLax, "sessionIDStrict="+sessionID+strCookiePropStrict]);
       } else if(vPass=='')  this.mes('Password needed'); else this.mes('Wrong password');
     }
     else {this.mes('Password needed'); }
   }
-  GRet.boVLoggedIn=this.boVLoggedIn;
+  GRet.boARLoggedIn=this.boARLoggedIn;
   return [null, [Ou]];
 }
 
 ReqBE.prototype.aLogin=function*(inObj){
-  var req=this.req, sessionID=req.sessionID;
+  var req=this.req;
   var GRet=this.GRet;
   var Ou={};  
-  if(this.boALoggedIn!=1 ){
+  if(this.boAWLoggedIn!=1 ){
     if('pass' in inObj) {
       var aPass=inObj.pass; 
-      if(aPass==aPassword) {
-        var tmp=unixNow()+maxAdminUnactivityTime;
-        var redisVar=sessionID+'_adminTimer';
-        var tmp=yield* wrapRedisSendCommand.call(req, 'set',[redisVar,tmp]);
-        var tmp=yield* wrapRedisSendCommand.call(req, 'expire',[redisVar,maxAdminUnactivityTime]);
-        this.boVLoggedIn=1; this.boALoggedIn=1; this.mes('Logged in');
+      if(aPass==aWPassword) {
+        var sessionIDOld=req.sessionID;
+        var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'SET', [sessionIDOld+'_adminWTimer',1,'EX', maxAdminWUnactivityTime]);
+        this.boARLoggedIn=1; this.boAWLoggedIn=1; this.mes('Logged in');
+          // Changing session-token at login (as recomended by security recomendations) (to prevent session fixation)
+        var sessionID=randomHash();
+        var StrSuffix=['_Main', '_adminRTimer', '_adminWTimer', '_Counter', '_'+this.queredPage+'_CSRF'];
+        var err=yield* changeSessionId.call(this, sessionID, StrSuffix);
+        this.res.setHeader("Set-Cookie", ["sessionIDAll="+sessionID+strCookiePropAll, "sessionIDLax="+sessionID+strCookiePropLax, "sessionIDStrict="+sessionID+strCookiePropStrict]);
         if(objOthersActivity) extend(objOthersActivity,objOthersActivityDefault);
       }
       else if(aPass=='') {this.mes('Password needed');}
@@ -217,7 +223,7 @@ ReqBE.prototype.aLogin=function*(inObj){
     }
     else {this.mes("Password needed"); }
   } 
-  GRet.boALoggedIn=this.boALoggedIn; 
+  GRet.boARLoggedIn=this.boARLoggedIn; GRet.boAWLoggedIn=this.boAWLoggedIn; 
   return [null, [Ou]];
 }
 
@@ -226,7 +232,7 @@ ReqBE.prototype.myChMod=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
   
   if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else { return [new ErrorClient('chmod: no files')]; }   
   var strQ=array_fill(File.length, "?").join(', ');
@@ -247,7 +253,7 @@ ReqBE.prototype.myChModImage=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) {return [new ErrorClient('not logged in (as Administrator)')];}
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')];}
   
   if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {  return [new ErrorClient('chmodImage: no files')]; }   
   var strQ=array_fill(File.length, "?").join(', ');
@@ -266,7 +272,7 @@ ReqBE.prototype.deletePage=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) {return [new ErrorClient('not logged in (as Administrator)')];}
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')];}
   
   if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else { return [new ErrorClient('deletePage: no files')]; }
   
@@ -298,7 +304,7 @@ ReqBE.prototype.deleteImage=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
 
   if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else { return [new ErrorClient('deleteImage: no files')]; }
   
@@ -328,12 +334,11 @@ ReqBE.prototype.aLogout=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet;
   var Ou={};
-  //redisClient.del(sessionID+'_adminTimer');
-  var redisVar=req.sessionID+'_adminTimer';
-  var tmp=yield* wrapRedisSendCommand.call(req, 'del',[redisVar]);
+  var redisVar=req.sessionID+'_adminWTimer';
+  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'DEL', [redisVar]);
 
-  if(this.boALoggedIn) {this.mes('Logged out (as Administrator)'); GRet.strDiffText=''; } 
-  GRet.boALoggedIn=0; 
+  if(this.boAWLoggedIn) {this.mes('Logged out (as Administrator)'); GRet.strDiffText=''; } 
+  GRet.boAWLoggedIn=0; 
   return [null, [Ou]];
 }
 
@@ -350,12 +355,12 @@ ReqBE.prototype.pageLoad=function*(inObj) {
   var Ou={}, flow=req.flow;
 
   // Private:
-  //                                                           index.html  first ajax (pageLoad)
-  //Shall look the same (be cacheable (not include CSRFcode))     no           yes
+  //                                                                 index.html  first ajax (pageLoad)
+  //Shall look the same (be cacheable (not include boARLoggedIn etc))     no           yes
 
   // Public:
-  //                                                           index.html  first ajax (specSetup)
-  //Shall look the same (be cacheable (not include CSRFcode))     yes          no
+  //                                                                 index.html  first ajax (specSetup)
+  //Shall look the same (be cacheable (not include boARLoggedIn etc))     yes          no
 
 
   this.CSRFCode='';  // If Private then No CSRFCode since the page is going to be cacheable (look the same each time)
@@ -376,7 +381,7 @@ ReqBE.prototype.pageLoad=function*(inObj) {
     return [];
   }
   var objPage=results[0][0];
-  if(!objPage.boOR && !this.boVLoggedIn) {  res.outCode(401, "Unauthorized"); return []; }
+  if(!objPage.boOR && !this.boARLoggedIn) {  return [new ErrorClient('Unauthorized?!?')]; }  // res.outCode(401, "Unauthorized"); return []; 
   var boTalkExist=results[1][0].boTalkExist;
   if(results[2].length==0)  return [new Error('no versions?!?')];
   if(rev>=results[2].length) {
@@ -467,7 +472,7 @@ ReqBE.prototype.pageCompare=function*(inObj){
   var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) return [err];
   var boOR=results[0][0].boOR,  boOW=results[0][0].boOW;
   
-  if(boOR===false && !this.boVLoggedIn){return [new ErrorClient('Not logged in')]; }
+  if(boOR===false && !this.boARLoggedIn){return [new ErrorClient('Not logged in')]; }
   if(boOR===null){return [new ErrorClient('Page does not exist')]; } 
   
   var strEditTextOld=results[1][0].strEditTextOld.toString();
@@ -514,7 +519,7 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   var req=this.req, res=this.res;
   var Ou={}, GRet=this.GRet, flow=req.flow;
   
-  if(!this.boALoggedIn) {return [new ErrorClient('Not logged in as admin')]; } 
+  if(!this.boAWLoggedIn) {return [new ErrorClient('Not logged in as admin')]; } 
  
   var [err]=yield* this.myMySql.startTransaction(flow);  if(err) return [err]; 
   stuff:
@@ -524,7 +529,7 @@ ReqBE.prototype.saveByReplace=function*(inObj){
     // objSite, check tMod if pageName exist
   var Sql=[], Val=[];
   Sql.push("START TRANSACTION;");
-  Sql.push("SELECT SQL_CALC_FOUND_ROWS boDefault, @boTLS:=boTLS AS boTLS, @idSite:=idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+" WHERE www=?;"), Val.push(req.wwwSite);
+  Sql.push("SELECT SQL_CALC_FOUND_ROWS boDefault, @boTLS:=boTLS AS boTLS, @idSite:=idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aWPassword, aRPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+" WHERE www=?;"), Val.push(req.wwwSite);
   Sql.push("SELECT boOW, UNIX_TIMESTAMP(v.tMod) AS tMod FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev WHERE idSite=@idSite AND pageName=?;"), Val.push(this.queredPage);
   var sql=Sql.join('\n'); 
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {arrRet=[err]; break stuff;}
@@ -673,7 +678,7 @@ ReqBE.prototype.saveByAdd=function*(inObj){
 
   if(row){
     var {boOR,boOW,boSiteMap,tMod}=row, dateTMod=new Date(tMod*1000);
-    if(!boOR && !this.boVLoggedIn) {return [new ErrorClient('Not logged in')]; }
+    if(!boOR && !this.boARLoggedIn) {return [new ErrorClient('Not logged in')]; }
     if(this.dateTModBrowser<dateTMod) { return [new ErrorClient("tMod from the version on your browser: "+this.dateTModBrowser+" < tMod on the version on the server: "+dateTMod+", "+messPreventBecauseOfNewerVersions)];  }
     if(boOW==0) {return [new ErrorClient('Not authorized')]; }  
   }else{
@@ -729,7 +734,7 @@ ReqBE.prototype.renamePage=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
   
   var Sql=[];
   Sql.push("START TRANSACTION;");
@@ -766,7 +771,7 @@ ReqBE.prototype.renamePage=function*(inObj){
   Sql.push("COMMIT;");
   var sql=Sql.join('\n');
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
-  var c=results[0].affectedRows/2;
+  var c=results[0].affectedRows;
   var boOK=1, mestmp='Links in '+c+" pages renamed.";
   
   this.mes(mestmp);
@@ -778,7 +783,7 @@ ReqBE.prototype.renameImage=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
   
   var Sql=[];
   Sql.push("START TRANSACTION;");
@@ -812,7 +817,7 @@ ReqBE.prototype.renameImage=function*(inObj){
   Sql.push("COMMIT;");
   var sql=Sql.join('\n');
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
-  var c=results[0].affectedRows/2;
+  var c=results[0].affectedRows;
   var boOK=1, mestmp='Image urls in '+c+" pages renamed.";
   
   this.mes(mestmp);
@@ -825,8 +830,8 @@ ReqBE.prototype.specSetup=function*(inObj){
   var GRet=this.GRet;
 
   var Ou={};
-  GRet.boVLoggedIn=this.boVLoggedIn; 
-  GRet.boALoggedIn=this.boALoggedIn;
+  GRet.boARLoggedIn=this.boARLoggedIn; 
+  GRet.boAWLoggedIn=this.boAWLoggedIn;
   return [null, [Ou]];  
 }
 
@@ -884,6 +889,7 @@ ReqBE.prototype.getSingleParentExtraStuff=function*(inObj){
 
 ReqBE.prototype.getPageList=function*(inObj) {
   var req=this.req, res=this.res;
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
   var Sql=[], flow=req.flow;
   var tmpCond=array_filter(this.Where), strCond=''; if(tmpCond.length) strCond='WHERE '+tmpCond.join(' AND ');
 
@@ -902,6 +908,7 @@ ReqBE.prototype.getPageList=function*(inObj) {
 
 ReqBE.prototype.getPageHist=function*(inObj){
   var req=this.req, res=this.res;
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
   var Ou={}, flow=req.flow
   //var strTableRefCount=pageTab+' p';
   var arg={strTableRef:strTableRefPageHist, Ou:Ou, WhereExtra:[], Prop:PropPage, StrOrderFilt:StrOrderFiltPage, myMySql:this.myMySql};  
@@ -933,6 +940,7 @@ ReqBE.prototype.getPageHist=function*(inObj){
 
 ReqBE.prototype.setUpImageListCond=function*(inObj){
   var Ou={};
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
   var tmp=setUpCond(undefined, StrOrderFiltImage, PropImage, inObj);
   copySome(this,tmp,['strCol', 'Where']);
   return [null, [Ou]];
@@ -940,6 +948,7 @@ ReqBE.prototype.setUpImageListCond=function*(inObj){
 
 ReqBE.prototype.getImageList=function*(inObj) {
   var req=this.req, res=this.res;
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
   var Sql=[], flow=req.flow;
   //var sql="SELECT imageName, UNIX_TIMESTAMP(tCreated) AS tCreated, boOther, idImage, idFile FROM "+imageTab+"";
   var tmpCond=array_filter(this.Where), strCond=''; if(tmpCond.length) strCond='WHERE '+tmpCond.join(' AND ');
@@ -956,6 +965,7 @@ ReqBE.prototype.getImageList=function*(inObj) {
 
 ReqBE.prototype.getImageHist=function*(inObj){
   var req=this.req, res=this.res;
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
   var Ou={}, flow=req.flow
   //var arg={strTableRef:strTableRefImage, Ou:Ou, WhereExtra:[], Prop:PropImage, StrOrderFilt:StrOrderFiltImage};
   var arg={strTableRef:strTableRefImageHist, Ou:Ou, WhereExtra:[], Prop:PropImage, StrOrderFilt:StrOrderFiltImage, myMySql:this.myMySql};  
@@ -985,6 +995,7 @@ ReqBE.prototype.getImageHist=function*(inObj){
 
 ReqBE.prototype.getPageInfo=function*(inObj){  // Used by uploadAdminDiv, by sendConflictCheck
   var req=this.req, res=this.res, Ou={}
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
 
@@ -1011,6 +1022,7 @@ ReqBE.prototype.getPageInfo=function*(inObj){  // Used by uploadAdminDiv, by sen
 
 ReqBE.prototype.getImageInfo=function*(inObj){  // Used by diffBackUpDiv, uploadAdminDiv, uploadUserDiv
   var req=this.req, res=this.res, Ou={}
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
 
@@ -1033,7 +1045,7 @@ ReqBE.prototype.getImageInfo=function*(inObj){  // Used by diffBackUpDiv, upload
 
 ReqBE.prototype.getLastTModNTLastBU=function*(inObj){
   var req=this.req, res=this.res, flow=req.flow, Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
 
   //var sql='SELECT UNIX_TIMESTAMP(MAX(tMod)) AS tLastMod FROM '+versionTab;
   //var sql='SELECT pageName, UNIX_TIMESTAMP(MAX(tMod)) AS tLastMod FROM '+pageTab+' p JOIN '+versionTab+' v USING (idPage)';
@@ -1043,7 +1055,7 @@ ReqBE.prototype.getLastTModNTLastBU=function*(inObj){
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   if(results[0]) copySome(Ou, results[0], ['pageName', 'tLastMod']);
   
-  var redisVar='mmmWiki_tLastBU', strTmp=yield* wrapRedisSendCommand.call(req, 'get',[redisVar]);
+  var [err,strTmp]=yield* wrapRedisSendCommand.call(req, 'GET', ['mmmWiki_tLastBU']);
   Ou.tLastBU=strTmp;
   
   return [null, [Ou]];
@@ -1055,7 +1067,7 @@ ReqBE.prototype.getLastTModNTLastBU=function*(inObj){
 ReqBE.prototype.redirectTabGet=function*(inObj){ 
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
   var sql="SELECT idSite, siteName, www, pageName, url, UNIX_TIMESTAMP(tCreated) AS tCreated, nAccess, UNIX_TIMESTAMP(tLastAccess) AS tLastAccess, UNIX_TIMESTAMP(tMod) AS tMod FROM "+redirectSiteView+";";
   var Val=[];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
@@ -1069,7 +1081,7 @@ ReqBE.prototype.redirectTabSet=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
   var boUpd=inObj.boUpd||false;
   if(boUpd){
     //var sql="UPDATE "+redirectTab+" SET url=?, tCreated=now(), tMod=now() WHERE idSite=? AND pageName=?;";
@@ -1093,7 +1105,7 @@ ReqBE.prototype.redirectTabDelete=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
   var sql="DELETE FROM "+redirectTab+" WHERE idSite=? AND pageName=?";
   var Val=[inObj.idSite, inObj.pageName];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
@@ -1108,7 +1120,7 @@ ReqBE.prototype.redirectTabResetNAccess=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
   var sql="UPDATE "+redirectTab+" SET nAccess=0;"; 
   var Val=[];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
@@ -1126,7 +1138,7 @@ ReqBE.prototype.siteTabGet=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
   //var sql="SELECT idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+";";
   var sql="SELECT boDefault, boTLS, st.idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, UNIX_TIMESTAMP(st.tCreated) AS tCreated, SUM(p.idSite IS NOT NULL) AS nPage FROM "+siteTab+" st LEFT JOIN "+pageTab+" p ON st.idSite=p.idSite GROUP BY idSite;"
   var Val=[];
@@ -1141,7 +1153,7 @@ ReqBE.prototype.siteTabSet=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
   var boUpd=inObj.boUpd||false;
 
   if(boUpd){
@@ -1169,7 +1181,7 @@ ReqBE.prototype.siteTabDelete=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
   var sql="DELETE FROM "+siteTab+" WHERE siteName=?";
   var Val=[inObj.siteName];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
@@ -1183,7 +1195,7 @@ ReqBE.prototype.siteTabSetDefault=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
   var Sql=[];
   Sql.push("START TRANSACTION;");
   Sql.push("UPDATE "+siteTab+" SET boDefault=0;");
@@ -1218,10 +1230,6 @@ ReqBE.prototype.uploadUser=function*(inObj){
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
   var regImg=RegExp("^(png|jpeg|jpg|gif|svg)$"), regVid=RegExp('^(mp4|ogg|webm)$');
-
-  //var redisVar=req.sessionID+'_captcha';
-  //var tmp=yield* wrapRedisSendCommand.call(req, 'get',[redisVar]);
-  //if(this.captchaIn!=tmp) { Ou.strMessage='Wrong captcha'; return [null, [Ou]];}
 
     // Check reCaptcha with google
   var strCaptchaIn=this.captchaIn;
@@ -1403,7 +1411,7 @@ ReqBE.prototype.uploadAdmin=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
   this.mes("Working... (check server console for progress) ");
   var [err]=yield* storeFileMult.call(this, flow, this.File); if(err) return [err];
   return [null, [0]];
@@ -1426,14 +1434,14 @@ app.loadMetaFrBU=function*(flow, oFile){
   
   var Sql=[], Val=[]; 
   if(strFile=='site.csv'){
-    Sql.push('INSERT INTO '+siteTab+' (boDefault, boTLS, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aPassword, vPassword, tCreated) VALUES');
+    Sql.push('INSERT INTO '+siteTab+' (boDefault, boTLS, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aWPassword, aRPassword, tCreated) VALUES');
     var tmpQ=array_fill(9, "?").join(',')+", FROM_UNIXTIME(GREATEST(1,?))";
     var tmpQ2='('+array_fill(nRow, tmpQ).join('),\n(')+')';
     Sql.push(tmpQ2);
-    Sql.push("ON DUPLICATE KEY UPDATE boDefault=VALUES(boDefault), boTLS=VALUES(boTLS), siteName=VALUES(siteName), www=VALUES(www), googleAnalyticsTrackingID=VALUES(googleAnalyticsTrackingID), urlIcon16=VALUES(urlIcon16), urlIcon200=VALUES(urlIcon200), aPassword=VALUES(aPassword), vPassword=VALUES(vPassword), tCreated=VALUES(tCreated)"); 
+    Sql.push("ON DUPLICATE KEY UPDATE boDefault=VALUES(boDefault), boTLS=VALUES(boTLS), siteName=VALUES(siteName), www=VALUES(www), googleAnalyticsTrackingID=VALUES(googleAnalyticsTrackingID), urlIcon16=VALUES(urlIcon16), urlIcon200=VALUES(urlIcon200), aWPassword=VALUES(aWPassword), aRPassword=VALUES(aRPassword), tCreated=VALUES(tCreated)"); 
     var arrDataN=Array(nRow)
-    for(var j=0;j<nRow;j++){ //"boDefault","boTLS","urlIcon16","urlIcon200","googleAnalyticsTrackingID","aPassword","vPassword","name","www"
-      var rowN=arrArrange(arrData[j],[ICol.boDefault, ICol.boTLS, ICol.name, ICol.www, ICol.googleAnalyticsTrackingID, ICol.urlIcon16, ICol.urlIcon200, ICol.aPassword, ICol.vPassword]);
+    for(var j=0;j<nRow;j++){ //"boDefault","boTLS","urlIcon16","urlIcon200","googleAnalyticsTrackingID","aWPassword","aRPassword","name","www"
+      var rowN=arrArrange(arrData[j],[ICol.boDefault, ICol.boTLS, ICol.name, ICol.www, ICol.googleAnalyticsTrackingID, ICol.urlIcon16, ICol.urlIcon200, ICol.aWPassword, ICol.aRPassword]);
       rowN.push(1);
       arrDataN[j]=rowN;
     }
@@ -1535,7 +1543,7 @@ app.loadFrBUOnServ=function*(flow, StrFile){
 ReqBE.prototype.loadFrBUOnServ=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
-  if(!this.boALoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
   this.mes("Working... (check server console for progress) ");
   var StrFile=inObj.File;
   var [err]=yield* loadFrBUOnServ(flow, StrFile); if(err) return [err];

@@ -15,11 +15,11 @@ strBTC='1abcdefghijklmnopqrstuvwxyzABCDEFG'; // Bitcoin address
 ppStoredButt="ABCDEFGHIJKLM";  // Paypal-stored-button
 
   // Number of seconds before you have to login again (as viewer, to view read protected pages)
-  // (before you have to enter vPassword again)
-//maxViewUnactivityTime=24*60*60;  
+  // (before you have to enter aRPassword again)
+//maxAdminRUnactivityTime=24*60*60;  
   // Number of seconds before you have to login again (as admin, to do administrative tasks)
-  // (before you have to enter aPassword again)
-//maxAdminUnactivityTime=5*60;   
+  // (before you have to enter aWPassword again)
+//maxAdminWUnactivityTime=5*60;   
 
 
 
@@ -56,8 +56,8 @@ if(process.env.strInfrastructure=='heroku'){
   //uriDB='mysql://user:password@localhost/database';
 
 
-    // vPassword=view password, aPassword= admin password
-  vPassword="123"; aPassword="123";
+    // aRPassword=admin read password, aWPassword= admin write password
+  aRPassword="123"; aWPassword="123";
 
 
     // If levelMaintenance=1 then site visitors gets a "Down for maintenance"-message
@@ -73,7 +73,7 @@ if(process.env.strInfrastructure=='heroku'){
 }else if(process.env.strInfrastructure=='do'){
   uriDB=='mysql://user:password@host/database';
   port = 8080;
-  vPassword="123"; aPassword="123"; 
+  aRPassword="123"; aWPassword="123"; 
   //levelMaintenance=1;
   //strStartPageTitle='blabla'; 
   
@@ -81,7 +81,7 @@ if(process.env.strInfrastructure=='heroku'){
 
 }else {
   uriDB='mysql://user:password@localhost/database';
-  vPassword="123"; aPassword="123";
+  aRPassword="123"; aWPassword="123";
   //levelMaintenance=1;
   //strStartPageTitle='blabla'; 
   strReCaptchaSiteKey="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";   strReCaptchaSecretKey="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";

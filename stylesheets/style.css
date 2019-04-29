@@ -211,7 +211,7 @@ button::-moz-focus-inner {   padding: 0;    border: 0  } /*Making firefox button
 
 input[type='text'],input[type='number'],textarea {font-size:16px;}
 
-div.vPassword{
+div.aRPassword{
   border:black 2px solid;
   position:fixed;
   _position:absolute;
