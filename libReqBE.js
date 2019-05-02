@@ -62,6 +62,8 @@ ReqBE.prototype.go=function*(){
   this.Out={GRet:{boSpecialistExistDiff:{}}, dataArr:[]}; this.GRet=this.Out.GRet;
 
   if('x-requested-with' in req.headers && req.headers['x-requested-with']=="XMLHttpRequest") ; else { this.mesEO("Ajax-request: req.headers['x-requested-with']!='XMLHttpRequest'");  return; }
+  var urlT=req.strSchemeLong+req.wwwSite;
+  if('referer' in req.headers && req.headers.referer.slice(0,-1)==urlT) ; else { this.mesEO("Referer is wrong");  return; }
 
     // Extract input data either 'POST' or 'GET'
   var jsonInput;

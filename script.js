@@ -229,6 +229,9 @@ var flow=( function*(){
       res.setHeader("Content-Security-Policy", "frame-ancestors 'none'");  // Deny for all (note: this header is removed for images (see reqMediaImage) (should also be removed for videos))
       res.setHeader("X-Content-Type-Options", "nosniff");  // Don't try to guess the mime-type (I prefer the rendering of the page to fail if the mime-type is wrong)
       //if(boDO) res.setHeader("Strict-Transport-Security", "max-age="+3600*24*365); // All future requests must be with https (forget this after a year)
+      res.setHeader("Referrer-Policy", "strict-origin");  // Don't try to guess the mime-type (I prefer the rendering of the page to fail if the mime-type is wrong)
+      
+
 
       var domainName=req.headers.host; 
       var objUrl=url.parse(req.url),  pathNameOrg=objUrl.pathname;
