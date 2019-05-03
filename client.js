@@ -77,7 +77,7 @@ window.onload=function(){
 
 var MmmWikiFiltExtention={
   setSingleParent:function(idParent){
-    var tmpFilt=this[this.iParent]; array_mergeM(tmpFilt[0],tmpFilt[1]), ind=tmpFilt[0].indexOf(idParent); if(ind!=-1)  mySplice1(tmpFilt[0],ind);  tmpFilt[1]=[idParent]; tmpFilt[2]=1;
+    var tmpFilt=this[this.iParent]; array_mergeM(tmpFilt[0],tmpFilt[1]); var ind=tmpFilt[0].indexOf(idParent); if(ind!=-1)  mySplice1(tmpFilt[0],ind);  tmpFilt[1]=[idParent]; tmpFilt[2]=1;
   },
   checkIfSingleParent:function(){
     var tmpFilt=this[this.iParent]; return (tmpFilt[1].length==1 && tmpFilt[2]==1);
@@ -104,7 +104,7 @@ var MmmWikiFiltExtention={
     var tmpFilt=this[this.iParent]; return tmpFilt[2];
   },
   setSite:function(siteName){
-    var tmpFilt=this[this.iSiteName]; array_mergeM(tmpFilt[0],tmpFilt[1]), ind=tmpFilt[0].indexOf(siteName); if(ind!=-1)  mySplice1(tmpFilt[0],ind);  tmpFilt[1]=[siteName]; tmpFilt[2]=1;
+    var tmpFilt=this[this.iSiteName]; array_mergeM(tmpFilt[0],tmpFilt[1]); var ind=tmpFilt[0].indexOf(siteName); if(ind!=-1)  mySplice1(tmpFilt[0],ind);  tmpFilt[1]=[siteName]; tmpFilt[2]=1;
   }
 }
 
@@ -4070,8 +4070,8 @@ var paymentDiv=paymentDivExtend(createElement('div'));
 
     //filter colors
 //var colButtAllOn='#9f9', colButtOn='#0f0', colButtOff='#ddd', colFiltOn='#bfb', colFiltOff='#ddd', colFontOn='#000', colFontOff='#777', colActive='#65c1ff', colStapleOn='#f70', colStapleOff='#bbb';  
-var objFilterSetting={colButtAllOn:'#9f9', colButtOn:'#0f0', colButtOff:'#ddd', colFiltOn:'#bfb', colFiltOff:'#ddd', colFontOn:'#000', colFontOff:'#777', colActive:'#65c1ff', colStapleOn:'#f70', colStapleOff:'#bbb'};  
-var maxStaple=20;
+//var maxStaple=20;
+var objFilterSetting={colButtAllOn:'#9f9', colButtOn:'#0f0', colButtOff:'#ddd', colFiltOn:'#bfb', colFiltOff:'#ddd', colFontOn:'#000', colFontOff:'#777', colActive:'#65c1ff', colStapleOn:'#f70', colStapleOff:'#bbb', maxStaple:20};  
 
 extend(Filt.tmpPrototype,MmmWikiFiltExtention);
 var pageFilterDiv=PageFilterDiv(PropPage, langHtml.label, StrOrderFiltPage, function(){ pageList.histReplace(-1); pageList.loadTab();}); 

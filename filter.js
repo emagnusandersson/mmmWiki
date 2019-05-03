@@ -4,7 +4,7 @@
 window.rangeExtend=function(el, Prop, Filt, Hist, vBoHasRem, StrOrderFilt, objSetting, iFeat, changeFunc){  
   elHtml=document.documentElement;  elBody=document.body;
   
-  var {colButtAllOn, colButtOn, colButtOff, colFiltOn, colFiltOff, colFontOn, colFontOff, colActive, colStapleOn, colStapleOff}=objSetting;
+  var {colButtAllOn, colButtOn, colButtOff, colFiltOn, colFiltOff, colFontOn, colFontOff, colActive, colStapleOn, colStapleOff, maxStaple}=objSetting;
     
       // filt: 'B/BF'-features: [vOffNames,vOnNames, boWhite],     'S'-features: [iOn,iOff]
       // hist: 'B'-features: [vPosName,vPosVal],       'S'/'BF'-features: [vPosInd,vPosVal]
@@ -157,7 +157,7 @@ window.rangeExtend=function(el, Prop, Filt, Hist, vBoHasRem, StrOrderFilt, objSe
 }
 
 window.rowButtExtend=function(el, Prop, Filt, Hist, vBoHasRem, StrOrderFilt, objSetting, iFeat, changeFunc){    // filter-buttons
-  var {colButtAllOn, colButtOn, colButtOff, colFiltOn, colFiltOff, colFontOn, colFontOff, colActive, colStapleOn, colStapleOff}=objSetting;
+  var {colButtAllOn, colButtOn, colButtOff, colFiltOn, colFiltOff, colFontOn, colFontOff, colActive, colStapleOn, colStapleOff, maxStaple}=objSetting;
   
   var calcAllOnNLight=function(){return vOff.length==0 && filt[2]==0 && boIfAllOnDoLight;}  
   var clickFunc=function(){
