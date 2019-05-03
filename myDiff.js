@@ -1,5 +1,8 @@
 
-htmlDiff=function(strOld, strNew){
+
+"use strict"
+
+app.htmlDiff=function(strOld, strNew){
   var arr=diff(strOld.split(''),strNew.split(''));  //splitting a string into its component characters
   var ret='', lastOp='none';
   for(var i=0;i<arr.length;i++){
@@ -18,7 +21,7 @@ htmlDiff=function(strOld, strNew){
 }
 
 
-myDiff=function(strOld,strNew,headOld,headNew){
+app.myDiff=function(strOld,strNew,headOld,headNew){
   var arrOld=strOld.split('\n');    // Split along linestarts
   var arrNew=strNew.split('\n'); 
 

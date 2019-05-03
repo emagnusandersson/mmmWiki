@@ -1,6 +1,7 @@
 
-setUpCond=function(KeySel, StrOrderFilt, Prop, inObj){
 "use strict"
+
+app.setUpCond=function(KeySel, StrOrderFilt, Prop, inObj){
   var Filt=inObj.Filt;
   var Where=[];
 
@@ -67,7 +68,7 @@ setUpCond=function(KeySel, StrOrderFilt, Prop, inObj){
 
 
 
-getHist=function*(flow, mysqlPool, arg){
+app.getHist=function*(flow, mysqlPool, arg){
   var Sql=[], TypeNInd=[], nFilt=arg.StrOrderFilt.length;
   var WhereWExtra=array_mergeM(arg.Where,arg.WhereExtra);
   for(var i=0;i<arg.StrOrderFilt.length;i++){
@@ -144,7 +145,7 @@ getHist=function*(flow, mysqlPool, arg){
 }
 
 
-addBinTableSql=function(SqlTabDrop,SqlTab,strDBPrefix,Prop,engine,collate){
+app.addBinTableSql=function(SqlTabDrop,SqlTab,strDBPrefix,Prop,engine,collate){
   var SqlTabDropTmp=[]
   for(var name in Prop){
     var vv=Prop[name];

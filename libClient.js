@@ -1,16 +1,17 @@
 
+"use strict"
 
 //
 // Storage, DOM etc
 //
 
-getItem=function(name){    var tmp=localStorage.getItem(name);   if(tmp!==null) tmp=JSON.parse(tmp);  return tmp;   }
-setItem=function(name,value){  if(typeof value=='undefined') value=null; localStorage[name]=JSON.stringify(value); }
-getItemS=function(name){    var tmp=sessionStorage.getItem(name);    if(tmp!==null) tmp=JSON.parse(tmp);   return tmp;   }
-setItemS=function(name,value){  sessionStorage[name]=JSON.stringify(value); }
+var getItem=function(name){    var tmp=localStorage.getItem(name);   if(tmp!==null) tmp=JSON.parse(tmp);  return tmp;   }
+var setItem=function(name,value){  if(typeof value=='undefined') value=null; localStorage[name]=JSON.stringify(value); }
+var getItemS=function(name){    var tmp=sessionStorage.getItem(name);    if(tmp!==null) tmp=JSON.parse(tmp);   return tmp;   }
+var setItemS=function(name,value){  sessionStorage[name]=JSON.stringify(value); }
 
 
-httpGetAsync=function(theUrl, callback){
+var httpGetAsync=function(theUrl, callback){
   var xmlHttp = new XMLHttpRequest();
   xmlHttp.onreadystatechange = function() { 
     if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
@@ -24,7 +25,7 @@ httpGetAsync=function(theUrl, callback){
 // Hardware checking
 //
 
-getBrowser=function(){
+var getBrowser=function(){
     var ua=navigator.userAgent.toLowerCase();
 
     var match = /(chrome)[ \/]([\w.]+)/.exec( ua ) ||
@@ -39,7 +40,7 @@ getBrowser=function(){
     
     return {brand:brand,version:version};
 };
-detectIE=function() {
+var detectIE=function() {
     var ua = window.navigator.userAgent;
 
     var msie = ua.indexOf('MSIE ');
@@ -65,7 +66,7 @@ detectIE=function() {
     return false;
 }
 
-isGeneratorSupported = function(){
+var isGeneratorSupported = function(){
     try {
        eval("(function*(){})()");
        return true;
@@ -76,7 +77,7 @@ isGeneratorSupported = function(){
 
 
 
-msort=function(compare){
+var msort=function(compare){
 "use strict"
   var length = this.length,  middle = Math.floor(length / 2);
   //if(length < 2) return this;
@@ -87,7 +88,7 @@ msort=function(compare){
   return merge(    msort.call(a,compare),    msort.call(b,compare),    compare    );
 }
 
-merge=function(left, right, compare){
+var merge=function(left, right, compare){
 "use strict"
   var result = [];
 
@@ -261,11 +262,11 @@ NodeList.prototype.toggle=function(b){
   this.forEach(function(ele){ ele.toggle(b); });
   return this;
 }
-createTextNode=function(str){ return document.createTextNode(str); }
-createElement=function(str){ return document.createElement(str); }
-createFragment=function(){ fr=document.createDocumentFragment(); if(arguments.length) fr.append(...arguments); return fr; }
+var createTextNode=function(str){ return document.createTextNode(str); }
+var createElement=function(str){ return document.createElement(str); }
+var createFragment=function(){ var fr=document.createDocumentFragment(); if(arguments.length) fr.append(...arguments); return fr; }
 
-getNodeIndex=function( elm ){ return [...elm.parentNode.childNodes].indexOf(elm); }
+var getNodeIndex=function( elm ){ return [...elm.parentNode.childNodes].indexOf(elm); }
 Element.prototype.myIndex=function() {return [...this.parentNode.childNodes].indexOf(this);}
 
 Element.prototype.offset=function() {
@@ -283,7 +284,7 @@ Element.prototype.visibilityToggle=function(b){
 
 Node.prototype.detach=function(){ this.remove(); return this; }
 
-isVisible=function(el) {
+var isVisible=function(el) {
   return !!( el.offsetWidth || el.offsetHeight || el.getClientRects().length );
 }
 
@@ -294,7 +295,7 @@ isVisible=function(el) {
 /*******************************************************************************************************************
  * popupHover: popup a elBubble when you hover over elArea
  *******************************************************************************************************************/
-popupHover=function(elArea,elBubble){
+var popupHover=function(elArea,elBubble){
   elBubble.css({position:'absolute', 'box-sizing':'border-box', margin:'0px'}); //
   function setBubblePos(e){
     var xClear=6, yClear=6;
@@ -467,13 +468,13 @@ var menuExtend=function(el, ElItem=[]){
  * popupDragExtend  (Display a draggable bubble (div) (when button is clicked))
  *******************************************************************************************************************/
 
-function popupDragExtendM(elBubble,strTitle,elParent){ 
+var popupDragExtendM=function(elBubble,strTitle,elParent){ 
   elBubble.css({position:'absolute','z-index':200,'background-color':'#ccc','text-align':'left',padding:'0em',border:'solid black 1px'}); 
   popupDragExtend(elBubble,strTitle,elParent);
   return elBubble;
 }
 
-function popupDragExtend(elBubble,strTitle,elParent){
+var popupDragExtend=function(elBubble,strTitle,elParent){
   var xLoc, yLoc, xBubStart, xMouseStart, wBubStart, wWinStart;
   var mouseDownGrab= function(e){
     var e = e || window.event; if(e.which==3) return; 

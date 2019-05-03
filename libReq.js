@@ -499,43 +499,43 @@ app.reqIndex=function*() {
 
   Str.push("<input id='boLCacheObs' style=\"display:none\">"); //type=hidden
   Str.push("<script language=\"JavaScript\">");
-  Str.push("function indexAssign(){");
-
-  var tmp=copySome({},objSiteDefault, ['www', 'boTLS', 'siteName']);   Str.push("objSiteDefault="+JSON.stringify(tmp)+";");
-  var tmp=copySome({},objSite, ['www', 'boTLS', 'siteName']);    Str.push("objSite="+JSON.stringify(tmp)+";");
-
-  if(typeof objPage!='undefined') {
-    var tmp=copySome({},objPage, ['boOR','boOW', 'boSiteMap', 'idPage', 'tCreated']);  //tmp.tCreated=tmp.tCreated.toUnix();
-    Str.push("objPage="+JSON.stringify(tmp)+";");
-    if(!objPage.boOR) {
-      Str.push("CSRFCode="+JSON.stringify(CSRFCode)+";");
-      Str.push("boARLoggedIn="+JSON.stringify(this.boARLoggedIn)+";");
-      Str.push("boAWLoggedIn="+JSON.stringify(this.boAWLoggedIn)+";");
-    }
-  }
-  Str.push("queredPage="+JSON.stringify(queredPage)+";");
-
-  if(typeof objRev!='undefined'){
-    var objRevT=copySome({},objRev, ['tMod', 'size']);  //objRevT.tMod=objRevT.tMod.toUnix();
-    Str.push("objRev="+JSON.stringify(objRevT)+";");
-  }
-
-  if(typeof boTalkExist!='undefined') Str.push("boTalkExist="+JSON.stringify(boTalkExist)+";");
-  if(typeof strEditText!='undefined') Str.push("strEditText="+JSON.stringify(strEditText)+";");
-  if(typeof objTemplateE!='undefined') Str.push("objTemplateE="+JSON.stringify(objTemplateE)+";");
-  if(typeof arrVersionCompared!='undefined') Str.push("arrVersionCompared="+JSON.stringify(arrVersionCompared)+";");
-  if(typeof matVersion!='undefined') Str.push("matVersion="+JSON.stringify(matVersion)+";");
   
-  var strDBType=(typeof mysql!='undefined')?'mysql':'neo4j';
-  Str.push("strDBType="+JSON.stringify(strDBType)+";");
-  Str.push("aRPasswordStart="+JSON.stringify(aRPassword.substr(0,2))+";");
-  Str.push("aWPasswordStart="+JSON.stringify(aWPassword.substr(0,2))+";");
-  Str.push("nHash="+JSON.stringify(nHash)+";");
+  var objOut={};
+  objOut.objSiteDefault=copySome({},objSiteDefault, ['www', 'boTLS', 'siteName']);
+  objOut.objSite=copySome({},objSite, ['www', 'boTLS', 'siteName']);
+
+  if(typeof objPage=='undefined') var objPage={boOR:1, boOW:1, boSiteMap:1, idPage:null, tCreated:null};
+  var objPageT=copySome({},objPage, ['boOR','boOW', 'boSiteMap', 'idPage', 'tCreated']);
+  objOut.objPage=objPageT;
+  objOut.CSRFCode=objPageT.boOR?'':CSRFCode;
+  objOut.boARLoggedIn=objPageT.boOR?'':this.boARLoggedIn;
+  objOut.boAWLoggedIn=objPageT.boOR?'':this.boAWLoggedIn;
+  objOut.queredPage=queredPage;
+
+  if(typeof objRev=='undefined') var objRevT={tMod:0};
+  else var objRevT=copySome({},objRev, ['tMod', 'size']);
+  objOut.objRev=objRevT;
   
-  Str.push("strBTC="+JSON.stringify(strBTC)+";");
-  Str.push("ppStoredButt="+JSON.stringify(ppStoredButt)+";");
-  Str.push("strReCaptchaSiteKey="+JSON.stringify(strReCaptchaSiteKey)+";");
-  Str.push("}");
+  objOut.boTalkExist=(typeof boTalkExist=='undefined')?0:boTalkExist;
+  objOut.strEditText=(typeof strEditText=='undefined')?'':strEditText;
+  objOut.objTemplateE=(typeof objTemplateE=='undefined')?{}:objTemplateE;
+  objOut.arrVersionCompared=(typeof arrVersionCompared=='undefined')?[null,1]:arrVersionCompared;
+  objOut.matVersion=(typeof matVersion=='undefined')?[]:matVersion;
+  
+  objOut.strDBType=(typeof mysql!='undefined')?'mysql':'neo4j';
+  objOut.aRPasswordStart=aRPassword.substr(0,2);
+  objOut.aWPasswordStart=aWPassword.substr(0,2);
+  objOut.nHash=nHash;
+  
+  objOut.strBTC=strBTC;
+  objOut.ppStoredButt=ppStoredButt;
+  objOut.strReCaptchaSiteKey=strReCaptchaSiteKey;
+  
+  Str.push(`function indexAssign(){
+  var tmp=`+JSON.stringify(objOut)+`;
+  extend(window, tmp);
+}`);
+  
   Str.push("</script>");
 
   //var strBottomAd="<span style=\"text-align:center;display:block\">\n\       <a href=http://taxiselector.com>   <img src=bottomAd.png style=\"\">     </a>         </span>\n";     Str.push(strBottomAd);

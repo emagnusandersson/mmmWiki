@@ -1,24 +1,18 @@
 
+"use strict"
 
-escapeHtml=function(text) {
+var escapeHtml=function(text) {
   var map={'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'};
   return text.replace(RegExp("[&<>\"']",'g'), function(m) { return map[m]; });
 }
-str_repeat=function(str,n){ return Array(n+1).join(str);}
-
-String.prototype.trim = function() {return this.replace(/^\s+|\s+$/g,"");}
-String.prototype.ltrim = function() {return this.replace(/^\s+/,"");}
-String.prototype.rtrim = function() {return this.replace(/\s+$/,"");}
 
 
-simpleTags='div|span|font|code|small|sub|sup|u|h1|h2|h3|h4|h5|h6|s';
+app.simpleTags='div|span|font|code|small|sub|sup|u|h1|h2|h3|h4|h5|h6|s';
 
-STARTCHAR=String.fromCharCode(1);  ENDCHAR=String.fromCharCode(2);
-STARTCHARSTR='\\01';  ENDCHARSTR='\\02';
+app.STARTCHAR=String.fromCharCode(1);  app.ENDCHAR=String.fromCharCode(2);
+app.STARTCHARSTR='\\01';  app.ENDCHARSTR='\\02';
 
-
-"use strict"
-var Parser=app.Parser=function(text, boTrustEditors){
+app.Parser=function(text, boTrustEditors){
   this.boTrustEditors=boTrustEditors;
 
   this.arrComment=[]; // For storing of all the comment sections 

@@ -1,8 +1,10 @@
 
-
-var rangeExtend=function(el, Prop, Filt, Hist, vBoHasRem, StrOrderFilt, iFeat, changeFunc){  
 "use strict"
+
+window.rangeExtend=function(el, Prop, Filt, Hist, vBoHasRem, StrOrderFilt, objSetting, iFeat, changeFunc){  
   elHtml=document.documentElement;  elBody=document.body;
+  
+  var {colButtAllOn, colButtOn, colButtOff, colFiltOn, colFiltOff, colFontOn, colFontOff, colActive, colStapleOn, colStapleOff}=objSetting;
     
       // filt: 'B/BF'-features: [vOffNames,vOnNames, boWhite],     'S'-features: [iOn,iOff]
       // hist: 'B'-features: [vPosName,vPosVal],       'S'/'BF'-features: [vPosInd,vPosVal]
@@ -154,8 +156,9 @@ var rangeExtend=function(el, Prop, Filt, Hist, vBoHasRem, StrOrderFilt, iFeat, c
   return el;
 }
 
-var rowButtExtend=function(el, Prop, Filt, Hist, vBoHasRem, StrOrderFilt, iFeat, changeFunc){    // filter-buttons
-"use strict"
+window.rowButtExtend=function(el, Prop, Filt, Hist, vBoHasRem, StrOrderFilt, objSetting, iFeat, changeFunc){    // filter-buttons
+  var {colButtAllOn, colButtOn, colButtOff, colFiltOn, colFiltOff, colFontOn, colFontOff, colActive, colStapleOn, colStapleOff}=objSetting;
+  
   var calcAllOnNLight=function(){return vOff.length==0 && filt[2]==0 && boIfAllOnDoLight;}  
   var clickFunc=function(){
     var val=this.myVal;
@@ -299,7 +302,7 @@ var rowButtExtend=function(el, Prop, Filt, Hist, vBoHasRem, StrOrderFilt, iFeat,
 
       // filt: 'B/BF'-features: [vOffNames,vOnNames, boWhite],     'S'-features: [iOn,iOff]
       // hist: 'B'-features: [vPosName,vPosVal],       'S'/'BF'-features: [vPosInd,vPosVal]
-Filt=function(Prop, StrOrderFilt){ 
+window.Filt=function(Prop, StrOrderFilt){ 
   var el=[];  extend(el,Filt.tmpPrototype);
   el.StrOrderFilt=StrOrderFilt; el.Prop=Prop; el.nFeat=StrOrderFilt.length;
   var StrOrderFiltFlip=array_flip(StrOrderFilt);
@@ -342,7 +345,7 @@ Filt.tmpPrototype.filtDefault=function(){
 
 
 
-Hist=function(nFeat){ 
+window.Hist=function(nFeat){ 
   var el=[]; extend(el,Hist.tmpPrototype);  for(var i=0;i<nFeat;i++){ el[i]=[[],[]];}
   el.nFeat=nFeat;
   return el;
@@ -363,10 +366,10 @@ Hist.tmpPrototype.histClear=function(){  var el=this;  for(var i=0;i<el.nFeat;i+
       
       // TODO  variables starting with v should have it removed (v is for 'vector'). (My new naming conversion uses a capital letter to denote arrays.)
 
-filterDivICreator=function(objArg, changeFunc){ 
+window.filterDivICreator=function(objArg, changeFunc){ 
   var el=createElement('div'); extend(el, filterDivICreator.tmpPrototype);
   el.changeFunc=changeFunc;
-  copySome(el, objArg, ['Prop', 'Label', 'helpBub',   'StrGroupFirst', 'StrGroup',   'StrOrderFilt']); // ,   'StrProp'
+  copySome(el, objArg, ['Prop', 'Label', 'helpBub',   'StrGroupFirst', 'StrGroup',   'StrOrderFilt', 'objSetting']); // ,   'StrProp'
   //copySome(el, oRole, ['Prop', 'Label', 'helpBub']);
   //copySome(el, oRole.filter, ['StrProp', 'StrGroupFirst', 'StrGroup']);
   //el.StrOrderFilt=oRole.filter.StrProp;
@@ -404,11 +407,11 @@ filterDivICreator.tmpPrototype.createDivs=function(){
     if(el.Prop[strName].feat.kind[0]=='B') { 
       h=createElement('div').myAppend(calcLabel(el.Label,strName),strUnit,': ',imgH); //.css({'margin':'0.3em 0em 0em'})
       var p=createElement('p').css({'padding':'0.3em 0em 0em','font-size': '85%'}); 
-      rowButtExtend(p, el.Prop, el.Filt, el.Hist, el.BoHasRem, el.StrOrderFilt, i, el.changeFunc);     p.createCont();
+      rowButtExtend(p, el.Prop, el.Filt, el.Hist, el.BoHasRem, el.StrOrderFilt, el.objSetting, i, el.changeFunc);     p.createCont();
     }  
     else if(el.Prop[strName].feat.kind[0]=='S') { 
       h=createElement('div').myAppend(calcLabel(el.Label,strName),strUnit,': ',imgH); 
-      var p=createElement('p');  p=rangeExtender(p, el.Prop, el.Filt, el.Hist, el.BoHasRem, el.StrOrderFilt, i, el.changeFunc);
+      var p=createElement('p');  p=rangeExtender(p, el.Prop, el.Filt, el.Hist, el.BoHasRem, el.StrOrderFilt, el.objSetting, i, el.changeFunc);
       if(boRangeControlOK) {h.css({'margin':'0 1em 0 0'});   p.css({'line-height':'100%','padding':'0 0 1em 0','text-align':'center'}); } 
       else { h.css({'margin':'0.3em 0em -0.4em'});  p.css({'margin':'0',display:'block'}); }
     } 

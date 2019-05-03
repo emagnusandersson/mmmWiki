@@ -1,5 +1,6 @@
-parseCookies=function(req) {
+
 "use strict"
+app.parseCookies=function(req) {
   var list={}, rc=req.headers.cookie;
   if(typeof rc=='string'){
     rc.split(';').forEach(function( cookie ) {
@@ -16,7 +17,7 @@ parseCookies=function(req) {
 //
 
 
-MyMySql=function(pool){ this.pool=pool; this.connection=null;  }
+app.MyMySql=function(pool){ this.pool=pool; this.connection=null;  }
 MyMySql.prototype.getConnection=function*(flow){
   var err, connection;      this.pool.getConnection(function(errT, connectionT) { err=errT; connection=connectionT; flow.next(); }); yield;   this.connection=connection; return [err];
 }
@@ -47,7 +48,7 @@ MyMySql.prototype.fin=function(){   if(this.connection) { this.connection.destro
 // Neo4j
 //
 
-MyNeo4j=function(){
+app.MyNeo4j=function(){
   var chars = ['\\"', '\\\'', '\\\\'],   tmpStr='[' +chars.join("") +']';  this.regEscape=new RegExp(tmpStr, 'g');
   this.funEscape=function(m){ return "\\"+m;  }
 }
@@ -58,18 +59,18 @@ MyNeo4j.prototype.escape=function(str){  if(typeof str=='string') str=str.replac
 // Errors
 //
 
-ErrorClient=class extends Error {
+app.ErrorClient=class extends Error {
   constructor(message) {
     super(message);
     this.name = 'ErrorClient';
   }
 }
 
-MyError=Error;
+app.MyError=Error;
 //MyError=function(){ debugger;}
 
-getETag=function(headers){var t=false, f='if-none-match'; if(f in headers) t=headers[f]; return t;}
-getRequesterTime=function(headers){if("if-modified-since" in headers) return new Date(headers["if-modified-since"]); else return false;}
+app.getETag=function(headers){var t=false, f='if-none-match'; if(f in headers) t=headers[f]; return t;}
+app.getRequesterTime=function(headers){if("if-modified-since" in headers) return new Date(headers["if-modified-since"]); else return false;}
 
 var tmp=http.ServerResponse.prototype;
 tmp.outCode=function(iCode,str){  str=str||''; this.statusCode=iCode; if(str) this.setHeader("Content-Type", "text/plain");   this.end(str);}
@@ -91,11 +92,11 @@ tmp.out501=function(){ this.outCode(501, "Not implemented\n");   }
 
 
 
-checkIfLangIsValid=function(langShort){
+app.checkIfLangIsValid=function(langShort){
   for(var i=0; i<arrLang.length; i++){ var langRow=arrLang[i]; if(langShort==langRow[0]){return true;} }  return false;
 }
 
-getBrowserLang=function(req){
+app.getBrowserLang=function(req){
 "use strict"
   //echo _SERVER['accept-language']; exit;
   var Lang=[];
@@ -122,7 +123,7 @@ getBrowserLang=function(req){
 }
 
 
-MimeType={
+app.MimeType={
   txt:'text/plain; charset=utf-8',
   jpg:'image/jpg',
   jpeg:'image/jpg',
@@ -142,7 +143,7 @@ MimeType={
 
 
 
-genRandomString=function(len) {
+app.genRandomString=function(len) {
   //var characters = 'abcdefghijklmnopqrstuvwxyz';
   var characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   var str ='';    
@@ -151,7 +152,7 @@ genRandomString=function(len) {
   }
   return str;
 }
-md5=function(str){return crypto.createHash('md5').update(str).digest('hex');}
+app.md5=function(str){return crypto.createHash('md5').update(str).digest('hex');}
 
 
 //wrapRedisSendCommand=function*(strCommand,arr){
@@ -160,7 +161,7 @@ md5=function(str){return crypto.createHash('md5').update(str).digest('hex');}
 //  return value;
 //}
 
-wrapRedisSendCommand=function*(strCommand,arr){
+app.wrapRedisSendCommand=function*(strCommand,arr){
   if(!(arr instanceof Array)) arr=[arr];
   var flow=this.flow, err, value;
   redisClient.send_command(strCommand,arr, function(errT, valueT){  err=errT; value=valueT; flow.next();  }); yield;
@@ -170,7 +171,7 @@ wrapRedisSendCommand=function*(strCommand,arr){
     // closebymarket
   //var StrSuffix=['_LoginIdP', '_LoginIdUser', '_UserInfoFrDB', '_Counter'];  var StrCaller=['index'], for(var i=0;i<StrCaller.length;i++){  StrSuffix.push('_CSRFCode'+ucfirst(StrCaller[i])); }
   //var err=yield* changeSessionId.call(this, sessionIDNew, StrSuffix);
-changeSessionId=function*(sessionIDNew, StrSuffix){
+app.changeSessionId=function*(sessionIDNew, StrSuffix){
   for(var i=0;i<StrSuffix.length;i++){
     var strSuffix=StrSuffix[i];
     var redisVarO=this.req.sessionID+strSuffix, redisVarN=sessionIDNew+strSuffix; 
@@ -181,7 +182,7 @@ changeSessionId=function*(sessionIDNew, StrSuffix){
 }
 
 
-getIP=function(req){
+app.getIP=function(req){
   var ipClient='', Match;
     // AppFog ipClient
   if('x-forwarded-for' in req.headers){
@@ -207,7 +208,7 @@ getIP=function(req){
   return false
 }
 
-luaCountFunc="\n\
+app.luaCountFunc="\n\
 local boSessionExist=redis.call('EXISTS',KEYS[1]);\n\
 local c;\n\
 if(boSessionExist>0) then c=redis.call('INCR',KEYS[2]); redis.call('EXPIRE',KEYS[2], ARGV[1]);\n\
@@ -215,7 +216,7 @@ else c=redis.call('INCR',KEYS[3]); redis.call('EXPIRE', KEYS[3], ARGV[1]);\n\
 end;\n\
 return c";
 
-luaCountFunc=`
+app.luaCountFunc=`
 local boSessionExist=redis.call('EXISTS',KEYS[1]);
 local c;
 if(boSessionExist>0) then c=redis.call('INCR',KEYS[2]); redis.call('EXPIRE',KEYS[2], ARGV[1]);
@@ -224,7 +225,7 @@ end;
 return {boSessionExist, c}`;
 
 
-CacheUriT=function(){
+app.CacheUriT=function(){
   this.set=function*(flow, key, buf, type, boZip, boUglify){
     var eTag=crypto.createHash('md5').update(buf).digest('hex'); 
     //if(boUglify) {
@@ -243,7 +244,7 @@ CacheUriT=function(){
 }
 
 var regFileType=RegExp('\\.([a-z0-9]+)$','i'),    regZip=RegExp('^(css|js|txt|html)$'),   regUglify=RegExp('^js$');
-readFileToCache=function*(flow, strFileName) {
+app.readFileToCache=function*(flow, strFileName) {
   var type, Match=regFileType.exec(strFileName);    if(Match && Match.length>1) type=Match[1]; else type='txt';
   var boZip=regZip.test(type),  boUglify=regUglify.test(type);
   var err, buf;
@@ -252,7 +253,7 @@ readFileToCache=function*(flow, strFileName) {
   return [err];
 }
 
-makeWatchCB=function(strFolder, StrFile) {
+app.makeWatchCB=function(strFolder, StrFile) {
   return function(ev,filename){
     if(StrFile.indexOf(filename)!=-1){
       var strFileName=path.normalize(strFolder+'/'+filename)
@@ -264,7 +265,7 @@ makeWatchCB=function(strFolder, StrFile) {
   }
 }
 
-isRedirAppropriate=function(req){
+app.isRedirAppropriate=function(req){
   if(typeof RegRedir=='undefined') return false;
 
   var domainName=req.headers.host;

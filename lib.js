@@ -46,7 +46,8 @@ MyAsync.prototype.trunkNoFin=function(){}
 ucfirst=function(string){  return string.charAt(0).toUpperCase() + string.slice(1);  }
 isAlpha=function(star){  var regEx = /^[a-zA-Z0-9]+$/;  return str.match(regEx); } 
 String.prototype.trim = function() { return this.replace(/^\s+|\s+$/g,"");}
-
+String.prototype.ltrim = function() {return this.replace(/^\s+/,"");}
+String.prototype.rtrim = function() {return this.replace(/\s+$/,"");}
 
 trim=function(str,charlist){
   if (charlist === undefined) charlist = "\\s";
@@ -93,6 +94,8 @@ isUpperCase=function(c){return c == c.toUpperCase(); }
 
 
 endsWith=function(str,end){return str.substr(-end.length)==end;}
+
+str_repeat=function(str,n){ return Array(n+1).join(str);}
 
 
 //
