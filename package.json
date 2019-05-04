@@ -21,6 +21,7 @@
     "papaparse": "^4.6.3",
     "redis": "2.8.x",
     "request": "^2.88.0",
+    "streamify-string": "^1.0.1",
     "tmp": "0.0.33"
   },
   "devDependencies": {},

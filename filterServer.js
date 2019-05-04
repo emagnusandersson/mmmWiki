@@ -156,7 +156,7 @@ app.addBinTableSql=function(SqlTabDrop,SqlTab,strDBPrefix,Prop,engine,collate){
       //SqlTabDrop.push("DROP TABLE IF EXISTS "+binsTable+"");
       SqlTab.push("CREATE TABLE "+binsTable+" (id INT, minVal INT, maxVal INT, PRIMARY KEY (id)) ENGINE="+engine+" COLLATE "+collate+"");
 
-      SqlVal=[];
+      var SqlVal=[];
       var len=f.n;
       for(var i=0;i<len;i++){
         var val0=f.min[i],  val1=f.max[i]-1;

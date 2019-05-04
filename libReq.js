@@ -541,8 +541,17 @@ app.reqIndex=function*() {
   //var strBottomAd="<span style=\"text-align:center;display:block\">\n\       <a href=http://taxiselector.com>   <img src=bottomAd.png style=\"\">     </a>         </span>\n";     Str.push(strBottomAd);
   Str.push("</body></html>");
   //var str=Str.join('\n');   res.writeHead(200, "OK", {'Content-Type': MimeType.html});
-  var str=Str.join('\n');   res.setHeader('Content-Type', MimeType.html); 
-  res.end(str); 
+  var str=Str.join('\n');
+  
+  res.setHeader("Content-Encoding", 'gzip'); 
+  res.setHeader('Content-Type', MimeType.html); 
+  //var gzip = zlib.createGzip();
+  //var err, buf; zlib.gzip(str, function(errT, bufT) { err=errT; buf=bufT; flow.next(); });  yield; if(err) return [err];
+  //res.end(buf); 
+  
+  //var s = new Readable;
+  //s.push(str); s.pipe(zlib.createGzip()).pipe(res); 
+  Streamify(str).pipe(zlib.createGzip()).pipe(res); 
 
 }
 
@@ -942,6 +951,10 @@ app.reqMonitor=function*(){
   var req=this.req, res=this.res;
   var flow=req.flow;
   
+  res.removeHeader("Content-Security-Policy"); // Allow to be shown in frame, iframe, embed, object
+  //res.removeHeader("X-Content-Type-Options"); // Allow to be shown in frame, iframe, embed, object
+  
+  
   if(!req.boCookieGotLax) {res.outCode(401, "Lax cookie not set");  return;  }
   
         // Conditionally push deadlines forward
@@ -963,7 +976,9 @@ app.reqMonitor=function*(){
     var resI=results[2], nImage=results[3][0].n, imageName=nImage==1?resI[0].imageName:nImage;
     objOthersActivity={nEdit:nEdit, pageName:pageName,  nImage:nImage, imageName:imageName};
   }
-
+  
+  var strMime=MimeType['html'];  res.setHeader("Content-type",strMime);
+  
   var colPage='';   //if(boPageBUNeeded) colPage='orange';
   var n=objOthersActivity.nEdit,  strPage=n==1?objOthersActivity.pageName:n;   if(n) colPage='red';   
 
@@ -1095,6 +1110,7 @@ app.SetupSqlT.prototype.createTable=function(boDropOnly){
   
   var SqlTabDrop=[], SqlTab=[];
   eval(extractLoc(TableName,'TableName'));
+  //var {subTab, subImageTab, versionTab, pageTab, thumbTab, imageTab, videoTab, fileTab, settingTab, redirectTab, redirectDomainTab, siteTab}=TableName;
   //eval(extractLoc(ViewName,'ViewName'));
 
   var StrTabName=object_values(TableName);

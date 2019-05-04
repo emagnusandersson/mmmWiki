@@ -1,67 +1,3 @@
-/*
-\$\('<([^>]+)>'
-createElement('\1'
-
-\$\("<([^>]+)>"
-createElement('\1'
-
-\.val\('([^\)]*)'\)
-.value='\1'
-
-\.val\(\)
-.value
-
-\.val\(([^\)]*)\)
-.prop('value',\1)
-.value=\1
-
-$
-(this)
-parent()
-clone
-body
-.index
-.each
-add
-click
-keypress
-change
-append
-html
-text
-[]
-
-.eq
-\.eq\(([^\)]*)\)
-[\1]
-.children
-.find
-mouseover mouseout
-.add(
-.push(
-nth-of-type
-bind
-data
-\(([a-zA-Z0-9]+)\)\.
-eq
-append ->myAppend
-
-index
-not()
-before
-after
-setVis
-majax
-pop
-.children.forEach
-height width
-next()
-.hasClass
-.is(':empty')
-originalEvent
-
-myText\([^\)\,]+,[^\)]+\)
-*/
 
 
 
@@ -164,7 +100,6 @@ history.fastBack=function(viewGoal, boRefreshHash){
 
 
 var commentButtonExtend=function(el){
-"use strict"
   el.setUp=function(boTalkExist){
     if(boTalkExist) {
       a.css({color:""}); if(a.prop('rel')) a.prop({rel:''});
@@ -203,7 +138,6 @@ var commentButtonExtend=function(el){
 }
 
 var vLoginDivExtend=function(el){
-"use strict"
   var vPassF=function(){  
     //var tmp=SHA1(vPass.value+strSalt);
     var data=vPass.value+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data);
@@ -231,7 +165,6 @@ var createChildInd=function(arrI){
 }
 
 var createColJIndexNamesObj=function(arrName){
-"use strict"
   var o={};
   for(var i=0;i<arrName.length;i++){ 
     var tmp="j"+arrName[i][0].toUpperCase()+arrName[i].substr(1);       o[tmp]=i;
@@ -240,29 +173,10 @@ var createColJIndexNamesObj=function(arrName){
 }
 
 
-//messExtend=function(el){
-//"use strict"
-  //el.resetMess=function(time){ 
-    //if(typeof time =='number')     messTimer=setTimeout('resetMess()',time*1000);
-    //else {el.myText(''); clearTimeout(messTimer);} 
-  //}
-  //el.setMess=function(str,time,boRot){  
-    //el.show();
-    //el.myText(str);  clearTimeout(messTimer); 
-    //if(typeof time=='number' && time>0)     messTimer=setTimeout('resetMess()',time*1000);
-    //if(boRot) el.myAppend(imgBusy);
-  //};
-  //var messTimer;
-  ////el.addClass('message').css({'z-index':8100,position:'fixed'}); 
-  //el.css({border:'black 1px solid',bottom:'0%',right:'0%',margin:'0',padding:'1px','background-color':'#F7F700','font-size':'0.8em','z-index':18100,position:'fixed'}); 
-  //el.on('click',function(){el.hide();});
-  //return el;
-//}
-
 var spanMessageTextCreate=function(){
   var el=createElement('span');
   var spanInner=createElement('span');
-  el.myAppend(spanInner, imgBusy)
+  el.myAppend(spanInner, imgBusy.hide())
   el.resetMess=function(time){
     clearTimeout(messTimer);
     if(typeof time =='number') { messTimer=setTimeout('resetMess()',time*1000); return; }
@@ -292,7 +206,6 @@ var spanMessageTextCreate=function(){
  * pageView
  ******************************************************************************/
 var pageViewExtend=function(el){
-"use strict"
   el.toString=function(){return 'pageView';}
   el.setDetail=function(){
     var strNR='',  str='';
@@ -378,7 +291,6 @@ var pageViewExtend=function(el){
  * adminDiv
  ******************************************************************************/
 var adminDivExtend=function(el){
-"use strict"
   el.toString=function(){return 'adminDiv';}
   el.setUp=function(){
     if(editText.parentNode!==el.fixedDiv) {
@@ -613,13 +525,11 @@ var adminMoreDivExtend=function(el){
 
 
 var dumpDivExtend=function(el){
-  "use strict"
   el.toString=function(){return 'dumpDiv';}
   return el;
 }
 
 var tabBUDivExtend=function(el){
-  "use strict"
   el.toString=function(){return 'tabBUDiv';}
   el.setUp=function(arrStr,objFetch){
     table.empty();
@@ -714,7 +624,6 @@ var tabBUSumExtend=function(el){
 
 //try{  var myString = (function () {   /*  //123412341234
 var diffBackUpDivExtend=function(el){
-  "use strict"
   el.toString=function(){return 'diffBackUpDiv';}
 
   var onerror=function(message) {
@@ -1027,7 +936,6 @@ var diffBackUpDivExtend=function(el){
 
   
 var uploadAdminDivExtend=function(el){
-"use strict"
   var progressHandlingFunction=function(e){      if(e.lengthComputable){   progress.attr({value:e.loaded,max:e.total});      }      }
   var onerror=function(message) {
     debugger; alert(message);
@@ -1315,7 +1223,6 @@ var uploadUserDivExtend=function(el){
 
 
 var PageFilterDiv=function(Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst, StrGroup){   //  Note!! StrOrderFilt should not be changed by any clinet side plugins (as it is also used on the server)
-"use strict"
   var el=createElement('div'); 
   el.toString=function(){return 'pageFilterDiv';}
   el.setNFilt=function(arr){ var tmp=arr[0]+'/'+arr[1]; infoWrap.myText(tmp);  pageList.filterInfoWrap.myText(tmp);  } 
@@ -1344,7 +1251,6 @@ var PageFilterDiv=function(Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst,
 }
 
 var ImageFilterDiv=function(Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst, StrGroup){   //  Note!! StrOrderFilt should not be changed by any client side plugins (as it is also used on the server)
-"use strict"
   var el=createElement('div'); 
   el.toString=function(){return 'imageFilterDiv';}
   el.setNFilt=function(arr){ var tmp=arr[0]+'/'+arr[1]; infoWrap.myText(tmp);  imageList.filterInfoWrap.myText(tmp);  } 
@@ -1372,8 +1278,6 @@ var ImageFilterDiv=function(Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst
 }
 
 
-
-"use strict"
 var headExtend=function(el, tableDiv, StrName, BoAscDefault, Label, strTR='tr', strTD='td'){  // tableDiv must have a property table, tBody and nRowVisible (int)
   el.setArrow=function(strName,dir){
     boAsc=dir==1;
@@ -1444,7 +1348,6 @@ var PageRowLabel={nParent:'Parents / Alternatve parents', cb:'Select',tCreated:'
   
   
 var pageListExtend=function(el){ 
-"use strict"
   el.toString=function(){return 'pageList';}
   var condAddRows=function(){
     var Row=tBody.childNodes;
@@ -1941,7 +1844,6 @@ var goToParentMethod=function(strTypeGoal){  //strTypeCur,
 
 
 var grandParentSelPopExtend=function(el){
-"use strict"
   el.toString=function(){return 'grandParentSelPop';}
   var buttonPress=function(){
     var b=this, idPage=b.idPage;
@@ -2006,7 +1908,6 @@ var grandParentSelPopExtend=function(el){
 
 
 var renamePopExtend=function(el){
-"use strict"
   el.toString=function(){return 'renamePop';}
   var save=function(){ 
     resetMess();  
@@ -2058,7 +1959,6 @@ var renamePopExtend=function(el){
 }
 
 var areYouSurePopExtend=function(el){
-"use strict"
   el.toString=function(){return 'areYouSurePop';}
   el.openFunc=function(strLab, continueClick, cancelClick){ // continueClick(finFun): called when the user clicks the continue button. It takes a callback-argument which closes the areYouSurePop.
     labPageName.myText(strLab);
@@ -2429,7 +2329,6 @@ var imageListExtend=function(el){
  * editDiv
  ******************************************************************************/
 var divReCaptchaExtend=function(el){
-"use strict"
   el.setUp=function(){
     //if(typeof grecaptcha=='undefined') var grecaptcha={render:function(){console.log('no grecaptcha');}};
     if(typeof grecaptcha=='undefined' || !('render' in grecaptcha)) {console.log('no grecaptcha'); return; }
@@ -2442,7 +2341,6 @@ var divReCaptchaExtend=function(el){
 
 
 var editDivExtend=function(el){
-"use strict"
   el.toString=function(){return 'editDiv';}
   el.setUp=function(){
     if(editText.parentNode!==el.fixedDiv) {
@@ -2508,7 +2406,6 @@ var spanModExtend=function(el){
 }
 
 var dragHRExtend=function(el){
-"use strict"
   var myMousedown= function(e){
     var e = e || window.event; if(e.which==3) return;
     el.css({position:'relative',opacity:0.55,'z-index':'auto',cursor:'move'}); 
@@ -2526,7 +2423,6 @@ var dragHRExtend=function(el){
     el.css({position:'relative',opacity:1,'z-index':'auto',top:'0px',cursor:'row-resize'});
     //if(boTouch) document.off('touchmove',myMousemove).off('touchend',el.myMouseup); else document.off('mousemove').off('mouseup'); 
     document.off(strMouseMoveEvent,myMousemove).off(strMouseUpEvent,el.myMouseup);
-    //setMess(print_r(el.myGet(),1));
   }
   
   var myMousemove= function(e){
@@ -2550,7 +2446,6 @@ var dragHRExtend=function(el){
 
 
 var editTextExtend=function(el){
-"use strict"
   var hDefault=160;
   var hEditText=getItem('hEditText');  if(hEditText===null)  hEditText=hDefault;      
   if(boTouch) hEditText=hDefault;
@@ -2578,7 +2473,6 @@ var editTextExtend=function(el){
 
 
 var spanSaveExtend=function(el){
-"use strict"
   var summary=createElement('input').prop({type:'text', placeholder:'Summary'}).css({width:'5em'}); //spanSummary=createElement('span').myAppend('Summary: ',summary).css({'white-space':'nowrap'});
   var signature=createElement('input').prop({type:'text', placeholder:'Signature'}).css({width:'5em'}); //spanSignature=createElement('span').myAppend('Signature: ',signature).css({'white-space':'nowrap'});
   //if(boIE && versionIE<10) { 
@@ -2606,7 +2500,6 @@ var spanSaveExtend=function(el){
 
 
 var templateListExtend=function(el){
-"use strict"
   el.toString=function(){return 'templateList';}
   el.setUp=function(obj){
     div.empty(); 
@@ -2637,7 +2530,6 @@ var templateListExtend=function(el){
  * versionTable
  ******************************************************************************/
 var versionTableExtend=function(el){
-"use strict"
   el.toString=function(){return 'versionTable';}
   function cbCompareWPrev(){ 
     var iVer=this.parentNode.parentNode.iMy;  arrVersionCompared=[bound(iVer-1,1),iVer];
@@ -2792,7 +2684,6 @@ var versionTableExtend=function(el){
 }
 
 var diffDivExtend=function(el){  
-"use strict"
   el.toString=function(){return 'diffDiv';}  
   el.setUp=function(strHtml){
     el.divCont.myHtml(strHtml);
@@ -2891,7 +2782,6 @@ var diffDivExtend=function(el){
 
 
 var formPPExtend=function(el){
-"use strict"
   //var urlPaypalButton="https://www.paypal.com/en_US/i/btn/btn_paynowCC_LG.gif";
   //var urlPaypalButton="https://www.paypalobjects.com/webstatic/en_US/btn/btn_paynow_cc_144x47.png";
   //var urlPaypalButton="https://www.paypalobjects.com/webstatic/en_US/btn/btn_pponly_142x27.png";
@@ -2905,7 +2795,6 @@ var formPPExtend=function(el){
 }
 
 var paymentDivExtend=function(el){  
-"use strict"
   el.toString=function(){return 'paymentDiv';}
     // menuB
   var formPP=formPPExtend(createElement('form')),     divPP=createElement('div').myAppend(formPP).css({'margin-top':'1em'}); if(ppStoredButt.length==0) divPP.hide();  //'Paypal: ',
@@ -2928,7 +2817,6 @@ var paymentDivExtend=function(el){
 
 
 var calcLimitingDim=function(wFrame,hFrame,wOld,hOld){
-"use strict"
   var scale,hNew,wNew;
   if(wFrame==0) {hNew=hFrame; scale=hFrame/hOld; wNew=floor(scale*wOld);}
   else if(hFrame==0) {wNew=wFrame; scale=wFrame/wOld; hNew=floor(scale*hOld);} 
@@ -2942,7 +2830,6 @@ var calcLimitingDim=function(wFrame,hFrame,wOld,hOld){
 
 
 var slideShowExtend=function(el){
-"use strict"
   el.toString=function(){return 'slideShow';}
   var touchesOld=[];
   var getStoredTouch=function(identifier) {
@@ -3129,10 +3016,8 @@ var slideShowExtend=function(el){
 
 
 var pageTextExtend=function(el){
-"use strict"
   var clickImgFun=function(e){
     //var li=this.parentNode, iCur=li.myIndex(); //, StrImg=li.parentNode.StrImg, Caption=li.parentNode.Caption;
-    //alert(iCur+' '+print_r(StrImg)); 
     var a=this, iCur=a.iCur;
     slideShow.setUp(el.StrImg,el.Caption,iCur);
     doHistPush({view:slideShow});
@@ -3170,7 +3055,6 @@ var pageTextExtend=function(el){
 }
 
 var redirectSetPopExtend=function(el){
-"use strict"
   el.toString=function(){return 'redirectSetPop';}
   var save=function(){
     rMat.idSiteOld=rMat.idSite; rMat.pageNameOld=rMat.pageName;
@@ -3241,7 +3125,6 @@ var redirectSetPopExtend=function(el){
 
 
 var redirectDeletePopExtend=function(el){
-"use strict"
   el.toString=function(){return 'redirectDeletePop';}
   var ok=createElement('button').myText('OK').css({'margin-top':'1em'}).on('click',function(){    
     var pageName=elR.attr('pageName'), idSite=elR.attr('idSite'), vec=[['redirectTabDelete',{idSite:idSite,pageName:pageName},okRet]];   majax(oAJAX,vec);    
@@ -3276,7 +3159,6 @@ var redirectDeletePopExtend=function(el){
 
 var regHttp=/^https?:\/\//;
 var redirectTabExtend=function(el){
-"use strict"
   el.toString=function(){return 'redirectTab';}
   var funcTTimeTmp=function(t){ var arrT=getSuitableTimeUnit(unixNow()-t);  this.myText(Math.round(arrT[0])+arrT[1]);  }
   var funcLinkTmp=function(url, rMat){
@@ -3389,7 +3271,6 @@ var redirectTabExtend=function(el){
 
 
 var siteSetPopExtend=function(el){
-"use strict"
   el.toString=function(){return 'siteSetPop';}
   var save=function(){ 
     r.boTLS=Number(selBoTLS.value);
@@ -3462,7 +3343,6 @@ var siteSetPopExtend=function(el){
 }
 
 var siteDeletePopExtend=function(el){
-"use strict"
   el.toString=function(){return 'siteDeletePop';}
   var ok=createElement('button').myText('OK').css({'margin-top':'1em'}).on('click',function(){    
     var vec=[['siteTabDelete',{siteName:siteName},okRet]];   majax(oAJAX,vec);    
@@ -3497,7 +3377,6 @@ var siteDeletePopExtend=function(el){
 }
 
 var siteTabExtend=function(el){
-"use strict"
   el.toString=function(){return 'siteTab';}
 
   var TDProt={
@@ -3628,22 +3507,29 @@ var siteTabExtend=function(el){
 
 'use strict';
 var majax=function(oAJAX, vecIn){  // Each argument of vecIn is an array: [serverSideFunc, serverSideFuncArg, returnFunc]
-  var xhr = new XMLHttpRequest();
-  xhr.open('POST', uBE, true);
-  xhr.setRequestHeader('X-Requested-With','XMLHttpRequest'); 
+  
+   
   var arrRet=[]; vecIn.forEach(function(el,i){var f=null; if(el.length==3) f=el.pop(); arrRet[i]=f;}); // Put return functions in a separate array
   vecIn.push(['page',queredPage]);
-  if(vecIn.length==2 && vecIn[0][1] instanceof FormData){
+  var boForm=vecIn.length==2 && vecIn[0][1] instanceof FormData;
+  if(boForm){
     var formData=vecIn[0][1]; vecIn[0][1]=0; // First element in vecIn contains the formData object. Rearrange it as "root object" and add the remainder to a property 'vec'
     vecIn.push(['tMod',tMod],['CSRFCode',CSRFCode]); 
     formData.append('vec', JSON.stringify(vecIn));
     var tmp=window.btoa(Math.random().toString()).substr(0, 12);
     var dataOut=formData;
-    xhr.setRequestHeader('x-type','single');
+    
   } else {
-    if(oAJAX!==oAJAXCacheable){   vecIn.push(['CSRFCode',CSRFCode],['tMod',tMod]);   }  
+    if(oAJAX.type=='POST'){   vecIn.push(['CSRFCode',CSRFCode],['tMod',tMod]);   }  
     var dataOut=JSON.stringify(vecIn);
   }
+  
+  if(oAJAX.type=='GET') var uBETmp=uBE+'?'+encodeURIComponent(dataOut); else uBETmp=uBE;
+  var xhr = new XMLHttpRequest();
+  xhr.open(oAJAX.type, uBETmp, true);
+  xhr.setRequestHeader('X-Requested-With','XMLHttpRequest'); 
+    
+  if(boForm) xhr.setRequestHeader('x-type','single');
   
   xhr.onload=function () {
     var dataFetched=this.response;
@@ -3659,13 +3545,12 @@ var majax=function(oAJAX, vecIn){  // Each argument of vecIn is an array: [serve
   }
   xhr.onerror=function(e){ var tmp='statusText : '+xhr.statusText;  setMess(tmp); console.log(tmp);   throw 'bla';}
   
-  xhr.send(dataOut); 
+  if(oAJAX.type=='GET') xhr.send(); else xhr.send(dataOut);
   busyLarge.show();
 }
 
 
 var beRet=function(data){
-"use strict"
   //if(typeof jqXHR!='undefined') var tmp=jqXHR.responseText;
   for(var key in data){
     if(key=='GRet') GRet.call(this,data[key]); 
@@ -3678,7 +3563,6 @@ var beRet=function(data){
 
 
 var GRet=function(data){
-"use strict"
   var tmp;
   tmp=data.boAWLoggedIn;   if(typeof tmp!="undefined") boAWLoggedIn=tmp;
   tmp=data.boARLoggedIn;   if(typeof tmp!="undefined") { boARLoggedIn=tmp;  }
@@ -3994,9 +3878,10 @@ if(!boTouch){
 var errorFunc=function(jqXHR, textStatus, errorThrown){
   setMess('responseText: '+jqXHR.responseText+', textStatus: '+' '+textStatus+', errorThrown: '+errorThrown);     throw 'bla';
 }
-//oAJAX={url:uBE, crossDomain:false, contentType:'application/json', error: errorFunc, type: "POST",dataType:'json', processData:false,success: beRet};
-var oAJAX={url:uBE, crossDomain:false, contentType:false, error: errorFunc, type: "POST", processData:false,success: beRet};  
-var oAJAXCacheable={url:uBE, crossDomain:false, error: errorFunc, type: "GET", dataType:'json', processData:false, success: beRet};
+//var oAJAX={url:uBE, crossDomain:false, contentType:false, error: errorFunc, type: "POST", processData:false,success: beRet};  
+//var oAJAXCacheable={url:uBE, crossDomain:false, error: errorFunc, type: "GET", dataType:'json', processData:false, success: beRet};
+var oAJAX={ type: "POST"};  
+var oAJAXCacheable={type: "GET"};
 
 
 //versionC.sel=createChildInd(versionC.backSel);

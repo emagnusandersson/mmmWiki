@@ -27,7 +27,10 @@ ReqBE.prototype.mesO=function(e){
     // mmmWiki specific
   var GRet=this.GRet;    //if('tMod' in GRet && GRet.tMod instanceof Date ) GRet.tMod=GRet.tMod.toUnix();
   
-  this.res.end(JSON.stringify(this.Out));
+  this.res.setHeader("Content-Encoding", 'gzip'); 
+  var str=JSON.stringify(this.Out);
+  //this.res.end(str);
+  Streamify(str).pipe(zlib.createGzip()).pipe(this.res); 
 }
 ReqBE.prototype.mesEO=function(e){
     // Prepare an error-message for the browser and one for the error log.
@@ -62,8 +65,8 @@ ReqBE.prototype.go=function*(){
   this.Out={GRet:{boSpecialistExistDiff:{}}, dataArr:[]}; this.GRet=this.Out.GRet;
 
   if('x-requested-with' in req.headers && req.headers['x-requested-with']=="XMLHttpRequest") ; else { this.mesEO("Ajax-request: req.headers['x-requested-with']!='XMLHttpRequest'");  return; }
-  var urlT=req.strSchemeLong+req.wwwSite;
-  if('referer' in req.headers && req.headers.referer.slice(0,-1)==urlT) ; else { this.mesEO("Referer is wrong");  return; }
+  var urlT=req.strSchemeLong+req.wwwSite, lTmp=urlT.length;
+  if('referer' in req.headers && req.headers.referer.slice(0,lTmp)==urlT) ; else { this.mesEO("Referer is wrong");  return; }
 
     // Extract input data either 'POST' or 'GET'
   var jsonInput;
@@ -88,6 +91,8 @@ ReqBE.prototype.go=function*(){
     }
   } else if(req.method=='GET'){
     var objUrl=url.parse(req.url), qs=objUrl.query||''; jsonInput=urldecode(qs);
+    //  With jQuery: "/be.json?[[%22pageLoad%22,1],[%22page%22,%22start%22]]"
+    //  Now: "/be.json?%5B%5B%22pageLoad%22%2C1%5D%2C%5B%22page%22%2C%22start%22%5D%5D"
   }
   
   try{ var beArr=JSON.parse(jsonInput); }catch(e){ this.mesEO(e);  return; }
@@ -124,7 +129,11 @@ ReqBE.prototype.go=function*(){
     // Assign boCheckCSRF and boSetNewCSRF
   boCheckCSRF=0; boSetNewCSRF=0;   for(var i=0; i<beArr.length; i++){ var row=beArr[i]; if(in_array(row[0],arrCSRF)) {  boCheckCSRF=1; boSetNewCSRF=1;}  }    
   if(StrComp(StrInFunc,['specSetup'])){ boCheckCSRF=0; boSetNewCSRF=1; } // Public pages
-  if(StrComp(StrInFunc,['pageLoad'])){ boCheckCSRF=0; boSetNewCSRF=0; } // Private pages: CSRF was set in index.html
+  var boSinglePageLoad=StrComp(StrInFunc,['pageLoad']);
+  if(boSinglePageLoad){ boCheckCSRF=0; boSetNewCSRF=0; } // Private pages: CSRF was set in index.html
+  
+    // Require POST-request for most combinations
+  if(!boSinglePageLoad && req.method=='GET')  {this.mesEO("GET-request is not allowed.");  return;}
   
   if(boDbg) boCheckCSRF=0;
   // Private:

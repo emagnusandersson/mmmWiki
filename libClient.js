@@ -89,7 +89,6 @@ var msort=function(compare){
 }
 
 var merge=function(left, right, compare){
-"use strict"
   var result = [];
 
   while (left.length > 0 || right.length > 0){
@@ -373,7 +372,6 @@ var popupHover=function(elArea,elBubble){
 /*******************************************************************************************************************
  * menuExtend (Display a menu under (or above) a button (when button is clicked))       (mousedown, drag, mouseup-on-option)
  *******************************************************************************************************************/
-"use strict"
 var menuExtend=function(el, ElItem=[]){
   //  var objEdgeDist=$menu[0].getBoundingClientRect();
   el.openFunc=function(e,elButton,ElItemT){ 

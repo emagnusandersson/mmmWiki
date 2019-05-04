@@ -57,8 +57,6 @@ app.sanitizeStyle=function(attrIn){
 
 
 
-//myDump=function(a,boStr){ if(typeof boStr=='undefined') boStr=1; var str='<pre>'+print_r(a,1)+'</pre>'; if(boStr) echo str; else return str;}
-//lcnotfirst=function(str){  if(count(str)>1) return str[0]+substr(str,1).toLowerCase(); else return str; }  // Make all except first lowercase
 
   // makeMatVersion: compacting things:
   // Ex: input:  Version=[{tMod:X, summary:'bla', signature:'meh'}, {tMod:Y, summary:'blo', signature:'meehh'}]

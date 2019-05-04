@@ -325,7 +325,6 @@ Filt.tmpPrototype.filtAll=function(){
   }
 }
 Filt.tmpPrototype.filtNone=function(){
-"use strict"
   var el=this;
   for(var i=0;i<el.nFeat;i++){  
     var strName=el.StrOrderFilt[i], feat=el.Prop[strName].feat, kind=feat.kind, len=feat.n;
@@ -379,7 +378,6 @@ window.filterDivICreator=function(objArg, changeFunc){
 filterDivICreator.tmpPrototype={};
 filterDivICreator.tmpPrototype.update=function(){  var el=this; for(var i=0;i<el.nFeat;i++){ el.arrFeat[i].update();}  } 
 filterDivICreator.tmpPrototype.createDivs=function(){
-"use strict"
   var el=this;
   el.nFeat=el.StrOrderFilt.length;
 
@@ -435,7 +433,6 @@ filterDivICreator.tmpPrototype.createDivs=function(){
   }
 }
 filterDivICreator.tmpPrototype.interpretHistPHP=function(HistPHP){
-"use strict"
   var el=this;
   for(var i=0;i<el.nFeat;i++) { 
     var strName=el.StrOrderFilt[i]; 
@@ -476,7 +473,6 @@ filterDivICreator.tmpPrototype.interpretHistPHP=function(HistPHP){
 
   // gatherFiltData closebymarket
 filterDivICreator.tmpPrototype.gatherFiltData=function(){
-"use strict"
   var el=this;
   var Filt=el.Filt;
   var FiltOut={};
@@ -490,7 +486,6 @@ filterDivICreator.tmpPrototype.gatherFiltData=function(){
 
   // gatherFiltData mmmWiki
 filterDivICreator.tmpPrototype.gatherFiltData=function(){
-"use strict"
   var el=this;
   var Filt=el.Filt;
   var o={Filt:[]};
@@ -502,7 +497,6 @@ filterDivICreator.tmpPrototype.gatherFiltData=function(){
   return o;
 }
 filterDivICreator.tmpPrototype.toStored=function(){
-"use strict"
   var el=this;
   var Filt=el.Filt;
   //var FiltS=[];
@@ -513,7 +507,6 @@ filterDivICreator.tmpPrototype.toStored=function(){
   return FiltS;
 }
 filterDivICreator.tmpPrototype.frStored=function(o){
-"use strict"
   var el=this;
   var Filt=el.Filt, FiltS=o.Filt;
   for(var i=0;i<Filt.length;i++){

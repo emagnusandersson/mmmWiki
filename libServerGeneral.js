@@ -97,7 +97,6 @@ app.checkIfLangIsValid=function(langShort){
 }
 
 app.getBrowserLang=function(req){
-"use strict"
   //echo _SERVER['accept-language']; exit;
   var Lang=[];
   if('accept-language' in req.headers) {
@@ -208,13 +207,6 @@ app.getIP=function(req){
   return false
 }
 
-app.luaCountFunc="\n\
-local boSessionExist=redis.call('EXISTS',KEYS[1]);\n\
-local c;\n\
-if(boSessionExist>0) then c=redis.call('INCR',KEYS[2]); redis.call('EXPIRE',KEYS[2], ARGV[1]);\n\
-else c=redis.call('INCR',KEYS[3]); redis.call('EXPIRE', KEYS[3], ARGV[1]);\n\
-end;\n\
-return c";
 
 app.luaCountFunc=`
 local boSessionExist=redis.call('EXISTS',KEYS[1]);
@@ -228,15 +220,14 @@ return {boSessionExist, c}`;
 app.CacheUriT=function(){
   this.set=function*(flow, key, buf, type, boZip, boUglify){
     var eTag=crypto.createHash('md5').update(buf).digest('hex'); 
-    //if(boUglify) {
-      //var objU; objU=UglifyJS.minify(bufO.toString(), {fromString: true});
-      //bufO=new Buffer(objU.code,'utf8');
+    //if(boUglify) { // UglifyJS does not handle ecma6 (when I tested it 2019-05-05).
+      //var objU=UglifyJS.minify(buf.toString());
+      //buf=new Buffer(objU.code,'utf8');
     //}
     if(boZip){
       var bufI=buf;
       var gzip = zlib.createGzip();
-      var err;
-      zlib.gzip(bufI, function(errT, bufT) { err=errT; buf=bufT; flow.next(); });  yield; if(err) return [err];
+      var err; zlib.gzip(bufI, function(errT, bufT) { err=errT; buf=bufT; flow.next(); });  yield; if(err) return [err];
     }
     this[key]={buf:buf,type:type,eTag:eTag,boZip:boZip,boUglify:boUglify};
     return [null];
