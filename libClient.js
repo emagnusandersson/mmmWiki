@@ -15,7 +15,7 @@ var httpGetAsync=function(theUrl, callback){
   var xmlHttp = new XMLHttpRequest();
   xmlHttp.onreadystatechange = function() { 
     if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
-      callback(xmlHttp.responseText);
+      callback(null, xmlHttp.responseText);
   }
   xmlHttp.open("GET", theUrl, true); // true for asynchronous 
   xmlHttp.send(null);
@@ -78,7 +78,6 @@ var isGeneratorSupported = function(){
 
 
 var msort=function(compare){
-"use strict"
   var length = this.length,  middle = Math.floor(length / 2);
   //if(length < 2) return this;
   if(length==0) return [];
@@ -90,7 +89,6 @@ var msort=function(compare){
 
 var merge=function(left, right, compare){
   var result = [];
-
   while (left.length > 0 || right.length > 0){
     if(left.length > 0 && right.length > 0){
       if(compare(left[0], right[0]) <= 0){ result.push(left[0]);  left = left.slice(1);  }
@@ -167,7 +165,7 @@ var scrollLeft=function(){ return window.pageXOffset || (document.documentElemen
 
 EventTarget.prototype.on=function(){ this.addEventListener.apply(this, [...arguments]); return this; }
 EventTarget.prototype.off=function(){ this.removeEventListener.apply(this, [...arguments]); return this; }
-if(!Node.prototype.append) Node.prototype.append=Node.prototype.appendChild;
+//if(!Node.prototype.append) Node.prototype.append=Node.prototype.appendChild;
 if(!Node.prototype.prepend) Node.prototype.prepend=function(el){ this.insertBefore(el, this.firstChild);  }
 Node.prototype.myAppend=function(){ this.append.apply(this, [...arguments]); return this; }
 Node.prototype.myAppendB=function(){
@@ -175,7 +173,8 @@ Node.prototype.myAppendB=function(){
   arg.forEach(ele=>{
     if(typeof ele=='string') {
       if(!elTmp) elTmp=createElement('div');
-      elTmp.innerHTML=ele; argB.push(...elTmp.childNodes);
+      elTmp.innerHTML=ele;  // Convert html to nodes (found in elTmp.childNodes)
+      argB.push(...elTmp.childNodes);
     } else argB.push(ele);
   }); 
   this.append.call(this, ...argB); return this;

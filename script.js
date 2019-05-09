@@ -35,6 +35,7 @@ papaparse = require('papaparse');  // For parsing CSV
 var minimist = require('minimist');
 //UglifyJS = require("uglify-js");
 Streamify= require('streamify-string');
+serialize = require('serialize-javascript');
 app=(typeof window==='undefined')?global:window;
 
 
@@ -58,7 +59,7 @@ boDO=strInfrastructure=='do';
 
 
 //StrValidSqlCalls=['createTable', 'dropTable', 'createView', 'dropView', 'createFunction', 'dropFunction', 'truncate', 'createDummy', 'createDummies'];
-StrValidSqlCalls=['createTable', 'dropTable', 'createView', 'dropView', 'createFunction', 'dropFunction', 'truncate'];
+StrValidSqlCalls=['createTable', 'dropTable', 'createView', 'dropView', 'createFunction', 'dropFunction', 'populateSetting', 'truncate'];
 
 StrValidLoadMeta=['site.csv', 'page.csv', 'image.csv', 'redirect.csv'];  // ValidLoadMeta calls
 
@@ -70,8 +71,9 @@ helpTextExit=function(){
   --sql [SQL_ACTION]  Run a sql action.
     SQL_ACTION=`+StrValidSqlCalls.join('|')+`
 
-  --loadFrBUOnServ [fileOrDirPath]
-    Looks for (and loads) txt-files (pages), image-files, csv-files (meta-files) (the meta-files must be named any of: `+StrValidLoadMeta.join(', ')+`) or zip-files.
+  --load [fileOrDirPath]
+    Looks for (and loads) pages (txt-files), image-files, meta-files (csv-files) or zip-files.
+    The meta-files must be named any of: `+StrValidLoadMeta.join(', ')+`.
     zip-files which name DOESN'T contain the string "meta", may contain further txt/image-files.
     zip-files which name DOES contain the string "meta" are assumed to contain any of the above named csv-files.
     fileOrDirPath is a path relative to the "mmmWikiBU"-folder (a sibling of the "mmmWiki"-program folder).
@@ -81,19 +83,19 @@ helpTextExit=function(){
     Files named page.zip, image.zip resp meta.zip in the top level of "mmmWikiBU" are overwritten by the program (when the admin clicks resp BU-to-server-button in the web interface).
 
     Ex: 
-      node --loadFrBUOnServ               // Loads all files (not entering any folders) in "mmmWikiBU"
-      node --loadFrBUOnServ myDir         // Loads all files (not entering any folders) in "mmmWikiBU/myDir"
-      node --loadFrBUOnServ myPage.txt    // Loads "mmmWikiBU/myPage.txt"
-      node --loadFrBUOnServ myPages.zip   // Loads "mmmWikiBU/myPages.zip"
-      node --loadFrBUOnServ mymeta.zip    // Loads "mmmWikiBU/mymeta.zip". mymeta.zip must only contain meta-files (as named above)
-      node --loadFrBUOnServ site.csv+myPage.txt+myImage.jpg+myPages.zip     // Loads site.csv, myPage.txt, myImage.jpg and myPages.zip`);
+      node --load               // Loads all files (not entering any folders) in "mmmWikiBU"
+      node --load myDir         // Loads all files (not entering any folders) in "mmmWikiBU/myDir"
+      node --load myPage.txt    // Loads "mmmWikiBU/myPage.txt"
+      node --load myPages.zip   // Loads "mmmWikiBU/myPages.zip"
+      node --load mymeta.zip    // Loads "mmmWikiBU/mymeta.zip". mymeta.zip must only contain meta-files (as named above)
+      node --load site.csv+myPage.txt+myImage.jpg+myPages.zip     // Loads site.csv, myPage.txt, myImage.jpg and myPages.zip`);
   console.log(arr.join('\n'));
   process.exit(0);
 }
 
 var argv = minimist(process.argv.slice(2), {alias: {h:'help', p:'port'}} );  // Perhaps use yargs !? (according to https://www.youtube.com/watch?v=S-_Fx4-nal8)
 
-var C=AMinusB(Object.keys(argv),['_', 'h', 'help', 'p', 'port', 'sql', 'loadFrBUOnServ']);
+var C=AMinusB(Object.keys(argv),['_', 'h', 'help', 'p', 'port', 'sql', 'load']);
 var tmp=[].concat(C,argv._);
 if(tmp.length){ console.log(tmp.join(', ')+' are unknown options'); helpTextExit(); return;}
 
@@ -127,8 +129,8 @@ ppStoredButt="";
 
 var StrCookiePropProt=["HttpOnly", "Path=/","max-age="+3600*24*30];
 //if(boDO) { StrCookiePropProt.push("secure"); }
-var StrCookiePropStrict=StrCookiePropProt.concat("SameSite=Strict"),   StrCookiePropLax=StrCookiePropProt.concat("SameSite=Lax"),   StrCookiePropAll=StrCookiePropProt.concat();
-strCookiePropStrict=";"+StrCookiePropStrict.join(';');  strCookiePropLax=";"+StrCookiePropLax.join(';');  strCookiePropAll=";"+StrCookiePropAll.join(';');
+var StrCookiePropStrict=StrCookiePropProt.concat("SameSite=Strict"),   StrCookiePropLax=StrCookiePropProt.concat("SameSite=Lax"),   StrCookiePropNormal=StrCookiePropProt.concat();
+strCookiePropStrict=";"+StrCookiePropStrict.join(';');  strCookiePropLax=";"+StrCookiePropLax.join(';');  strCookiePropNormal=";"+StrCookiePropNormal.join(';');
 
 var flow=( function*(){
 
@@ -150,9 +152,9 @@ var flow=( function*(){
   var strMd5Config=md5(strConfig);
   eval(strConfig);
   var redisVar='str'+ucfirst(strAppName)+'Md5Config';
-  var [err,tmp]=yield* wrapRedisSendCommand.call({flow:flow}, 'get',[redisVar]);
+  var [err,tmp]=yield* cmdRedis(flow, 'GET',[redisVar]);
   var boNewConfig=strMd5Config!==tmp; 
-  if(boNewConfig) { var [err,tmp]=yield* wrapRedisSendCommand.call({flow:flow}, 'set',[redisVar,strMd5Config]);  }
+  if(boNewConfig) { var [err,tmp]=yield* cmdRedis(flow, 'SET',[redisVar,strMd5Config]);  }
 
   if('levelMaintenance' in process.env) levelMaintenance=process.env.levelMaintenance;
 
@@ -176,15 +178,19 @@ var flow=( function*(){
   SiteName=[strDBPrefix]; // To make the code analog to my other programs :-)
 
       // Load fr BU-folder
-  if(typeof argv.loadFrBUOnServ!='undefined'){
-    var StrFile; if(typeof argv.loadFrBUOnServ=='string') StrFile=argv.loadFrBUOnServ.split('+');
+  if(typeof argv.load!='undefined'){
+    var StrFile; if(typeof argv.load=='string') StrFile=argv.load.split('+');
     var [err]=yield* loadFrBUOnServ(flow, StrFile); if(err) console.error(err);  process.exit(0); return;
   }
     // Do db-query if --sql XXXX was set in the argument
   if(typeof argv.sql!='undefined'){
     if(typeof argv.sql!='string') {console.log('sql argument is not a string'); process.exit(-1); return; }
     var tTmp=new Date().getTime();
-    var SetupSql=new SetupSqlT(); yield* SetupSql.doQuery(argv.sql,flow);
+    var setupSql=new SetupSql();
+    setupSql.myMySql=new MyMySql(mysqlPool);
+    var [err]=yield* setupSql.doQuery(flow, argv.sql);
+    setupSql.myMySql.fin();
+    if(err) {  console.error(err);  return;}
     console.log('Time elapsed: '+(new Date().getTime()-tTmp)/1000+' s'); 
     process.exit(0);
   }
@@ -231,10 +237,10 @@ var flow=( function*(){
       }
     
       //res.setHeader("X-Frame-Options", "deny");  // Deny for all (note: this header is removed for images (see reqMediaImage) (should also be removed for videos))
-      res.setHeader("Content-Security-Policy", "frame-ancestors 'none'");  // Deny for all (note: this header is removed for images (see reqMediaImage) (should also be removed for videos))
+      res.setHeader("Content-Security-Policy", "frame-ancestors 'none'");  // Deny for all (note: this header is removed in certain requests)
       res.setHeader("X-Content-Type-Options", "nosniff");  // Don't try to guess the mime-type (I prefer the rendering of the page to fail if the mime-type is wrong)
       //if(boDO) res.setHeader("Strict-Transport-Security", "max-age="+3600*24*365); // All future requests must be with https (forget this after a year)
-      res.setHeader("Referrer-Policy", "origin");  //  strict-origin
+      res.setHeader("Referrer-Policy", "origin");  //  Don't write the refer unless the request comes from the origin
       
 
 
@@ -245,42 +251,53 @@ var flow=( function*(){
       
       var cookies = parseCookies(req);
       req.cookies=cookies;
-      
 
-      req.boCookieGotStrict=req.boCookieGotLax=false;
+      req.boCookieNormalOK=req.boCookieLaxOK=req.boCookieStrictOK=false;
       
         // Check if a valid sessionID-cookie came in
-      var boSessionExist=0, sessionID=null;
-      if('sessionIDAll' in cookies) {
-        sessionID=cookies.sessionIDAll;
-        var redisVarSessionMain=sessionID+'_Main';
-        var [err, boSessionExist]=yield* wrapRedisSendCommand.call(req, 'EXISTS', redisVarSessionMain);
-          // Check if Lax / Strict -cookies are OK
-        if(boSessionExist){
-          req.boCookieGotLax=('sessionIDLax' in cookies) && cookies.sessionIDLax===sessionID;
-          req.boCookieGotStrict=('sessionIDStrict' in cookies) && cookies.sessionIDStrict===sessionID;
-        }
+      var boSessionCookieInInput='sessionIDNormal' in cookies, sessionID=null, redisVarSessionMain;
+      if(boSessionCookieInInput) {
+        sessionID=cookies.sessionIDNormal;  redisVarSessionMain=sessionID+'_Main';
+        var [err, tmp]=yield* cmdRedis(req.flow, 'EXISTS', redisVarSessionMain); req.boCookieNormalOK=tmp;
       } 
       
-        // Increase DDOS counter (IP or sessionID) 
+      if(req.boCookieNormalOK){
+          // Check if Lax / Strict -cookies are OK
+        req.boCookieLaxOK=('sessionIDLax' in cookies) && cookies.sessionIDLax===sessionID;
+        req.boCookieStrictOK=('sessionIDStrict' in cookies) && cookies.sessionIDStrict===sessionID;
+        var redisVarDDOSCounter=sessionID+'_Counter';
+      }else{
+        sessionID=randomHash();  redisVarSessionMain=sessionID+'_Main';
+        var ipClient=getIP(req), redisVarDDOSCounter=ipClient+'_Counter';
+      }
+      
+        // Increase DDOS counter 
       var luaCountFunc=`local c=redis.call('INCR',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-      var ipClient=getIP(req), redisVarCounterTmp=(sessionID||ipClient)+'_Counter';
-      var [err, intCount]=yield* wrapRedisSendCommand.call(req, 'EVAL',[luaCountFunc, 1, redisVarCounterTmp, tDDOSBan]);
+      var [err, intCount]=yield* cmdRedis(req.flow, 'EVAL',[luaCountFunc, 1, redisVarDDOSCounter, tDDOSBan]);
       
       
-        // Set / refresh redisVarSessionMain
-      sessionID=sessionID||randomHash();  req.sessionID=sessionID;
-      var redisVarSessionMain=sessionID+'_Main';
-      var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'SET',[redisVarSessionMain,1,'EX', maxAdminRUnactivityTime]);
-      res.setHeader("Set-Cookie", ["sessionIDAll="+sessionID+strCookiePropAll, "sessionIDLax="+sessionID+strCookiePropLax, "sessionIDStrict="+sessionID+strCookiePropStrict]);
+      res.setHeader("Set-Cookie", ["sessionIDNormal="+sessionID+strCookiePropNormal, "sessionIDLax="+sessionID+strCookiePropLax, "sessionIDStrict="+sessionID+strCookiePropStrict]);
        
-      
         // Check if to many requests comes in a short time (DDOS)
       if(intCount>intDDOSMax) {res.outCode(429,"Too Many Requests ("+intCount+"), wait "+tDDOSBan+"s\n"); return; }
-
-
-
+      
+      
+        // Refresh / create  redisVarSessionMain
+      if(req.boCookieNormalOK){
+        var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+        var [err, value]=yield* cmdRedis(req.flow, 'EVAL',[luaCountFunc, 1, redisVarSessionMain, maxAdminRUnactivityTime]); req.sessionCache=JSON.parse(value)
+      } else { 
+        yield* setRedis(req.flow, redisVarSessionMain, 1, maxAdminRUnactivityTime); 
+        req.sessionCache={};
+      }
+      
       var wwwSite=domainName, pathName=pathNameOrg;
+
+        // Set mimetype if the extention is recognized
+      var regexpExt=RegExp('\.([a-zA-Z0-9]+)$');
+      var Match=pathName.match(regexpExt), strExt; if(Match) strExt=Match[1];
+      if(strExt in MimeType) res.setHeader('Content-type', MimeType[strExt]);
+
       
 
       if(pathName=='/index.php') { var qs=objUrl.query||'', objQS=querystring.parse(qs), tmp=objQS.page||''; res.out301('http://'+domainName+'/'+tmp); return; }
@@ -309,8 +326,8 @@ var flow=( function*(){
       req.sessionID=sessionID; req.objUrl=objUrl;    req.boTLS=boTLS;  req.strSchemeLong=strSchemeLong;    req.pathName=pathName; 
       
       
-      var objReqRes={req:req, res:res};
       if(levelMaintenance){res.outCode(503, "Down for maintenance, try again in a little while."); return;}
+      var objReqRes={req:req, res:res};
       objReqRes.myMySql=new MyMySql(mysqlPool);
       //if(pathName=='/'+leafPageLoadBE){ var reqPageLoadBE=new ReqPageLoadBE(objReqRes);  yield* reqPageLoadBE.go();    }
       if(pathName=='/'+leafBE){ var reqBE=new ReqBE(objReqRes);  yield* reqBE.go();    }

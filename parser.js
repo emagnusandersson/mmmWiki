@@ -63,8 +63,13 @@ Parser.prototype.preParse = function(callback) {
   this.text=text;  callback(null,0);
 }
 
-Parser.prototype.renameILinkOrImage = function(text, strILink='', strILinkN, strImage='', strImageN) {
-  this.strILink=strILink;  this.strILinkN=strILinkN;  this.strImage=strImage;  this.strImageN=strImageN;
+Parser.prototype.renameILinkOrImage = function(text, strILink='', strILinkN='', strImage='', strImageN='') {
+  this.boSpaceOrUnderscore=strILink.indexOf('_')!=-1;  this.boSpaceOrUnderscoreImage=strImage.indexOf('_')!=-1;
+  const regTmp=RegExp('_','g');
+  this.strILink=strILink; this.strILinkWSpace=strILink.replace(regTmp,' ');
+  this.strILinkN=strILinkN; this.strILinkNWSpace=strILinkN.replace(regTmp,' ');
+  this.strImage=strImage; this.strImageWSpace=strImage.replace(regTmp,' ');
+  this.strImageN=strImageN; this.strImageNWSpace=strImageN.replace(regTmp,' ');
   text = text.replace(RegExp(STARTCHARSTR,'g'),''); //Remove any possible STARTCHAR's
   text = text.replace(RegExp(ENDCHARSTR,'g'),'');  //Remove any possible ENDCHAR's
   text = text.replace(RegExp("<!--[\\s\\S]*?-->",'g'),thisChanged(this.replaceCommentCB,this)); //in javascript there is no modifier to make "." match '\n', but one can use "[\s\S]" instead
@@ -75,6 +80,7 @@ Parser.prototype.renameILinkOrImage = function(text, strILink='', strILinkN, str
   
   text=text.replace(/([^\[])\[([^\[])/g, '$1' +STARTCHAR +'singleLBracket' +ENDCHAR +'$2');   //Temporary markups of single left brackets. If you know any better way to handle brackets, doublebrackets etc. you can change all this. Especially how to handle single brackets in linktext etc, at the same time as handling links in imagecaptions.
   text=text.replace(/([^\]])\]([^\]])/g,'$1' +STARTCHAR +'singleRBracket' +ENDCHAR +'$2');    //Temporary markups of single right brackets.  
+  text = text.replace(/\[\[([^\[\]]+?)\]\]/g ,thisChanged(this.replaceILinkRenameCB,this));  //Replace internal links with temporary markups.
   text = text.replace(/\[\[([^\[\]]+?)\]\]/g ,thisChanged(this.replaceILinkRenameCB,this));  //Replace internal links with temporary markups.
 
   text = text.replace(/\[\[ *image *:(.+?)\]\]/ig,thisChanged(this.replaceImageRenameCB,this));   //Replace images with temporary markups.
@@ -106,7 +112,9 @@ Parser.prototype.replaceILinkRenameCB=function(m,n){
   var parts=n.split('|'), nParts=parts.length;
   var innerText; if(nParts>1)  innerText=parts[1];  else innerText='';
   var pageLikeWritten=parts[0].trim(); //pageLikeWritten, needed when there is no innerText
-  if(this.strILink==pageLikeWritten.toLowerCase()) pageLikeWritten=this.strILinkN;
+  var pageLikeWrittenLC=pageLikeWritten.toLowerCase();
+  if(this.strILink==pageLikeWrittenLC) pageLikeWritten=this.strILinkN;
+  else if(this.boSpaceOrUnderscore && this.strILinkWSpace==pageLikeWrittenLC) pageLikeWritten=this.strILinkNWSpace;    // If boSpaceOrUnderscore then both versions must be compared
   this.arrILink[i]=[pageLikeWritten, 0];
   return STARTCHAR +'iLink' +i +ENDCHAR +innerText +STARTCHAR +'/iLink' +i +ENDCHAR;
 }
@@ -120,7 +128,9 @@ Parser.prototype.replaceImageRenameCB=function(m,n){
   var i=this.arrImageLink.length;
   var parts=n.split('|');
   var name=parts[0].trim(), partsTmp=parts.slice(1);
-  if(this.strImage==name.toLowerCase()) name=this.strImageN;
+  var nameLC=name.toLowerCase();
+  if(this.strImage==nameLC) name=this.strImageN;
+  else if(this.boSpaceOrUnderscoreImage && this.strImageWSpace==nameLC) name=this.strImageNWSpace;    // If boSpaceOrUnderscoreImage then both versions must be compared
   this.arrImageLink[i]=name;
   return STARTCHAR +'img' +i +ENDCHAR +partsTmp.join('|') +STARTCHAR +'/img' +i +ENDCHAR; 
 }

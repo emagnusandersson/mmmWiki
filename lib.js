@@ -168,16 +168,16 @@ app.UTC2Readable=function(utcTime){ var tmp=new Date(Number(utcTime)*1000);   re
 app.unixNow=function(){return (new Date()).toUnix();}
 
 app.getSuitableTimeUnit=function(t){ // t in seconds
-  var tabs=Math.abs(t), tsign=t>=0?+1:-1;
-  if(tabs<=90) return [tsign*tabs,'s'];
-  tabs/=60; // t in minutes
-  if(tabs<=90) return [tsign*tabs,'m']; 
-  tabs/=60; // t in hours
-  if(tabs<=36) return [tsign*tabs,'h'];
-  tabs/=24; // t in days
-  if(tabs<=2*365) return [tsign*tabs,'d'];
-  tabs/=365; // t in years
-  return [tsign*tabs,'y'];
+  var tAbs=Math.abs(t), tSign=t>=0?+1:-1;
+  if(tAbs<=90) return [tSign*tAbs,'s'];
+  tAbs/=60; // t in minutes
+  if(tAbs<=90) return [tSign*tAbs,'m']; 
+  tAbs/=60; // t in hours
+  if(tAbs<=36) return [tSign*tAbs,'h'];
+  tAbs/=24; // t in days
+  if(tAbs<=2*365) return [tSign*tAbs,'d'];
+  tAbs/=365; // t in years
+  return [tSign*tAbs,'y'];
 }
 
 app.dosTime2Arr=function(dosDate,dosTime){
@@ -275,6 +275,9 @@ app.tabNStrCol2ArrObj=function(tabNStrCol){  //Ex: {tab:[[0,1],[2,3]],StrCol:['a
   return arrObj;
 }
 
+app.deserialize=function(serializedJavascript){
+  return eval('(' + serializedJavascript + ')');
+}
 
 app.calcBUFileName=function(wwwSite,type,ending){
   var www=wwwSite.replace('/','_').replace(':','_'), date=swedDate(unixNow());

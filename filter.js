@@ -3,7 +3,7 @@
 
 window.rangeExtend=function(el, Prop, Filt, Hist, vBoHasRem, StrOrderFilt, objSetting, iFeat, changeFunc){  
   elHtml=document.documentElement;  elBody=document.body;
-  
+
   var {colButtAllOn, colButtOn, colButtOff, colFiltOn, colFiltOff, colFontOn, colFontOff, colActive, colStapleOn, colStapleOff, maxStaple}=objSetting;
     
       // filt: 'B/BF'-features: [vOffNames,vOnNames, boWhite],     'S'-features: [iOn,iOff]
@@ -158,7 +158,6 @@ window.rangeExtend=function(el, Prop, Filt, Hist, vBoHasRem, StrOrderFilt, objSe
 
 window.rowButtExtend=function(el, Prop, Filt, Hist, vBoHasRem, StrOrderFilt, objSetting, iFeat, changeFunc){    // filter-buttons
   var {colButtAllOn, colButtOn, colButtOff, colFiltOn, colFiltOff, colFontOn, colFontOff, colActive, colStapleOn, colStapleOff, maxStaple}=objSetting;
-  
   var calcAllOnNLight=function(){return vOff.length==0 && filt[2]==0 && boIfAllOnDoLight;}  
   var clickFunc=function(){
     var val=this.myVal;
@@ -306,7 +305,7 @@ window.Filt=function(Prop, StrOrderFilt){
   var el=[];  extend(el,Filt.tmpPrototype);
   el.StrOrderFilt=StrOrderFilt; el.Prop=Prop; el.nFeat=StrOrderFilt.length;
   var StrOrderFiltFlip=array_flip(StrOrderFilt);
-  el.iParent=StrOrderFiltFlip.parent
+  el.iParent=StrOrderFiltFlip.parent;
   for(var i=0;i<el.nFeat;i++){  
     var strName=el.StrOrderFilt[i], feat=el.Prop[strName].feat, kind=feat.kind, len=feat.n;
     if(kind[0]=='S') el[i]=[0,len];
@@ -316,9 +315,8 @@ window.Filt=function(Prop, StrOrderFilt){
 }
 Filt.tmpPrototype={};
 Filt.tmpPrototype.filtAll=function(){
-"use strict"
   var el=this;
-  for(var i=0;i<el.nFeat;i++){  
+  for(var i=0;i<el.nFeat;i++){
     var strName=el.StrOrderFilt[i], feat=el.Prop[strName].feat, kind=feat.kind, len=feat.n;
     if(kind[0]=='S') {el[i][0]=0; el[i][1]=len; }
     else if(kind[0]=='B') {   var tmp; if(kind=='BF') tmp=stepN(0,len); else tmp=[];      el[i][0]=[]; el[i][1]=tmp; el[i][2]=0;    }
@@ -326,7 +324,7 @@ Filt.tmpPrototype.filtAll=function(){
 }
 Filt.tmpPrototype.filtNone=function(){
   var el=this;
-  for(var i=0;i<el.nFeat;i++){  
+  for(var i=0;i<el.nFeat;i++){
     var strName=el.StrOrderFilt[i], feat=el.Prop[strName].feat, kind=feat.kind, len=feat.n;
     if(kind[0]=='S') {
       if(kind[1]=='1') el[i][0]=len; else el[i][1]=0;
@@ -471,7 +469,6 @@ filterDivICreator.tmpPrototype.interpretHistPHP=function(HistPHP){
   //console.log('------------');
 }
 
-  // gatherFiltData closebymarket
 filterDivICreator.tmpPrototype.gatherFiltData=function(){
   var el=this;
   var Filt=el.Filt;
@@ -484,28 +481,16 @@ filterDivICreator.tmpPrototype.gatherFiltData=function(){
   return FiltOut;
 }
 
-  // gatherFiltData mmmWiki
-filterDivICreator.tmpPrototype.gatherFiltData=function(){
-  var el=this;
-  var Filt=el.Filt;
-  var o={Filt:[]};
-  for(var i=0;i<Filt.length;i++){
-    var strName=el.StrOrderFilt[i];
-    var filtT; if(el.Prop[strName].feat.kind[0]=='B'){ var vSpec=Filt[i][Filt[i][2]];  filtT=[vSpec,Filt[i][2]];} else filtT=Filt[i];
-    o.Filt.push(filtT);
-  }
-  return o;
-}
 filterDivICreator.tmpPrototype.toStored=function(){
-  var el=this;
-  var Filt=el.Filt;
+  var el=this, Filt=el.Filt;
   //var FiltS=[];
   //for(var i=0;i<Filt.length;i++){
-  //  FiltS[i]=.extend(true, [], Filt[i]);
+  //  FiltS[i]=extend(true, [], Filt[i]);
   //}
   var FiltS = JSON.parse(JSON.stringify(Filt));
   return FiltS;
 }
+
 filterDivICreator.tmpPrototype.frStored=function(o){
   var el=this;
   var Filt=el.Filt, FiltS=o.Filt;

@@ -1,4 +1,6 @@
 
+"use strict"
+
 /******************************************************************************
  * BU (BackUp requests):
  * (As shown in script.js) the requests:
@@ -7,8 +9,6 @@
  * /BU* (BUPage, BUImage, BUVideo, BUPageServ, BUImageServ, BUImageServ) goes to reqBU
  ******************************************************************************/
 
-"use strict"
-
 /******************************************************************************
  * reqBU
  ******************************************************************************/
@@ -16,11 +16,11 @@ app.reqBU=function*(strArg) {
   var req=this.req, res=this.res;
   var flow=req.flow;
   
-  if(!req.boCookieGotStrict) { res.outCode(401, "Strict cookie not set");  return;   }
+  if(!req.boCookieStrictOK) { res.outCode(401, "Strict cookie not set");  return;   }
   
       // Conditionally push deadlines forward
-  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
-  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
+  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
 
   if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
 
@@ -102,11 +102,11 @@ app.reqBU=function*(strArg) {
   }else{
     //var outFileName=calcBUFileName(results[1][0].siteName, type, 'zip');
     var outFileName=results[1][0].siteName+'_'+swedDate(unixNow())+'_'+type+'.zip';
-    var objHead={"Content-Type": 'application/zip', "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
+    var objHead={"Content-Type": MimeType.zip, "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
     res.writeHead(200,objHead);
     res.end(outdata,'binary');
   }
-  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'SET',['mmmWiki_tLastBU',unixNow()]);
+  var [err,tmp]=yield* cmdRedis(flow, 'SET',['mmmWiki_tLastBU',unixNow()]);
 }
 
 
@@ -117,11 +117,11 @@ app.reqBUMeta=function*(strArg) {
   var req=this.req, res=this.res;
   var flow=req.flow;
 
-  if(!req.boCookieGotStrict) {res.outCode(401, "Strict cookie not set");  return;  }
+  if(!req.boCookieStrictOK) {res.outCode(401, "Strict cookie not set");  return;  }
   
         // Conditionally push deadlines forward
-  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
-  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
+  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
   if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
   
 
@@ -147,7 +147,8 @@ app.reqBUMeta=function*(strArg) {
   }
   var zipfile = new NodeZip();
   var myEscape=myNeo4j.escape; 
-  var myEscapeB=function(str){ return '"'+myEscape(str)+'"'; }
+  //var myEscapeB=function(str){ return '"'+myEscape(str)+'"'; }
+  var myEscapeB=function(str){ return '"'+myEscape.call(myNeo4j,str)+'"'; }
   var StrData=[], StrFileName=[];
   
     // Site
@@ -204,7 +205,7 @@ app.reqBUMeta=function*(strArg) {
     //var outFileName=calcBUFileName(matWWWCommon[0].wwwCommon,'meta','zip');  
     var outFileName=matWWWCommon[0].siteName+'_'+swedDate(unixNow())+'_meta.zip';
     
-    var objHead={"Content-Type": 'application/zip', "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
+    var objHead={"Content-Type": MimeType.zip, "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
     res.writeHead(200,objHead);
     res.end(outdata,'binary');
   } 
@@ -214,11 +215,11 @@ app.reqBUMetaSQL=function*() {
   var req=this.req, res=this.res;
   var flow=req.flow;
 
-  if(!req.boCookieGotStrict) {res.outCode(401, "Strict cookie not set");  return;  }
+  if(!req.boCookieStrictOK) {res.outCode(401, "Strict cookie not set");  return;  }
   
         // Conditionally push deadlines forward
-  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
-  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
+  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
   if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
   
 
@@ -269,7 +270,7 @@ app.reqBUMetaSQL=function*() {
   var sql=SqlB.join("\n");
   //var outFileName=calcBUFileName(matWWWCommon[0].wwwCommon,'meta','sql');
   var outFileName=matWWWCommon[0].siteName+'_'+swedDate(unixNow())+'_meta.sql';
-  res.setHeader('Content-type','text/plain');
+  res.setHeader('Content-type', MimeType.txt);
   res.setHeader('Content-Disposition','attachment; filename='+outFileName);
   res.end(sql); 
   
@@ -295,8 +296,8 @@ app.reqIndex=function*() {
   
 
       // Conditionally push deadlines forward
-  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
-  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
+  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
 
   // Private:
   //                                                                 index.html  first ajax (pageLoad)
@@ -345,7 +346,7 @@ app.reqIndex=function*() {
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0"); // no-cache    
       var CSRFCode=randomHash(); 
       var redisVar=req.sessionID+'_'+queredPage+'_CSRF';
-      var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'SET',[redisVar,CSRFCode,'EX', maxAdminRUnactivityTime]);
+      var [err,tmp]=yield* cmdRedis(flow, 'SET',[redisVar,CSRFCode,'EX', maxAdminRUnactivityTime]);
     }else {   // Public
       var {boTalkExist}=results[6][0];
       if(results[7].length==0) { res.out500('no versions?!?'); return;   }
@@ -411,10 +412,10 @@ app.reqIndex=function*() {
   //
   
   var Str=[];
-  var tmp='<!DOCTYPE html>\n\
-<html><head>\n\
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>\n\
-<meta name="generator" content="mmmWiki">';
+  var tmp=`<!DOCTYPE html>
+<html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<meta name="generator" content="mmmWiki">`;
   Str.push(tmp);
 
   Str.push('<link rel="icon" type="image/png" href="'+objSite.urlIcon16+'" />');
@@ -463,21 +464,21 @@ app.reqIndex=function*() {
 
   var strTracker, tmpID=objSite.googleAnalyticsTrackingID||null;
   if(boDbg||!tmpID){strTracker="<script> ga=function(){};</script>";}else{ 
-  strTracker="\n\
-<script type=\"text/javascript\">\n\
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){\n\
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),\n\
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)\n\
-  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');\n\
-  ga('create', '"+tmpID+"', 'auto');\n\
-  ga('send', 'pageview');\n\
-</script>\n";
+  strTracker=`
+<script type="text/javascript">
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+  ga('create', '`+tmpID+`', 'auto');
+  ga('send', 'pageview');
+</script>`;
   }
   Str.push(strTracker);
 
-  Str.push("<script src='https://www.google.com/recaptcha/api.js?render=explicit' async defer></script>");
-  //Str.push("<script src='https://www.google.com/recaptcha/api.js?render=explicit' async defer></script>");
-  //Str.push("<script src='https://www.google.com/recaptcha/api.js?render="+strReCaptchaSiteKey+"' async defer></script>"); // &onload=reCaptchaCB
+  Str.push("<script src='https://www.google.com/recaptcha/api.js?render=explicit' defer></script>");
+  //Str.push("<script src='https://www.google.com/recaptcha/api.js?render=explicit' defer></script>");
+  //Str.push("<script src='https://www.google.com/recaptcha/api.js?render="+strReCaptchaSiteKey+"' defer></script>"); // &onload=reCaptchaCB
   
 
   //
@@ -489,9 +490,8 @@ app.reqIndex=function*() {
     if(typeof strStartPageTitle!='undefined' && strStartPageTitle) strTitle=strStartPageTitle; else strTitle=wwwSite;
   } else strTitle=queredPage.replace(RegExp('_','g'),' ');
       
-  Str.push("\
-</head>\n\
-<body style=\"margin:0\">");
+  Str.push(`</head>
+<body style="margin:0">`);
 
   //Str.push('<div class="g-recaptcha" data-sitekey="'+strReCaptchaSiteKey+'"></div>');
   Str.push("<title>"+strTitle+"</title>");
@@ -532,9 +532,11 @@ app.reqIndex=function*() {
   objOut.strReCaptchaSiteKey=strReCaptchaSiteKey;
   
   Str.push(`function indexAssign(){
-  var tmp=`+JSON.stringify(objOut)+`;
+  var tmp=`+serialize(objOut)+`;
   extend(window, tmp);
+  setItem('CSRFCode',CSRFCode);
 }`);
+
   
   Str.push("</script>");
 
@@ -560,23 +562,25 @@ app.reqIndex=function*() {
  * reqStatic
  ******************************************************************************/
 app.reqStatic=function*() {
-  var req=this.req, res=this.res; 
+  var req=this.req, res=this.res;
+  //var site=req.site, siteName=site.siteName;
   var pathName=req.pathName;
 
   var eTagIn=getETag(req.headers);
-  var keyCache=pathName; //if(pathName==='/'+leafSiteSpecific) keyCache=req.strSite+keyCache; 
+  var keyCache=pathName; //if(pathName==='/'+leafSiteSpecific) keyCache=siteName+keyCache;
   if(!(keyCache in CacheUri)){
-    var filename=pathName.substr(1);    
+    var filename=pathName.substr(1);
     var [err]=yield* readFileToCache(req.flow, filename);
     if(err) {
       if(err.code=='ENOENT') {res.out404(); return;}
-      if('Referer' in req.headers) console.log('Referer:'+req.headers.Referer);
+      if('host' in req.headers) console.error('Faulty request from'+req.headers.host);
+      if('Referer' in req.headers) console.error('Referer:'+req.headers.Referer);
       res.out500(err); return;
     }
   }
   var {buf, type, eTag, boZip, boUglify}=CacheUri[keyCache];
-  if(eTag===eTagIn){ res.out304(); return; } 
-  var mimeType=MimeType[type]; 
+  if(eTag===eTagIn){ res.out304(); return; }
+  var mimeType=MimeType[type];
   if(typeof mimeType!='string') console.log('type: '+type+', mimeType: ', mimeType);
   if(typeof buf!='object' || !('length' in buf)) console.log('typeof buf: '+typeof buf);
   if(typeof eTag!='string') console.log('typeof eTag: '+eTag);
@@ -586,8 +590,6 @@ app.reqStatic=function*() {
   res.write(buf); //, this.encWrite
   res.end();
 }
-
-
 
 
 
@@ -658,9 +660,8 @@ app.reqMediaImage=function*(){
 
 
     // Ok so the reponse will be an image
-  var strMime=MimeType[kind];
-  res.setHeader("Content-type", strMime);
-  //res.setHeader("Content-type: image/jpeg");
+  res.setHeader("Content-type", MimeType[kind]);
+  //res.setHeader("Content-type", MimeType.jpeg);
 
 
   var sql="SELECT data FROM "+fileTab+" WHERE idFile=?";
@@ -907,7 +908,8 @@ app.reqSiteMap=function*() {
     Str.push("<url><loc>"+url+"</loc><lastmod>"+tMod+"</lastmod></url>");
   }
   Str.push('</urlset>');  
-  var str=Str.join('\n');   res.writeHead(200, "OK", {'Content-Type': 'text/xml'});   res.end(str);
+  var str=Str.join('\n'); //res.writeHead(200, "OK", {'Content-Type': MimeType.xml});
+  res.end(str);
 }
 
 
@@ -939,7 +941,7 @@ app.reqRobots=function*() {
     var q=file.pageName;
     Str.push("Allow: /"+q);
   }
-  var str=Str.join('\n');   //res.writeHead(200, "OK", {'Content-Type': 'text/plain'});   res.end(str);
+  var str=Str.join('\n');   //res.writeHead(200, "OK", {'Content-Type': MimeType.txt});   res.end(str);
   res.out200(str);
 }
 
@@ -951,15 +953,15 @@ app.reqMonitor=function*(){
   var req=this.req, res=this.res;
   var flow=req.flow;
   
+  if(!req.boCookieLaxOK) {res.outCode(401, "Lax cookie not set");  return;  }
+  
   res.removeHeader("Content-Security-Policy"); // Allow to be shown in frame, iframe, embed, object
   //res.removeHeader("X-Content-Type-Options"); // Allow to be shown in frame, iframe, embed, object
   
   
-  if(!req.boCookieGotLax) {res.outCode(401, "Lax cookie not set");  return;  }
-  
         // Conditionally push deadlines forward
-  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
-  //var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
+  //var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
   if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in as admin read'); return;}
 
   if(!objOthersActivity){  //  && boPageBUNeeded===null && boImageBUNeeded===null
@@ -977,7 +979,6 @@ app.reqMonitor=function*(){
     objOthersActivity={nEdit:nEdit, pageName:pageName,  nImage:nImage, imageName:imageName};
   }
   
-  var strMime=MimeType['html'];  res.setHeader("Content-type",strMime);
   
   var colPage='';   //if(boPageBUNeeded) colPage='orange';
   var n=objOthersActivity.nEdit,  strPage=n==1?objOthersActivity.pageName:n;   if(n) colPage='red';   
@@ -999,11 +1000,11 @@ app.reqStat=function*(){
   var req=this.req, res=this.res;
   var flow=req.flow;
 
-  if(!req.boCookieGotLax) {res.outCode(401, "Lax cookie not set");  return;  }
+  if(!req.boCookieLaxOK) {res.outCode(401, "Lax cookie not set");  return;  }
   
         // Conditionally push deadlines forward
-  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
-  //var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
+  //var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
   if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in as admin read'); return;}
   
   
@@ -1013,12 +1014,12 @@ app.reqStat=function*(){
   Sql.push("SELECT count(*) AS n FROM "+thumbTab+";");
   Sql.push("SELECT count(*) AS n FROM "+videoTab+";"); 
   Sql.push("SELECT count(*) AS n FROM "+fileTab+";");
-  Sql.push("SELECT f.idFile AS file, v.idPage AS page, vc.idPage AS cache, i.idImage AS image, t.idImage AS thumb, vid.idVideo AS video FROM "+fileTab+" f \n\
-   LEFT JOIN "+versionTab+" v ON f.idFile=v.idFile \n\
-   LEFT JOIN "+versionTab+" vc ON f.idFile=vc.idFileCache \n\
-   LEFT JOIN "+imageTab+" i ON f.idFile=i.idFile \n\
-   LEFT JOIN "+thumbTab+" t ON f.idFile=t.idFile \n\
-   LEFT JOIN "+videoTab+" vid ON f.idFile=vid.idFile");
+  Sql.push(`SELECT f.idFile AS file, v.idPage AS page, vc.idPage AS cache, i.idImage AS image, t.idImage AS thumb, vid.idVideo AS video FROM `+fileTab+` f
+   LEFT JOIN `+versionTab+` v ON f.idFile=v.idFile
+   LEFT JOIN `+versionTab+` vc ON f.idFile=vc.idFileCache
+   LEFT JOIN `+imageTab+` i ON f.idFile=i.idFile
+   LEFT JOIN `+thumbTab+` t ON f.idFile=t.idFile
+   LEFT JOIN `+videoTab+` vid ON f.idFile=vid.idFile`);
 
   var sql=Sql.join('\n'), Val=[];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {  res.out500(err); return; }
@@ -1026,11 +1027,11 @@ app.reqStat=function*(){
   var nVersion=results[0][0].n, nImage=results[1][0].n, nThumb=results[2][0].n, nVideo=results[3][0].n, nFile=results[4][0].n, resT=results[5];
 
   var Str=[]; 
-  Str.push('<!DOCTYPE html>\n\
-  <html><head>\n\
-  <meta name="robots" content="noindex">\n\
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" >\n\
-  <meta name="viewport" id="viewportMy" content="initial-scale=1" />');
+  Str.push(`<!DOCTYPE html>
+  <html><head>
+  <meta name="robots" content="noindex">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" >
+  <meta name="viewport" id="viewportMy" content="initial-scale=1" />`);
 
 
   //var uCommon=''; if(wwwCommon) uCommon=req.strSchemeLong+wwwCommon;
@@ -1093,7 +1094,7 @@ app.reqStat=function*(){
   var strR=arrR.join('');
   Str.push("<table style=\"  border: solid 1px;border-collapse:collapse\">\n"+strR+"</table>");
 
-  var str=Str.join('\n');  // res.writeHead(200, "OK", {'Content-Type': 'text/html'}); 
+  var str=Str.join('\n'); 
   res.end(str);  
 
   
@@ -1102,11 +1103,11 @@ app.reqStat=function*(){
 
 
 /******************************************************************************
- * SetupSqlT
+ * SetupSql
  ******************************************************************************/
-app.SetupSqlT=function(){
+app.SetupSql=function(){
 }
-app.SetupSqlT.prototype.createTable=function(boDropOnly){
+app.SetupSql.prototype.createTable=function*(flow, boDropOnly){
   
   var SqlTabDrop=[], SqlTab=[];
   eval(extractLoc(TableName,'TableName'));
@@ -1126,9 +1127,9 @@ app.SetupSqlT.prototype.createTable=function(boDropOnly){
   var auto_increment=1;
 
 /*
-  SqlTab.push("CREATE TABLE "+siteDefaultTab+" ( \n\
-  idSite int(4) NOT NULL, \n\
-  FOREIGN KEY (idSite) REFERENCES "+siteTab+"(idSite)  \n\
+  SqlTab.push("CREATE TABLE "+siteDefaultTab+" (
+  idSite int(4) NOT NULL,
+  FOREIGN KEY (idSite) REFERENCES "+siteTab+"(idSite)
   ) ENGINE="+engine+" COLLATE "+collate);
 */
   SqlTab.push(`CREATE TABLE `+siteTab+` (
@@ -1167,7 +1168,7 @@ app.SetupSqlT.prototype.createTable=function(boDropOnly){
   boOR TINYINT(1) NOT NULL DEFAULT 0,
   boOW TINYINT(1) NOT NULL DEFAULT 0,
   boSiteMap TINYINT(1) NOT NULL DEFAULT 0,
-  lastRev int(4) NOT NULL DEFAULT 0,     # rev (and lastRev) is 0-indexed, version is 1-indexed\n\
+  lastRev int(4) NOT NULL DEFAULT 0,     # rev (and lastRev) is 0-indexed, version is 1-indexed
   nChild int(4) NOT NULL DEFAULT 0,
   nImage int(4) NOT NULL DEFAULT 0,
   tCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1334,11 +1335,17 @@ app.SetupSqlT.prototype.createTable=function(boDropOnly){
   for(var i=0;i<SqlTabTmp.length;i++){ if(!RegExp('size|tCreated|tMod|tLastAccess|nAccess|nParent','i').test(SqlTabTmp[i])) SqlTab.push(SqlTabTmp[i]); }
 
 
-  if(boDropOnly) return SqlTabDrop;
-  else return array_merge(SqlTabDrop, SqlTab);
+  if(boDropOnly) var Sql=SqlTabDrop;
+  else var Sql=array_merge(SqlTabDrop, SqlTab);
+  
+  var strDelim=';', sql=Sql.join(strDelim+'\n')+strDelim, Val=[];
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val);
+  writeMessTextOfMultQuery(Sql, err, results);
+  if(err) {  return [err]; }
+  return [null];
 }
 
-app.SetupSqlT.prototype.createView=function(boDropOnly){
+app.SetupSql.prototype.createView=function*(flow, boDropOnly){
   var SqlViewDrop=[], SqlView=[];
   eval(extractLoc(TableName,'TableName'));
   eval(extractLoc(ViewName,'ViewName'));
@@ -1347,33 +1354,40 @@ app.SetupSqlT.prototype.createView=function(boDropOnly){
 
   
   //SqlViewDrop.push("DROP VIEW IF EXISTS "+pageSiteView);  // pageTab with siteTab-fields: boDefault, boTLS, siteName and www
-  //SqlView.push("CREATE VIEW "+pageSiteView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, tCreated, intPriority, tLastAccess, nAccess, nParent) AS \n\
-//SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, p.tCreated, intPriority, tLastAccess, nAccess, nParent FROM "+pageTab+" p JOIN "+siteTab+" st ON p.idSite=st.idSite");
+  //SqlView.push(`CREATE VIEW `+pageSiteView+` (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, tCreated, intPriority, tLastAccess, nAccess, nParent) AS
+//SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, p.tCreated, intPriority, tLastAccess, nAccess, nParent FROM `+pageTab+` p JOIN `+siteTab+` st ON p.idSite=st.idSite`);
 
   SqlViewDrop.push("DROP VIEW IF EXISTS "+pageSiteView);  // pageTab with siteTab-fields: boDefault, boTLS, siteName and www
-  SqlView.push("CREATE VIEW "+pageSiteView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, tCreated, intPriority, tLastAccess, nAccess, nChild, nImage, nParent, boOther, tMod, tModCache, size) AS \n\
-SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, p.tCreated, intPriority, tLastAccess, nAccess, nChild, nImage, nParent, boOther, tMod, tModCache, size FROM "+pageTab+" p JOIN "+siteTab+" st ON p.idSite=st.idSite");
+  SqlView.push(`CREATE VIEW `+pageSiteView+` (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, tCreated, intPriority, tLastAccess, nAccess, nChild, nImage, nParent, boOther, tMod, tModCache, size) AS
+SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, p.tCreated, intPriority, tLastAccess, nAccess, nChild, nImage, nParent, boOther, tMod, tModCache, size FROM `+pageTab+` p JOIN `+siteTab+` st ON p.idSite=st.idSite`);
 
   SqlViewDrop.push("DROP VIEW IF EXISTS "+pageLastView);  // pageTab with versionTab-fields: boOther, tMod, tModCache, eTag, size, idFile and idFileCache for the last version
-  SqlView.push("CREATE VIEW "+pageLastView+" (idPage, idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage, nParent) AS \n\
-SELECT p.idPage, p.idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, v.boOther, tCreated, intPriority, tLastAccess, nAccess, v.tMod, v.tModCache, eTag, v.size, idFile, idFileCache, nChild, nImage, nParent FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev");
+  SqlView.push(`CREATE VIEW `+pageLastView+` (idPage, idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage, nParent) AS
+SELECT p.idPage, p.idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, v.boOther, tCreated, intPriority, tLastAccess, nAccess, v.tMod, v.tModCache, eTag, v.size, idFile, idFileCache, nChild, nImage, nParent FROM `+pageTab+` p JOIN `+versionTab+` v ON p.idPage=v.idPage AND p.lastRev=v.rev`);
 
   SqlViewDrop.push("DROP VIEW IF EXISTS "+pageLastSiteView);  // A combination of the above two views.
-  SqlView.push("CREATE VIEW "+pageLastSiteView+" (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage, nParent) AS \n\
-SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, v.boOther, p.tCreated, intPriority, tLastAccess, nAccess, v.tMod, v.tModCache, eTag, v.size, idFile, idFileCache, nChild, nImage, nParent FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev JOIN "+siteTab+" st ON p.idSite=st.idSite");
+  SqlView.push(`CREATE VIEW `+pageLastSiteView+` (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, eTag, size, idFile, idFileCache, nChild, nImage, nParent) AS
+SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, v.boOther, p.tCreated, intPriority, tLastAccess, nAccess, v.tMod, v.tModCache, eTag, v.size, idFile, idFileCache, nChild, nImage, nParent FROM `+pageTab+` p JOIN `+versionTab+` v ON p.idPage=v.idPage AND p.lastRev=v.rev JOIN `+siteTab+` st ON p.idSite=st.idSite`);
 
 
   SqlViewDrop.push("DROP VIEW IF EXISTS "+redirectSiteView);
-  SqlView.push("CREATE VIEW "+redirectSiteView+" (idSite, siteName, www, pageName, url, tCreated, nAccess, tLastAccess, tMod) AS \n\
-SELECT r.idSite, st.siteName, st.www, r.pageName, url, r.tCreated, nAccess, tLastAccess, tMod FROM "+redirectTab+" r JOIN "+siteTab+" st ON r.idSite=st.idSite");
+  SqlView.push(`CREATE VIEW `+redirectSiteView+` (idSite, siteName, www, pageName, url, tCreated, nAccess, tLastAccess, tMod) AS
+SELECT r.idSite, st.siteName, st.www, r.pageName, url, r.tCreated, nAccess, tLastAccess, tMod FROM `+redirectTab+` r JOIN `+siteTab+` st ON r.idSite=st.idSite`);
 
 
-  if(boDropOnly) return SqlViewDrop;
-  else return array_merge(SqlViewDrop, SqlView);
+  if(boDropOnly) var Sql=SqlViewDrop;
+  else var Sql=array_merge(SqlViewDrop, SqlView);
+  
+  
+  var strDelim=';', sql=Sql.join(strDelim+'\n')+strDelim, Val=[];
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val);
+  writeMessTextOfMultQuery(Sql, err, results);
+  if(err) {  return [err]; }
+  return [null];
 }
 
 
-app.SetupSqlT.prototype.createFunction=function(boDropOnly){
+app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
   
   var SqlFunctionDrop=[], SqlFunction=[];
   
@@ -1477,8 +1491,9 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
         SELECT @VimageNameCur AS nameO;  -- output
         
           # Create tmpParentCur, (all the parents of the new name)
+          # The denormalized data (idSite), must of be of course be included as it is to be reinserted into subImageTab below.
         DROP TABLE IF EXISTS tmpParentCur;
-        CREATE TEMPORARY TABLE IF NOT EXISTS tmpParentCur AS SELECT idPage FROM `+subImageTab+` WHERE s.imageName=@VimageNameCur; -- image parents
+        CREATE TEMPORARY TABLE IF NOT EXISTS tmpParentCur AS SELECT idPage, idSite FROM `+subImageTab+` WHERE imageName=@VimageNameCur; -- image parents
         DROP TABLE IF EXISTS tmpParentCurWIdFile;
         CREATE TEMPORARY TABLE IF NOT EXISTS tmpParentCurWIdFile AS SELECT s.idPage, v.idFile FROM `+subImageTab+` s JOIN `+versionTab+` v ON s.idPage=v.idPage WHERE s.imageName=@VimageNameCur;  -- image parents, all versions
         -- SELECT * FROM tmpParentCur;
@@ -1607,25 +1622,25 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
       END`);
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"deleteImageID");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"deleteImageID(IidImage int(4)) \n\
-      BEGIN \n\
-        DECLARE VidImage,VidFile INT; \n\
-        DECLARE Vname VARCHAR(128); \n\
-        START TRANSACTION; \n\
-        #SELECT idImage, idFile INTO VidImage, VidFile FROM "+imageTab+" WHERE imageName=Iname; \n\
-        SELECT idImage, idFile, imageName INTO VidImage, VidFile, Vname FROM "+imageTab+" WHERE idImage=IidImage; \n\
-        DROP TEMPORARY TABLE IF EXISTS tmp; \n\
-        CREATE TEMPORARY TABLE tmp AS  \n\
-          SELECT idFile FROM "+thumbTab+" WHERE idImage=VidImage; \n\
-        #CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4)); \n\
-        #INSERT INTO tmp SELECT idFile FROM "+thumbTab+" WHERE idImage=VidImage; \n\
-        DELETE FROM "+thumbTab+" WHERE idImage=VidImage; \n\
-        DELETE f FROM "+fileTab+" f JOIN tmp t ON t.idFile=f.idFile WHERE 1; \n\
-        DELETE FROM "+imageTab+" WHERE idImage=VidImage; \n\
-        DELETE FROM "+fileTab+" WHERE idFile=VidFile; \n\
-        # DELETE FROM "+subImageTab+" WHERE imageName=Vname; \n\
-        COMMIT; \n\
-      END");
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`deleteImageID(IidImage int(4))
+      BEGIN
+        DECLARE VidImage,VidFile INT;
+        DECLARE Vname VARCHAR(128);
+        START TRANSACTION;
+        #SELECT idImage, idFile INTO VidImage, VidFile FROM `+imageTab+` WHERE imageName=Iname;
+        SELECT idImage, idFile, imageName INTO VidImage, VidFile, Vname FROM `+imageTab+` WHERE idImage=IidImage;
+        DROP TEMPORARY TABLE IF EXISTS tmp;
+        CREATE TEMPORARY TABLE tmp AS
+          SELECT idFile FROM `+thumbTab+` WHERE idImage=VidImage;
+        #CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4));
+        #INSERT INTO tmp SELECT idFile FROM `+thumbTab+` WHERE idImage=VidImage;
+        DELETE FROM `+thumbTab+` WHERE idImage=VidImage;
+        DELETE f FROM `+fileTab+` f JOIN tmp t ON t.idFile=f.idFile WHERE 1;
+        DELETE FROM `+imageTab+` WHERE idImage=VidImage;
+        DELETE FROM `+fileTab+` WHERE idFile=VidFile;
+        # DELETE FROM `+subImageTab+` WHERE imageName=Vname;
+        COMMIT;
+      END`);
   //SqlFunction.push("CALL "+strDBPrefix+"deleteImage('mmm')");
   
   SqlFunctionDrop.push(`DROP PROCEDURE IF EXISTS `+strDBPrefix+`deleteImageIDMult`);
@@ -1645,18 +1660,18 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
       END`);
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"deleteThumb");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"deleteThumb(IidImage INT(4)) \n\
-      BEGIN \n\
-        START TRANSACTION; \n\
-        DROP TEMPORARY TABLE IF EXISTS tmp; \n\
-        #CREATE TEMPORARY TABLE tmp AS  \n\
-        #  SELECT idFile FROM "+thumbTab+" WHERE idImage=IidImage; \n\
-        CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4)); \n\
-        INSERT INTO tmp SELECT idFile FROM "+thumbTab+" WHERE idImage=IidImage; \n\
-        DELETE FROM "+thumbTab+" WHERE idImage=IidImage; \n\
-        DELETE f FROM "+fileTab+" f JOIN tmp t ON f.idFile=t.idFile; \n\
-        COMMIT; \n\
-      END");
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`deleteThumb(IidImage INT(4))
+      BEGIN
+        START TRANSACTION;
+        DROP TEMPORARY TABLE IF EXISTS tmp;
+        #CREATE TEMPORARY TABLE tmp AS
+        #  SELECT idFile FROM `+thumbTab+` WHERE idImage=IidImage;
+        CREATE TEMPORARY TABLE IF NOT EXISTS tmp (idFile INT(4));
+        INSERT INTO tmp SELECT idFile FROM `+thumbTab+` WHERE idImage=IidImage;
+        DELETE FROM `+thumbTab+` WHERE idImage=IidImage;
+        DELETE f FROM `+fileTab+` f JOIN tmp t ON f.idFile=t.idFile;
+        COMMIT;
+      END`);
 
 
 
@@ -1746,86 +1761,86 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
   //
     
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"getInfoNData");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"getInfoNData(IboTLS INT(1), Iwww varchar(128), Iname varchar(128), Irev INT, IeTag varchar(32), IreqDate INT) \n\
-    proc_label:BEGIN \n\
-      DECLARE VidSite, VidPage, Vc, VboTalk, VboTemplate, VboTalkExist, VidFile, VidFileCache, VboValidServerCache, VboValidReqCache INT; \n\
-      DECLARE VtMod, VtModCache INT UNSIGNED; \n\
-      DECLARE Vwww, Vname, talkPage varchar(128); \n\
-      DECLARE VeTag varchar(32); \n\
-      DECLARE strEditText, strHtmlText MEDIUMBLOB; \n\
-      DECLARE VboTLS, VboRedirectCase, VboOR INT(1); \n\
-\n\
-          # Get site \n\
-      SELECT SQL_CALC_FOUND_ROWS boDefault, @boTLS:=boTLS AS boTLS, @VidSite:=idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aWPassword, aRPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+" WHERE www=Iwww;#  <-- result #0 \n\
-      IF FOUND_ROWS()!=1 THEN LEAVE proc_label; END IF; \n\
-      SET VboTLS=@boTLS, VidSite=@VidSite; \n\
-\n\
-          # Check if there is a redirect for this page \n\
-      SELECT SQL_CALC_FOUND_ROWS @tmp:=url AS urlRedir FROM "+redirectTab+" WHERE idSite=VidSite AND pageName=Iname;     #  <-- result #1 \n\
-      IF FOUND_ROWS() THEN \n\
-        UPDATE "+redirectTab+" SET nAccess=nAccess+1, tLastAccess=now() WHERE idSite=VidSite AND pageName=Iname; \n\
-        LEAVE proc_label; \n\
-      END IF; \n\
-\n\
-          # Check if there is a redirect for this domain \n\
-      SELECT SQL_CALC_FOUND_ROWS @tmp:=url AS urlRedirDomain FROM "+redirectDomainTab+" WHERE www=Iwww;     #  <-- result #2 \n\
-      IF FOUND_ROWS() THEN LEAVE proc_label; END IF; \n\
-\n\
-          # Get wwwCommon \n\
-      SELECT SQL_CALC_FOUND_ROWS boTLS, siteName, www  FROM "+siteTab+" WHERE boDefault=1; #  <-- result #3 \n\
-\n\
-          # Check if page exist \n\
-      SELECT SQL_CALC_FOUND_ROWS @Vname:=pageName AS pageName, @VidPage:=idPage AS idPage, @VboOR:=boOR AS boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+pageTab+" WHERE idSite=VidSite AND pageName=Iname;  #  <-- result #4 \n\
-      IF FOUND_ROWS()=0 THEN LEAVE proc_label; END IF;   # noSuchPage \n\
-      SET Vname=@Vname, VidPage=@VidPage, VboOR=@VboOR; \n\
-\n\
-\n\       # Redirect to correct case OR correct boTLS\n\
-      SET VboRedirectCase = BINARY Vname!=Iname OR VboTLS!=IboTLS; \n\
-      SELECT VboRedirectCase AS boRedirectCase, VboTLS AS boTLS, Vwww AS www, Vname AS pageRedir;  #  <-- result #5 \n\
-      IF VboRedirectCase THEN LEAVE proc_label; END IF;   \n\
-\n\
-      IF !VboOR THEN LEAVE proc_label; END IF;   # Private\n\
-\n\
-          # Calc VboTalkExist \n\
-      SET VboTalk=isTalk(Iname), VboTemplate=isTemplate(Iname); \n\
-      IF VboTalk=0 THEN \n\
-        IF VboTemplate THEN SET talkPage=CONCAT('template_talk:',Iname); ELSE SET talkPage=CONCAT('talk:',Iname); END IF;\n\
-        SELECT count(idPage) INTO VboTalkExist FROM "+pageTab+" WHERE idSite=VidSite AND pageName=talkPage; \n\
-      END IF;\n\
-      SELECT VboTalkExist AS boTalkExist;  #  <-- result #6 \n\
-\n\
-          # Get version table \n\
-      DROP TEMPORARY TABLE IF EXISTS tmpVersionTable; \n\
-      CREATE TEMPORARY TABLE tmpVersionTable AS  \n\
-        SELECT SQL_CALC_FOUND_ROWS rev, summary, signature, idFile, idFileCache, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache, eTag FROM "+versionTab+" WHERE idPage=VidPage; \n\
-      SELECT * FROM tmpVersionTable;                                                 #  <-- result #7 \n\
-      SELECT FOUND_ROWS() INTO Vc; \n\
-      IF Vc<1 THEN LEAVE proc_label; END IF;   # no versions !? \n\
-\n\
-      IF Irev>=Vc THEN LEAVE proc_label; END IF;             # noSuchRev \n\
-\n\
-      IF Irev=-1 THEN SET Irev=Vc-1; END IF;                          # Use last rev \n\
-\n\
-          # The requested revision Irev \n\
-          # Note VtMod and VtModCache are already in unix-time\n\
-      SELECT eTag, idFile, idFileCache, tMod, tModCache INTO VeTag, VidFile, VidFileCache, VtMod, VtModCache FROM tmpVersionTable WHERE rev=Irev;   \n\
-\n\
-      SET VboValidServerCache=VtMod<=VtModCache AND LENGTH(VeTag);                                             # Calc VboValidServerCache \n\
-      SELECT VboValidServerCache AS boValidServerCache;  # <-- result #8 \n\
-\n\
-          # Calc VboValidReqCache \n\
-      SET VboValidReqCache= VboValidServerCache AND BINARY VeTag=IeTag AND VtModCache<=IreqDate;  \n\
-      SELECT VboValidReqCache AS boValidReqCache;   # <-- result #9 \n\
-      IF VboValidReqCache THEN LEAVE proc_label; END IF;                          # 304 \n\
-\n\
-      SELECT data AS strEditText FROM "+fileTab+" WHERE idFile=VidFile;                            # <-- result #10 \n\
-\n\
-      IF VboValidServerCache THEN \n\
-        SELECT data AS strHtmlText FROM "+fileTab+" WHERE idFile=VidFileCache;                                               # <-- result #11\n\
-        SELECT pageName, boOnWhenCached FROM "+subTab+" WHERE idPage=VidPage AND pageName REGEXP '^template:';       #  <-- result #12 \n\
-      END IF; \n\
-\n\
-    END");
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`getInfoNData(IboTLS INT(1), Iwww varchar(128), Iname varchar(128), Irev INT, IeTag varchar(32), IreqDate INT)
+    proc_label:BEGIN
+      DECLARE VidSite, VidPage, Vc, VboTalk, VboTemplate, VboTalkExist, VidFile, VidFileCache, VboValidServerCache, VboValidReqCache INT;
+      DECLARE VtMod, VtModCache INT UNSIGNED;
+      DECLARE Vwww, Vname, talkPage varchar(128);
+      DECLARE VeTag varchar(32);
+      DECLARE strEditText, strHtmlText MEDIUMBLOB;
+      DECLARE VboTLS, VboRedirectCase, VboOR INT(1);
+
+          # Get site
+      SELECT SQL_CALC_FOUND_ROWS boDefault, @boTLS:=boTLS AS boTLS, @VidSite:=idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aWPassword, aRPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM `+siteTab+` WHERE www=Iwww;#  <-- result #0
+      IF FOUND_ROWS()!=1 THEN LEAVE proc_label; END IF;
+      SET VboTLS=@boTLS, VidSite=@VidSite;
+
+          # Check if there is a redirect for this page
+      SELECT SQL_CALC_FOUND_ROWS @tmp:=url AS urlRedir FROM `+redirectTab+` WHERE idSite=VidSite AND pageName=Iname;     #  <-- result #1
+      IF FOUND_ROWS() THEN
+        UPDATE `+redirectTab+` SET nAccess=nAccess+1, tLastAccess=now() WHERE idSite=VidSite AND pageName=Iname;
+        LEAVE proc_label;
+      END IF;
+
+          # Check if there is a redirect for this domain
+      SELECT SQL_CALC_FOUND_ROWS @tmp:=url AS urlRedirDomain FROM `+redirectDomainTab+` WHERE www=Iwww;     #  <-- result #2
+      IF FOUND_ROWS() THEN LEAVE proc_label; END IF;
+
+          # Get wwwCommon
+      SELECT SQL_CALC_FOUND_ROWS boTLS, siteName, www  FROM `+siteTab+` WHERE boDefault=1; #  <-- result #3
+
+          # Check if page exist
+      SELECT SQL_CALC_FOUND_ROWS @Vname:=pageName AS pageName, @VidPage:=idPage AS idPage, @VboOR:=boOR AS boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tCreated) AS tCreated FROM `+pageTab+` WHERE idSite=VidSite AND pageName=Iname;  #  <-- result #4
+      IF FOUND_ROWS()=0 THEN LEAVE proc_label; END IF;   # noSuchPage
+      SET Vname=@Vname, VidPage=@VidPage, VboOR=@VboOR;
+
+          # Redirect to correct case OR correct boTLS
+      SET VboRedirectCase = BINARY Vname!=Iname OR VboTLS!=IboTLS;
+      SELECT VboRedirectCase AS boRedirectCase, VboTLS AS boTLS, Vwww AS www, Vname AS pageRedir;  #  <-- result #5
+      IF VboRedirectCase THEN LEAVE proc_label; END IF;
+
+      IF !VboOR THEN LEAVE proc_label; END IF;   # Private
+
+          # Calc VboTalkExist
+      SET VboTalk=isTalk(Iname), VboTemplate=isTemplate(Iname);
+      IF VboTalk=0 THEN
+        IF VboTemplate THEN SET talkPage=CONCAT('template_talk:',Iname); ELSE SET talkPage=CONCAT('talk:',Iname); END IF;
+        SELECT count(idPage) INTO VboTalkExist FROM `+pageTab+` WHERE idSite=VidSite AND pageName=talkPage;
+      END IF;
+      SELECT VboTalkExist AS boTalkExist;  #  <-- result #6
+
+          # Get version table
+      DROP TEMPORARY TABLE IF EXISTS tmpVersionTable;
+      CREATE TEMPORARY TABLE tmpVersionTable AS
+        SELECT SQL_CALC_FOUND_ROWS rev, summary, signature, idFile, idFileCache, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache, eTag FROM `+versionTab+` WHERE idPage=VidPage;
+      SELECT * FROM tmpVersionTable;                                                 #  <-- result #7
+      SELECT FOUND_ROWS() INTO Vc;
+      IF Vc<1 THEN LEAVE proc_label; END IF;   # no versions !?
+
+      IF Irev>=Vc THEN LEAVE proc_label; END IF;             # noSuchRev
+
+      IF Irev=-1 THEN SET Irev=Vc-1; END IF;                          # Use last rev
+
+          # The requested revision Irev
+          # Note VtMod and VtModCache are already in unix-time
+      SELECT eTag, idFile, idFileCache, tMod, tModCache INTO VeTag, VidFile, VidFileCache, VtMod, VtModCache FROM tmpVersionTable WHERE rev=Irev;
+
+      SET VboValidServerCache=VtMod<=VtModCache AND LENGTH(VeTag);                                             # Calc VboValidServerCache
+      SELECT VboValidServerCache AS boValidServerCache;  # <-- result #8
+
+          # Calc VboValidReqCache
+      SET VboValidReqCache= VboValidServerCache AND BINARY VeTag=IeTag AND VtModCache<=IreqDate;
+      SELECT VboValidReqCache AS boValidReqCache;   # <-- result #9
+      IF VboValidReqCache THEN LEAVE proc_label; END IF;                          # 304
+
+      SELECT data AS strEditText FROM `+fileTab+` WHERE idFile=VidFile;                            # <-- result #10
+
+      IF VboValidServerCache THEN
+        SELECT data AS strHtmlText FROM `+fileTab+` WHERE idFile=VidFileCache;                                               # <-- result #11
+        SELECT pageName, boOnWhenCached FROM `+subTab+` WHERE idPage=VidPage AND pageName REGEXP '^template:';       #  <-- result #12
+      END IF;
+
+    END`);
 
 
 
@@ -1835,62 +1850,62 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
   
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"getInfoNDataBE");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"getInfoNDataBE(Iwww varchar(128), Iname varchar(128), Irev INT, IeTag varchar(32), IreqDate INT) \n\
-    proc_label:BEGIN \n\
-      DECLARE VidSite, VidPage, Vc, VboTalk, VboTemplate, boTalkExist, VidFile, VidFileCache, VboValidServerCache, VboValidReqCache INT; \n\
-      DECLARE VtMod, VtModCache INT UNSIGNED; \n\
-      DECLARE talkPage varchar(128); \n\
-      DECLARE VeTag varchar(32); \n\
-      DECLARE strEditText, strHtmlText MEDIUMBLOB; \n\
-\n\
-          # Get VidSite \n\
-      SELECT SQL_CALC_FOUND_ROWS idSite INTO VidSite FROM "+siteTab+" WHERE www=Iwww; \n\
-\n\
-          # Check if page exist \n\
-      SELECT SQL_CALC_FOUND_ROWS pageName, @tmp:=idPage AS idPage, boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+pageTab+" WHERE idSite=VidSite AND pageName=Iname;  #  <-- result #0 \n\
-      IF FOUND_ROWS()=0 THEN LEAVE proc_label; END IF;   # noSuchPage \n\
-      SET VidPage=@tmp; \n\
-\n\
-          # Calc boTalkExist \n\
-      SET VboTalk=isTalk(Iname), VboTemplate=isTemplate(Iname); \n\
-      IF VboTalk=0 THEN \n\
-        IF VboTemplate THEN SET talkPage=CONCAT('template_talk:',Iname); ELSE SET talkPage=CONCAT('talk:',Iname); END IF;\n\
-        SELECT count(idPage) INTO boTalkExist FROM "+pageTab+" WHERE idSite=VidSite AND pageName=talkPage; \n\
-      END IF;\n\
-      SELECT boTalkExist;  #  <-- result #1 \n\
-\n\
-          # Get version table \n\
-      DROP TEMPORARY TABLE IF EXISTS tmpVersionTable; \n\
-      CREATE TEMPORARY TABLE tmpVersionTable AS  \n\
-        SELECT SQL_CALC_FOUND_ROWS rev, summary, signature, idFile, idFileCache, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache, eTag FROM "+versionTab+" WHERE idPage=VidPage; \n\
-      SELECT * FROM tmpVersionTable;                                                 #  <-- result #2 \n\
-      SELECT FOUND_ROWS() INTO Vc; \n\
-      IF Vc<1 THEN LEAVE proc_label; END IF;   # no versions !? \n\
-\n\
-      IF Irev>=Vc THEN LEAVE proc_label; END IF;             # noSuchRev \n\
-\n\
-      IF Irev=-1 THEN SET Irev=Vc-1; END IF;                          # Use last rev \n\
-\n\
-          # The requested revision Irev \n\
-          # Note VtMod and VtModCache are already in unix-time\n\
-      SELECT eTag, idFile, idFileCache, tMod, tModCache INTO VeTag, VidFile, VidFileCache, VtMod, VtModCache FROM tmpVersionTable WHERE rev=Irev;   \n\
-\n\
-      SET VboValidServerCache=VtMod<=VtModCache AND LENGTH(VeTag);                                             # Calc VboValidServerCache \n\
-      SELECT VboValidServerCache AS boValidServerCache;  # <-- result #3 \n\
-\n\
-          # Calc VboValidReqCache \n\
-      SET VboValidReqCache= VboValidServerCache AND BINARY VeTag=IeTag AND VtModCache<=IreqDate; \n\
-      SELECT VboValidReqCache AS boValidReqCache;   # <-- result #4 \n\
-      IF VboValidReqCache THEN LEAVE proc_label; END IF;                          # 304 \n\
-\n\
-      SELECT data AS strEditText FROM "+fileTab+" WHERE idFile=VidFile;                            # <-- result #5 \n\
-\n\
-      IF VboValidServerCache THEN \n\
-        SELECT data AS strHtmlText FROM "+fileTab+" WHERE idFile=VidFileCache;                                               # <-- result #6\n\
-        SELECT pageName, boOnWhenCached FROM "+subTab+" WHERE idPage=VidPage AND pageName REGEXP '^template:';       #  <-- result #7 \n\
-      END IF; \n\
-\n\
-    END");
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`getInfoNDataBE(Iwww varchar(128), Iname varchar(128), Irev INT, IeTag varchar(32), IreqDate INT)
+    proc_label:BEGIN
+      DECLARE VidSite, VidPage, Vc, VboTalk, VboTemplate, boTalkExist, VidFile, VidFileCache, VboValidServerCache, VboValidReqCache INT;
+      DECLARE VtMod, VtModCache INT UNSIGNED;
+      DECLARE talkPage varchar(128);
+      DECLARE VeTag varchar(32);
+      DECLARE strEditText, strHtmlText MEDIUMBLOB;
+
+          # Get VidSite
+      SELECT SQL_CALC_FOUND_ROWS idSite INTO VidSite FROM `+siteTab+` WHERE www=Iwww;
+
+          # Check if page exist
+      SELECT SQL_CALC_FOUND_ROWS pageName, @tmp:=idPage AS idPage, boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tCreated) AS tCreated FROM `+pageTab+` WHERE idSite=VidSite AND pageName=Iname;  #  <-- result #0
+      IF FOUND_ROWS()=0 THEN LEAVE proc_label; END IF;   # noSuchPage
+      SET VidPage=@tmp;
+
+          # Calc boTalkExist
+      SET VboTalk=isTalk(Iname), VboTemplate=isTemplate(Iname);
+      IF VboTalk=0 THEN
+        IF VboTemplate THEN SET talkPage=CONCAT('template_talk:',Iname); ELSE SET talkPage=CONCAT('talk:',Iname); END IF;
+        SELECT count(idPage) INTO boTalkExist FROM `+pageTab+` WHERE idSite=VidSite AND pageName=talkPage;
+      END IF;
+      SELECT boTalkExist;  #  <-- result #1
+
+          # Get version table
+      DROP TEMPORARY TABLE IF EXISTS tmpVersionTable;
+      CREATE TEMPORARY TABLE tmpVersionTable AS
+        SELECT SQL_CALC_FOUND_ROWS rev, summary, signature, idFile, idFileCache, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache, eTag FROM `+versionTab+` WHERE idPage=VidPage;
+      SELECT * FROM tmpVersionTable;                                                 #  <-- result #2
+      SELECT FOUND_ROWS() INTO Vc;
+      IF Vc<1 THEN LEAVE proc_label; END IF;   # no versions !?
+
+      IF Irev>=Vc THEN LEAVE proc_label; END IF;             # noSuchRev
+
+      IF Irev=-1 THEN SET Irev=Vc-1; END IF;                          # Use last rev
+
+          # The requested revision Irev
+          # Note VtMod and VtModCache are already in unix-time
+      SELECT eTag, idFile, idFileCache, tMod, tModCache INTO VeTag, VidFile, VidFileCache, VtMod, VtModCache FROM tmpVersionTable WHERE rev=Irev;
+
+      SET VboValidServerCache=VtMod<=VtModCache AND LENGTH(VeTag);                                             # Calc VboValidServerCache
+      SELECT VboValidServerCache AS boValidServerCache;  # <-- result #3
+
+          # Calc VboValidReqCache
+      SET VboValidReqCache= VboValidServerCache AND BINARY VeTag=IeTag AND VtModCache<=IreqDate;
+      SELECT VboValidReqCache AS boValidReqCache;   # <-- result #4
+      IF VboValidReqCache THEN LEAVE proc_label; END IF;                          # 304
+
+      SELECT data AS strEditText FROM `+fileTab+` WHERE idFile=VidFile;                            # <-- result #5
+
+      IF VboValidServerCache THEN
+        SELECT data AS strHtmlText FROM `+fileTab+` WHERE idFile=VidFileCache;                                               # <-- result #6
+        SELECT pageName, boOnWhenCached FROM `+subTab+` WHERE idPage=VidPage AND pageName REGEXP '^template:';       #  <-- result #7
+      END IF;
+
+    END`);
 
 
   //
@@ -2088,15 +2103,6 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
 
 
 
-  SqlFunction.push("REPLACE INTO "+settingTab+" VALUES  \n\
-  ('lastOthersEdit',''),  \n\
-  ('nNewPages','0'), \n\
-  ('lastOthersUpload',''), \n\
-  ('nNewImages','0')"); 
-
-
-
-
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"storeImage");
   SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`storeImage(Iname varchar(128), IboOther TINYINT, Idata MEDIUMBLOB, IeTag varchar(32), OUT OboOk INT)
       proc_label:BEGIN
@@ -2124,24 +2130,24 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
 
   // , OUT OtCreated INT
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"storeThumb");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"storeThumb(IidImage INT, Iwidth INT, Iheight INT, Idata MEDIUMBLOB, IeTag varchar(32)) \n\
-      BEGIN \n\
-        DECLARE VidFile, Vc, Vlen INT; \n\
-        #START TRANSACTION; \n\
-        SELECT idFile, count(*) INTO VidFile,Vc FROM "+thumbTab+" WHERE idImage=IidImage AND width=Iwidth AND height=Iheight; \n\
-        SET Vlen=LENGTH(Idata); \n\
-        IF Vc=0 THEN \n\
-          INSERT INTO "+fileTab+" (data) VALUES (Idata); \n\
-          SELECT LAST_INSERT_ID() INTO VidFile; \n\
-          INSERT INTO "+thumbTab+" (idImage,width,height,idFile,tCreated,eTag, size) VALUES (IidImage,Iwidth,Iheight,VidFile,now(),IeTag, Vlen); \n\
-        ELSEIF Vc=1 THEN \n\
-          UPDATE "+thumbTab+" SET tCreated=now(),eTag=IeTag, size=Vlen WHERE idImage=IidImage AND width=Iwidth AND height=Iheight; \n\
-          UPDATE "+fileTab+" SET data=Idata WHERE idFile=VidFile; \n\
-        END IF; \n\
-        #SET OtCreated=UNIX_TIMESTAMP(now()); \n\
-        SELECT UNIX_TIMESTAMP(now()) AS tCreated; \n\
-        #COMMIT; \n\
-      END");
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`storeThumb(IidImage INT, Iwidth INT, Iheight INT, Idata MEDIUMBLOB, IeTag varchar(32))
+      BEGIN
+        DECLARE VidFile, Vc, Vlen INT;
+        #START TRANSACTION;
+        SELECT idFile, count(*) INTO VidFile,Vc FROM `+thumbTab+` WHERE idImage=IidImage AND width=Iwidth AND height=Iheight;
+        SET Vlen=LENGTH(Idata);
+        IF Vc=0 THEN
+          INSERT INTO `+fileTab+` (data) VALUES (Idata);
+          SELECT LAST_INSERT_ID() INTO VidFile;
+          INSERT INTO `+thumbTab+` (idImage,width,height,idFile,tCreated,eTag, size) VALUES (IidImage,Iwidth,Iheight,VidFile,now(),IeTag, Vlen);
+        ELSEIF Vc=1 THEN
+          UPDATE `+thumbTab+` SET tCreated=now(),eTag=IeTag, size=Vlen WHERE idImage=IidImage AND width=Iwidth AND height=Iheight;
+          UPDATE `+fileTab+` SET data=Idata WHERE idFile=VidFile;
+        END IF;
+        #SET OtCreated=UNIX_TIMESTAMP(now());
+        SELECT UNIX_TIMESTAMP(now()) AS tCreated;
+        #COMMIT;
+      END`);
   //SqlFunction.push("CALL "+strDBPrefix+"storeImage('abc.jpg',1,'01234','0123456789abcdef0123456789abcdef',@boOK)"); 
   //SqlFunction.push("SELECT @boOK"); tmp=sth.fetch(PDO.FETCH_NUM); var_dump(tmp);
   //SqlFunction.push("CALL "+strDBPrefix+"storeThumb(1,400,300,'01234','0123456789abcdef0123456789abcdef',@tCreated)"); 
@@ -2150,176 +2156,188 @@ app.SetupSqlT.prototype.createFunction=function(boDropOnly){
 
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"storeVideo");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"storeVideo(Iname varchar(128), Idata MEDIUMBLOB, IeTag varchar(32)) \n\
-      proc_label:BEGIN \n\
-        DECLARE VidVideo, VidFile, Vc, Vlen INT; \n\
-        #START TRANSACTION; \n\
-        SELECT idVideo, idFile, count(*) INTO VidVideo,VidFile,Vc FROM "+videoTab+" WHERE name=Iname; \n\
-        SET Vlen=LENGTH(Idata); \n\
-        IF Vc=0 THEN \n\
-          INSERT INTO "+fileTab+" (data) VALUES (Idata);  \n\
-          SELECT LAST_INSERT_ID() INTO VidFile; \n\
-          INSERT INTO "+videoTab+" (name,idFile,tCreated,eTag,size) VALUES (Iname,VidFile,now(),IeTag,Vlen); \n\
-        ELSEIF Vc=1 THEN \n\
-          UPDATE "+videoTab+" SET name=Iname,tCreated=now(),eTag=IeTag,size=Vlen WHERE idVideo=VidVideo; \n\
-          UPDATE "+fileTab+" SET data=Idata WHERE idFile=VidFile; \n\
-        END IF; \n\
-        #COMMIT; \n\
-      END");
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`storeVideo(Iname varchar(128), Idata MEDIUMBLOB, IeTag varchar(32))
+      proc_label:BEGIN
+        DECLARE VidVideo, VidFile, Vc, Vlen INT;
+        #START TRANSACTION;
+        SELECT idVideo, idFile, count(*) INTO VidVideo,VidFile,Vc FROM `+videoTab+` WHERE name=Iname;
+        SET Vlen=LENGTH(Idata);
+        IF Vc=0 THEN
+          INSERT INTO `+fileTab+` (data) VALUES (Idata);
+          SELECT LAST_INSERT_ID() INTO VidFile;
+          INSERT INTO `+videoTab+` (name,idFile,tCreated,eTag,size) VALUES (Iname,VidFile,now(),IeTag,Vlen);
+        ELSEIF Vc=1 THEN
+          UPDATE `+videoTab+` SET name=Iname,tCreated=now(),eTag=IeTag,size=Vlen WHERE idVideo=VidVideo;
+          UPDATE `+fileTab+` SET data=Idata WHERE idFile=VidFile;
+        END IF;
+        #COMMIT;
+      END`);
   //SqlFunction.push("CALL "+strDBPrefix+"storeVideo('abc.mp4','012345','0123456789abcdef0123456789abcdef')");
 
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"redirectSet");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"redirectSet(Iname varchar(128), Idata MEDIUMBLOB, IeTag varchar(32)) \n\
-      proc_label:BEGIN \n\
-        DECLARE VidVideo, VidFile, Vc, Vlen INT; \n\
-        START TRANSACTION; \n\
-        SELECT idVideo, idFile, count(*) INTO VidVideo,VidFile,Vc FROM "+videoTab+" WHERE name=Iname; \n\
-        SET Vlen=LENGTH(Idata); \n\
-        IF Vc=0 THEN \n\
-          INSERT INTO "+fileTab+" (data) VALUES (Idata);  \n\
-          SELECT LAST_INSERT_ID() INTO VidFile; \n\
-          INSERT INTO "+videoTab+" (name,idFile,tCreated,eTag,size) VALUES (Iname,VidFile,now(),IeTag,Vlen); \n\
-        ELSEIF Vc=1 THEN \n\
-          UPDATE "+videoTab+" SET name=Iname,tCreated=now(),eTag=IeTag,size=Vlen WHERE idVideo=VidVideo; \n\
-          UPDATE "+fileTab+" SET data=Idata WHERE idFile=VidFile; \n\
-        END IF; \n\
-        COMMIT; \n\
-      END");
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`redirectSet(Iname varchar(128), Idata MEDIUMBLOB, IeTag varchar(32))
+      proc_label:BEGIN
+        DECLARE VidVideo, VidFile, Vc, Vlen INT;
+        START TRANSACTION;
+        SELECT idVideo, idFile, count(*) INTO VidVideo,VidFile,Vc FROM `+videoTab+` WHERE name=Iname;
+        SET Vlen=LENGTH(Idata);
+        IF Vc=0 THEN
+          INSERT INTO `+fileTab+` (data) VALUES (Idata);
+          SELECT LAST_INSERT_ID() INTO VidFile;
+          INSERT INTO `+videoTab+` (name,idFile,tCreated,eTag,size) VALUES (Iname,VidFile,now(),IeTag,Vlen);
+        ELSEIF Vc=1 THEN
+          UPDATE `+videoTab+` SET name=Iname,tCreated=now(),eTag=IeTag,size=Vlen WHERE idVideo=VidVideo;
+          UPDATE `+fileTab+` SET data=Idata WHERE idFile=VidFile;
+        END IF;
+        COMMIT;
+      END`);
 
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"dupMake");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"dupMake() \n\
-      BEGIN \n\
-        CALL copyTable('"+siteTab+"_dup','"+siteTab+"'); \n\
-        CALL copyTable('"+fileTab+"_dup','"+fileTab+"'); \n\
-        CALL copyTable('"+pageTab+"_dup','"+pageTab+"'); \n\
-        CALL copyTable('"+versionTab+"_dup','"+versionTab+"'); \n\
-        CALL copyTable('"+imageTab+"_dup','"+imageTab+"'); \n\
-        CALL copyTable('"+thumbTab+"_dup','"+thumbTab+"'); \n\
-        CALL copyTable('"+subTab+"_dup','"+subTab+"'); \n\
-        CALL copyTable('"+subImageTab+"_dup','"+subImageTab+"'); \n\
-      END");
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`dupMake()
+      BEGIN
+        CALL copyTable('`+siteTab+`_dup','`+siteTab+`');
+        CALL copyTable('`+fileTab+`_dup','`+fileTab+`');
+        CALL copyTable('`+pageTab+`_dup','`+pageTab+`');
+        CALL copyTable('`+versionTab+`_dup','`+versionTab+`');
+        CALL copyTable('`+imageTab+`_dup','`+imageTab+`');
+        CALL copyTable('`+thumbTab+`_dup','`+thumbTab+`');
+        CALL copyTable('`+subTab+`_dup','`+subTab+`');
+        CALL copyTable('`+subImageTab+`_dup','`+subImageTab+`');
+      END`);
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"dupRename");
-/*  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"dupRename() \n\
-      BEGIN \n\
-RENAME TABLE "+siteTab+" TO "+siteTab+"_dup,\n\
-             "+fileTab+" TO "+fileTab+"_dup,\n\
-             "+pageTab+" TO "+pageTab+"_dup,\n\
-             "+versionTab+" TO "+versionTab+"_dup,\n\
-             "+imageTab+" TO "+imageTab+"_dup,\n\
-             "+thumbTab+" TO "+thumbTab+"_dup,\n\
-             "+subTab+" TO "+subTab+"_dup,\n\
-             "+subImageTab+" TO "+subImageTab+"_dup;\n\
-      END");*/
+/*  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`dupRename()
+      BEGIN
+RENAME TABLE `+siteTab+` TO `+siteTab+`_dup,
+             `+fileTab+` TO `+fileTab+`_dup,
+             `+pageTab+` TO `+pageTab+`_dup,
+             `+versionTab+` TO `+versionTab+`_dup,
+             `+imageTab+` TO `+imageTab+`_dup,
+             `+thumbTab+` TO `+thumbTab+`_dup,
+             `+subTab+` TO `+subTab+`_dup,
+             `+subImageTab+` TO `+subImageTab+`_dup;
+      END`);*/
 
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"dupTrunkOrgNCopyBack");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"dupTrunkOrgNCopyBack() \n\
-      BEGIN \n\
-        DELETE FROM "+subImageTab+" WHERE 1; \n\
-        DELETE FROM "+subTab+" WHERE 1; \n\
-        DELETE FROM "+thumbTab+" WHERE 1; \n\
-        DELETE FROM "+imageTab+" WHERE 1; \n\
-        DELETE FROM "+versionTab+" WHERE 1; \n\
-        DELETE FROM "+pageTab+" WHERE 1; \n\
-        DELETE FROM "+fileTab+" WHERE 1; \n\
-        DELETE FROM "+siteTab+" WHERE 1; \n\
-        INSERT INTO "+siteTab+" SELECT * FROM "+siteTab+"_dup; \n\
-        INSERT INTO "+fileTab+" SELECT * FROM "+fileTab+"_dup; \n\
-        INSERT INTO "+pageTab+" SELECT * FROM "+pageTab+"_dup; \n\
-        INSERT INTO "+versionTab+" SELECT * FROM "+versionTab+"_dup; \n\
-        INSERT INTO "+imageTab+" SELECT * FROM "+imageTab+"_dup; \n\
-        INSERT INTO "+thumbTab+" SELECT * FROM "+thumbTab+"_dup; \n\
-        INSERT INTO "+subTab+" SELECT * FROM "+subTab+"_dup; \n\
-        INSERT INTO "+subImageTab+" SELECT * FROM "+subImageTab+"_dup; \n\
-      END");
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`dupTrunkOrgNCopyBack()
+      BEGIN
+        DELETE FROM `+subImageTab+` WHERE 1;
+        DELETE FROM `+subTab+` WHERE 1;
+        DELETE FROM `+thumbTab+` WHERE 1;
+        DELETE FROM `+imageTab+` WHERE 1;
+        DELETE FROM `+versionTab+` WHERE 1;
+        DELETE FROM `+pageTab+` WHERE 1;
+        DELETE FROM `+fileTab+` WHERE 1;
+        DELETE FROM `+siteTab+` WHERE 1;
+        INSERT INTO `+siteTab+` SELECT * FROM `+siteTab+`_dup;
+        INSERT INTO `+fileTab+` SELECT * FROM `+fileTab+`_dup;
+        INSERT INTO `+pageTab+` SELECT * FROM `+pageTab+`_dup;
+        INSERT INTO `+versionTab+` SELECT * FROM `+versionTab+`_dup;
+        INSERT INTO `+imageTab+` SELECT * FROM `+imageTab+`_dup;
+        INSERT INTO `+thumbTab+` SELECT * FROM `+thumbTab+`_dup;
+        INSERT INTO `+subTab+` SELECT * FROM `+subTab+`_dup;
+        INSERT INTO `+subImageTab+` SELECT * FROM `+subImageTab+`_dup;
+      END`);
 
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS "+strDBPrefix+"dupDrop");
-  SqlFunction.push("CREATE PROCEDURE "+strDBPrefix+"dupDrop() \n\
-      BEGIN \n\
-        DROP TABLE IF EXISTS "+subImageTab+"_dup; \n\
-        DROP TABLE IF EXISTS "+subTab+"_dup; \n\
-        DROP TABLE IF EXISTS "+thumbTab+"_dup; \n\
-        DROP TABLE IF EXISTS "+imageTab+"_dup; \n\
-        DROP TABLE IF EXISTS "+versionTab+"_dup; \n\
-        DROP TABLE IF EXISTS "+pageTab+"_dup; \n\
-        DROP TABLE IF EXISTS "+fileTab+"_dup; \n\
-        DROP TABLE IF EXISTS "+siteTab+"_dup; \n\
-      END");
+  SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`dupDrop()
+      BEGIN
+        DROP TABLE IF EXISTS `+subImageTab+`_dup;
+        DROP TABLE IF EXISTS `+subTab+`_dup;
+        DROP TABLE IF EXISTS `+thumbTab+`_dup;
+        DROP TABLE IF EXISTS `+imageTab+`_dup;
+        DROP TABLE IF EXISTS `+versionTab+`_dup;
+        DROP TABLE IF EXISTS `+pageTab+`_dup;
+        DROP TABLE IF EXISTS `+fileTab+`_dup;
+        DROP TABLE IF EXISTS `+siteTab+`_dup;
+      END`);
 
   
-  var SqlA=this.funcGen(boDropOnly);
-  if(boDropOnly) var SqlB=SqlFunctionDrop;
-  else var SqlB=array_merge(SqlFunctionDrop, SqlFunction);
-  return array_merge(SqlA, SqlB)
+  if(boDropOnly) var Sql=SqlFunctionDrop;
+  else var Sql=array_merge(SqlFunctionDrop, SqlFunction);
+  
+  var strDelim=';', sql=Sql.join(strDelim+'\n')+strDelim, Val=[];
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val);
+  writeMessTextOfMultQuery(Sql, err, results);
+  if(err) {  return [err]; }
+  return [null];
 }
 
-app.SetupSqlT.prototype.funcGen=function(boDropOnly){
+app.SetupSql.prototype.funcGen=function*(flow, boDropOnly){
   var SqlFunction=[], SqlFunctionDrop=[];
   SqlFunctionDrop.push("DROP PROCEDURE IF EXISTS copyTable");
-  SqlFunction.push("CREATE PROCEDURE copyTable(INameN varchar(128),IName varchar(128)) \n\
-    BEGIN \n\
-      SET @q=CONCAT('DROP TABLE IF EXISTS ', INameN,';');     PREPARE stmt1 FROM @q;  EXECUTE stmt1;  DEALLOCATE PREPARE stmt1; \n\
-      SET @q=CONCAT('CREATE TABLE ',INameN,' LIKE ',IName,';');   PREPARE stmt1 FROM @q;  EXECUTE stmt1; DEALLOCATE PREPARE stmt1; \n\
-      SET @q=CONCAT('INSERT INTO ',INameN, ' SELECT * FROM ',IName,';');    PREPARE stmt1 FROM @q;  EXECUTE stmt1;  DEALLOCATE PREPARE stmt1; \n\
-    END");
+  SqlFunction.push(`CREATE PROCEDURE copyTable(INameN varchar(128),IName varchar(128))
+    BEGIN
+      SET @q=CONCAT('DROP TABLE IF EXISTS ', INameN,';');     PREPARE stmt1 FROM @q;  EXECUTE stmt1;  DEALLOCATE PREPARE stmt1;
+      SET @q=CONCAT('CREATE TABLE ',INameN,' LIKE ',IName,';');   PREPARE stmt1 FROM @q;  EXECUTE stmt1; DEALLOCATE PREPARE stmt1;
+      SET @q=CONCAT('INSERT INTO ',INameN, ' SELECT * FROM ',IName,';');    PREPARE stmt1 FROM @q;  EXECUTE stmt1;  DEALLOCATE PREPARE stmt1;
+    END`);
 
-  if(boDropOnly) return SqlFunctionDrop;
-  else return array_merge(SqlFunctionDrop, SqlFunction);
+  if(boDropOnly) var Sql=SqlFunctionDrop;
+  else var Sql=array_merge(SqlFunctionDrop, SqlFunction);
+  
+  var strDelim=';', sql=Sql.join(strDelim+'\n')+strDelim, Val=[];
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val);
+  writeMessTextOfMultQuery(Sql, err, results);
+  if(err) {  return [err]; }
+  return [null];
 }
 
 
-app.SetupSqlT.prototype.createDummies=function(){
-  
-  var SqlDummies=[];
+app.SetupSql.prototype.createDummies=function*(flow){
+  var Sql=[];
 
-  return [];  // not implemented
+  return [null];  // not implemented
 
   var nFile=14;
   var arrTmp=[];
   for(var i=0;i<nFile;i++){
     arrTmp.push(" ("+i+","+i+")"); 
   }
-  this.SqlDummies.push("INSERT INTO "+fileTab+" (idFile,data) VALUES "+arrTmp.join(",")  ); 
+  Sql.push("INSERT INTO "+fileTab+" (idFile,data) VALUES "+arrTmp.join(",")  ); 
 
 
-  this.SqlDummies.push("INSERT INTO "+pageTab+" (idPage,pageName,boTalk,boTemplate,boOR,boOW) VALUES \n\
-  (1,'start',0,0,1,1), \n\
-  (2,'tmp',0,0,1,1), \n\
-  (3,'tmp_tmp',0,0,1,1);"); 
+  Sql.push(`INSERT INTO `+pageTab+` (idPage,pageName,boTalk,boTemplate,boOR,boOW) VALUES
+  (1,'start',0,0,1,1),
+  (2,'tmp',0,0,1,1),
+  (3,'tmp_tmp',0,0,1,1);`); 
 
-  this.SqlDummies.push("INSERT INTO "+versionTab+" (idPage,rev,summary,signature,boOther,idFile,tMod) VALUES \n\
-  (1,0,'ok','MA',0,0,now()), \n\
-  (2,1,'ok','MA',0,1,now()), \n\
-  (2,2,'nok','Con',1,2,now()), \n\
-  (3,3,'ok','MA',0,3,now());"); 
+  Sql.push(`INSERT INTO `+versionTab+` (idPage,rev,summary,signature,boOther,idFile,tMod) VALUES
+  (1,0,'ok','MA',0,0,now()),
+  (2,1,'ok','MA',0,1,now()),
+  (2,2,'nok','Con',1,2,now()),
+  (3,3,'ok','MA',0,3,now());`); 
 
 
-  this.SqlDummies.push("INSERT INTO "+imageTab+" (idImage,pageName,boOther,tCreated,idFile) VALUES \n\
-  (1,'oak.jpg',0,now(),8), \n\
-  (2,'wiki.png',0,now(),9);"); 
+  Sql.push(`INSERT INTO `+imageTab+` (idImage,pageName,boOther,tCreated,idFile) VALUES
+  (1,'oak.jpg',0,now(),8),
+  (2,'wiki.png',0,now(),9);`); 
 
-  this.SqlDummies.push("INSERT INTO "+thumbTab+" (idImage,width,height,tCreated,idFile) VALUES \n\
-  (1,50,50,now(),10), \n\
-  (2,50,50,now(),11);"); 
+  Sql.push(`INSERT INTO `+thumbTab+` (idImage,width,height,tCreated,idFile) VALUES
+  (1,50,50,now(),10),
+  (2,50,50,now(),11);`); 
 
-  this.SqlDummies.push("INSERT INTO "+videoTab+" (idVideo,pageName,tCreated,idFile) VALUES \n\
-  (1,'ttt.ogg',now(),12), \n\
-  (2,'abc.mp4',now(),13);"); 
+  Sql.push(`INSERT INTO `+videoTab+` (idVideo,pageName,tCreated,idFile) VALUES
+  (1,'ttt.ogg',now(),12),
+  (2,'abc.mp4',now(),13);`); 
   
-  return SqlDummies;
+  var strDelim=';', sql=Sql.join(strDelim+'\n')+strDelim, Val=[];
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) {  return [err]; }
+  return [null];
 }
 
-app.SetupSqlT.prototype.createDummy=function(){
-  var SqlDummy=[];
-  if(typeof addExtraSqlF!='undefined') addExtraSqlF(SqlDummy,strDBPrefix,PropPage,this.engine,this.collate);
-  return SqlDummy;
+app.SetupSql.prototype.createDummy=function*(flow){
+  //var SqlDummy=[];
+  //if(typeof addExtraSqlF!='undefined') addExtraSqlF(SqlDummy,strDBPrefix,PropPage,this.engine,this.collate);
+  //return SqlDummy;
+  return [null];
 }
-app.SetupSqlT.prototype.truncate=function(){
+app.SetupSql.prototype.truncate=function*(flow){
   
-  var SqlTableTruncate=[];
+  var Sql=[];
 
   var StrTabName=object_values(TableName);
 
@@ -2327,108 +2345,69 @@ app.SetupSqlT.prototype.truncate=function(){
   for(var i=0;i<StrTabName.length;i++){
     SqlTmp.push(StrTabName[i]+" WRITE");
   }
+  Sql.push('SET FOREIGN_KEY_CHECKS=0');
   var tmp="LOCK TABLES "+SqlTmp.join(', ');
-  SqlTableTruncate.push(tmp);
+  Sql.push(tmp);
   for(var i=0;i<StrTabName.length;i++){
-    SqlTableTruncate.push("DELETE FROM "+StrTabName[i]);
-    SqlTableTruncate.push("ALTER TABLE "+StrTabName[i]+" AUTO_INCREMENT = 1");
+    Sql.push("DELETE FROM "+StrTabName[i]);
+    Sql.push("ALTER TABLE "+StrTabName[i]+" AUTO_INCREMENT = 1");
   }
-  SqlTableTruncate.push('UNLOCK TABLES');
+  Sql.push('UNLOCK TABLES');
+  Sql.push('SET FOREIGN_KEY_CHECKS=1');
   
-  return SqlTableTruncate;
+  var strDelim=';', sql=Sql.join(strDelim+'\n')+strDelim, Val=[];
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val);
+  writeMessTextOfMultQuery(Sql, err, results);
+  if(err) {  return [err]; }
+  return [null];
 }
-/*app.SetupSqlT.prototype.renameToTmp=function(){
-  var SqlTableRename=[];
-  var StrTabName=object_values(TableName);
-  var SqlTmp=[];
-  for(var i=0;i<StrTabName.length;i++){
-    SqlTmp.push(StrTabName[i]+" TO "+StrTabName[i]+"_tmp");
-  }
-  var tmp="RENAME TABLE "+SqlTmp.join(', ');
-  SqlTableRename.push(tmp);  
-  return SqlTableRename;
-}*/
 
-
+app.SetupSql.prototype.populateSetting=function*(flow){
+  eval(extractLoc(TableName,'TableName'));
+  eval(extractLoc(ViewName,'ViewName'));
+  
+  var Sql=[];
+  Sql.push(`REPLACE INTO `+settingTab+` VALUES
+  ('lastOthersEdit',''),
+  ('nNewPages','0'),
+  ('lastOthersUpload',''),
+  ('nNewImages','0')`);
+  
+  var strDelim=';', sql=Sql.join(strDelim+'\n')+strDelim, Val=[];
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) {  return [err]; }
+  return [null];
+}
 
   // Called when --sql command line option is used
-app.SetupSqlT.prototype.doQuery=function*(strCreateSql, flow){
-  //var StrValidSqlCalls=['createTable', 'dropTable', 'createView', 'dropView', 'createFunction', 'dropFunction', 'truncate', 'createDummy', 'createDummies'];
-  if(StrValidSqlCalls.indexOf(strCreateSql)==-1){var tmp=strCreateSql+' is not valid input, try any of these: '+StrValidSqlCalls.join(', '); console.log(tmp); return; }
+app.SetupSql.prototype.doQuery=function*(flow, strCreateSql){
+  if(StrValidSqlCalls.indexOf(strCreateSql)==-1){var tmp=strCreateSql+' is not valid input, try any of these: '+StrValidSqlCalls.join(', '); return [new Error(tmp)]; }
   var Match=RegExp("^(drop|create)?(.*?)$").exec(strCreateSql);
-  if(!Match) { debugger;  return; }
-
+  if(!Match) { debugger;  return [new Error("!Match")]; }
+  
   var boDropOnly=false, strMeth=Match[2];
   if(Match[1]=='drop') { boDropOnly=true; strMeth='create'+strMeth;}
   else if(Match[1]=='create')  { strMeth='create'+strMeth; }
   
-  this.myMySql=new MyMySql(mysqlPool);
-  
-  var SqlA=this[strMeth](boDropOnly); 
-  var strDelim=';', sql=SqlA.join(strDelim+'\n')+strDelim, Val=[];
-  var [err, results]=yield* this.myMySql.query(flow, sql, Val);
-  var tmp=createMessTextOfMultQuery(SqlA, err, results);  console.log(tmp);
-  this.myMySql.fin();
-  if(err){ debugger;  return; }
-  
+  if(strMeth=='createFunction'){ 
+    var [err]=yield* this.funcGen(flow, boDropOnly); if(err){  return [err]; }  // Create common functions
+  }
+  var [err]=yield* this[strMeth](flow, boDropOnly);  if(err){  return [err]; }
+  return [null];
 }
 
-
-
-var createMessTextOfMultQuery=function(Sql, err, results){
-  var nSql=Sql.length, nResults='na'; if(results instanceof Array) nResults=results.length;
-  var StrMess=[];   StrMess.push('nSql='+nSql+', nResults='+nResults);
+var writeMessTextOfMultQuery=function(Sql, err, results){
+  var nSql=Sql.length, nResults='(single query)'; if(results instanceof Array) nResults=results.length;
+  console.log('nSql='+nSql+', nResults='+nResults);
+  var StrMess=[];
   if(err){
     StrMess.push('err.index: '+err.index+', err: '+err);
     if(nSql==nResults){
       var tmp=Sql.slice(bound(err.index-1,0,nSql), bound(err.index+2,0,nSql)),  sql=tmp.join('\n');
       StrMess.push('Since "Sql" and "results" seem correctly aligned (has the same size), then 3 queries are printed (the preceding, the indexed, and following query (to get a context)):\n'+sql); 
     }
+    console.log(StrMess.join('\n'));
   }
-  return StrMess.join('\n');
 }
-
-
-/******************************************************************************
- * ReqSql
- ******************************************************************************/
-app.ReqSql=function(req, res){
-  this.req=req; this.res=res;
-  this.StrType=['table', 'fun', 'dropTable', 'dropFun', 'truncate', 'dummy', 'dummies']; 
-}
-app.ReqSql.prototype.createZip=function(SetupSql){
-  var res=this.res, StrType=this.StrType;
-
-  var zipfile = new NodeZip();
-  for(var i=0;i<StrType.length;i++) {
-    var strType=StrType[i], SqlA;
-    var Match=RegExp("^(drop)?(.*)$").exec(strType), boDropOnly=Match[1]=='drop';
-    var SqlA=SetupSql[Match[2].toLowerCase()]( boDropOnly);
-    var strDelim=';;', sql='-- DELIMITER '+strDelim+'\n'      +SqlA.join(strDelim+'\n')+strDelim      +'\n-- DELIMITER ;\n';
-    zipfile.file(strType+".sql", sql, {date:new Date(), compression:'DEFLATE'});
-  }
-
-  //var objArg={base64:false}; if(boCompress) objArg.compression='DEFLATE';
-  var objArg={type:'string'}; //if(boCompress) objArg.compression='DEFLATE';
-  var outdata = zipfile.generate(objArg);
-
-
-  var outFileName=strAppName+'Setup.zip';
-  var objHead={"Content-Type": 'application/zip', "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
-  res.writeHead(200,objHead);
-  res.end(outdata,'binary');
-}
-ReqSql.prototype.toBrowser=function(SetupSql){
-  var req=this.req, res=this.res, StrType=this.StrType;
-  var Match=RegExp("^(drop)?(.*?)(All)?$").exec(req.pathNameWOPrefix), boDropOnly=Match[1]=='drop', strMeth=Match[2].toLowerCase();
-  var StrValidMeth=['table', 'fun', 'truncate',  'dummy', 'dummies'];
-  //var objTmp=Object.getPrototypeOf(SetupSql);
-  if(StrValidMeth.indexOf(strMeth)!=-1){
-    var SqlA=SetupSql[strMeth](boDropOnly);  
-    var strDelim=';;', sql='-- DELIMITER '+strDelim+'\n'      +SqlA.join(strDelim+'\n')+strDelim      +'\n-- DELIMITER ;\n';
-    res.out200(sql);
-  }else{ var tmp=req.pathNameWOPrefix+' is not valid input, try: '+this.StrType; console.log(tmp); res.out404(tmp); }
-}  
 
 
 

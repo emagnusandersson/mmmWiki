@@ -4,7 +4,7 @@
 /******************************************************************************
  * ReqBE
  ******************************************************************************/
-var ReqBE=app.ReqBE=function(objReqRes){
+app.ReqBE=function(objReqRes){
   Object.assign(this, objReqRes);
   this.Str=[];
 }
@@ -12,6 +12,7 @@ var ReqBE=app.ReqBE=function(objReqRes){
   // Method "mesO" and "mesEO" are only called from "go". Method "mes" can be called from any method.
 ReqBE.prototype.mes=function(str){ this.Str.push(str); }
 ReqBE.prototype.mesO=function(e){
+  var res=this.res;
     // Prepare an error-message for the browser.
   var strEBrowser;
   if(typeof e=='string'){strEBrowser=e; }
@@ -27,12 +28,16 @@ ReqBE.prototype.mesO=function(e){
     // mmmWiki specific
   var GRet=this.GRet;    //if('tMod' in GRet && GRet.tMod instanceof Date ) GRet.tMod=GRet.tMod.toUnix();
   
-  this.res.setHeader("Content-Encoding", 'gzip'); 
-  var str=JSON.stringify(this.Out);
-  //this.res.end(str);
-  Streamify(str).pipe(zlib.createGzip()).pipe(this.res); 
+  var str=serialize(this.Out);
+  if(str.length<lenGZ) res.end(str);
+  else{
+    res.setHeader("Content-Encoding", 'gzip');
+    //res.setHeader('Content-Type', MimeType.txt);
+    Streamify(str).pipe(zlib.createGzip()).pipe(res);
+  }
 }
 ReqBE.prototype.mesEO=function(e){
+  var res=this.res;
     // Prepare an error-message for the browser and one for the error log.
   var StrELog=[], strEBrowser;
   if(typeof e=='string'){strEBrowser=e; StrELog.push(e);}
@@ -52,8 +57,8 @@ ReqBE.prototype.mesEO=function(e){
     // mmmWiki specific
   var GRet=this.GRet;    //if('tMod' in GRet && GRet.tMod instanceof Date) GRet.tMod=GRet.tMod.toUnix();
   
-  this.res.writeHead(500, {"Content-Type": "text/plain"}); 
-  this.res.end(JSON.stringify(this.Out));
+  //res.writeHead(500, {"Content-Type": MimeType.txt}); 
+  res.end(serialize(this.Out));
 }
 
 
@@ -64,9 +69,9 @@ ReqBE.prototype.go=function*(){
   
   this.Out={GRet:{boSpecialistExistDiff:{}}, dataArr:[]}; this.GRet=this.Out.GRet;
 
-  if('x-requested-with' in req.headers && req.headers['x-requested-with']=="XMLHttpRequest") ; else { this.mesEO("Ajax-request: req.headers['x-requested-with']!='XMLHttpRequest'");  return; }
+  if('x-requested-with' in req.headers && req.headers['x-requested-with']=="XMLHttpRequest") ; else { this.mesEO(new Error("Ajax-request: req.headers['x-requested-with']!='XMLHttpRequest'"));  return; }
   var urlT=req.strSchemeLong+req.wwwSite, lTmp=urlT.length;
-  if('referer' in req.headers && req.headers.referer.slice(0,lTmp)==urlT) ; else { this.mesEO("Referer is wrong");  return; }
+  if('referer' in req.headers && req.headers.referer.slice(0,lTmp)==urlT) ; else { this.mesEO(new Error("Referer is wrong"));  return; }
 
     // Extract input data either 'POST' or 'GET'
   var jsonInput;
@@ -97,14 +102,14 @@ ReqBE.prototype.go=function*(){
   
   try{ var beArr=JSON.parse(jsonInput); }catch(e){ this.mesEO(e);  return; }
   
-  if(!req.boCookieGotStrict) {this.mesEO('Strict cookie not set');  return;   }
+  if(!req.boCookieStrictOK) {this.mesEO(new Error('Strict cookie not set'));  return;   }
   
     // Get boARLoggedIn / boAWLoggedIn.  Conditionally push deadlines forward ("expire" returns 1 if timer was set or 0 if variable doesn't exist)
-  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE', [req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);  this.boARLoggedIn=tmp;
-  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'EXPIRE', [req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE', [req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);  this.boARLoggedIn=tmp;
+  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE', [req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
   
 
-  res.setHeader("Content-type", "application/json");
+  //res.setHeader("Content-type", MimeType.json);
 
 
     // Remove the beArr[i][0] values that are not functions
@@ -133,7 +138,7 @@ ReqBE.prototype.go=function*(){
   if(boSinglePageLoad){ boCheckCSRF=0; boSetNewCSRF=0; } // Private pages: CSRF was set in index.html
   
     // Require POST-request for most combinations
-  if(!boSinglePageLoad && req.method=='GET')  {this.mesEO("GET-request is not allowed.");  return;}
+  if(!boSinglePageLoad && req.method=='GET')  {this.mesEO(new Error("GET-request is not allowed."));  return;}
   
   if(boDbg) boCheckCSRF=0;
   // Private:
@@ -149,41 +154,37 @@ ReqBE.prototype.go=function*(){
   var redisVar=req.sessionID+'_'+this.queredPage+'_CSRF', CSRFCode;
   if(boCheckCSRF){
     if(!CSRFIn){ this.mesO('CSRFCode not set (try reload page)'); return;}
-    var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'GET', [redisVar]); 
+    var [err,tmp]=yield* cmdRedis(flow, 'GET', [redisVar]); 
     if(CSRFIn!==tmp){ this.mesO('CSRFCode err (try reload page)'); return;}
   }
   if(boSetNewCSRF) {
     var CSRFCode=randomHash();
-    var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'SET', [redisVar,CSRFCode,'EX', maxAdminRUnactivityTime]);
+    var [err,tmp]=yield* cmdRedis(flow, 'SET', [redisVar,CSRFCode,'EX', maxAdminRUnactivityTime]);
     this.GRet.CSRFCode=CSRFCode;
   }
   
-  //this.myMySql=new MyMySql(mysqlPool); 
 
   var Func=[];
   for(var k=0; k<beArr.length; k++){
     var strFun=beArr[k][0];
     if(in_array(strFun,allowed)) {
       var inObj=beArr[k][1],     tmpf; if(strFun in this) tmpf=this[strFun]; else tmpf=global[strFun];
+      if(typeof inObj=='undefined' || typeof inObj=='object') {} else {this.mesO('inObj should be of type object or undefined'); return;}
       var fT=[tmpf,inObj];   Func.push(fT);
     }
   }
-  //var tmp=randomHash(); console.log(tmp); res.setHeader("Set-Cookie", "myCookieUpdatedOn304Test="+tmp);  //getCookie('myCookieUpdatedOn304Test')
+
 
   for(var k=0; k<Func.length; k++){
-    var [func,inObj]=Func[k],   tmpO=yield* func.call(this, inObj);
-    if(tmpO) var [err, result]=tmpO; else { var err=undefined, result=undefined; }
-    //if(typeof objT=='object') {    if('err' in objT) err=objT.err; else err=objT;    }    else if(typeof objT=='undefined') err='Error when calling BE-fun: '+k;    else err=objT;
-    
-    if(res.finished) { break; }
+    var [func,inObj]=Func[k],   [err, result]=yield* func.call(this, inObj);
+    if(res.finished) return;
     else if(err){
-      if(typeof err=='object' && err.name=='ErrorClient') this.mesO(err); else this.mesEO(err);
-      break;
+      if(typeof err=='object' && err.name=='ErrorClient') this.mesO(err); else this.mesEO(err);     return;
     }
     else this.Out.dataArr.push(result);
   }
-  //this.myMySql.fin();
-  if(!res.finished) this.mesO();
+  this.mesO();
+  
 }
 
 
@@ -196,13 +197,13 @@ ReqBE.prototype.vLogin=function*(inObj){
       var vPass=inObj.pass; 
       if(vPass==aRPassword){
         var sessionIDOld=req.sessionID;
-        var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'SET', [sessionIDOld+'_adminRTimer',1,'EX', maxAdminRUnactivityTime]);
+        var [err,tmp]=yield* cmdRedis(req.flow, 'SET', [sessionIDOld+'_adminRTimer',1,'EX', maxAdminRUnactivityTime]);
         this.boARLoggedIn=1; this.mes('Logged in (viewing)');
           // Changing session-token at login (as recomended by security recomendations) (to prevent session fixation)
         var sessionID=randomHash();
         var StrSuffix=['_Main', '_adminRTimer', '_adminWTimer', '_Counter', '_'+this.queredPage+'_CSRF'];
         var err=yield* changeSessionId.call(this, sessionID, StrSuffix);
-        this.res.setHeader("Set-Cookie", ["sessionIDAll="+sessionID+strCookiePropAll, "sessionIDLax="+sessionID+strCookiePropLax, "sessionIDStrict="+sessionID+strCookiePropStrict]);
+        this.res.setHeader("Set-Cookie", ["sessionIDNormal="+sessionID+strCookiePropNormal, "sessionIDLax="+sessionID+strCookiePropLax, "sessionIDStrict="+sessionID+strCookiePropStrict]);
       } else if(vPass=='')  this.mes('Password needed'); else this.mes('Wrong password');
     }
     else {this.mes('Password needed'); }
@@ -220,13 +221,13 @@ ReqBE.prototype.aLogin=function*(inObj){
       var aPass=inObj.pass; 
       if(aPass==aWPassword) {
         var sessionIDOld=req.sessionID;
-        var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'SET', [sessionIDOld+'_adminWTimer',1,'EX', maxAdminWUnactivityTime]);
+        var [err,tmp]=yield* cmdRedis(req.flow, 'SET', [sessionIDOld+'_adminWTimer',1,'EX', maxAdminWUnactivityTime]);
         this.boARLoggedIn=1; this.boAWLoggedIn=1; this.mes('Logged in');
           // Changing session-token at login (as recomended by security recomendations) (to prevent session fixation)
         var sessionID=randomHash();
         var StrSuffix=['_Main', '_adminRTimer', '_adminWTimer', '_Counter', '_'+this.queredPage+'_CSRF'];
         var err=yield* changeSessionId.call(this, sessionID, StrSuffix);
-        this.res.setHeader("Set-Cookie", ["sessionIDAll="+sessionID+strCookiePropAll, "sessionIDLax="+sessionID+strCookiePropLax, "sessionIDStrict="+sessionID+strCookiePropStrict]);
+        this.res.setHeader("Set-Cookie", ["sessionIDNormal="+sessionID+strCookiePropNormal, "sessionIDLax="+sessionID+strCookiePropLax, "sessionIDStrict="+sessionID+strCookiePropStrict]);
         if(objOthersActivity) extend(objOthersActivity,objOthersActivityDefault);
       }
       else if(aPass=='') {this.mes('Password needed');}
@@ -243,7 +244,7 @@ ReqBE.prototype.myChMod=function*(inObj){
   var req=this.req, res=this.res;
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
-  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
+  if(!this.boAWLoggedIn) return [new ErrorClient('not logged in (as Administrator)')]; 
   
   if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else { return [new ErrorClient('chmod: no files')]; }   
   var strQ=array_fill(File.length, "?").join(', ');
@@ -346,7 +347,7 @@ ReqBE.prototype.aLogout=function*(inObj){
   var GRet=this.GRet;
   var Ou={};
   var redisVar=req.sessionID+'_adminWTimer';
-  var [err,tmp]=yield* wrapRedisSendCommand.call(req, 'DEL', [redisVar]);
+  var [err,tmp]=yield* cmdRedis(req.flow, 'DEL', [redisVar]);
 
   if(this.boAWLoggedIn) {this.mes('Logged out (as Administrator)'); GRet.strDiffText=''; } 
   GRet.boAWLoggedIn=0; 
@@ -542,13 +543,19 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   Sql.push("START TRANSACTION;");
   Sql.push("SELECT SQL_CALC_FOUND_ROWS boDefault, @boTLS:=boTLS AS boTLS, @idSite:=idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aWPassword, aRPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+" WHERE www=?;"), Val.push(req.wwwSite);
   Sql.push("SELECT boOW, UNIX_TIMESTAMP(v.tMod) AS tMod FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev WHERE idSite=@idSite AND pageName=?;"), Val.push(this.queredPage);
+  Sql.push("SELECT UNIX_TIMESTAMP(now()) AS tNow;");
   var sql=Sql.join('\n'); 
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {arrRet=[err]; break stuff;}
   if(results[2].length){
     var boOW=results[2][0].boOW;
     var tMod=results[2][0].tMod, dateTMod=new Date(tMod*1000);
-    if(this.dateTModBrowser<tMod) { 
-      arrRet=[new ErrorClient("tMod from the version on your browser: "+this.dateTModBrowser+" < tMod on the version on the server: "+dateTMod+", "+messPreventBecauseOfNewerVersions)]; break stuff;
+    var tNow=results[3][0].tNow;
+    if(this.dateTModBrowser<dateTMod) { 
+      //arrRet=[new ErrorClient("tMod from the version on your browser: "+this.dateTModBrowser+" < tMod on the version on the server: "+dateTMod+", "+messPreventBecauseOfNewerVersions)]; break stuff;
+      //var [tDiff,unit]=getSuitableTimeUnit(tMod-this.dateTModBrowser.toUnix());
+      //arrRet=[new ErrorClient("Someone else have made a change ("+Math.round(tDiff)+" "+unit+" after the tMod you're editing). Copy your edits temporary, then reload page.")]; break stuff;
+      var [tDiff,unit]=getSuitableTimeUnit(tNow-tMod); if(unit=='m') unit='min';
+      arrRet=[new ErrorClient("Someone else have made a change ("+Math.round(tDiff)+" "+unit+" ago). Copy your edits temporary, then reload the page.")]; break stuff;
     }
   } else {var boOW=1, tMod=0;}
   
@@ -682,20 +689,34 @@ ReqBE.prototype.saveByAdd=function*(inObj){
   if(!data.success) return [new ErrorClient('reCaptcha test not successfull')];
   
     // getInfo
-  var sql="SELECT boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod FROM "+pageLastSiteView+" WHERE www=? AND pageName=?";
-  var Val=[req.wwwSite, this.queredPage];
+  //var sql="SELECT boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod FROM "+pageLastSiteView+" WHERE www=? AND pageName=?";
+  //var Val=[req.wwwSite, this.queredPage];
+  
+  var Sql=[], Val=[];
+  Sql.push("SELECT boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod FROM "+pageLastSiteView+" WHERE www=? AND pageName=?");
+  Val.push(req.wwwSite, this.queredPage);
+  Sql.push("SELECT UNIX_TIMESTAMP(now()) AS tNow;");
+  var sql=Sql.join('\n');
   var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) return [err];
-  var row=results[0];
+  var row=results[0][0];
+  var tNow=results[1][0].tNow;
 
   if(row){
     var {boOR,boOW,boSiteMap,tMod}=row, dateTMod=new Date(tMod*1000);
     if(!boOR && !this.boARLoggedIn) {return [new ErrorClient('Not logged in')]; }
-    if(this.dateTModBrowser<dateTMod) { return [new ErrorClient("tMod from the version on your browser: "+this.dateTModBrowser+" < tMod on the version on the server: "+dateTMod+", "+messPreventBecauseOfNewerVersions)];  }
+    if(this.dateTModBrowser<dateTMod) {
+      //return [new ErrorClient("tMod from the version on your browser: "+this.dateTModBrowser+" < tMod on the version on the server: "+dateTMod+", "+messPreventBecauseOfNewerVersions)]; 
+      //var [tDiff,unit]=getSuitableTimeUnit(tMod-this.dateTModBrowser.toUnix());
+      //return [new ErrorClient("Someone else have made a change ("+Math.round(tDiff)+" "+unit+" after the tMod you're editing). Copy your edits temporary, then reload page")];
+      var [tDiff,unit]=getSuitableTimeUnit(tNow-tMod); if(unit=='m') unit='min';
+      return [new ErrorClient("Someone else have made a change ("+Math.round(tDiff)+" "+unit+" ago). Copy your edits temporary, then reload the page")];
+    }
     if(boOW==0) {return [new ErrorClient('Not authorized')]; }  
   }else{
     var boOW=1, boOW=1, boSiteMap=1;
   }
   var strEditText=inObj.strEditText, summary=inObj.summary, signature=inObj.signature;
+  summary=myJSEscape(summary); signature=myJSEscape(signature);
   
     
     // parse
@@ -782,7 +803,7 @@ ReqBE.prototype.renamePage=function*(inObj){
   Sql.push("COMMIT;");
   var sql=Sql.join('\n');
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
-  var c=results[0].affectedRows;
+  var c=results[1].affectedRows/2;
   var boOK=1, mestmp='Links in '+c+" pages renamed.";
   
   this.mes(mestmp);
@@ -828,7 +849,7 @@ ReqBE.prototype.renameImage=function*(inObj){
   Sql.push("COMMIT;");
   var sql=Sql.join('\n');
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
-  var c=results[0].affectedRows;
+  var c=results[1].affectedRows/2;
   var boOK=1, mestmp='Image urls in '+c+" pages renamed.";
   
   this.mes(mestmp);
@@ -848,7 +869,10 @@ ReqBE.prototype.specSetup=function*(inObj){
 
 ReqBE.prototype.setUpPageListCond=function*(inObj){
   var Ou={};
-  var tmp=setUpCond(undefined, StrOrderFiltPage, PropPage, inObj);
+  if(typeof inObj.Filt!='object') return [new ErrorClient('typeof inObj.Filt!="object"')]; 
+  this.Filt=inObj.Filt;
+  var arg={KeySel:[], Prop:PropPage, Filt:inObj.Filt};
+  var tmp=setUpCond(arg);
   copySome(this,tmp,['strCol', 'Where']);
   return [null, [Ou]];
 }
@@ -922,10 +946,9 @@ ReqBE.prototype.getPageHist=function*(inObj){
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
   var Ou={}, flow=req.flow
   //var strTableRefCount=pageTab+' p';
-  var arg={strTableRef:strTableRefPageHist, Ou:Ou, WhereExtra:[], Prop:PropPage, StrOrderFilt:StrOrderFiltPage, myMySql:this.myMySql};  
-  arg.Where=this.Where;  arg.strDBPrefix=strDBPrefix;
-  
-  var [err, Hist]=yield* getHist(flow, mysqlPool, arg); if(err) return [err];  Ou.Hist=Hist;
+  var arg={strTableRef:strTableRefPageHist, WhereExtra:[], Prop:PropPage, strDBPrefix:strDBPrefix};  
+  copySome(arg, this, ['myMySql', 'Filt', 'Where']);
+  var [err, Hist]=yield* getHist(flow, arg); if(err) return [err];  Ou.Hist=Hist;
 
   
     // Fetching the names of (non-null) parents
@@ -952,7 +975,10 @@ ReqBE.prototype.getPageHist=function*(inObj){
 ReqBE.prototype.setUpImageListCond=function*(inObj){
   var Ou={};
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
-  var tmp=setUpCond(undefined, StrOrderFiltImage, PropImage, inObj);
+  if(typeof inObj.Filt!='object') return [new ErrorClient('typeof inObj.Filt!="object"')];
+  this.Filt=inObj.Filt;
+  var arg={KeySel:[], Prop:PropImage, Filt:inObj.Filt};
+  var tmp=setUpCond(arg);
   copySome(this,tmp,['strCol', 'Where']);
   return [null, [Ou]];
 }
@@ -978,11 +1004,10 @@ ReqBE.prototype.getImageHist=function*(inObj){
   var req=this.req, res=this.res;
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
   var Ou={}, flow=req.flow
-  //var arg={strTableRef:strTableRefImage, Ou:Ou, WhereExtra:[], Prop:PropImage, StrOrderFilt:StrOrderFiltImage};
-  var arg={strTableRef:strTableRefImageHist, Ou:Ou, WhereExtra:[], Prop:PropImage, StrOrderFilt:StrOrderFiltImage, myMySql:this.myMySql};  
-  arg.Where=this.Where;  arg.strDBPrefix=strDBPrefix;  arg.pool=mysqlPool;
+  var arg={strTableRef:strTableRefImageHist, Ou:Ou, WhereExtra:[], Prop:PropImage, strDBPrefix:strDBPrefix};
+  copySome(arg, this, ['myMySql', 'Filt', 'Where']);
   
-  var [err, Hist]=yield* getHist(flow, mysqlPool, arg); if(err) return [err];
+  var [err, Hist]=yield* getHist(flow, arg); if(err) return [err];
   Ou.Hist=Hist;
 
     // Fetching the names of (non-null) parents
@@ -1066,7 +1091,7 @@ ReqBE.prototype.getLastTModNTLastBU=function*(inObj){
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   if(results[0]) copySome(Ou, results[0], ['pageName', 'tLastMod']);
   
-  var [err,strTmp]=yield* wrapRedisSendCommand.call(req, 'GET', ['mmmWiki_tLastBU']);
+  var [err,strTmp]=yield* cmdRedis(req.flow, 'GET', ['mmmWiki_tLastBU']);
   Ou.tLastBU=strTmp;
   
   return [null, [Ou]];

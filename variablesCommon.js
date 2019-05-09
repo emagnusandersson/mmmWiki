@@ -106,7 +106,7 @@ PropPage.parent.pre='s.';
 PropPage.siteName.relaxCountExp=function(name){ return "COUNT(DISTINCT p.idPage)"; }
 PropPage.parent.relaxCountExp=function(name){ return "COUNT(DISTINCT p.idPage)"; }
 var tmpRelaxCountExp=function(){ return null;}
-var StrTmp=['boOR','boOW','boSiteMap','boTalk','boTemplate','boOther'];
+var StrTmp=['boOR','boOW','boSiteMap','boTalk','boTemplate','boOther']; // These will never need a trunk, so no need to do a separate count query.
 for(var i=0;i<StrTmp.length;i++){  var name=StrTmp[i]; PropPage[name].relaxCountExp=tmpRelaxCountExp; }
 
   // histF
@@ -254,6 +254,8 @@ featCalcValExtend(PropImage);
 
 
 nHash=1000;
+lenGZ=100;
+
 //aRPassword=SHA1(aRPassword+strSalt);
 //aWPassword=SHA1(aWPassword+strSalt);
 var data=aRPassword+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data); aRPassword=data;
@@ -313,7 +315,7 @@ nDBConnectionLimit=10; nDBQueueLimit=100;
 nDBRetry=14;
 
 setUpMysqlPool=function(){
-  var uriObj=url.parse(uriDB); 
+  var uriObj=url.parse(uriDB);
   var StrMatch=RegExp('^(.*):(.*)$').exec(uriObj.auth);
   var nameDB=uriObj.pathname.substr(1);
   var mysqlPool  = mysql.createPool({
@@ -325,6 +327,7 @@ setUpMysqlPool=function(){
     multipleStatements: true,
     waitForConnections:true,
     queueLimit:nDBQueueLimit,
+    //dateStrings:'date',
     flags:'-FOUND_ROWS'
   });
   mysqlPool.on('error',function(e){debugger});

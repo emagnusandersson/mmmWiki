@@ -204,7 +204,7 @@ app.is_crawler=function() {
    return RegExp(sites).test(ua);  
 }
 
-global.writeCacheDynamicJS=function*(flow) {
+app.writeCacheDynamicJS=function*(flow) {
   var buf=createCommonJS();
   var [err]=yield* CacheUri.set(flow, '/'+leafCommon, buf, 'js', true, true);   if(err) return [err];
   return [null];
