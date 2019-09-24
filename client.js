@@ -7,8 +7,8 @@ pagelist: rwp vertically
 */
 
 "use strict"
-window.onload=function(){
-
+const funLoad=function(){
+console.log('load');
 var MmmWikiFiltExtention={
   setSingleParent:function(idParent){
     var tmpFilt=this[this.iParent]; array_mergeM(tmpFilt[0],tmpFilt[1]); var ind=tmpFilt[0].indexOf(idParent); if(ind!=-1)  mySplice1(tmpFilt[0],ind);  tmpFilt[1]=[idParent]; tmpFilt[2]=1;
@@ -135,6 +135,7 @@ var commentButtonExtend=function(el){
 var vLoginDivExtend=function(el){
   var vPassF=function(){  
     //var tmp=SHA1(vPass.value+strSalt);
+    if(typeof SHA1 == 'undefined') { setMess(strSha1NotLoaded); return;}
     var data=vPass.value+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data);
     //var data=vPass.value+strSalt; for(var i=0;i<nHash;i++) data=Sha256.hash(data);
     if(data.substr(0,2)!=aRPasswordStart) {setMess('Wrong pw'); return;}
@@ -220,9 +221,9 @@ var pageViewExtend=function(el){
   el.toString=function(){return 'pageView';}
   
   el.setUp=function(){
-    var tmp=tMod; el.spanLastMod.myText(UTC2TimeOrDate(tmp)).prop('title','Last Modified:\n'+UTC2JS(tmp));
+    var tmp=objPage.tMod; el.spanLastMod.myText(UTC2TimeOrDate(tmp)).prop('title','Last Modified:\n'+UTC2JS(tmp));
     var tmp=objPage.tCreated; el.spanCreated.myText(UTC2TimeOrDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));
-    spanTModNCreated.toggle(tMod);
+    spanTModNCreated.toggle(objPage.tMod);
     
   }
   el.setDetail=function(){
@@ -291,7 +292,7 @@ var pageViewExtend=function(el){
     editDiv.setVis();
   });
   el.editButton.on('click', adminButtonToggleEventF);
-  var tmpImg=createElement('img').prop({src:uAdmin}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable');
+  var tmpImg=createElement('img').prop({src:uAdmin}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable');    //var strAdmin='👤🔑';
   var adminButton=createElement('button').myAppend(tmpImg).addClass('fixWidth').on('click',function(){
     doHistPush({view:adminDiv});
     adminDiv.setVis();
@@ -344,6 +345,7 @@ var adminDivExtend=function(el){
     [password, password2].forEach(ele=>ele.toggle(!boT));
   }
   var aPassF=function(){
+    if(typeof SHA1 == 'undefined') { setMess(strSha1NotLoaded); return;}
     //var tmp=SHA1(password.value);
     //var tmp=Sha256.hash(password.value+strSalt);
     var data=password.value+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data);
@@ -383,6 +385,7 @@ var adminDivExtend=function(el){
   var password=createElement('input').prop({type:'password', placeholder:"Login"}).on('keypress',  function(e){   if(e.which==13) { aPassF(); return false;}   }); 
 
   var aPass2F=function(){  
+    if(typeof SHA1 == 'undefined') { setMess(strSha1NotLoaded); return;}
     //var tmp=SHA1(password2.value+strSalt); 
     //var tmp=Sha256.hash(password2.value+strSalt);
     var data=password2.value+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data);
@@ -1066,8 +1069,8 @@ var uploadAdminDivExtend=function(el){
     }
     
     
-    //var vecIn=[['uploadAdmin', {}], ['page',queredPage], ['tMod',tMod], ['CSRFCode',CSRFCode]];
-    var vecIn=[['uploadAdmin', {}], ['page',queredPage], ['tMod',tMod], ['CSRFCode',getItem('CSRFCode')]];
+    //var vecIn=[['uploadAdmin', {}], ['page',queredPage], ['tMod',objPage.tMod], ['CSRFCode',CSRFCode]];
+    var vecIn=[['uploadAdmin', {}], ['page',queredPage], ['tMod',objPage.tMod], ['CSRFCode',getItem('CSRFCode')]];
     var arrRet=[function(){  progress.hide(); uploadButton.prop("disabled",false);}];
     
     formData.append('vec', JSON.stringify(vecIn));
@@ -1166,8 +1169,8 @@ var uploadUserDivExtend=function(el){
     
     
     
-    //var vecIn=[['uploadUser', {}], ['page',queredPage], ['tMod',tMod], ['CSRFCode',CSRFCode]];
-    var vecIn=[['uploadUser', {}], ['page',queredPage], ['tMod',tMod], ['CSRFCode',getItem('CSRFCode')]];
+    //var vecIn=[['uploadUser', {}], ['page',queredPage], ['tMod',objPage.tMod], ['CSRFCode',CSRFCode]];
+    var vecIn=[['uploadUser', {}], ['page',queredPage], ['tMod',objPage.tMod], ['CSRFCode',getItem('CSRFCode')]];
     var arrRet=[function(data){if('strMessage' in data) setMess(data.strMessage); progress.invisible(); uploadButton.prop("disabled",false);}];
     formData.append('vec', JSON.stringify(vecIn));
     var xhr = new XMLHttpRequest();
@@ -2367,13 +2370,27 @@ var imageListExtend=function(el){
 /*******************************************************************************
  * editDiv
  ******************************************************************************/
+window.cbRecaptcha=function(){
+  if(editDiv.style.display!='none') { console.log('Setting up recaptcha (onload)'); divReCaptcha.setUp(); } // Otherwise "render" will occur when editDiv is opened.
+}
 var divReCaptchaExtend=function(el){
+  el.loadScript=function(){
+    var scriptRecaptcha=createElement("script").prop({src:uRecaptcha});
+    document.head.myAppend(scriptRecaptcha);
+  }
   el.setUp=function(){
     //if(typeof grecaptcha=='undefined') var grecaptcha={render:function(){console.log('no grecaptcha');}};
-    if(typeof grecaptcha=='undefined' || !('render' in grecaptcha)) {console.log('no grecaptcha'); return; }
+    if(typeof grecaptcha=='undefined') {const tmp="typeof grecaptcha=='undefined'"; setMess(tmp); console.log(tmp); return; }
+    if(!('render' in grecaptcha)) {const tmp="!('render' in grecaptcha)"; setMess(tmp); console.log(tmp); return; }
     if(el.children.length==0){    grecaptcha.render(el, {sitekey:strReCaptchaSiteKey});    } else grecaptcha.reset();
   }
+  el.isLoaded=function(){
+    if(typeof grecaptcha=='undefined' || !('render' in grecaptcha)) { return false; } return true;
+  }
   el.addClass("g-recaptcha");
+  
+
+
   //el.prop({"data-sitekey": strReCaptchaSiteKey});
   return el;
 }
@@ -2385,11 +2402,11 @@ var editDivExtend=function(el){
     if(editText.parentNode!==el.fixedDiv) {
       el.fixedDiv.prepend(dragHR,editText);
     }
-    //var tmp=tMod; el.spanLastMod.myText(UTC2TimeOrDate(tmp)).prop('title','Last Modified:\n'+UTC2JS(tmp));
+    //var tmp=objPage.tMod; el.spanLastMod.myText(UTC2TimeOrDate(tmp)).prop('title','Last Modified:\n'+UTC2JS(tmp));
     //var tmp=objPage.tCreated; el.spanCreated.myText(UTC2TimeOrDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));
-    //spanTModNCreated.toggle(tMod);
+    //spanTModNCreated.toggle(objPage.tMod);
     
-    divReCaptcha.setUp();
+    if(divReCaptcha.isLoaded()) { console.log('Setting up recaptcha (editDiv.setup)'); divReCaptcha.setUp(); } // Otherwise cbRecaptcha will fire later
   }
   
     // menuB
@@ -3529,15 +3546,15 @@ var majax=function(oAJAX, vecIn){  // Each argument of vecIn is an array: [serve
   var boForm=vecIn.length==2 && vecIn[0][1] instanceof FormData;
   if(boForm){
     var formData=vecIn[0][1]; vecIn[0][1]=0; // First element in vecIn contains the formData object. Rearrange it as "root object" and add the remainder to a property 'vec'
-    //vecIn.push(['tMod',tMod],['CSRFCode',CSRFCode]); 
-    vecIn.push(['tMod',tMod],['CSRFCode',getItem('CSRFCode')]); 
+    //vecIn.push(['tMod',objPage.tMod],['CSRFCode',CSRFCode]); 
+    vecIn.push(['tMod',objPage.tMod],['CSRFCode',getItem('CSRFCode')]); 
     formData.append('vec', JSON.stringify(vecIn));
     var tmp=window.btoa(Math.random().toString()).substr(0, 12);
     var dataOut=formData;
     
   } else {
-    //if(oAJAX.type=='POST'){   vecIn.push(['CSRFCode',CSRFCode],['tMod',tMod]);   }
-    if(oAJAX.type=='POST'){   vecIn.push(['CSRFCode',getItem('CSRFCode')],['tMod',tMod]);   }
+    //if(oAJAX.type=='POST'){   vecIn.push(['CSRFCode',CSRFCode],['tMod',objPage.tMod]);   }
+    if(oAJAX.type=='POST'){   vecIn.push(['CSRFCode',getItem('CSRFCode')],['tMod',objPage.tMod]);   }
     var dataOut=JSON.stringify(vecIn);
   }
   
@@ -3584,11 +3601,7 @@ var GRet=function(data){
   tmp=data.boAWLoggedIn;   if(typeof tmp!="undefined") boAWLoggedIn=tmp;
   tmp=data.boARLoggedIn;   if(typeof tmp!="undefined") { boARLoggedIn=tmp;  }
   tmp=data.idPage;   if(typeof tmp!="undefined") { objPage.idPage=tmp;  }
-  tmp=data.objRev;   if(typeof tmp!="undefined") {
-    objRev=tmp; 
-    tMod=objRev.tMod; //editDiv.spanLastMod.myText(mySwedDate(tMod));
-  }
-  //tmp=data.tMod;   if(typeof tmp!="undefined") { tMod=tmp; editDiv.spanLastMod.myText(mySwedDate(tMod)); }
+  //tmp=data.objRev;   if(typeof tmp!="undefined") { objRev=tmp; }
   tmp=data.objPage;   if(typeof tmp!="undefined") {
     overwriteProperties(objPage, tmp);
     //objPage=tmp; 
@@ -3656,7 +3669,7 @@ tCreated:'Created'
 }
 var helpBub={}
 
-
+const strSha1NotLoaded='sha1.js is not loaded yet, perhaps wait a bit';
 
 window.elHtml=document.documentElement; window.elBody=document.body;
 elBody.css({margin:'0px'}); //, position:'relative'
@@ -3697,9 +3710,9 @@ var strFastBackSymbol=charBackSymbol+charBackSymbol;
 var charFlash='↯';//⚡↯
 var charPublicRead='<span style="font-family:courier">͡°</span>'; //☉͡°
 var charPublicRead='<span class=eye>(∘)</span>'; //☉͡° ·
-var charPublicRead='📖'; //👀😶☉͡° ·
+var charPublicRead='👁'; //'📖'; //👀😶☉͡° ·
 var charPublicWrite='✎'; //✎
-var charPromote='📣';  //😗😱😮
+var charPromote='📣'; //'🗣️';  //😗😱😮
 var charDelete='✖'; //x, ❌, X, ✕, ☓, ✖, ✗, ✘
 var charLink='🔗'; //☞🔗
 var charThumbsUp='👍'; //👍☝
@@ -3752,7 +3765,6 @@ var KeyColPage=Object.keys(PropPage),  KeyColImage=Object.keys(PropImage);
 
 
 
-var tMod=objRev.tMod;
 
 var nVersion=matVersion.length;
 
@@ -3818,7 +3830,6 @@ var imgHelp=createElement('img').prop({src:uHelpFile}).css({'vertical-align':'-0
 var sizeIcon=1.5, strSizeIcon=sizeIcon+'em';
 var imgProt=createElement('img').css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable'); 
 
-zip.workerScriptsPath = flFoundOnTheInternetFolder+'/';
 
 
   //
@@ -3925,17 +3936,14 @@ commentButton.setUp(boTalkExist);
 
 var dragHR=dragHRExtend(createElement('hr')); dragHR.css({height:'0.3em',background:'grey',margin:0});
 if(boTouch) dragHR="";
-//divReCaptcha=divReCaptchaExtend(createElement('div'));
-//divReCaptcha=createElement('div');
 var editText=editTextExtend(createElement('textarea'));
 
 var pageView=pageViewExtend(createElement('div')); 
-var editDiv=editDivExtend(createElement('div')).css({width:'100%'}); //editDiv.spanLastMod.myText(mySwedDate(tMod));
+var editDiv=editDivExtend(createElement('div')).css({width:'100%'}); //editDiv.spanLastMod.myText(mySwedDate(objPage.tMod));
 var templateList=templateListExtend(createElement('div'));
 
 
-var divReCaptcha=divReCaptchaExtend(createElement('div'));
-editDiv.spanSave.prepend(divReCaptcha);
+
 
 
 
@@ -4165,6 +4173,19 @@ if(objPage.boOR==0) {
 } else {   var vec=[['specSetup',{}]];   majax(oAJAX,vec); pageView.setVis(); } 
 
 
+//zip.workerScriptsPath = flFoundOnTheInternetFolder+'/';
+var scriptZip=createElement("script").prop({src:uZip}).on('load',function(){
+  zip.workerScriptsPath = flFoundOnTheInternetFolder+'/';
+});
+var scriptSha1=createElement("script").prop({src:uSha1});
+document.head.myAppend(scriptZip, scriptSha1);
+
+window.divReCaptcha=divReCaptchaExtend(createElement('div'));
+editDiv.spanSave.prepend(divReCaptcha);
+divReCaptcha.loadScript();
+
+
+
 var fixedDivsCoveringPageText=[pageView.fixedDiv, editDiv.fixedDiv, adminDiv.fixedDiv, paymentDiv.fixedDiv];
 var setBottomMargin=function() { // This is not very beautiful. But how should one else make a fixed div at the bottom without hiding the bottom of the scrollable content behind??
   if(pageText.style.display!='none'){
@@ -4215,7 +4236,10 @@ window.scroll(function(){
 
 };
 
-
+//window.onload=funLoad;
+window.on('DOMContentLoaded', funLoad);
+//window.on('load', funLoad);
+//funLoad();
 //var root = document.documentElement,   node = document.createTextNode("This is some new textA.");    root.appendChild(node);
  
 
