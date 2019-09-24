@@ -173,6 +173,7 @@ pre {
 	border: solid 1px #3c78b5;
 	padding: 1em;
 	border-style:dashed;
+  white-space: pre-wrap
 }
 
 

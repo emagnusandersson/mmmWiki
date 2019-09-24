@@ -168,7 +168,7 @@ EventTarget.prototype.off=function(){ this.removeEventListener.apply(this, [...a
 //if(!Node.prototype.append) Node.prototype.append=Node.prototype.appendChild;
 if(!Node.prototype.prepend) Node.prototype.prepend=function(el){ this.insertBefore(el, this.firstChild);  }
 Node.prototype.myAppend=function(){ this.append.apply(this, [...arguments]); return this; }
-Node.prototype.myAppendB=function(){
+Node.prototype.myAppendHtml=function(){
   var arg=[...arguments], elTmp=null, argB=[];
   arg.forEach(ele=>{
     if(typeof ele=='string') {

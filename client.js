@@ -7,8 +7,8 @@ pagelist: rwp vertically
 */
 
 "use strict"
-window.onload=function(){
-
+const funLoad=function(){
+console.log('load');
 var MmmWikiFiltExtention={
   setSingleParent:function(idParent){
     var tmpFilt=this[this.iParent]; array_mergeM(tmpFilt[0],tmpFilt[1]); var ind=tmpFilt[0].indexOf(idParent); if(ind!=-1)  mySplice1(tmpFilt[0],ind);  tmpFilt[1]=[idParent]; tmpFilt[2]=1;
@@ -59,16 +59,20 @@ app.doHistPush=function(obj){
 
   var indNew=history.state.ind+1;
   stateTrans={hash:history.state.hash, ind:indNew};  // Should be called stateLast perhaps
+  stateTrans={hash:history.state.hash, ind:indNew, f:(function(a){console.log('hello: '+a);}).toString()};  // Should be called stateLast perhaps
   history.pushState(stateTrans, strHistTitle, uCanonical);
   history.StateMy=history.StateMy.slice(0, indNew);
+  obj.tDate=new Date();
   history.StateMy[indNew]=obj;
 }
 app.doHistReplace=function(obj, indDiff=0){
+  obj.tDate=new Date();
   history.StateMy[history.state.ind+indDiff]=obj;
 }
-app.changeHist=function(obj){
-  history.StateMy[history.state.ind]=obj;
-}
+//app.changeHist=function(obj){
+  //obj.tDate=new Date();
+  //history.StateMy[history.state.ind]=obj;
+//}
 app.getHistStatName=function(){
   return history.StateMy[history.state.ind].view.toString();
 }
@@ -135,6 +139,7 @@ var commentButtonExtend=function(el){
 var vLoginDivExtend=function(el){
   var vPassF=function(){  
     //var tmp=SHA1(vPass.value+strSalt);
+    if(typeof SHA1 == 'undefined') { setMess(strSha1NotLoaded); return;}
     var data=vPass.value+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data);
     //var data=vPass.value+strSalt; for(var i=0;i<nHash;i++) data=Sha256.hash(data);
     if(data.substr(0,2)!=aRPasswordStart) {setMess('Wrong pw'); return;}
@@ -220,9 +225,11 @@ var pageViewExtend=function(el){
   el.toString=function(){return 'pageView';}
   
   el.setUp=function(){
-    var tmp=tMod; el.spanLastMod.myText(UTC2TimeOrDate(tmp)).prop('title','Last Modified:\n'+UTC2JS(tmp));
-    var tmp=objPage.tCreated; el.spanCreated.myText(UTC2TimeOrDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));
-    spanTModNCreated.toggle(tMod);
+    var tmp=objPage.tMod; el.spanLastMod.myText(UTC2TimeOrDate(tmp)).prop('title','Last Modified:\n'+UTC2JS(tmp));
+    var tCreated=objPage.tCreated; el.spanCreated.myText(UTC2TimeOrDate(tCreated)).prop('title','Created:\n'+UTC2JS(tCreated));
+    //spanTModNCreated.toggle(Boolean(objPage.tMod));
+    divLastModW.toggle(Boolean(objPage.tMod));
+    divCreatedW.toggle(tCreated>1); // tCreated==1 means that it is unknown (and should be hidden)
     
   }
   el.setDetail=function(){
@@ -291,7 +298,7 @@ var pageViewExtend=function(el){
     editDiv.setVis();
   });
   el.editButton.on('click', adminButtonToggleEventF);
-  var tmpImg=createElement('img').prop({src:uAdmin}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable');
+  var tmpImg=createElement('img').prop({src:uAdmin}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable');    //var strAdmin='👤🔑';
   var adminButton=createElement('button').myAppend(tmpImg).addClass('fixWidth').on('click',function(){
     doHistPush({view:adminDiv});
     adminDiv.setVis();
@@ -309,8 +316,10 @@ var pageViewExtend=function(el){
   commentButton.css({'margin-left':'1em'}); //,'float':'right'
   
     // spanTModNCreated
-  el.spanCreated=createElement('span');   el.spanLastMod=createElement('span');  
-  var spanTModNCreated=createElement('span').myAppendB('Created: ', el.spanCreated, '<br>Last mod: ', el.spanLastMod)
+  el.spanCreated=createElement('span');   el.spanLastMod=createElement('span');
+  var divCreatedW=createElement('div').myAppend('Created: ', el.spanCreated);
+  var divLastModW=createElement('div').myAppend('Last mod: ', el.spanLastMod);
+  var spanTModNCreated=createElement('span').myAppend(divCreatedW, divLastModW)
   //.css({display:'block', position:'absolute', bottom:'.0em', width:'100%', 'text-align':'center', 'font-size':'70%'});
   .css({display:'block', 'font-size':'70%', 'margin-right':'auto'});
   //.css({'float':'right',margin:'0.2em .5em 0 0', 'font-size':'70%'});
@@ -344,6 +353,7 @@ var adminDivExtend=function(el){
     [password, password2].forEach(ele=>ele.toggle(!boT));
   }
   var aPassF=function(){
+    if(typeof SHA1 == 'undefined') { setMess(strSha1NotLoaded); return;}
     //var tmp=SHA1(password.value);
     //var tmp=Sha256.hash(password.value+strSalt);
     var data=password.value+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data);
@@ -383,6 +393,7 @@ var adminDivExtend=function(el){
   var password=createElement('input').prop({type:'password', placeholder:"Login"}).on('keypress',  function(e){   if(e.which==13) { aPassF(); return false;}   }); 
 
   var aPass2F=function(){  
+    if(typeof SHA1 == 'undefined') { setMess(strSha1NotLoaded); return;}
     //var tmp=SHA1(password2.value+strSalt); 
     //var tmp=Sha256.hash(password2.value+strSalt);
     var data=password2.value+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data);
@@ -1066,8 +1077,8 @@ var uploadAdminDivExtend=function(el){
     }
     
     
-    //var vecIn=[['uploadAdmin', {}], ['page',queredPage], ['tMod',tMod], ['CSRFCode',CSRFCode]];
-    var vecIn=[['uploadAdmin', {}], ['page',queredPage], ['tMod',tMod], ['CSRFCode',getItem('CSRFCode')]];
+    //var vecIn=[['uploadAdmin', {}], ['page',queredPage], ['tMod',objPage.tMod], ['CSRFCode',CSRFCode]];
+    var vecIn=[['uploadAdmin', {}], ['page',queredPage], ['tMod',objPage.tMod], ['CSRFCode',getItem('CSRFCode')]];
     var arrRet=[function(){  progress.hide(); uploadButton.prop("disabled",false);}];
     
     formData.append('vec', JSON.stringify(vecIn));
@@ -1166,8 +1177,8 @@ var uploadUserDivExtend=function(el){
     
     
     
-    //var vecIn=[['uploadUser', {}], ['page',queredPage], ['tMod',tMod], ['CSRFCode',CSRFCode]];
-    var vecIn=[['uploadUser', {}], ['page',queredPage], ['tMod',tMod], ['CSRFCode',getItem('CSRFCode')]];
+    //var vecIn=[['uploadUser', {}], ['page',queredPage], ['tMod',objPage.tMod], ['CSRFCode',CSRFCode]];
+    var vecIn=[['uploadUser', {}], ['page',queredPage], ['tMod',objPage.tMod], ['CSRFCode',getItem('CSRFCode')]];
     var arrRet=[function(data){if('strMessage' in data) setMess(data.strMessage); progress.invisible(); uploadButton.prop("disabled",false);}];
     formData.append('vec', JSON.stringify(vecIn));
     var xhr = new XMLHttpRequest();
@@ -2367,13 +2378,27 @@ var imageListExtend=function(el){
 /*******************************************************************************
  * editDiv
  ******************************************************************************/
+window.cbRecaptcha=function(){
+  if(editDiv.style.display!='none') { console.log('Setting up recaptcha (onload)'); divReCaptcha.setUp(); } // Otherwise "render" will occur when editDiv is opened.
+}
 var divReCaptchaExtend=function(el){
+  el.loadScript=function(){
+    var scriptRecaptcha=createElement("script").prop({src:uRecaptcha});
+    document.head.myAppend(scriptRecaptcha);
+  }
   el.setUp=function(){
     //if(typeof grecaptcha=='undefined') var grecaptcha={render:function(){console.log('no grecaptcha');}};
-    if(typeof grecaptcha=='undefined' || !('render' in grecaptcha)) {console.log('no grecaptcha'); return; }
+    if(typeof grecaptcha=='undefined') {const tmp="typeof grecaptcha=='undefined'"; setMess(tmp); console.log(tmp); return; }
+    if(!('render' in grecaptcha)) {const tmp="!('render' in grecaptcha)"; setMess(tmp); console.log(tmp); return; }
     if(el.children.length==0){    grecaptcha.render(el, {sitekey:strReCaptchaSiteKey});    } else grecaptcha.reset();
   }
+  el.isLoaded=function(){
+    if(typeof grecaptcha=='undefined' || !('render' in grecaptcha)) { return false; } return true;
+  }
   el.addClass("g-recaptcha");
+  
+
+
   //el.prop({"data-sitekey": strReCaptchaSiteKey});
   return el;
 }
@@ -2385,11 +2410,11 @@ var editDivExtend=function(el){
     if(editText.parentNode!==el.fixedDiv) {
       el.fixedDiv.prepend(dragHR,editText);
     }
-    //var tmp=tMod; el.spanLastMod.myText(UTC2TimeOrDate(tmp)).prop('title','Last Modified:\n'+UTC2JS(tmp));
+    //var tmp=objPage.tMod; el.spanLastMod.myText(UTC2TimeOrDate(tmp)).prop('title','Last Modified:\n'+UTC2JS(tmp));
     //var tmp=objPage.tCreated; el.spanCreated.myText(UTC2TimeOrDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));
-    //spanTModNCreated.toggle(tMod);
+    //spanTModNCreated.toggle(objPage.tMod);
     
-    divReCaptcha.setUp();
+    if(divReCaptcha.isLoaded()) { console.log('Setting up recaptcha (editDiv.setup)'); divReCaptcha.setUp(); } // Otherwise cbRecaptcha will fire later
   }
   
     // menuB
@@ -2408,7 +2433,7 @@ var editDivExtend=function(el){
   //var spanLabel=createElement('span').myText('Edit').css({'float':'right',margin:'0.2em 0 0 0'});  
   
   //el.spanCreated=createElement('span');   el.spanLastMod=createElement('span');  
-  //var spanTModNCreated=createElement('span').myAppendB('Page created: ', el.spanCreated, '. Last mod: ', el.spanLastMod).css({'float':'right',margin:'0.2em .5em 0 0', 'font-size':'70%'});
+  //var spanTModNCreated=createElement('span').myAppend('Page created: ', el.spanCreated, '. Last mod: ', el.spanLastMod).css({'float':'right',margin:'0.2em .5em 0 0', 'font-size':'70%'});
   //var menuA=createElement('div').myAppend(spanTModNCreated).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //buttonBack, ,spanLabel
 
   el.spanClickOutside=createElement('span').myText('Click outside the textarea when ready.').hide();
@@ -2460,26 +2485,40 @@ var dragHRExtend=function(el){
 }
 
 
-
 var editTextExtend=function(el){
-  var hDefault=160;
+  var hDefault=180;
   var hEditText=getItem('hEditText');  if(hEditText===null)  hEditText=hDefault;      
   if(boTouch) hEditText=hDefault;
-  el.css({width:'80%',height:hEditText+'px',display:'block',resize:'none'}).prop({autocomplete:"off"});//,wrap:"virtual"//,'margin-left':'40px','margin-right':'10px's
+  el.css({width:'calc(100% - 3em)',height:hEditText+'px',display:'block',resize:'none'}).prop({autocomplete:"off"});//,wrap:"virtual"//,'margin-left':'40px','margin-right':'10px's
   var clickBlurFunc=function(e){
     var boOn=e.type=='click';
     //if(!boOn) return;
     if(boTouch){//boTouch
       var elParent=el.parentNode;
       if(boOn) {        
-        elParent.css({top:'0px',bottom:''});
+        //elParent.css({top:'0px',bottom:''});
+        //elParent.css({position:'', height:hDefault+'px'});
+        //elParent.parentNode.css({position:'', height:hDefault+'px'});
+        //el.css({height:hDefault+'px', overflow:'hidden'});
+        //el.css({top:'',bottom:'0px'});
+        //el.css({position:'fixed'});
+        //elHtml.css({overflow:'hidden'}); elBody.css({overflow:'hidden'});
+        //elHtml.css({height:'100%', overflow:'hidden'}); elBody.css({height:'100%', overflow:'hidden'});
+        //elHtml.css({height:hDefault+'px', overflow:'hidden'}); elBody.css({height:hDefault+'px', overflow:'hidden'});
+        if(boIOS) {window.scrollTo(0,document.body.scrollHeight); }
+        if(boChrome) {el.css({height:'calc(100vh - 5em)'}); } // Does not work on ios, not tested on others
       } else { 
-        elParent.css({top:'',bottom:'0px'});
+        //elParent.css({top:'',bottom:'0px'});
+        //el.css({position:''});
+        //el.css({top:'',bottom:''});
+        //elHtml.css({height:''}); elBody.css({height:''});
+        if(boIOS) { }
+        if(boChrome) el.css({height:hDefault+'px'});
       }
-      var toHideAtTouch=[pageText, ...editDiv.menus, adminDiv.menus];
+      var toHideAtTouch=[pageText, ...editDiv.menus, adminDiv.menus, dragHR];
       toHideAtTouch.forEach(ele=>ele.toggle(!Boolean(boOn)));
-      editDiv.spanClickOutside.toggle(Boolean(boOn));
-      adminDiv.spanClickOutside.toggle(Boolean(boOn));
+      //editDiv.spanClickOutside.toggle(Boolean(boOn));
+      //adminDiv.spanClickOutside.toggle(Boolean(boOn));
     }
   }
   el.on('click',clickBlurFunc);  
@@ -3529,15 +3568,15 @@ var majax=function(oAJAX, vecIn){  // Each argument of vecIn is an array: [serve
   var boForm=vecIn.length==2 && vecIn[0][1] instanceof FormData;
   if(boForm){
     var formData=vecIn[0][1]; vecIn[0][1]=0; // First element in vecIn contains the formData object. Rearrange it as "root object" and add the remainder to a property 'vec'
-    //vecIn.push(['tMod',tMod],['CSRFCode',CSRFCode]); 
-    vecIn.push(['tMod',tMod],['CSRFCode',getItem('CSRFCode')]); 
+    //vecIn.push(['tMod',objPage.tMod],['CSRFCode',CSRFCode]); 
+    vecIn.push(['tMod',objPage.tMod],['CSRFCode',getItem('CSRFCode')]); 
     formData.append('vec', JSON.stringify(vecIn));
     var tmp=window.btoa(Math.random().toString()).substr(0, 12);
     var dataOut=formData;
     
   } else {
-    //if(oAJAX.type=='POST'){   vecIn.push(['CSRFCode',CSRFCode],['tMod',tMod]);   }
-    if(oAJAX.type=='POST'){   vecIn.push(['CSRFCode',getItem('CSRFCode')],['tMod',tMod]);   }
+    //if(oAJAX.type=='POST'){   vecIn.push(['CSRFCode',CSRFCode],['tMod',objPage.tMod]);   }
+    if(oAJAX.type=='POST'){   vecIn.push(['CSRFCode',getItem('CSRFCode')],['tMod',objPage.tMod]);   }
     var dataOut=JSON.stringify(vecIn);
   }
   
@@ -3584,11 +3623,7 @@ var GRet=function(data){
   tmp=data.boAWLoggedIn;   if(typeof tmp!="undefined") boAWLoggedIn=tmp;
   tmp=data.boARLoggedIn;   if(typeof tmp!="undefined") { boARLoggedIn=tmp;  }
   tmp=data.idPage;   if(typeof tmp!="undefined") { objPage.idPage=tmp;  }
-  tmp=data.objRev;   if(typeof tmp!="undefined") {
-    objRev=tmp; 
-    tMod=objRev.tMod; //editDiv.spanLastMod.myText(mySwedDate(tMod));
-  }
-  //tmp=data.tMod;   if(typeof tmp!="undefined") { tMod=tmp; editDiv.spanLastMod.myText(mySwedDate(tMod)); }
+  //tmp=data.objRev;   if(typeof tmp!="undefined") { objRev=tmp; }
   tmp=data.objPage;   if(typeof tmp!="undefined") {
     overwriteProperties(objPage, tmp);
     //objPage=tmp; 
@@ -3656,11 +3691,11 @@ tCreated:'Created'
 }
 var helpBub={}
 
-
+const strSha1NotLoaded='sha1.js is not loaded yet, perhaps wait a bit';
 
 window.elHtml=document.documentElement; window.elBody=document.body;
 elBody.css({margin:'0px'}); //, position:'relative'
-
+//window.elViewport=document.querySelector('head>meta[name=viewport]');
 window.boTouch = Boolean('ontouchstart' in document.documentElement);
 //boTouch=1;
 
@@ -3697,9 +3732,9 @@ var strFastBackSymbol=charBackSymbol+charBackSymbol;
 var charFlash='↯';//⚡↯
 var charPublicRead='<span style="font-family:courier">͡°</span>'; //☉͡°
 var charPublicRead='<span class=eye>(∘)</span>'; //☉͡° ·
-var charPublicRead='📖'; //👀😶☉͡° ·
+var charPublicRead='👁'; //'📖'; //👀😶☉͡° ·
 var charPublicWrite='✎'; //✎
-var charPromote='📣';  //😗😱😮
+var charPromote='📣'; //'🗣️';  //😗😱😮
 var charDelete='✖'; //x, ❌, X, ✕, ☓, ✖, ✗, ✘
 var charLink='🔗'; //☞🔗
 var charThumbsUp='👍'; //👍☝
@@ -3733,10 +3768,10 @@ var urlPayPal='https://www.paypal.com/cgi-bin/webscr';
 
 var iEdit=0, iPay=1, iVersion=2;
 var colButtonOn='#aaa', colButtonOff='#eee'; 
-var cssFixedTop={margin:'0em 0','text-align':'center',position:'fixed',top:0,width:'100%','border-top':'3px #aaa solid',background:'#fff'}; //,'z-index':5
-var cssFixed={margin:'0em 0','text-align':'center',position:'fixed',bottom:0,width:'100%','border-top':'3px #aaa solid',background:'#fff'}; //,'z-index':5
-var cssFixedDrag={margin:'0em 0','text-align':'center',position:'fixed',bottom:0,width:'100%',background:'#fff'}; //,'z-index':5
-if(boTouch) cssFixedDrag=cssFixed;
+var cssFixedTop={margin:'0em 0','text-align':'center',position:'fixed',top:0,width:'100%','border-top':'3px #aaa solid',background:'#ddd'}; //,'z-index':5
+var cssFixed={margin:'0em 0','text-align':'center',position:'fixed',bottom:0,width:'100%','border-top':'3px #aaa solid',background:'#ddd'}; //,'z-index':5
+var cssFixedDrag={margin:'0em 0','text-align':'center',position:'fixed',bottom:0,width:'100%',background:'#ddd'}; //,'z-index':5
+if(boTouch) { cssFixedDrag=cssFixed; cssFixedDrag['border-top']=''};
 var sizeIcon=1.5, strSizeIcon=sizeIcon+'em';
 
 
@@ -3752,7 +3787,6 @@ var KeyColPage=Object.keys(PropPage),  KeyColImage=Object.keys(PropImage);
 
 
 
-var tMod=objRev.tMod;
 
 var nVersion=matVersion.length;
 
@@ -3818,7 +3852,6 @@ var imgHelp=createElement('img').prop({src:uHelpFile}).css({'vertical-align':'-0
 var sizeIcon=1.5, strSizeIcon=sizeIcon+'em';
 var imgProt=createElement('img').css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable'); 
 
-zip.workerScriptsPath = flFoundOnTheInternetFolder+'/';
 
 
   //
@@ -3831,12 +3864,14 @@ var histList=[];
 var stateLoaded=history.state;
 var tmpi=stateLoaded?stateLoaded.ind:0,    stateLoadedNew={hash:randomHash(), ind:tmpi};
 history.replaceState(stateLoadedNew, '', uCanonical);
-var stateTrans=stateLoadedNew;
+app.stateTrans=stateLoadedNew;
 history.StateMy=[];
 
 window.on('popstate', function(event) {
   var dir=history.state.ind-stateTrans.ind;
   //if(Math.abs(dir)>1) {debugger; alert('dir=',dir); }
+  //console.log(stateTrans);
+  //console.log(history.state);
   var boSameHash=history.state.hash==stateTrans.hash;
   if(boSameHash){
     var tmpObj=history.state;
@@ -3869,6 +3904,8 @@ window.on('popstate', function(event) {
 
     stateTrans=extend({}, tmpObj);
   }else{
+    //history.StateMy[history.state.ind]=history.StateMy[stateTrans.ind];
+    history.StateMy[history.state.ind]={view:pageView, tDate:new Date()};
     stateTrans=history.state; extend(stateTrans, {hash:randomHash()}); history.replaceState(stateTrans, '', uCanonical);
     history.go(sign(dir));
   }
@@ -3925,17 +3962,14 @@ commentButton.setUp(boTalkExist);
 
 var dragHR=dragHRExtend(createElement('hr')); dragHR.css({height:'0.3em',background:'grey',margin:0});
 if(boTouch) dragHR="";
-//divReCaptcha=divReCaptchaExtend(createElement('div'));
-//divReCaptcha=createElement('div');
 var editText=editTextExtend(createElement('textarea'));
 
-var pageView=pageViewExtend(createElement('div')); 
-var editDiv=editDivExtend(createElement('div')).css({width:'100%'}); //editDiv.spanLastMod.myText(mySwedDate(tMod));
+var pageView=pageViewExtend(createElement('div'));  //app.pageView=pageView;
+var editDiv=editDivExtend(createElement('div')).css({width:'100%'}); //editDiv.spanLastMod.myText(mySwedDate(objPage.tMod));
 var templateList=templateListExtend(createElement('div'));
 
 
-var divReCaptcha=divReCaptchaExtend(createElement('div'));
-editDiv.spanSave.prepend(divReCaptcha);
+
 
 
 
@@ -4015,7 +4049,8 @@ var tabBUDiv=tabBUDivExtend(createElement('div'));
 
 var MainDiv=[vLoginDiv, warningDivW, pageText, pageView, adminDiv, adminMoreDiv, pageList, imageList, editDiv, templateList, versionTable, diffDiv, paymentDiv, slideShow, pageFilterDiv, imageFilterDiv, uploadUserDiv, renamePop, grandParentSelPop, areYouSurePop, redirectTab, redirectSetPop, redirectDeletePop, siteTab, siteSetPop, siteDeletePop, diffBackUpDiv, dumpDiv, tabBUDiv]; 
 
-history.StateMy[history.state.ind]={view:pageView};
+history.StateMy[history.state.ind]={view:pageView, tDate:new Date()};
+//console.log(history.StateMy);
 MainDiv.forEach(ele=>ele.hide());
 elBody.append(...MainDiv);
 
@@ -4165,6 +4200,19 @@ if(objPage.boOR==0) {
 } else {   var vec=[['specSetup',{}]];   majax(oAJAX,vec); pageView.setVis(); } 
 
 
+//zip.workerScriptsPath = flFoundOnTheInternetFolder+'/';
+var scriptZip=createElement("script").prop({src:uZip}).on('load',function(){
+  zip.workerScriptsPath = flFoundOnTheInternetFolder+'/';
+});
+var scriptSha1=createElement("script").prop({src:uSha1});
+document.head.myAppend(scriptZip, scriptSha1);
+
+window.divReCaptcha=divReCaptchaExtend(createElement('div'));
+editDiv.spanSave.prepend(divReCaptcha);
+divReCaptcha.loadScript();
+
+
+
 var fixedDivsCoveringPageText=[pageView.fixedDiv, editDiv.fixedDiv, adminDiv.fixedDiv, paymentDiv.fixedDiv];
 var setBottomMargin=function() { // This is not very beautiful. But how should one else make a fixed div at the bottom without hiding the bottom of the scrollable content behind??
   if(pageText.style.display!='none'){
@@ -4215,7 +4263,10 @@ window.scroll(function(){
 
 };
 
-
+//window.onload=funLoad;
+window.on('DOMContentLoaded', funLoad);
+//window.on('load', funLoad);
+//funLoad();
 //var root = document.documentElement,   node = document.createTextNode("This is some new textA.");    root.appendChild(node);
  
 
