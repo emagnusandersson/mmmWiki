@@ -21,7 +21,7 @@
     "papaparse": "^5.0.0",
     "redis": "2.8.x",
     "request": "^2.88.0",
-    "serialize-javascript": "^1.7.0",
+    "serialize-javascript": "^2.1.1",
     "streamify-string": "^1.0.1",
     "tmp": "0.1.0"
   },
