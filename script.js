@@ -114,7 +114,7 @@ if(  (urlRedis=process.env.REDISTOGO_URL)  || (urlRedis=process.env.REDISCLOUD_U
 }
 
 
-  // Default config variables
+  // Default config variables (If you want to change them I suggest you create a file config.js and overwrite them there)
 boDbg=0; boAllowSql=1; port=5000; levelMaintenance=0; googleSiteVerification='googleXXX.html';
 domainPayPal='www.paypal.com';
 urlPayPal='https://www.paypal.com/cgi-bin/webscr';
@@ -124,13 +124,8 @@ intDDOSMax=100; tDDOSBan=5;
 strSalt='abcdef';
 strBTC="";
 ppStoredButt="";
+boUseSelfSignedCert=false;
 
-
-
-var StrCookiePropProt=["HttpOnly", "Path=/","max-age="+3600*24*30];
-//if(boDO) { StrCookiePropProt.push("secure"); }
-var StrCookiePropStrict=StrCookiePropProt.concat("SameSite=Strict"),   StrCookiePropLax=StrCookiePropProt.concat("SameSite=Lax"),   StrCookiePropNormal=StrCookiePropProt.concat();
-strCookiePropStrict=";"+StrCookiePropStrict.join(';');  strCookiePropLax=";"+StrCookiePropLax.join(';');  strCookiePropNormal=";"+StrCookiePropNormal.join(';');
 
 var flow=( function*(){
 
@@ -228,6 +223,11 @@ var flow=( function*(){
     fs.watch('stylesheets', makeWatchCB('stylesheets', ['style.css']) );
   }
 
+  var StrCookiePropProt=["HttpOnly", "Path=/","max-age="+3600*24*30];
+  //if(boDO) { StrCookiePropProt.push("secure"); }
+  if(!boLocal || boUseSelfSignedCert) StrCookiePropProt.push("secure");
+  var StrCookiePropStrict=StrCookiePropProt.concat("SameSite=Strict"),   StrCookiePropLax=StrCookiePropProt.concat("SameSite=Lax"),   StrCookiePropNormal=StrCookiePropProt.concat("SameSite=None");
+  app.strCookiePropStrict=";"+StrCookiePropStrict.join(';');  app.strCookiePropLax=";"+StrCookiePropLax.join(';');  app.strCookiePropNormal=";"+StrCookiePropNormal.join(';');
 
   handler=function(req, res){
     req.flow=(function*(){
@@ -239,7 +239,7 @@ var flow=( function*(){
       //res.setHeader("X-Frame-Options", "deny");  // Deny for all (note: this header is removed for images (see reqMediaImage) (should also be removed for videos))
       res.setHeader("Content-Security-Policy", "frame-ancestors 'none'");  // Deny for all (note: this header is removed in certain requests)
       res.setHeader("X-Content-Type-Options", "nosniff");  // Don't try to guess the mime-type (I prefer the rendering of the page to fail if the mime-type is wrong)
-      //if(boDO) res.setHeader("Strict-Transport-Security", "max-age="+3600*24*365); // All future requests must be with https (forget this after a year)
+      if(!boLocal || boUseSelfSignedCert) res.setHeader("Strict-Transport-Security", "max-age="+3600*24*365); // All future requests must be with https (forget this after a year)
       res.setHeader("Referrer-Policy", "origin");  //  Don't write the refer unless the request comes from the origin
       
 
@@ -248,6 +248,8 @@ var flow=( function*(){
       var objUrl=url.parse(req.url),  pathNameOrg=objUrl.pathname;
       var wwwReq=domainName+pathNameOrg;
       
+        // Check if cross site request
+      //var boCrossSite=domainName==;
       
       var cookies = parseCookies(req);
       req.cookies=cookies;
@@ -290,6 +292,8 @@ var flow=( function*(){
         yield* setRedis(req.flow, redisVarSessionMain, 1, maxAdminRUnactivityTime); 
         req.sessionCache={};
       }
+      
+      
       
       var wwwSite=domainName, pathName=pathNameOrg;
 
@@ -357,24 +361,25 @@ var flow=( function*(){
   }
 
 
+  if(boUseSelfSignedCert){
+    //if(typeof TLSData=='undefined' || !(TLSData instanceof Array) || TLSData.length==0) {  console.error("typeof TLSData=='undefined' || !(TLSData instanceof Array) || TLSData.length==0");  return;}
+    //TLSDataExtend.call(TLSData);
+    //var options = {
+      //SNICallback: function(domain, cb) {
+        //console.log('SNI '+domain); 
+        ////return TLSData.getContext(domain);
+        //cb(null, TLSData.getContext(domain));
+      //},
+      //key: TLSData[0].strKey,
+      //cert: TLSData[0].strCert  
+    //};
+    
+    const options = { key: fs.readFileSync('0SelfSignedCert/server.key'), cert: fs.readFileSync('0SelfSignedCert/server.cert') };
 
-  
-  if(boLocal){
-    if(typeof TLSData!='undefined' && TLSData instanceof Array && TLSData.length){
-      TLSDataExtend.call(TLSData);
-      var options = {
-        SNICallback: function(domain, cb) {
-          console.log('SNI '+domain); 
-          //return TLSData.getContext(domain);
-          cb(null, TLSData.getContext(domain));
-        },
-        key: TLSData[0].strKey,
-        cert: TLSData[0].strCert  
-      }; 
-      https.createServer(options, handler).listen(portS);   console.log("Listening to HTTPS requests at port " + portS);
-    }
-  } 
-  http.createServer(handler).listen(port);   console.log("Listening to HTTP requests at port " + port);
+    https.createServer(options, handler).listen(port);   console.log("Listening to HTTPS requests at port " + port);
+  } else{
+    http.createServer(handler).listen(port);   console.log("Listening to HTTP requests at port " + port);
+  }
 
 })(); flow.next();
 

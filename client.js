@@ -808,7 +808,7 @@ var diffBackUpDivExtend=function(el){
 
       // Check if it is OK to abort
     if(StrFetch.length==0 && StrDeleted.length==0) {
-      var li=createElement('li').myText('Aborting since your local files are (seem (based on filesizes/modTimes)) up to date.'); ul.append(li); progress.detach();
+      var li=createElement('li').myText('Aborting since your local files are up to date.'); ul.append(li); progress.detach();
       return;
     }
 
@@ -2426,8 +2426,8 @@ var editDivExtend=function(el){
   el.templateButton=templateButton;
   var upLoadButton=createElement('button').myAppend('Upload image').on('click',function(){  doHistPush({view:uploadUserDiv}); uploadUserDiv.setVis();}).css({'float':'right'});
   
-  var menuB=createElement('div').myAppend(el.spanSave,templateButton,' ',upLoadButton).addClass('fixWidth').css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'1em auto 0'});
-
+  var menuB=createElement('div').myAppend(el.spanSave,templateButton).addClass('fixWidth').css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'1em auto 0'});
+  //,' ',upLoadButton
     // menuA
   //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
   //var spanLabel=createElement('span').myText('Edit').css({'float':'right',margin:'0.2em 0 0 0'});  
@@ -4200,12 +4200,17 @@ if(objPage.boOR==0) {
 } else {   var vec=[['specSetup',{}]];   majax(oAJAX,vec); pageView.setVis(); } 
 
 
-//zip.workerScriptsPath = flFoundOnTheInternetFolder+'/';
-var scriptZip=createElement("script").prop({src:uZip}).on('load',function(){
+//var scriptZip=createElement("script").prop({src:uZip}).on('load',function(){
+  //zip.workerScriptsPath = flFoundOnTheInternetFolder+'/';
+//});
+//var scriptSha1=createElement("script").prop({src:uSha1});
+//document.head.myAppend(scriptZip, scriptSha1);
+//import(uZip).then(function(zipT){ zip=zipT; zip.workerScriptsPath = flFoundOnTheInternetFolder+'/'; });
+(async function(){
+  await import(uZip);
   zip.workerScriptsPath = flFoundOnTheInternetFolder+'/';
-});
-var scriptSha1=createElement("script").prop({src:uSha1});
-document.head.myAppend(scriptZip, scriptSha1);
+})();
+import(uSha1);
 
 window.divReCaptcha=divReCaptchaExtend(createElement('div'));
 editDiv.spanSave.prepend(divReCaptcha);

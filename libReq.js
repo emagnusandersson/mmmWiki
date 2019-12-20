@@ -444,7 +444,8 @@ app.reqIndex=function*() {
     // Include stylesheets
   var pathTmp='/stylesheets/style.css', vTmp=CacheUri[pathTmp].eTag; if(boDbgT) vTmp=0;    Str.push('<link rel="stylesheet" href="'+uCommon+pathTmp+'?v='+vTmp+'" type="text/css">');
 
-  const uZip=uCommon+'/lib/foundOnTheInternet/zip.js', uSha1=uCommon+'/lib/foundOnTheInternet/sha1.js';
+  //const uZip=uCommon+'/lib/foundOnTheInternet/zip.js', uSha1=uCommon+'/lib/foundOnTheInternet/sha1.js';
+  const uZip=uCommon+'/lib/foundOnTheInternet/zip.js?v='+0, uSha1=uCommon+'/lib/foundOnTheInternet/sha1.js?v='+0;
   //Str.push('<script src="'+uZip+'" async defer></script>');
   //Str.push('<script src="'+uSha1+'" async defer></script>');
   //Str.push('<script type="module" src="'+uCommon+'/lib/foundOnTheInternet/sha256lib.js"></script>');
@@ -567,6 +568,7 @@ function indexAssign(){
 }
 
 
+
 /******************************************************************************
  * reqStatic
  ******************************************************************************/
@@ -574,6 +576,13 @@ app.reqStatic=function*() {
   var req=this.req, res=this.res;
   //var site=req.site, siteName=site.siteName;
   var pathName=req.pathName;
+
+
+  //var RegAllowedOriginOfStaticFile=[RegExp("^https\:\/\/(closeby\.market|gavott\.com)")];
+  //var RegAllowedOriginOfStaticFile=[RegExp("^http\:\/\/(localhost|192\.168\.0)")];
+  var RegAllowedOriginOfStaticFile=[];
+  setAccessControlAllowOrigin(req, res, RegAllowedOriginOfStaticFile);
+  if(req.method=='OPTIONS'){ res.end(); return ;}
 
   var eTagIn=getETag(req.headers);
   var keyCache=pathName; //if(pathName==='/'+leafSiteSpecific) keyCache=siteName+keyCache;
@@ -718,7 +727,7 @@ app.reqMediaImageThumb=function*(){
     var {data}=results[0];
     
       // If this "thumb" has been requested before and its been calculated that the thumb is bigger than the original (indicated by data.length==0) 
-    if(data.length==0){  res.out301Loc(nameCanonical); return;    }  
+    if(data.length==0){  res.out301Loc(nameCanonical); return;    }   //res.setHeader(); 
     boGotStored=1;
   } 
 
