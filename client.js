@@ -4195,7 +4195,7 @@ editDiv.spanSave.toggle(Boolean(objPage.boOW));
 var boMakeFirstScroll=1;
 
 
-if(objPage.boOR==0) { 
+if(objPage.boOR==0) { // If private
   if(boARLoggedIn){  var vec=[['pageLoad',{}, function(data){pageView.setVis();}]];   majax(oAJAXCacheable,vec); pageView.setVis();  }   else vLoginDiv.setVis();  
 } else {   var vec=[['specSetup',{}]];   majax(oAJAX,vec); pageView.setVis(); } 
 

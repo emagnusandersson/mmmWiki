@@ -15,11 +15,13 @@ app.reqBU=function*(strArg) {
   var req=this.req, res=this.res;
   var flow=req.flow;
   
-  if(!req.boCookieStrictOK) { res.outCode(401, "Strict cookie not set");  return;   }
+  //if(!req.boCookieStrictOK) { res.outCode(401, "Strict cookie not set");  return;   }
   
       // Conditionally push deadlines forward
-  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
-  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+  var [err,value]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=value;
+  var [err,value]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=value;
+  
 
   if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
 
@@ -116,11 +118,13 @@ app.reqBUMeta=function*(strArg) {
   var req=this.req, res=this.res;
   var flow=req.flow;
 
-  if(!req.boCookieStrictOK) {res.outCode(401, "Strict cookie not set");  return;  }
+  //if(!req.boCookieStrictOK) {res.outCode(401, "Strict cookie not set");  return;  }
   
         // Conditionally push deadlines forward
-  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
-  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+  var [err,value]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=value;
+  var [err,value]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=value;
+  
   if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
   
 
@@ -214,11 +218,12 @@ app.reqBUMetaSQL=function*() {
   var req=this.req, res=this.res;
   var flow=req.flow;
 
-  if(!req.boCookieStrictOK) {res.outCode(401, "Strict cookie not set");  return;  }
+  //if(!req.boCookieStrictOK) {res.outCode(401, "Strict cookie not set");  return;  }
   
         // Conditionally push deadlines forward
-  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
-  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+  var [err,value]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=value;
+  var [err,value]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=value;
   if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
   
 
@@ -294,9 +299,10 @@ app.reqIndex=function*() {
   }
   
 
-      // Conditionally push deadlines forward
-  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
-  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+    // Conditionally push deadlines forward
+  var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+  var [err,value]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=value;
+  var [err,value]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=value;
 
   // Private:
   //                                                                 index.html  first ajax (pageLoad)
@@ -342,10 +348,49 @@ app.reqIndex=function*() {
   else {
     var {boRedirectCase, pageRedir}=results[5][0]; if(boRedirectCase) {res.out301(pageRedir);  return;};
     if(!objPage.boOR){   // Private
-      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0"); // no-cache    
-      var CSRFCode=randomHash(); 
-      var redisVar=req.sessionID+'_'+queredPage+'_CSRF';
-      var [err,tmp]=yield* cmdRedis(flow, 'SET',[redisVar,CSRFCode,'EX', maxAdminRUnactivityTime]);
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0"); // no-cache
+      
+      
+        // Setup sessionIDCSRF-cookie
+        // Check if incoming cookie is valid, and what CSRFCode is stored under it.
+      var sessionIDCSRF=null, CSRFCode=null;
+      if('sessionIDCSRF' in req.cookies) { 
+        sessionIDCSRF=req.cookies.sessionIDCSRF;
+        var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+        var [err,CSRFCode]=yield* cmdRedis(flow, 'EVAL', [luaCountFunc, 1, sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
+        if(!CSRFCode) sessionIDCSRF=randomHash(); // To avoid session fixation
+      } else sessionIDCSRF=randomHash();
+
+       
+      var CSRFCode=randomHash();
+      
+      //yield* setRedis(req.flow, sessionIDCSRF+'_CSRF', CSRFCode, maxAdminRUnactivityTime); 
+      var [err,tmp]=yield* cmdRedis(flow, 'SET', [sessionIDCSRF+'_CSRF', CSRFCode, 'EX', maxAdminRUnactivityTime]);
+      
+      res.setHeader("Set-Cookie", "sessionIDCSRF="+sessionIDCSRF+strCookiePropLax);
+      
+
+      
+        //// Setup sessionIDStrict-cookie
+      //var sessionIDStrict=null, boCookieStrictOK=false, redisVarStrict;
+      //if('sessionIDStrict' in req.cookies) {
+        //sessionIDStrict=req.cookies.sessionIDStrict;  redisVarStrict=sessionIDStrict+'_Strict';
+        //var [err, boCookieStrictOK]=yield* cmdRedis(req.flow, 'EXISTS', redisVarStrict);
+      //} 
+      
+      //if(!boCookieStrictOK) {
+        //sessionIDStrict=randomHash();  redisVarStrict=sessionIDStrict+'_Strict';
+        //yield* setRedis(req.flow, redisVarStrict, 1, maxAdminRUnactivityTime); 
+        //req.sessionCache={};
+      //} else{
+        //var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+        //var [err, value]=yield* cmdRedis(req.flow, 'EVAL', [luaCountFunc, 1, redisVarStrict, maxAdminRUnactivityTime]); req.sessionCache=JSON.parse(value)
+      //} 
+      //res.setHeader("Set-Cookie", "sessionIDStrict="+sessionIDStrict+strCookiePropStrict);
+      
+      
+      
+      
     }else {   // Public
       var {boTalkExist}=results[6][0];
       if(results[7].length==0) { res.out500('no versions?!?'); return;   }
@@ -971,15 +1016,16 @@ app.reqMonitor=function*(){
   var req=this.req, res=this.res;
   var flow=req.flow;
   
-  if(!req.boCookieLaxOK) {res.outCode(401, "Lax cookie not set");  return;  }
+  //if(!req.boCookieLaxOK) {res.outCode(401, "Lax cookie not set");  return;  }
   
   res.removeHeader("Content-Security-Policy"); // Allow to be shown in frame, iframe, embed, object
   //res.removeHeader("X-Content-Type-Options"); // Allow to be shown in frame, iframe, embed, object
   
   
         // Conditionally push deadlines forward
-  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
-  //var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+  var [err,value]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=value;
+  
   if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in as admin read'); return;}
 
   if(!objOthersActivity){  //  && boPageBUNeeded===null && boImageBUNeeded===null
@@ -1018,11 +1064,12 @@ app.reqStat=function*(){
   var req=this.req, res=this.res;
   var flow=req.flow;
 
-  if(!req.boCookieLaxOK) {res.outCode(401, "Lax cookie not set");  return;  }
+  //if(!req.boCookieLaxOK) {res.outCode(401, "Lax cookie not set");  return;  }
   
         // Conditionally push deadlines forward
-  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);   this.boARLoggedIn=tmp;
-  //var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE',[this.req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+  var [err,value]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=value;
+  
   if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in as admin read'); return;}
   
   

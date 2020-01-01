@@ -254,44 +254,34 @@ var flow=( function*(){
       var cookies = parseCookies(req);
       req.cookies=cookies;
 
-      req.boCookieNormalOK=req.boCookieLaxOK=req.boCookieStrictOK=false;
+      req.boCookieDDOSOK=false; //req.boCookieLaxOK=req.boCookieStrictOK=
       
-        // Check if a valid sessionID-cookie came in
-      var boSessionCookieInInput='sessionIDNormal' in cookies, sessionID=null, redisVarSessionMain;
-      if(boSessionCookieInInput) {
-        sessionID=cookies.sessionIDNormal;  redisVarSessionMain=sessionID+'_Main';
-        var [err, tmp]=yield* cmdRedis(req.flow, 'EXISTS', redisVarSessionMain); req.boCookieNormalOK=tmp;
-      } 
-      
-      if(req.boCookieNormalOK){
-          // Check if Lax / Strict -cookies are OK
-        req.boCookieLaxOK=('sessionIDLax' in cookies) && cookies.sessionIDLax===sessionID;
-        req.boCookieStrictOK=('sessionIDStrict' in cookies) && cookies.sessionIDStrict===sessionID;
-        var redisVarDDOSCounter=sessionID+'_Counter';
-      }else{
-        sessionID=randomHash();  redisVarSessionMain=sessionID+'_Main';
-        var ipClient=getIP(req), redisVarDDOSCounter=ipClient+'_Counter';
+        // Check if a valid sessionIDDDos-cookie came in
+      var sessionIDDDos=null, redisVarDDos;
+      if('sessionIDDDos' in cookies) {
+        sessionIDDDos=cookies.sessionIDDDos;  redisVarDDos=sessionIDDDos+'_DDOS';
+        var [err, tmp]=yield* cmdRedis(req.flow, 'EXISTS', redisVarDDos); req.boCookieDDOSOK=tmp;
       }
+        // If non-valid sessionIDDDos, then create a new one.
+      if(!req.boCookieDDOSOK) { sessionIDDDos=randomHash();  redisVarDDos=sessionIDDDos+'_DDOS'; }
       
-        // Increase DDOS counter 
+        // Increase redisVarDDos 
       var luaCountFunc=`local c=redis.call('INCR',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-      var [err, intCount]=yield* cmdRedis(req.flow, 'EVAL',[luaCountFunc, 1, redisVarDDOSCounter, tDDOSBan]);
+      var [err, intCount]=yield* cmdRedis(req.flow, 'EVAL',[luaCountFunc, 1, redisVarDDos, tDDOSBan]);
+      
+        // Increase redisVarDDosIP.
+      var ipClient=getIP(req), redisVarDDosIP=ipClient+'_DDOS';
+      var luaCountFunc=`local c=redis.call('INCR',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+      var [err, intCountIP]=yield* cmdRedis(req.flow, 'EVAL',[luaCountFunc, 1, redisVarDDosIP, tDDOSIPBan]);
+        
+      res.setHeader("Set-Cookie", "sessionIDDDos="+sessionIDDDos+strCookiePropNormal);
+      
+        // If to many, then ban
+      if(req.boCookieDDOSOK) {  var intCountT=intCount, intDDOSMaxT=intDDOSMax, tDDOSBanT=tDDOSBan;   }   else   {    intCountT=intCountIP; intDDOSMaxT=intDDOSIPMax; tDDOSBanT=tDDOSIPBan;   }
+      if(intCountT>intDDOSMaxT) {res.outCode(429,"Too Many Requests ("+intCountT+"), wait "+tDDOSBanT+"s\n"); return; }
       
       
-      res.setHeader("Set-Cookie", ["sessionIDNormal="+sessionID+strCookiePropNormal, "sessionIDLax="+sessionID+strCookiePropLax, "sessionIDStrict="+sessionID+strCookiePropStrict]);
-       
-        // Check if to many requests comes in a short time (DDOS)
-      if(intCount>intDDOSMax) {res.outCode(429,"Too Many Requests ("+intCount+"), wait "+tDDOSBan+"s\n"); return; }
-      
-      
-        // Refresh / create  redisVarSessionMain
-      if(req.boCookieNormalOK){
-        var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-        var [err, value]=yield* cmdRedis(req.flow, 'EVAL',[luaCountFunc, 1, redisVarSessionMain, maxAdminRUnactivityTime]); req.sessionCache=JSON.parse(value)
-      } else { 
-        yield* setRedis(req.flow, redisVarSessionMain, 1, maxAdminRUnactivityTime); 
-        req.sessionCache={};
-      }
+
       
       
       
@@ -327,7 +317,7 @@ var flow=( function*(){
       var strScheme='http'+(boTLS?'s':''),   strSchemeLong=strScheme+'://';
       //req.strSite=strSite; req.site=site;
       req.wwwSite=wwwSite;
-      req.sessionID=sessionID; req.objUrl=objUrl;    req.boTLS=boTLS;  req.strSchemeLong=strSchemeLong;    req.pathName=pathName; 
+      req.objUrl=objUrl;    req.boTLS=boTLS;  req.strSchemeLong=strSchemeLong;    req.pathName=pathName; 
       
       
       if(levelMaintenance){res.outCode(503, "Down for maintenance, try again in a little while."); return;}

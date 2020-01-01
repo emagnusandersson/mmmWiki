@@ -181,6 +181,7 @@ app.delRedis=function*(flow, arr){
     // closebymarket
   //var StrSuffix=['_LoginIdP', '_LoginIdUser', '_UserInfoFrDB', '_Counter'];  var StrCaller=['index'], for(var i=0;i<StrCaller.length;i++){  StrSuffix.push('_CSRFCode'+ucfirst(StrCaller[i])); }
   //var err=yield* changeSessionId.call(this, sessionIDNew, StrSuffix);
+  //var err=yield* changeSessionId.call(this, 'sessionID', sessionIDNew, StrSuffix);
 app.changeSessionId=function*(sessionIDNew, StrSuffix){
   for(var i=0;i<StrSuffix.length;i++){
     var strSuffix=StrSuffix[i];
@@ -189,6 +190,49 @@ app.changeSessionId=function*(sessionIDNew, StrSuffix){
   }
   this.req.sessionID=sessionIDNew;
   return null;
+}
+app.changeSessionId=function*(strSessionIDOld, sessionIDNew, StrSuffix){
+  if(typeof StrSuffix=='string') StrSuffix=[StrSuffix];
+  for(var i=0;i<StrSuffix.length;i++){
+    var strSuffix=StrSuffix[i];
+    var redisVarO=this.req[strSessionIDOld]+strSuffix, redisVarN=sessionIDNew+strSuffix; 
+    var [err,value]=yield* cmdRedis(this.req.flow, 'rename', [redisVarO, redisVarN]); //if(err) return err;
+  }
+  this.req[strSessionIDOld]=sessionIDNew;
+  return null;
+}
+app.changeSessionId=function*(StrSessionIDOld, StrSuffix){
+  if(typeof StrSessionIDOld=='string') StrSessionIDOld=[StrSessionIDOld];
+  if(typeof StrSuffix=='string') StrSuffix=[StrSuffix];
+  for(var i=0;i<StrSuffix.length;i++){
+    var sessionIDNew=randomHash();
+    var strSuffix=StrSuffix[i];
+    var redisVarO=this.req[strSessionIDOld]+strSuffix, redisVarN=sessionIDNew+strSuffix; 
+    var [err,value]=yield* cmdRedis(this.req.flow, 'rename', [redisVarO, redisVarN]); //if(err) return err;
+  }
+  this.req[strSessionIDOld]=sessionIDNew;
+  return null;
+}
+app.changeSessionId=function*(sessionID, strSuffix){
+  
+  var sessionIDOld=sessionID, strSuffix='_adminRTimer', sessionID=randomHash();
+  var redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
+  var [err,value]=yield* cmdRedis(this.req.flow, 'rename', [redisVarO, redisVarN]); //if(err) return err;
+  
+  var sessionIDOld=sessionID, strSuffix='_adminRTimer', sessionID=randomHash();
+  var redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
+  var [err,value]=yield* cmdRedis(this.req.flow, 'rename', [redisVarO, redisVarN]); //if(err) return err;
+  
+  this.req[strSession]=sessionID;
+  return null;
+}
+
+app.changeSessionId=function*(sessionID, strSuffix){
+  var sessionIDOld=sessionID, sessionID=randomHash();
+  var redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
+  var [err,value]=yield* cmdRedis(this.req.flow, 'rename', [redisVarO, redisVarN]); if(err) return [err];
+  //this.req[strSession]=sessionID;
+  return [null, sessionID];
 }
 
 

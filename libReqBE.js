@@ -102,11 +102,13 @@ ReqBE.prototype.go=function*(){
   
   try{ var beArr=JSON.parse(jsonInput); }catch(e){ this.mesEO(e);  return; }
   
-  if(!req.boCookieStrictOK) {this.mesEO(new Error('Strict cookie not set'));  return;   }
+  //if(!req.boCookieStrictOK) {this.mesEO(new Error('Strict cookie not set'));  return;   }
   
     // Get boARLoggedIn / boAWLoggedIn.  Conditionally push deadlines forward ("expire" returns 1 if timer was set or 0 if variable doesn't exist)
-  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE', [req.sessionID+'_adminRTimer',maxAdminRUnactivityTime]);  this.boARLoggedIn=tmp;
-  var [err,tmp]=yield* cmdRedis(flow, 'EXPIRE', [req.sessionID+'_adminWTimer',maxAdminWUnactivityTime]);  this.boAWLoggedIn=tmp;
+  var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+  var [err,value]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  var [err,value]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+  
   
 
   //res.setHeader("Content-type", MimeType.json);
@@ -140,7 +142,8 @@ ReqBE.prototype.go=function*(){
     // Require POST-request for most combinations
   if(!boSinglePageLoad && req.method=='GET')  {this.mesEO(new Error("GET-request is not allowed."));  return;}
   
-  if(boDbg) boCheckCSRF=0;
+  //if(boDbg) boCheckCSRF=0;
+  
   // Private:
   //                                                                 index.html  first ajax (pageLoad)
   //Shall look the same (be cacheable (not include boARLoggedIn etc))     no           yes
@@ -150,17 +153,42 @@ ReqBE.prototype.go=function*(){
   //Shall look the same (be cacheable (not include boARLoggedIn etc))     yes          no
 
 
+  var queredPage=this.queredPage;
     // cecking/set CSRF-code
-  var redisVar=req.sessionID+'_'+this.queredPage+'_CSRF', CSRFCode;
+    
+  
+      
+  var CSRFCode=null;
   if(boCheckCSRF){
     if(!CSRFIn){ this.mesO('CSRFCode not set (try reload page)'); return;}
-    var [err,tmp]=yield* cmdRedis(flow, 'GET', [redisVar]); 
-    if(CSRFIn!==tmp){ this.mesO('CSRFCode err (try reload page)'); return;}
+    
+    if(!('sessionIDCSRF' in req.cookies)) { this.mesO('sessionIDCSRF cookie not set (try reload page)'); return;}
+    var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+    var [err,CSRFCode]=yield* cmdRedis(flow, 'EVAL', [luaCountFunc, 1, req.cookies.sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
+     
+
+    if(!CSRFCode) { this.mesO('No such CSRF code stored for that sessionIDCSRF (try reload page)'); return;}
+    if(CSRFIn!==CSRFCode){ this.mesO('CSRFCode not matching store value (try reload page)'); return;}
+ 
   }
+  
   if(boSetNewCSRF) {
+    if(boCheckCSRF) { var sessionIDCSRF=req.cookies.sessionIDCSRF;}
+    else{
+      var sessionIDCSRF=null, CSRFCode=null;
+      if('sessionIDCSRF' in req.cookies) { 
+        sessionIDCSRF=req.cookies.sessionIDCSRF;
+        var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+        var [err,CSRFCode]=yield* cmdRedis(flow, 'EVAL', [luaCountFunc, 1, sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
+        if(!CSRFCode) sessionIDCSRF=randomHash(); // To avoid session fixation
+      }  else sessionIDCSRF=randomHash();
+    } 
+
     var CSRFCode=randomHash();
-    var [err,tmp]=yield* cmdRedis(flow, 'SET', [redisVar,CSRFCode,'EX', maxAdminRUnactivityTime]);
+    var [err,tmp]=yield* cmdRedis(flow, 'SET', [sessionIDCSRF+'_CSRF', CSRFCode, 'EX', maxAdminRUnactivityTime]);
     this.GRet.CSRFCode=CSRFCode;
+    
+    res.setHeader("Set-Cookie", "sessionIDCSRF="+sessionIDCSRF+strCookiePropLax); 
   }
   
 
@@ -189,21 +217,57 @@ ReqBE.prototype.go=function*(){
 
 
 ReqBE.prototype.vLogin=function*(inObj){
-  var req=this.req;
+  var req=this.req, flow=req.flow;
   var GRet=this.GRet;
   var Ou={};  
   if(this.boARLoggedIn!=1 ){
     if('pass' in inObj) {
       var vPass=inObj.pass; 
       if(vPass==aRPassword){
-        var sessionIDOld=req.sessionID;
-        var [err,tmp]=yield* cmdRedis(req.flow, 'SET', [sessionIDOld+'_adminRTimer',1,'EX', maxAdminRUnactivityTime]);
+        //var sessionIDOld=req.sessionID;
+        //var [err,tmp]=yield* cmdRedis(req.flow, 'SET', [sessionIDOld+'_adminRTimer',1,'EX', maxAdminRUnactivityTime]);
         this.boARLoggedIn=1; this.mes('Logged in (viewing)');
           // Changing session-token at login (as recomended by security recomendations) (to prevent session fixation)
+        //var sessionIDNew=randomHash();
+        //var StrSuffix=['_adminRTimer', '_adminWTimer', '_CSRF']; //, '_Counter' '_'+this.queredPage+
+        //var Str=['sessionIDAdminR', 'sessionIDAdminW', 'sessionIDCSRF'];
+        //var err=yield* changeSessionId.call(this, sessionIDNew, StrSuffix);
+        //var err=yield* changeSessionId.call(this, 'sessionID', sessionIDNew, StrSuffix);
+        //var err=yield* changeSessionId.call(this, 'sessionID', StrSuffix);
+        //var [err, req.sessionID]=yield* changeSessionId.call(this, req.sessionID, '_adminRTimer'); if(err) return [err];
+        //var [err, req.sessionID]=yield* changeSessionId.call(this, req.sessionID, '_adminWTimer'); if(err) return [err];
+        
+        //var sessionIDOld=sessionID, sessionID=randomHash();
+        //var strSuffix='_adminRTimer', redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
+        //var [err,value]=yield* cmdRedis(req.flow, 'rename', [redisVarO, redisVarN]); if(err) return [err];
+        //var strSuffix='_adminWTimer', redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
+        //var [err,value]=yield* cmdRedis(req.flow, 'rename', [redisVarO, redisVarN]); if(err) return [err];
+        
+        if('sessionID' in req.cookies) {
+          var sessionIDOld=req.cookies.sessionID;
+          var [err]=yield* cmdRedis(flow, 'DEL', [sessionIDOld+'_adminRTimer', sessionIDOld+'_adminWTimer']);
+        }
         var sessionID=randomHash();
-        var StrSuffix=['_Main', '_adminRTimer', '_adminWTimer', '_Counter', '_'+this.queredPage+'_CSRF'];
-        var err=yield* changeSessionId.call(this, sessionID, StrSuffix);
-        this.res.setHeader("Set-Cookie", ["sessionIDNormal="+sessionID+strCookiePropNormal, "sessionIDLax="+sessionID+strCookiePropLax, "sessionIDStrict="+sessionID+strCookiePropStrict]);
+        var [err]=yield* cmdRedis(flow, 'SET', [sessionID+'_adminRTimer', 1, 'EX', maxAdminRUnactivityTime]);
+        //var luaCountFunc=`local redis.call('DEL',KEYS[1]); redis.call('SET', ARGV[1], 1, 'EX', ARGV[2]);`;
+        var arrCookie=["sessionID="+sessionID+strCookiePropLax];
+        //var luaCountFunc=`local c=redis.call('GET',KEYS[1]); if(c>0) then redis.call('RENAME', KEYS[1], ARGV[1]); return c`;
+        //var [err,CSRFCode]=yield* cmdRedis(flow, 'EVAL', [luaCountFunc, 1, req.cookies.sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
+        
+        if('sessionIDCSRF' in req.cookies) {
+          //var [err]=yield* changeSessionId.call(this, req.cookies.sessionIDCSRF, '_CSRF'); if(err) return [err];
+          var sessionIDOld=req.cookies.sessionIDCSRF, sessionID=randomHash();
+          var strSuffix='_CSRF', redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
+          var [err,value]=yield* cmdRedis(req.flow, 'rename', [redisVarO, redisVarN]); if(err) return [err];
+          var boKeyExist=1;
+          if(err){
+            if(err.message!="ERR no such key") return [err];
+            boKeyExist=false;
+          }
+          if(boKeyExist) arrCookie.push("sessionIDCSRF="+sessionID+strCookiePropLax);
+          
+        }
+        this.res.setHeader("Set-Cookie", arrCookie);
       } else if(vPass=='')  this.mes('Password needed'); else this.mes('Wrong password');
     }
     else {this.mes('Password needed'); }
@@ -213,21 +277,50 @@ ReqBE.prototype.vLogin=function*(inObj){
 }
 
 ReqBE.prototype.aLogin=function*(inObj){
-  var req=this.req;
+  var req=this.req, flow=req.flow;
   var GRet=this.GRet;
   var Ou={};  
   if(this.boAWLoggedIn!=1 ){
     if('pass' in inObj) {
       var aPass=inObj.pass; 
       if(aPass==aWPassword) {
-        var sessionIDOld=req.sessionID;
-        var [err,tmp]=yield* cmdRedis(req.flow, 'SET', [sessionIDOld+'_adminWTimer',1,'EX', maxAdminWUnactivityTime]);
+        //var sessionIDOld=req.sessionID;
+        //var [err,tmp]=yield* cmdRedis(req.flow, 'SET', [sessionIDOld+'_adminWTimer',1,'EX', maxAdminWUnactivityTime]);
         this.boARLoggedIn=1; this.boAWLoggedIn=1; this.mes('Logged in');
           // Changing session-token at login (as recomended by security recomendations) (to prevent session fixation)
+        //var sessionIDNew=randomHash();
+        //var StrSuffix=['_adminRTimer', '_adminWTimer', '_CSRF']; //, '_Counter' '_'+this.queredPage+
+        ////var err=yield* changeSessionId.call(this, sessionIDNew, StrSuffix);
+        //var err=yield* changeSessionId.call(this, 'sessionID', sessionIDNew, StrSuffix);
+        
+        
+        if('sessionID' in req.cookies) {
+          var sessionIDOld=req.cookies.sessionID;
+          var [err]=yield* cmdRedis(flow, 'DEL', [sessionIDOld+'_adminRTimer', sessionIDOld+'_adminWTimer']);
+        }
         var sessionID=randomHash();
-        var StrSuffix=['_Main', '_adminRTimer', '_adminWTimer', '_Counter', '_'+this.queredPage+'_CSRF'];
-        var err=yield* changeSessionId.call(this, sessionID, StrSuffix);
-        this.res.setHeader("Set-Cookie", ["sessionIDNormal="+sessionID+strCookiePropNormal, "sessionIDLax="+sessionID+strCookiePropLax, "sessionIDStrict="+sessionID+strCookiePropStrict]);
+        var [err]=yield* cmdRedis(flow, 'SET', [sessionID+'_adminRTimer', 1, 'EX', maxAdminRUnactivityTime]);
+        var [err]=yield* cmdRedis(flow, 'SET', [sessionID+'_adminWTimer', 1, 'EX', maxAdminWUnactivityTime]);
+        //var luaCountFunc=`local redis.call('DEL',KEYS[1]); redis.call('SET', ARGV[1], 1, 'EX', ARGV[2]);`;
+        var arrCookie=["sessionID="+sessionID+strCookiePropLax];
+        //var luaCountFunc=`local c=redis.call('GET',KEYS[1]); if(c>0) then redis.call('RENAME', KEYS[1], ARGV[1]); return c`;
+        //var [err,CSRFCode]=yield* cmdRedis(flow, 'EVAL', [luaCountFunc, 1, req.cookies.sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
+        
+        if('sessionIDCSRF' in req.cookies) {
+          //var [err]=yield* changeSessionId.call(this, req.cookies.sessionIDCSRF, '_CSRF'); if(err) return [err];
+          var sessionIDOld=req.cookies.sessionIDCSRF, sessionID=randomHash();
+          var strSuffix='_CSRF', redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
+          var [err,value]=yield* cmdRedis(req.flow, 'rename', [redisVarO, redisVarN]); if(err) return [err];
+          var boKeyExist=1;
+          if(err){
+            if(err.message!="ERR no such key") return [err];
+            boKeyExist=false;
+          }
+          if(boKeyExist) arrCookie.push("sessionIDCSRF="+sessionID+strCookiePropLax);
+        }
+        this.res.setHeader("Set-Cookie", arrCookie);
+        
+        
         if(objOthersActivity) extend(objOthersActivity,objOthersActivityDefault);
       }
       else if(aPass=='') {this.mes('Password needed');}
