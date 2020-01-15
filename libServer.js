@@ -108,9 +108,9 @@ app.parse=function*(flow, arg) {
   mPa.objExistingSub=objExistingSub; mPa.setArrSub();      mPa.endParse();
   var strHtmlText=mPa.text, arrSub=mPa.arrSub;
   
-  //var eTag=md5(strHtmlText +JSON.stringify(objTemplateE) +arg.tMod +arg.boOR +arg.boOW +arg.boSiteMap +arg.boTalkExist +JSON.stringify(arg.arrVersionCompared) +JSON.stringify(arg.matVersion));
+  //var strHash=md5(strHtmlText +JSON.stringify(objTemplateE) +arg.tMod +arg.boOR +arg.boOW +arg.boSiteMap +arg.boTalkExist +JSON.stringify(arg.arrVersionCompared) +JSON.stringify(arg.matVersion));
 
-  //var Ou={StrTemplate:StrTemplate, objTemplateE:objTemplateE, StrSub:StrSub, StrSubImage:StrSubImage, strHtmlText:strHtmlText, arrSub:arrSub, eTag:eTag};
+  //var Ou={StrTemplate:StrTemplate, objTemplateE:objTemplateE, StrSub:StrSub, StrSubImage:StrSubImage, strHtmlText:strHtmlText, arrSub:arrSub, strHash:strHash};
   var Ou=[objTemplateE, StrSubImage, strHtmlText, arrSub];
   return [null, Ou];
 }
@@ -141,7 +141,7 @@ app.createSubImageStr=function(StrT){
   return strSubQ;
 }
 
-//createSaveByReplaceSQL=function(siteName, wwwSite, strName, strEditText, strHtmlText, eTag, arrSub, StrSubImage){ 
+//createSaveByReplaceSQL=function(siteName, wwwSite, strName, strEditText, strHtmlText, strHash, arrSub, StrSubImage){ 
   //var [strSubQ,arrSubV]=createSubStr(arrSub);
   //var strSubImageQ=createSubImageStr(StrSubImage);
   //var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
@@ -150,12 +150,12 @@ app.createSubImageStr=function(StrT){
   //Sql.push("CALL "+strDBPrefix+"saveByReplace(?,?,?,?,?,?,@Omess);");  //  COMMIT;
   //Sql.push("SELECT @Omess AS mess");
   //var sql=Sql.join('\n'); 
-  //var Val=array_merge(arrSubV, StrSubImage, [siteName, wwwSite, strName, strEditText, strHtmlText, eTag]);
+  //var Val=array_merge(arrSubV, StrSubImage, [siteName, wwwSite, strName, strEditText, strHtmlText, strHash]);
   ////return {sql:sql,Val:Val,nEndingResults:1};
   //return {sql:sql,Val:Val};
 //}
 
-app.createSaveByAddSQL=function(wwwSite, strName, summary, signature, strEditText, strHtmlText, eTag, arrSub, StrSubImage){ 
+app.createSaveByAddSQL=function(wwwSite, strName, summary, signature, strEditText, strHtmlText, strHash, arrSub, StrSubImage){ 
   var [strSubQ,arrSubV]=createSubStr(arrSub);
   var strSubImageQ=createSubImageStr(StrSubImage);
   //var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
@@ -166,11 +166,11 @@ app.createSaveByAddSQL=function(wwwSite, strName, summary, signature, strEditTex
   Sql.push("DROP TEMPORARY TABLE IF EXISTS tmpSubNewImage;", sqlTmpSubNewImageCreate+';', strSubImageQ);
   Sql.push("CALL "+strDBPrefix+"saveByAdd(?,?,?,?,?,?,?);"); //  COMMIT;
   var sql=Sql.join('\n');
-  var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, summary, signature, strEditText, strHtmlText, eTag]);
+  var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, summary, signature, strEditText, strHtmlText, strHash]);
   return {sql:sql,Val:Val,nEndingResults:1};
 }
 
-app.createSetNewCacheSQL=function(wwwSite, strName, rev, strHtmlText, eTag, arrSub, StrSubImage){
+app.createSetNewCacheSQL=function(wwwSite, strName, rev, strHtmlText, strHash, arrSub, StrSubImage){
   var [strSubQ,arrSubV]=createSubStr(arrSub);
   var strSubImageQ=createSubImageStr(StrSubImage);
   //var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
@@ -181,7 +181,7 @@ app.createSetNewCacheSQL=function(wwwSite, strName, rev, strHtmlText, eTag, arrS
   Sql.push("DROP TEMPORARY TABLE IF EXISTS tmpSubNewImage;", sqlTmpSubNewImageCreate+';', strSubImageQ);
   Sql.push("CALL "+strDBPrefix+"setNewCache(?,?,?,?,?);"); //  COMMIT;
   var sql=Sql.join('\n');
-  var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, rev, strHtmlText, eTag]);
+  var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, rev, strHtmlText, strHash]);
   return {sql:sql,Val:Val,nEndingResults:1}; 
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -212,8 +212,9 @@ app.writeCacheDynamicJS=function*(flow) {
 
 app.createCommonJS=function() {
   var Str=[];
-  var StrVar=['boDbg', 'urlPayPal', 'maxAdminWUnactivityTime', 'version', 'intMax', 'leafBE', 'strSalt', 'StrImageExt', 'flFoundOnTheInternetFolder', 'flLibImageFolder', 'maxGroupsInFeat', 'bFlip', 'PropPage', 'PropImage', 'StrOrderFiltPage', 'StrOrderFiltImage'];
-  var tmp=copySome({},app,StrVar)
+  var StrVar=['boDbg', 'urlPayPal', 'maxAdminWUnactivityTime', 'version', 'intMax', 'leafBE', 'strSalt', 'StrImageExt', 'flFoundOnTheInternetFolder', 'flLibImageFolder', 'maxGroupsInFeat', 'bFlip', 'PropPage', 'PropImage', 'StrOrderFiltPage', 'StrOrderFiltImage', 'nHash', 'strBTC', 'ppStoredButt'];
+  var tmp=copySome({},app,StrVar);
+  tmp.trash='trash';
   Str.push(`assignCommonJS=function(){
   var tmp=`+JSON.stringify(tmp)+`;
   extend(window,tmp);
@@ -225,10 +226,10 @@ app.createCommonJS=function() {
 app.regTalk=RegExp('^(talk|template_talk):','i');
 app.regTalkNTemplateNSite=RegExp('^(talk:|template:|template_talk:|)(?:([^:]+):)?(.+)','i');
 
-app.calcTalkName=function(queredPage){ // Examples: "abc"=>"talk:abc", "template:abc"=>"template_talk:abc", "talk:abc"=>"", "template_talk:abc"=>""
+app.calcTalkName=function(pageName){ // Examples: "abc"=>"talk:abc", "template:abc"=>"template_talk:abc", "talk:abc"=>"", "template_talk:abc"=>""
   var talkPage='';
-  if(!regTalk.test(queredPage)){
-    if(queredPage.substr(0,9)=='template:') talkPage='template_talk:'+queredPage; else talkPage='talk:'+queredPage;
+  if(!regTalk.test(pageName)){
+    if(pageName.substr(0,9)=='template:') talkPage='template_talk:'+pageName; else talkPage='talk:'+pageName;
   }
   return talkPage;
 }

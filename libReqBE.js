@@ -69,6 +69,11 @@ ReqBE.prototype.go=function*(){
   
   this.Out={GRet:{boSpecialistExistDiff:{}}, dataArr:[]}; this.GRet=this.Out.GRet;
 
+  
+  var strT=req.headers['Sec-Fetch-Site'];
+  if(strT && strT!='same-origin') { this.mesEO(new Error("Sec-Fetch-Site header is not 'same-origin' ("+strT+")"));  return;}
+  
+  
   if('x-requested-with' in req.headers && req.headers['x-requested-with']=="XMLHttpRequest") ; else { this.mesEO(new Error("Ajax-request: req.headers['x-requested-with']!='XMLHttpRequest'"));  return; }
   var urlT=req.strSchemeLong+req.wwwSite, lTmp=urlT.length;
   if('referer' in req.headers && req.headers.referer.slice(0,lTmp)==urlT) ; else { this.mesEO(new Error("Referer is wrong"));  return; }
@@ -118,7 +123,7 @@ ReqBE.prototype.go=function*(){
   var CSRFIn; this.dateTModBrowser=new Date(0); 
   for(var i=beArr.length-1;i>=0;i--){ 
     var row=beArr[i];
-    if(row[0]=='page') {this.queredPage=row[1]; array_removeInd(beArr,i);}
+    if(row[0]=='page') {this.pageName=row[1]; array_removeInd(beArr,i);}
     else if(row[0]=='tMod') {this.dateTModBrowser=new Date(Number(row[1])*1000); array_removeInd(beArr,i);}
     else if(row[0]=='CSRFCode') {CSRFIn=row[1]; array_removeInd(beArr,i);}
   }
@@ -153,7 +158,7 @@ ReqBE.prototype.go=function*(){
   //Shall look the same (be cacheable (not include boARLoggedIn etc))     yes          no
 
 
-  var queredPage=this.queredPage;
+  var pageName=this.pageName;
     // cecking/set CSRF-code
     
   
@@ -229,7 +234,7 @@ ReqBE.prototype.vLogin=function*(inObj){
         this.boARLoggedIn=1; this.mes('Logged in (viewing)');
           // Changing session-token at login (as recomended by security recomendations) (to prevent session fixation)
         //var sessionIDNew=randomHash();
-        //var StrSuffix=['_adminRTimer', '_adminWTimer', '_CSRF']; //, '_Counter' '_'+this.queredPage+
+        //var StrSuffix=['_adminRTimer', '_adminWTimer', '_CSRF']; //, '_Counter' '_'+this.pageName+
         //var Str=['sessionIDAdminR', 'sessionIDAdminW', 'sessionIDCSRF'];
         //var err=yield* changeSessionId.call(this, sessionIDNew, StrSuffix);
         //var err=yield* changeSessionId.call(this, 'sessionID', sessionIDNew, StrSuffix);
@@ -289,7 +294,7 @@ ReqBE.prototype.aLogin=function*(inObj){
         this.boARLoggedIn=1; this.boAWLoggedIn=1; this.mes('Logged in');
           // Changing session-token at login (as recomended by security recomendations) (to prevent session fixation)
         //var sessionIDNew=randomHash();
-        //var StrSuffix=['_adminRTimer', '_adminWTimer', '_CSRF']; //, '_Counter' '_'+this.queredPage+
+        //var StrSuffix=['_adminRTimer', '_adminWTimer', '_CSRF']; //, '_Counter' '_'+this.pageName+
         ////var err=yield* changeSessionId.call(this, sessionIDNew, StrSuffix);
         //var err=yield* changeSessionId.call(this, 'sessionID', sessionIDNew, StrSuffix);
         
@@ -455,7 +460,7 @@ ReqBE.prototype.aLogout=function*(inObj){
   
 ReqBE.prototype.pageLoad=function*(inObj) { 
   var req=this.req, res=this.res;
-  var queredPage=this.queredPage;
+  var pageName=this.pageName;
   var GRet=this.GRet;
   var Ou={}, flow=req.flow;
 
@@ -470,13 +475,13 @@ ReqBE.prototype.pageLoad=function*(inObj) {
 
   this.CSRFCode='';  // If Private then No CSRFCode since the page is going to be cacheable (look the same each time)
   var version, rev; if(typeof inObj=='object' && 'version' in inObj) {  version=inObj.version;  rev=version-1; } else {  version=NaN; rev=-1; }
-  var eTagIn='', requesterCacheTime=new Date(0);
-  if(req.method=='GET') {eTagIn=getETag(req.headers); requesterCacheTime=getRequesterTime(req.headers); }
+  var strHashIn='', requesterCacheTime=new Date(0);
+  if(req.method=='GET') {strHashIn=getETag(req.headers); requesterCacheTime=getRequesterTime(req.headers); }
   
   var Sql=[];
   Sql.push("CALL "+strDBPrefix+"getInfoNDataBE(?, ?, ?, ?, ?);"); 
   var sql=Sql.join('\n');
-  var Val=[req.wwwSite, queredPage, rev, eTagIn, requesterCacheTime/1000];
+  var Val=[req.wwwSite, pageName, rev, strHashIn, requesterCacheTime/1000];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) return [err];
   
   //if(results.length==1) { res.out500("Weird, getInfoNDataBE should have returned one at least one result plus the 'added' result that stored procedures allways add."); return;   } 
@@ -499,45 +504,46 @@ ReqBE.prototype.pageLoad=function*(inObj) {
   var objRev=Object.assign({},results[2][rev]);
     //objRev.tMod=new Date(objRev.tMod*1000);
     //objRev.tModCache=new Date(objRev.tModCache*1000);
-  var boValidServerCache=results[3][0].boValidServerCache;
-  var boValidReqCache=results[4][0].boValidReqCache;
+  var {boValidServerCache, strHash}=results[3][0];
+  var {boValidReqCache}=results[4][0];
   if(boValidReqCache) { res.out304(); return []; }
   else{
     var strEditText=results[5][0].strEditText.toString();
-    let {boOR, boOW, boSiteMap, tCreated}=objPage;
+    //let {boOR, boOW, boSiteMap, tCreated}=objPage;
     let {tMod}=objRev;
     if(boValidServerCache) {
       var strHtmlText=results[6][0].strHtmlText.toString();
       var objTemplateE=createObjTemplateE(results[7]);
-      var eTag=md5(strHtmlText +JSON.stringify(objTemplateE) +tMod +boOR +boOW +boSiteMap +boTalkExist +JSON.stringify(matVersion));
+      //var strHashNew=md5(strHtmlText +JSON.stringify(objTemplateE) +tMod +boOR +boOW +boSiteMap +boTalkExist +JSON.stringify(matVersion));
+      var strHashNew=md5(strHtmlText +JSON.stringify(objTemplateE) +JSON.stringify(objPage) +boTalkExist +JSON.stringify(matVersion));
       
       var Sql=[];
-      Sql.push(`UPDATE `+versionTab+` SET tModCache=now(), eTag=? WHERE idPage=? AND rev=?;`);
-      Sql.push(`SELECT UNIX_TIMESTAMP(now()) AS tModCache;`); 
-      Sql.push(`UPDATE `+pageTab+` SET tModCache=now() WHERE idPage=?;`);
+      Sql.push(`SET @idPage=?, @rev=?, @strHash=?;`);
+      Sql.push(`SELECT @tModCache:=IF(strHash=@strHash,tModCache,now()) FROM `+versionTab+` WHERE idPage=@idPage AND rev=@rev;`);
+      Sql.push(`UPDATE `+versionTab+` SET tModCache=@tModCache, strHash=@strHash WHERE idPage=@idPage AND rev=@rev;`);
+      Sql.push(`SELECT UNIX_TIMESTAMP(@tModCache) AS tModCache;`); 
+      Sql.push(`UPDATE `+pageTab+` SET tModCache=@tModCache WHERE idPage=@idPage;`);
       var sql=Sql.join('\n');
-      var Val=[eTag, objPage.idPage, rev, objPage.idPage];
-      var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err]
-      var rowA=results[1][0];
-      //var tModCache=new Date(rowA.tModCache*1000);
-      var tModCache=rowA.tModCache;
+      var Val=[objPage.idPage, rev, strHashNew];
+      var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
+      var {tModCache}=results[3][0];
+      
     }else {
         // parse
-      var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW, myMySql:this.myMySql};
+      var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:objPage.boOW, myMySql:this.myMySql};
       var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) return [err]
       
-      var eTag=md5(strHtmlText +JSON.stringify(objTemplateE) +tMod +boOR +boOW +boSiteMap +boTalkExist +JSON.stringify(matVersion));
+      //var strHashNew=md5(strHtmlText +JSON.stringify(objTemplateE) +tMod +boOR +boOW +boSiteMap +boTalkExist +JSON.stringify(matVersion));
+      var strHashNew=md5(strHtmlText +JSON.stringify(objTemplateE) +JSON.stringify(objPage) +boTalkExist +JSON.stringify(matVersion));
       
       var Sql=[];
         // setNewCacheSQL
-      var {sql, Val, nEndingResults}=createSetNewCacheSQL(req.wwwSite, queredPage, rev, strHtmlText, eTag, arrSub, StrSubImage);
+      var {sql, Val, nEndingResults}=createSetNewCacheSQL(req.wwwSite, pageName, rev, strHtmlText, strHashNew, arrSub, StrSubImage);
       Sql.push("START TRANSACTION; "+sql+" COMMIT;");
       var sql=Sql.join('\n');
       var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err]
       var iRowLast=results.length-nEndingResults-2;
-      var rowA=results[iRowLast][0];
-      //var tModCache=new Date(rowA.tModCache*1000);
-      var tModCache=rowA.tModCache;
+      var {tModCache}=results[iRowLast][0];
        
     }
 
@@ -549,7 +555,7 @@ ReqBE.prototype.pageLoad=function*(inObj) {
     extend(GRet, {strDiffText:'', arrVersionCompared:[null, version], strHtmlText:strHtmlText, objTemplateE:objTemplateE, strEditText:strEditText, boTalkExist:boTalkExist, matVersion:matVersion});
     var tmp=objPage.boOR?'':', private';
     var tModCacheDate=new Date(tModCache*1000);
-    res.setHeader("Cache-Control", "must-revalidate"+tmp);  res.setHeader('Last-Modified',tModCacheDate.toUTCString());  res.setHeader('ETag',eTag);
+    res.setHeader("Cache-Control", "must-revalidate"+tmp);  res.setHeader('Last-Modified',tModCacheDate.toUTCString());  res.setHeader('ETag',strHashNew);
   } 
 
   return [null, [Ou]];
@@ -564,7 +570,7 @@ ReqBE.prototype.pageCompare=function*(inObj){
   var versionOld=arr_min(inObj.arrVersionCompared),  version=arr_max(inObj.arrVersionCompared); 
   versionOld=Math.max(1,versionOld);  version=Math.max(1,version);
   if(version==versionOld) {return [new ErrorClient('Same version')]; }
-  var eTagIn='', requesterCacheTime=0;
+  var strHashIn='', requesterCacheTime=0;
   var rev=versionOld-1;
 
 
@@ -572,7 +578,7 @@ ReqBE.prototype.pageCompare=function*(inObj){
   Sql.push("SELECT SQL_CALC_FOUND_ROWS boOR, boOW, @idPage:=idPage FROM "+pageSiteView+" WHERE www=? AND pageName=?;");
   Sql.push("SELECT data AS strEditTextOld FROM "+versionTab+" v JOIN "+fileTab+" f on v.idFile=f.idFile WHERE v.idPage=@idPage AND v.rev=?;");
   Sql.push("SELECT data AS strEditText FROM "+versionTab+" v JOIN "+fileTab+" f on v.idFile=f.idFile WHERE v.idPage=@idPage AND v.rev=?;");
-  Val.push(req.wwwSite, this.queredPage, versionOld-1, version-1);
+  Val.push(req.wwwSite, this.pageName, versionOld-1, version-1);
   var sql=Sql.join('\n');
   var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) return [err];
   var boOR=results[0][0].boOR,  boOW=results[0][0].boOW;
@@ -638,8 +644,8 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   Sql.push("SELECT SQL_CALC_FOUND_ROWS boDefault, @boTLS:=boTLS AS boTLS, @idSite:=idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aWPassword, aRPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+" WHERE www=?;"), Val.push(req.wwwSite);
   
     // Getting tMod, boOW and tNow
-  //Sql.push("SELECT boOW, UNIX_TIMESTAMP(v.tMod) AS tMod FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev WHERE idSite=@idSite AND pageName=?;"), Val.push(this.queredPage);
-  Sql.push("SELECT boOW, UNIX_TIMESTAMP(p.tMod) AS tMod FROM "+pageTab+" p WHERE idSite=@idSite AND pageName=?;"), Val.push(this.queredPage);
+  //Sql.push("SELECT boOW, UNIX_TIMESTAMP(v.tMod) AS tMod FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev WHERE idSite=@idSite AND pageName=?;"), Val.push(this.pageName);
+  Sql.push("SELECT boOW, UNIX_TIMESTAMP(p.tMod) AS tMod FROM "+pageTab+" p WHERE idSite=@idSite AND pageName=?;"), Val.push(this.pageName);
   Sql.push("SELECT UNIX_TIMESTAMP(now()) AS tNow;");  // @tNow:=now() AS tNowTrash, 
   var sql=Sql.join('\n'); 
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {arrRet=[err]; break stuff;}
@@ -677,11 +683,11 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   
   
     // Calc boTalk and boTemplate
-  var boTalk=regTalk.test(this.queredPage),  boTemplate=this.queredPage.substr(0,9)=='template:';
+  var boTalk=regTalk.test(this.pageName),  boTemplate=this.pageName.substr(0,9)=='template:';
   
     // Insert/Update pageTab
   var Sql=[], Val=[];
-  Sql.push("SET @pageName=?, @boTalk=?, @boTemplate=?, @len=?, @tNow=FROM_UNIXTIME(?);");   Val.push(this.queredPage, boTalk, boTemplate, len, tNow);
+  Sql.push("SET @pageName=?, @boTalk=?, @boTemplate=?, @len=?, @tNow=FROM_UNIXTIME(?);");   Val.push(this.pageName, boTalk, boTemplate, len, tNow);
   Sql.push(`INSERT INTO `+pageTab+` (idSite, pageName, boTalk, boTemplate, size) VALUES (@idSite, @pageName, @boTalk, @boTemplate, @len)  
           ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=@pageName, boTalk=@boTalk, boTemplate=@boTemplate, lastRev=0, boOther=0, tMod=@tNow, tModCache=@tNow, size=@len;`);
   Sql.push("SELECT @idPage:=LAST_INSERT_ID() AS idPage;");
@@ -734,11 +740,11 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   Val.push(strHtmlText);
   
     // Insert/Update versionTab
-  var eTag='trashSaveByReplace'; //randomHash();
-  Sql.push("SET @eTag=?, @len=?, @tNow=FROM_UNIXTIME(?);");   Val.push(eTag, len, tNow);
-  if(results[1][0].c==0) Sql.push("INSERT INTO "+versionTab+" (idPage,rev,idFile,tMod,idFileCache,tModCache,eTag,size) VALUES (@idPage,0,@idFile,@tNow,@idFileCache,@tNow,@eTag,@len);");
-  else Sql.push("UPDATE "+versionTab+" SET idFile=@idFile, boOther=0, tMod=@tNow, idFileCache=@idFileCache, tModCache=@tNow, eTag=@eTag, size=@len WHERE idPage=@idPage AND rev=0;");
-  //Val.push(eTag,len);
+  var strHash='trashSaveByReplace'; //randomHash();
+  Sql.push("SET @strHash=?, @len=?, @tNow=FROM_UNIXTIME(?);");   Val.push(strHash, len, tNow);
+  if(results[1][0].c==0) Sql.push("INSERT INTO "+versionTab+" (idPage,rev,idFile,tMod,idFileCache,tModCache,strHash,size) VALUES (@idPage,0,@idFile,@tNow,@idFileCache,@tNow,@strHash,@len);");
+  else Sql.push("UPDATE "+versionTab+" SET idFile=@idFile, boOther=0, tMod=@tNow, idFileCache=@idFileCache, tModCache=@tNow, strHash=@strHash, size=@len WHERE idPage=@idPage AND rev=0;");
+  //Val.push(strHash,len);
 
   Sql.push("CALL "+strDBPrefix+"writeSubTables(@idPage);");
   var sql=Sql.join('\n');
@@ -751,7 +757,7 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   Sql.push("SELECT SQL_CALC_FOUND_ROWS pageName, idPage, boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod FROM "+pageTab+" WHERE idPage=@idPage;");
   
     // objRev
-  Sql.push("SELECT rev, summary, signature, idFile, idFileCache, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache, eTag FROM "+versionTab+" WHERE idPage=@idPage AND rev=(SELECT MAX(rev) FROM "+versionTab+" WHERE idPage=@idPage GROUP BY idPage);"); 
+  Sql.push("SELECT rev, summary, signature, idFile, idFileCache, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache, strHash FROM "+versionTab+" WHERE idPage=@idPage AND rev=(SELECT MAX(rev) FROM "+versionTab+" WHERE idPage=@idPage GROUP BY idPage);"); 
     
     // matVersion, objTemplateE, boTalkExist;
   Sql.push("SELECT SQL_CALC_FOUND_ROWS summary, signature, UNIX_TIMESTAMP(tMod) AS tMod FROM "+versionTab+" WHERE idPage=@idPage;");
@@ -759,7 +765,7 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   
   
   
-  if(!boTalk) {var talkPage=calcTalkName(this.queredPage); Sql.push("SELECT count(idPage) AS boTalkExist FROM "+pageTab+" WHERE idSite=@idSite AND pageName=?;"); Val.push(talkPage); }
+  if(!boTalk) {var talkPage=calcTalkName(this.pageName); Sql.push("SELECT count(idPage) AS boTalkExist FROM "+pageTab+" WHERE idSite=@idSite AND pageName=?;"); Val.push(talkPage); }
   var sql=Sql.join('\n');
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {arrRet=[err]; break stuff;}
   var objPage=Object.assign({},results[0][0]);
@@ -798,11 +804,11 @@ ReqBE.prototype.saveByAdd=function*(inObj){
   
     // getInfo
   //var sql="SELECT boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod FROM "+pageLastSiteView+" WHERE www=? AND pageName=?";
-  //var Val=[req.wwwSite, this.queredPage];
+  //var Val=[req.wwwSite, this.pageName];
   
   var Sql=[], Val=[];
   Sql.push("SELECT boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod FROM "+pageLastSiteView+" WHERE www=? AND pageName=?;");
-  Val.push(req.wwwSite, this.queredPage);
+  Val.push(req.wwwSite, this.pageName);
   Sql.push("SELECT UNIX_TIMESTAMP(now()) AS tNow;");
   var sql=Sql.join('\n');
   var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) return [err];
@@ -831,10 +837,10 @@ ReqBE.prototype.saveByAdd=function*(inObj){
   var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:boOW, myMySql:this.myMySql};
   var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) return [err];
 
-  var eTag='trashSaveByAdd'; //randomHash();
+  var strHash='trashSaveByAdd'; //randomHash();
   
       // saveByAddSQL
-  var {sql, Val, nEndingResults}=createSaveByAddSQL(req.wwwSite, this.queredPage, summary, signature, strEditText, strHtmlText, eTag, arrSub, StrSubImage);
+  var {sql, Val, nEndingResults}=createSaveByAddSQL(req.wwwSite, this.pageName, summary, signature, strEditText, strHtmlText, strHash, arrSub, StrSubImage);
   sql="START TRANSACTION; "+sql+" COMMIT;";
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   var iRowLast=results.length-nEndingResults-2;
@@ -846,8 +852,8 @@ ReqBE.prototype.saveByAdd=function*(inObj){
   Sql.push("SELECT SQL_CALC_FOUND_ROWS siteName, boOR, boOW, boSiteMap, @idSite:=idSite, @idPage:=idPage, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod FROM "+pageLastSiteView+" WHERE www=? AND pageName=?;");
   Sql.push("SELECT SQL_CALC_FOUND_ROWS summary, signature, UNIX_TIMESTAMP(tMod) AS tMod FROM "+versionTab+" WHERE idPage=@idPage;");
   Sql.push("SELECT pageName, boOnWhenCached FROM "+subTab+" WHERE idPage=@idPage AND pageName REGEXP '^template:';");
-  Val.push(req.wwwSite, this.queredPage);
-  var talkPage=calcTalkName(this.queredPage), boIsTalkPage=Boolean(talkPage.length);
+  Val.push(req.wwwSite, this.pageName);
+  var talkPage=calcTalkName(this.pageName), boIsTalkPage=Boolean(talkPage.length);
   if(boIsTalkPage) {Sql.push("SELECT count(idPage) AS boTalkExist FROM "+pageTab+" WHERE idSite=@idSite AND pageName=?;"); Val.push(talkPage); }
   var sql=Sql.join('\n');
   var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) return [err];
@@ -856,13 +862,13 @@ ReqBE.prototype.saveByAdd=function*(inObj){
   var objTemplateE=createObjTemplateE(results[2]);
   var boTalkExist=boIsTalkPage?false:results[3];
   
-  //var eTag=md5(strHtmlText +JSON.stringify(objTemplateE) +tMod +boOR +boOW +boSiteMap +boTalkExist +JSON.stringify(matVersion));
-  //var sql=`UPDATE `+pageLastSiteView+` SET tModCache=now(), eTag=? WHERE idPage=?`;
-  //var Val=[eTag, idPage];
+  //var strHash=md5(strHtmlText +JSON.stringify(objTemplateE) +tMod +boOR +boOW +boSiteMap +boTalkExist +JSON.stringify(matVersion));
+  //var sql=`UPDATE `+pageLastSiteView+` SET tModCache=now(), strHash=? WHERE idPage=?`;
+  //var Val=[strHash, idPage];
   //var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   
   this.mes("New version added");
-  if(objOthersActivity) { objOthersActivity.nEdit++; objOthersActivity.pageName=siteName+':'+this.queredPage; }
+  if(objOthersActivity) { objOthersActivity.nEdit++; objOthersActivity.pageName=siteName+':'+this.pageName; }
 
   //extend(GRet,{strDiffText:'', arrVersionCompared:[null,matVersion.length], strHtmlText:strHtmlText, objTemplateE:objTemplateE, strEditText:strEditText, boTalkExist:boTalkExist, matVersion:matVersion, boOR:boOR, boOW:boOW, boSiteMap:boSiteMap, idPage:idPage, tCreated:tCreated, tMod:tMod});
   extend(GRet,{strDiffText:'', arrVersionCompared:[null,matVersion.length], strHtmlText:strHtmlText, objTemplateE:objTemplateE, strEditText:strEditText, boTalkExist:boTalkExist, matVersion:matVersion, boOR:boOR, boOW:boOW, boSiteMap:boSiteMap, idPage:idPage, objRev:{tMod:tMod}});  //, objPage:{tCreated:tCreated}
@@ -905,7 +911,7 @@ ReqBE.prototype.renamePage=function*(inObj){
   
   for(var i=0;i<nIdFileData;i++){ Val.push(resIdFileData[i].idFile); }
   var tmp=array_fill(nIdFileData, "?").join(',');
-  Sql.push("UPDATE "+versionTab+" SET tModCache=FROM_UNIXTIME(1) WHERE idFile IN ("+tmp+");");
+  Sql.push("UPDATE "+versionTab+" SET tModCache=FROM_UNIXTIME(1), strHash='renamePage' WHERE idFile IN ("+tmp+");");
   
   //Sql.push("UPDATE "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage SET p.tModCache=FROM_UNIXTIME(1), v.tModCache=FROM_UNIXTIME(1) WHERE idFile IN ("+tmp+");");
   Sql.push("COMMIT;");
@@ -953,7 +959,7 @@ ReqBE.prototype.renameImage=function*(inObj){
   
   for(var i=0;i<nIdFileData;i++){ Val.push(resIdFileData[i].idFile); }
   var tmp=array_fill(nIdFileData, "?").join(',');
-  Sql.push("UPDATE "+versionTab+" SET tModCache=FROM_UNIXTIME(1) WHERE idFile IN ("+tmp+");");
+  Sql.push("UPDATE "+versionTab+" SET tModCache=FROM_UNIXTIME(1), strHash='renameImage' WHERE idFile IN ("+tmp+");");
   Sql.push("COMMIT;");
   var sql=Sql.join('\n');
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
@@ -1143,7 +1149,7 @@ ReqBE.prototype.getPageInfo=function*(inObj){  // Used by uploadAdminDiv, by sen
   var GRet=this.GRet, flow=req.flow;
   var Ou={};
 
-  var sql="SELECT pageName, boOR, boOW, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther, eTag, size FROM "+pageLastSiteView;
+  var sql="SELECT pageName, boOR, boOW, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther, strHash, size FROM "+pageLastSiteView;
   var Val=[]; 
   if('objName' in inObj) {
     var strKeyDefault=inObj.strKeyDefault;
@@ -1176,7 +1182,7 @@ ReqBE.prototype.getImageInfo=function*(inObj){  // Used by diffBackUpDiv, upload
     nName=arrName.length; if(nName>1) { tmpQ=array_fill(nName, "?").join(','); tmpQ="imageName IN ("+tmpQ+")";  } else if(nName==1) tmpQ="imageName=?"; else tmpQ="false";
   } 
 
-  var sql="SELECT imageName, UNIX_TIMESTAMP(tCreated) AS tCreated, boOther, eTag, size FROM "+imageTab;
+  var sql="SELECT imageName, UNIX_TIMESTAMP(tCreated) AS tCreated, boOther, strHash, size FROM "+imageTab;
   
   var strLim=''; if(boLimited){ strLim=" WHERE "+tmpQ; }
   sql+=strLim;
@@ -1409,17 +1415,17 @@ ReqBE.prototype.uploadUser=function*(inObj){
     if(!semCB) { semY=1; yield;}
     if(err) return [err];
 
-    var eTag=md5(data);
+    var strHash=md5(data);
     //var dim=imageSize(data);  console.log(fileName+', w/h: '+dim.width+' / '+dim.height);
     var sql="CALL "+strDBPrefix+"storeImage(?,?,?,?,@boOK);";
     sql="START TRANSACTION; "+sql+" COMMIT;";
-    var Val=[fileName,1,data,eTag];
+    var Val=[fileName,1,data,strHash];
     var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   }else if(regVid.test(type)){ 
-    var eTag=md5(data);
+    var strHash=md5(data);
     var sql="CALL "+strDBPrefix+"storeVideo(?,?,?);";
     sql="START TRANSACTION; "+sql+" COMMIT;";
-    var Val=[fileName,data,eTag];
+    var Val=[fileName,data,strHash];
     var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   }
   else{ Ou.strMessage="Unrecognized file type: "+type; return [null, [Ou]]; }
@@ -1444,7 +1450,7 @@ app.storeFile=function*(fileName, type, data, flow){
     var arg={strEditText:strEditText, boOW:boOW, siteName:siteName, myMySql:this.myMySql};
     var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) return [err];
 
-    var eTag='upload'; //randomHash();
+    var strHash='upload'; //randomHash();
     
       // saveByReplace
     var tStart=new Date();
@@ -1459,7 +1465,7 @@ app.storeFile=function*(fileName, type, data, flow){
     Sql.push("COMMIT;");
     Sql.push("SELECT @Omess AS mess");
     var sql=Sql.join('\n');
-    var Val=array_merge(arrSubV, StrSubImage, siteName, '', pageName, strEditText, strHtmlText, eTag);
+    var Val=array_merge(arrSubV, StrSubImage, siteName, '', pageName, strEditText, strHtmlText, strHash);
     var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
     var iRowLast=results.length-1;
     var mess=results[iRowLast][0].mess;
@@ -1468,7 +1474,7 @@ app.storeFile=function*(fileName, type, data, flow){
     
     /*
           // saveByReplace
-    var {sql, Val}=createSaveByReplaceSQL(siteName, '', pageName, strEditText, strHtmlText, eTag, arrSub, StrSubImage);
+    var {sql, Val}=createSaveByReplaceSQL(siteName, '', pageName, strEditText, strHtmlText, strHash, arrSub, StrSubImage);
     //console.time('dbOperations');
     var tStart=new Date();
     //sql="SET autocommit=0;"+sql+" SET autocommit=1;";
@@ -1483,15 +1489,15 @@ app.storeFile=function*(fileName, type, data, flow){
 */
 
   }else if(regImg.test(type)){
-    var eTag=md5(data); 
+    var strHash=md5(data); 
     //var dim=imageSize(data);  console.log(fileName+', w/h: '+dim.width+' / '+dim.height);
     var sql="CALL "+strDBPrefix+"storeImage(?,?,?,?,@boOK);";
-    var Val=[fileName,0,data,eTag];
+    var Val=[fileName,0,data,strHash];
     var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   }else if(regVid.test(type)){ 
-    var eTag=md5(data);
+    var strHash=md5(data);
     var sql="CALL "+strDBPrefix+"storeVideo(?,?,?);";
-    var Val=[fileName,data,eTag];
+    var Val=[fileName,data,strHash];
     var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   }
   else{  return [new Error("Unrecognized file type: "+type)]; }

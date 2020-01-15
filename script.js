@@ -36,6 +36,7 @@ var minimist = require('minimist');
 //UglifyJS = require("uglify-js");
 Streamify= require('streamify-string');
 serialize = require('serialize-javascript');
+ejs = require("ejs");
 app=(typeof window==='undefined')?global:window;
 
 
@@ -210,7 +211,7 @@ var flow=( function*(){
   regexpPakoJS=RegExp('^/bower_components/pako/dist/pako(|_deflate|_inflate)'); //siteSpecific
 
   CacheUri=new CacheUriT();
-  StrFilePreCache=['filter.js', 'lib.js', 'libClient.js', 'client.js', 'stylesheets/style.css'];
+  StrFilePreCache=['filter.js', 'lib.js', 'libClient.js', 'client.js', 'stylesheets/style.css', 'lib/foundOnTheInternet/zip.js', 'lib/foundOnTheInternet/sha1.js'];
   StrFilePreCache=StrFilePreCache.concat(StrPako);
   for(var i=0;i<StrFilePreCache.length;i++) {
     var filename=StrFilePreCache[i];
@@ -221,6 +222,34 @@ var flow=( function*(){
   if(boDbg){
     fs.watch('.', makeWatchCB('.', ['filter.js','client.js','libClient.js']) );
     fs.watch('stylesheets', makeWatchCB('stylesheets', ['style.css']) );
+  }
+  
+    // Read index template and do some initial insertions of data, then calc its hash.
+  var err, buf; fs.readFile('views/index.html', function(errT, bufT) {  err=errT; buf=bufT;  flow.next();   });  yield;  if(err) return [err];
+  app.strIndexTemplate=buf.toString();
+  app.strIndexTemplateIOSLoc=strIndexTemplate;
+  
+  var FlJS=['filter.js', 'lib.js', 'libClient.js', 'client.js', leafCommon];
+  for(var i=0;i<FlJS.length;i++) { 
+    var pathTmp='/'+FlJS[i], vTmp=CacheUri[pathTmp].strHash, varName='u'+ucfirst(FlJS[i].slice(0,-3));
+    app.strIndexTemplate=strIndexTemplate.replace(RegExp('<%='+varName+'%>'), '<%=uSiteCommon%>'+pathTmp+'?v='+vTmp);
+    app.strIndexTemplateIOSLoc=strIndexTemplateIOSLoc.replace(RegExp('<%='+varName+'%>'), '<%=uSiteCommon%>'+pathTmp+'?v=0');
+  }
+  var pathTmp='/'+'stylesheets/style.css', vTmp=CacheUri[pathTmp].strHash;
+  app.strIndexTemplate=strIndexTemplate.replace(/<%=uStyle%>/, '<%=uSiteCommon%>'+pathTmp+'?v='+vTmp);
+  app.strIndexTemplateIOSLoc=strIndexTemplateIOSLoc.replace(/<%=uStyle%>/, '<%=uSiteCommon%>'+pathTmp+'?v=0');
+  app.strHashTemplate=md5(strIndexTemplate);
+  //app.strHashTemplateIOSLoc=md5(strIndexTemplateIOSLoc);
+  
+  var redisVar=strAppName+'_IndexTemplateHash';
+  var luaCountFunc=`local strHash=redis.call('GET',KEYS[1]);     if(strHash==ARGV[1]) then return 1; else redis.call('SET',KEYS[1],ARGV[1]); return 0; end;`;
+  var [err, boHashTemplateMatch]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, redisVar, strHashTemplate]);
+  if(!boHashTemplateMatch){
+    var myMySql=new MyMySql(mysqlPool);
+    var {versionTab, pageTab}=TableName;
+    var sql=`UPDATE `+pageTab+` p JOIN `+versionTab+` v ON p.idPage=v.idPage SET p.tModCache=FROM_UNIXTIME(1), v.tModCache=FROM_UNIXTIME(1), v.strHash='template changed' WHERE p.boOR;`, Val=[];
+    var [err, results]=yield* myMySql.query(flow, sql, Val);  if(err) {  res.out500(err); return; }
+    myMySql.fin();
   }
 
   var StrCookiePropProt=["HttpOnly", "Path=/","max-age="+3600*24*30];

@@ -1,5 +1,4 @@
 "use strict"
-
 var app=(typeof window==='undefined')?global:window;
 
 app.thisChanged=function(func,selfT){return function(){return func.apply(selfT,arguments);}}

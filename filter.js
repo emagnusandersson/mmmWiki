@@ -1,4 +1,3 @@
-
 "use strict"
 
 window.rangeExtend=function(el, Prop, Filt, Hist, vBoHasRem, StrOrderFilt, objSetting, iFeat, changeFunc){  

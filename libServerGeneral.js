@@ -274,7 +274,7 @@ return {boSessionExist, c}`;
 
 app.CacheUriT=function(){
   this.set=function*(flow, key, buf, type, boZip, boUglify){
-    var eTag=crypto.createHash('md5').update(buf).digest('hex'); 
+    var strHash=crypto.createHash('md5').update(buf).digest('hex'); 
     //if(boUglify) { // UglifyJS does not handle ecma6 (when I tested it 2019-05-05).
       //var objU=UglifyJS.minify(buf.toString());
       //buf=new Buffer(objU.code,'utf8');
@@ -284,7 +284,7 @@ app.CacheUriT=function(){
       var gzip = zlib.createGzip();
       var err; zlib.gzip(bufI, function(errT, bufT) { err=errT; buf=bufT; flow.next(); });  yield; if(err) return [err];
     }
-    this[key]={buf:buf,type:type,eTag:eTag,boZip:boZip,boUglify:boUglify};
+    this[key]={buf,type,strHash,boZip,boUglify};
     return [null];
   }
 }

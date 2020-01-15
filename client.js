@@ -104,7 +104,7 @@ var commentButtonExtend=function(el){
       a.css({color:""}); if(a.prop('rel')) a.prop({rel:''});
     } else a.css({color:"red"}).prop({rel:'nofollow'});
   } 
-  var matches=queredPage.match(/^ *(talk:|template:|template_talk:|) *(.*)/)
+  var matches=objPage.pageName.match(/^ *(talk:|template:|template_talk:|) *(.*)/)
   var kind=matches[1].replace(/:/,'');
   var _page=matches[2].replace(/ /,'_');
   //elBody.css({'line-height':'100%'});
@@ -532,7 +532,7 @@ var adminMoreDivExtend=function(el){
   var redirectButton=createElement('button').myText('Redirect table').addClass('fixWidth').on('click',function(){   doHistPush({view:redirectTab}); redirectTab.setVis();   });
 
   var renameButton=createElement('button').myText('Rename').css({'margin-left':'0.5em'}).on('click',function(){
-    renamePop.openFunc('page', null, objPage.idPage, queredPage);
+    renamePop.openFunc('page', null, objPage.idPage, objPage.pageName);
   });
   var objBottomLine={'border-bottom':'gray solid 1px'};
   var menuA0=createElement('div').myAppend(pageListButton, imageListButton).css(objBottomLine);
@@ -1077,8 +1077,8 @@ var uploadAdminDivExtend=function(el){
     }
     
     
-    //var vecIn=[['uploadAdmin', {}], ['page',queredPage], ['tMod',objPage.tMod], ['CSRFCode',CSRFCode]];
-    var vecIn=[['uploadAdmin', {}], ['page',queredPage], ['tMod',objPage.tMod], ['CSRFCode',getItem('CSRFCode')]];
+    //var vecIn=[['uploadAdmin', {}], ['page',objPage.pageName], ['tMod',objPage.tMod], ['CSRFCode',CSRFCode]];
+    var vecIn=[['uploadAdmin', {}], ['page',objPage.pageName], ['tMod',objPage.tMod], ['CSRFCode',getItem('CSRFCode')]];
     var arrRet=[function(){  progress.hide(); uploadButton.prop("disabled",false);}];
     
     formData.append('vec', JSON.stringify(vecIn));
@@ -1177,8 +1177,8 @@ var uploadUserDivExtend=function(el){
     
     
     
-    //var vecIn=[['uploadUser', {}], ['page',queredPage], ['tMod',objPage.tMod], ['CSRFCode',CSRFCode]];
-    var vecIn=[['uploadUser', {}], ['page',queredPage], ['tMod',objPage.tMod], ['CSRFCode',getItem('CSRFCode')]];
+    //var vecIn=[['uploadUser', {}], ['page',objPage.pageName], ['tMod',objPage.tMod], ['CSRFCode',CSRFCode]];
+    var vecIn=[['uploadUser', {}], ['page',objPage.pageName], ['tMod',objPage.tMod], ['CSRFCode',getItem('CSRFCode')]];
     var arrRet=[function(data){if('strMessage' in data) setMess(data.strMessage); progress.invisible(); uploadButton.prop("disabled",false);}];
     formData.append('vec', JSON.stringify(vecIn));
     var xhr = new XMLHttpRequest();
@@ -2136,7 +2136,7 @@ var imageListExtend=function(el){
       var tmp=File[i].tCreated; r.querySelector('span[name=date]').prop('valSort',-tmp.valueOf()).myText(mySwedDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));    
       var size=File[i].size, sizeDisp=size, pre=''; if(size>=1024) {sizeDisp=Math.round(size/1024); pre='k';} if(size>=1048576) { sizeDisp=Math.round(size/1048576); pre='M';}
       var tmp=r.querySelector('span[name=size]').prop('valSort',size).myHtml(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; tmp.prop('title',strTitle);   //tmp.css({weight:pre=='M'?'bold':'',color:pre==''?'grey':''}); 
-      var tmp=File[i].imageName; r.querySelector('span[name=link]').prop('valSort',tmp).querySelector('a').prop({href:uCommon+'/'+tmp}).myText(tmp);
+      var tmp=File[i].imageName; r.querySelector('span[name=link]').prop('valSort',tmp).querySelector('a').prop({href:uSiteCommon+'/'+tmp}).myText(tmp);
     });
     //tBody.find('input').prop({'checked':false}); 
     var Tmp=[...tBody.querySelectorAll('input')]; Tmp.forEach(ele=>ele.prop({'checked':false}));
@@ -2238,7 +2238,7 @@ var imageListExtend=function(el){
     r.imageName=strNewName;
     //var td=r.children('span[name=link]').prop('valSort',strNewName);
     var td=r.querySelector('span[name=link]').prop('valSort',strNewName);
-    td.querySelector('a').prop({href:uCommon+'/'+strNewName}).myText(strNewName);
+    td.querySelector('a').prop({href:uSiteCommon+'/'+strNewName}).myText(strNewName);
   }
   
   el.deleteF=function(FileDelete, histBackFun){
@@ -3564,7 +3564,7 @@ var siteTabExtend=function(el){
 var majax=function(oAJAX, vecIn){  // Each argument of vecIn is an array: [serverSideFunc, serverSideFuncArg, returnFunc]
   
   var arrRet=[]; vecIn.forEach(function(el,i){var f=null; if(el.length==3) f=el.pop(); arrRet[i]=f;}); // Put return functions in a separate array
-  vecIn.push(['page',queredPage]);
+  vecIn.push(['page',objPage.pageName]);
   var boForm=vecIn.length==2 && vecIn[0][1] instanceof FormData;
   if(boForm){
     var formData=vecIn[0][1]; vecIn[0][1]=0; // First element in vecIn contains the formData object. Rearrange it as "root object" and add the remainder to a property 'vec'
@@ -3777,6 +3777,7 @@ var sizeIcon=1.5, strSizeIcon=sizeIcon+'em';
 
 
 indexAssign();
+setItem('CSRFCode',CSRFCode);
 
 assignCommonJS();
 
@@ -3787,23 +3788,20 @@ var KeyColPage=Object.keys(PropPage),  KeyColImage=Object.keys(PropImage);
 
 
 
-
 var nVersion=matVersion.length;
 
 //colsFlip=array_flip(KeyCol);
 //StrOrderFiltFlip=array_flip(StrOrderFilt);
 var strScheme='http'+(objSite.boTLS?'s':''),    strSchemeLong=strScheme+'://',    uSite=strSchemeLong+objSite.www;
-var strScheme='http'+(objSiteDefault.boTLS?'s':''),    strSchemeLong=strScheme+'://',       uCommon=strSchemeLong+objSiteDefault.www;
+var strScheme='http'+(objSiteDefault.boTLS?'s':''),    strSchemeLong=strScheme+'://',       uSiteCommon=strSchemeLong+objSiteDefault.www;
 var uBE=uSite+"/"+leafBE;
-var uCanonical=uSite+'/'+queredPage;
-if(queredPage=='start') uCanonical=uSite;
-
-
+var uCanonical=uSite+'/'+objPage.pageName;
+if(objPage.pageName=='start') uCanonical=uSite;
 
 
 
 var wcseLibImageFolder='/'+flLibImageFolder+'/';
-var uLibImageFolder=uCommon+wcseLibImageFolder;
+var uLibImageFolder=uSiteCommon+wcseLibImageFolder;
 
 //uImCloseW=uLibImageFolder+'triangleRightW.png';
 //uImOpenW=uLibImageFolder+'triangleDownW.png';
@@ -3858,7 +3856,7 @@ var imgProt=createElement('img').css({height:strSizeIcon,width:strSizeIcon,'vert
   // History
   //
   
-var strHistTitle=queredPage;
+var strHistTitle=objPage.pageName;
 
 var histList=[];
 var stateLoaded=history.state;
@@ -4206,11 +4204,14 @@ if(objPage.boOR==0) { // If private
 //var scriptSha1=createElement("script").prop({src:uSha1});
 //document.head.myAppend(scriptZip, scriptSha1);
 //import(uZip).then(function(zipT){ zip=zipT; zip.workerScriptsPath = flFoundOnTheInternetFolder+'/'; });
+
+
 (async function(){
   await import(uZip);
   zip.workerScriptsPath = flFoundOnTheInternetFolder+'/';
 })();
-import(uSha1);
+import(uSha1); 
+
 
 window.divReCaptcha=divReCaptchaExtend(createElement('div'));
 editDiv.spanSave.prepend(divReCaptcha);
