@@ -66,7 +66,7 @@ app.setUpCond=function(arg){
     arrCol.push(tmp+" AS "+"`"+key+"`"); ii++;
   }
   var strCol=arrCol.join(', ');
-  return {strCol:strCol, Where:Where}; //, nColTrans:ii
+  return {strCol, Where}; //, nColTrans:ii
 
 }
 

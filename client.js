@@ -102,7 +102,7 @@ var commentButtonExtend=function(el){
   el.setUp=function(boTalkExist){
     if(boTalkExist) {
       a.css({color:""}); if(a.prop('rel')) a.prop({rel:''});
-    } else a.css({color:"red"}).prop({rel:'nofollow'});
+    } else a.css({color:"#ee0000"}).prop({rel:'nofollow'});
   } 
   var matches=objPage.pageName.match(/^ *(talk:|template:|template_talk:|) *(.*)/)
   var kind=matches[1].replace(/:/,'');
@@ -116,7 +116,7 @@ var commentButtonExtend=function(el){
 
   if(boSmallAndroid){
     
-    var tmpImg=createElement('img').prop({src:uComment}).css({display:'inline-block',height:'1em',width:'1em',position:'absolute',left:'0em',top:'0em',border:'0px'});
+    var tmpImg=createElement('img').prop({src:uComment, alt:"comment"}).css({display:'inline-block',height:'1em',width:'1em',position:'absolute',left:'0em',top:'0em',border:'0px'});
     a.myAppend("██",tmpImg).css({'font-size':'1.5em',position:'absolute',left:'0em',top:'0em'});  //██⬛
     //var divAbs=createElement('div').myAppend(a).css({position:'relative',display:'inline-block',height:'1.6em',width:'1.6em','vertical-align':'baseline',top:'0em'});
     el.myAppend(a).css({position:'relative',display:'inline-block',height:'1.5em',width:'1.5em',overflow:'hidden','vertical-align':'baseline',cursor:'pointer'});
@@ -173,34 +173,58 @@ var createColJIndexNamesObj=function(arrName){
 }
 
 
-var spanMessageTextCreate=function(){
-  var el=createElement('span');
+//var spanMessageTextCreate=function(){
+  //var el=createElement('span');
+  //var spanInner=createElement('span');
+  //el.myAppend(spanInner, imgBusy.hide())
+  //el.resetMess=function(time){
+    //clearTimeout(messTimer);
+    //if(typeof time =='number') { messTimer=setTimeout('resetMess()',time*1000); return; }
+    //spanInner.myText(' ');
+    //imgBusy.hide();
+  //}
+  //el.setMess=function(str,time,boRot){
+    //spanInner.myText(str);
+    //clearTimeout(messTimer);
+    //if(typeof time =='number')     messTimer=setTimeout('resetMess()',time*1000);
+    //imgBusy.toggle(Boolean(boRot));
+  //};
+  //el.setHtml=function(str,time,boRot){
+    //spanInner.myHtml(str);
+    //clearTimeout(messTimer);
+    //if(typeof time =='number')     messTimer=setTimeout('resetMess()',time*1000);
+    //imgBusy.toggle(Boolean(boRot));
+  //};
+  //var messTimer;
+  //el.addClass('message');
+  //return el;
+//}
+var divMessageTextCreate=function(){
   var spanInner=createElement('span');
-  el.myAppend(spanInner, imgBusy.hide())
+  var imgBusyLoc=imgBusy.cloneNode().css({zoom:'65%','margin-left':'0.4em'}).hide();
+  var el=createElement('div').myAppend(spanInner, imgBusyLoc);
   el.resetMess=function(time){
     clearTimeout(messTimer);
-    if(typeof time =='number') { messTimer=setTimeout('resetMess()',time*1000); return; }
+    if(time) { messTimer=setTimeout(resetMess, time*1000); return; }
     spanInner.myText(' ');
-    imgBusy.hide();
+    imgBusyLoc.hide();
   }
-  el.setMess=function(str,time,boRot){
+  el.setMess=function(str='',time,boRot){
     spanInner.myText(str);
     clearTimeout(messTimer);
-    if(typeof time =='number')     messTimer=setTimeout('resetMess()',time*1000);
-    imgBusy.toggle(Boolean(boRot));
+    if(time)     messTimer=setTimeout(resetMess, time*1000);
+    imgBusyLoc.toggle(Boolean(boRot));
   };
-  el.setHtml=function(str,time,boRot){
+  el.setHtml=function(str='',time,boRot){
     spanInner.myHtml(str);
     clearTimeout(messTimer);
-    if(typeof time =='number')     messTimer=setTimeout('resetMess()',time*1000);
-    imgBusy.toggle(Boolean(boRot));
+    if(time)     messTimer=setTimeout(resetMess, time*1000);
+    imgBusyLoc.toggle(Boolean(boRot));
   };
   var messTimer;
-  el.addClass('message');//.css({'z-index':8100,position:'fixed'});
-  //el.css({border:'black 1px solid',bottom:'0%',right:'0%',margin:'0',padding:'1px','background-color':'#F7F700','font-size':'0.8em','z-index':18100,position:'fixed'}); 
+  el.addClass('message');
   return el;
 }
-
 
 /*******************************************************************************
  * pageView
@@ -208,13 +232,25 @@ var spanMessageTextCreate=function(){
 
 var editButtonExtend=function(el){
   el.setImg=function(boOW){ 
-    imgOW.prop({src:boOW?uPen:uPenNot});
-    divHov.myText(boOW?'Edit the page.':'See wiki text.')
+    //imgOW.prop({src:boOW?uPen:uPenNot});
+    imgOW.prop({srcset:boOW?srcsetPen:srcsetPenNot});
+    var txt=boOW?'Edit the page.':'See wiki text.'
+    el.prop({'aria-label':txt});
+    //if(!boIOS) el.css({'text-decoration':boOW?'none':'line-through'});
+    //spanOWStrike.toggle(!boOW);
+    el.title=txt;
   }
-  var divHov=createElement('div');  if(!boTouch) { popupHover(el,divHov);  };
+
+  // var spanOW=createElement('span').css({'user-select':'none', 'line-height':'2.4em', display:'inline-block', position:'relative'});
+  // var spanOWPen=createElement('span').myAppend('🖉').css({'user-select':'none', 'font-size':'135%'});
+  // var spanOWStrike=createElement('span').myAppend('\\').css({'user-select':'none', position:'absolute', display:'inline', left:'.14em', top:'0em', color:'red', 'font-size':'250%'});
+  // spanOW.myAppend(spanOWPen, spanOWStrike);
   
-  var imgOW=createElement('img').prop({src:uPen}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable');
+  var imgOW=createElement('img').prop({srcset:srcsetPen, alt:"pen"}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable');
+  //var strPen="🖉"; //🖊✎
+  //if(boIOS) el.append(imgOW); else el.append(spanOW);
   el.append(imgOW);
+  //alert(document.fonts.check("12px verdana, arial, helvetica", "🖉"))
   return el;
 }
 var spanModExtend=function(el){
@@ -253,7 +289,7 @@ var pageViewExtend=function(el){
     if(nVersion<2) return;
     arrVersionCompared[0]=arrVersionCompared[1]-1;
     if(arrVersionCompared[1]==1) arrVersionCompared=[2,1]; 
-    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
+    var vec=[['pageCompare',{arrVersionCompared }]];   majax(oAJAX,vec); 
     doHistPush({view:diffDiv});
     diffDiv.setVis();
   });
@@ -272,7 +308,7 @@ var pageViewExtend=function(el){
   
   var divLower=createElement('div').myAppend(versionTableButton).css({margin:'.5em auto auto'});
 
-  el.versionMenu=createElement('div').myAppend(divUpper,divLower).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.5em auto'});
+  el.versionMenu=createElement('div').myAppend(divUpper,divLower).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.5em auto'});
 
  
     // menuA
@@ -293,17 +329,17 @@ var pageViewExtend=function(el){
   }); if(ppStoredButt=='' && strBTC=='') paymentButton.hide();
   
     // editButton
-  el.editButton=editButtonExtend(createElement('button')).addClass('fixWidth', ).css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
+  el.editButton=editButtonExtend(createElement('button')).addClass('fixWidth').prop({"aria-label":"edit"}).css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
     doHistPush({view:editDiv});
     editDiv.setVis();
   });
   el.editButton.on('click', adminButtonToggleEventF);
-  var tmpImg=createElement('img').prop({src:uAdmin}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable');    //var strAdmin='👤🔑';
-  var adminButton=createElement('button').myAppend(tmpImg).addClass('fixWidth').on('click',function(){
+  var tmpImg=createElement('img').prop({src:uAdmin, alt:"admin"}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable');    //var strAdmin='👤🔑';
+  var adminButton=createElement('button').myAppend(tmpImg).addClass('fixWidth').prop({title:"Administrator entry."}).on('click',function(){
     doHistPush({view:adminDiv});
     adminDiv.setVis();
   });
-  if(!boTouch) popupHover(adminButton,createElement('div').myText('Administrator entry.'));
+  //if(!boTouch) popupHover(adminButton,createElement('div').myText('Administrator entry.'));
   
     // spanMod
   el.spanMod=spanModExtend(createElement('span')).css({'margin-right':'0.5em','font-family':'monospace'});
@@ -321,11 +357,11 @@ var pageViewExtend=function(el){
   var divLastModW=createElement('div').myAppend('Last mod: ', el.spanLastMod);
   var spanTModNCreated=createElement('span').myAppend(divCreatedW, divLastModW)
   //.css({display:'block', position:'absolute', bottom:'.0em', width:'100%', 'text-align':'center', 'font-size':'70%'});
-  .css({display:'block', 'font-size':'70%', 'margin-right':'auto'});
+  .css({display:'block', 'font-size':'12px', 'margin-right':'auto'});
   //.css({'float':'right',margin:'0.2em .5em 0 0', 'font-size':'70%'});
 
   
-  var menuA=createElement('div').myAppend(el.editButton,paymentButton,spanTModNCreated,...ElAdmin,commentButton).css({padding:'0 0.3em 0.6em 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.2em auto 0em'});  //.css({margin:'1em 0','text-align':'center',position:'fixed',bottom:0,width:'100%'});
+  var menuA=createElement('div').myAppend(el.editButton,paymentButton,spanTModNCreated,...ElAdmin,commentButton).css({padding:'0 0.3em 0.6em 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.2em auto 0em'});  //.css({margin:'1em 0','text-align':'center',position:'fixed',bottom:0,width:'100%'});
   menuA.css({'box-sizing':'border-box', position:'relative', display:'flex', 'align-items':'center', 'justify-content':'space-between'});
   
   el.fixedDiv=createElement('div').myAppend(el.versionMenu,menuA).css(cssFixed);//.css({position:'static'});
@@ -409,7 +445,7 @@ var adminDivExtend=function(el){
   }
   var handyButton=createElement('button').myText('Overwrite').on('click',handyClickF); 
   var password2=createElement('input').prop({type:'password', placeholder:"Overwrite"}).on('keypress',  function(e){   if(e.which==13) {aPass2F(); return false;}   }); 
-  var imgH=imgHelp.cloneNode().css({margin:'0em 1em'}); popupHover(imgH,createElement('div').myHtml('Write password for:<li>Login: logging in<li>Overwrite: A brutal but handy quick route for saving plus deleting all old versions.'));
+  var imgH=imgHelp.cloneNode(1).css({margin:'0em 1em'}); popupHover(imgH,createElement('div').myHtml('Write password for:<li>Login: logging in<li>Overwrite: A brutal but handy quick route for saving plus deleting all old versions.'));
   //var handySpan=createElement('span').myAppend();  
   var aLoginDiv=createElement('span').myAppend(imgH, logoutButt, password, ' ', handyButton, password2);
   [password, password2].forEach(ele=>ele.css({width:'6em'}));
@@ -427,14 +463,14 @@ var adminDivExtend=function(el){
 
 
   //var menuB=createElement('div').myAppend(moreButton,pageListButton,imageListButton)
-  var menuB=createElement('div').myAppend(infoDiv,aLoginDiv).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'1em auto'});
+  var menuB=createElement('div').myAppend(infoDiv,aLoginDiv).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'1em auto'});
 
 
 
     // menuA
   //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
   //var spanLabel=createElement('span').myText('Admin').css({'float':'right',margin:'0.2em 0 0 0'});  
-  //var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
+  //var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
 
   el.spanClickOutside=createElement('span').myText(strClickOutside).hide();
   el.fixedDiv=createElement('div').myAppend(dragHR,el.spanClickOutside,menuB).css(cssFixedDrag);  //,menuA
@@ -456,7 +492,7 @@ var adminMoreDivExtend=function(el){
     //majax(oAJAX,[['isBUNeeded',{},function(data){  aBUFilesToComp.prop('title', swedTime(data.tLastMod) );  }]]);  
   }
   var strPublicRead='<span style="display:inline-block">'+charPublicRead+'</span>';
-  var imgH=imgHelp.cloneNode().css({'margin-left':'.5em','margin-right':'0.5em'}); popupHover(imgH,createElement('div').myHtml(strPublicRead+' = public read access<br>'+charPublicWrite+' = public write access<br>'+charPromote+' = promote = include the page in sitemap.xml etc. (encourage search engines to list the page)'));
+  var imgH=imgHelp.cloneNode(1).css({'margin-left':'.5em','margin-right':'0.5em'}); popupHover(imgH,createElement('div').myHtml(strPublicRead+' = public read access<br>'+charPublicWrite+' = public write access<br>'+charPromote+' = promote = include the page in sitemap.xml etc. (encourage search engines to list the page)'));
   el.setMod=function(){
     setButMod.call(butModRead, objPage.boOR);
     setButMod.call(butModWrite, objPage.boOW);
@@ -500,7 +536,7 @@ var adminMoreDivExtend=function(el){
     imageFilterDiv.Filt.setSingleParent(idTmp);   imageList.histPush();  imageList.loadTab();  imageList.setVis();  // pageFilterDiv.Filt.filtAll();
   });
 
-  var imgHPrefix=imgHelp.cloneNode().css({'margin-left':'1em'}); popupHover(imgHPrefix,createElement('div').myHtml('<p>Use prefix on default-site-pages:<p>Note that non-default-site-pages always gets the prefix added (to the filename in the zip-file).<p>Click the "Site table"-button below if you want to see or change the prefixes, and if you want to change which site is the default.'));  
+  var imgHPrefix=imgHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHPrefix,createElement('div').myHtml('<p>Use prefix on default-site-pages:<p>Note that non-default-site-pages always gets the prefix added (to the filename in the zip-file).<p>Click the "Site table"-button below if you want to see or change the prefixes, and if you want to change which site is the default.'));  
   var boUsePrefix=getItem('boUsePrefixOnDefaultSitePages')||true;
   var cb=createElement('input').prop({type:'checkbox', checked:boUsePrefix}).on('click',function(){
     boUsePrefix=Number(cb.prop('checked')); 
@@ -508,7 +544,7 @@ var adminMoreDivExtend=function(el){
     aBUFilesToComp.setUp(boUsePrefix);
   })
 
-  //var imgHDownload=imgHelp.cloneNode().css({'margin-left':'1em','margin-right':'1em'}); popupHover(imgHDownload,createElement('div').myText('Put all pages (or images or videos) in a zip-file and download.'));
+  //var imgHDownload=imgHelp.cloneNode(1).css({'margin-left':'1em','margin-right':'1em'}); popupHover(imgHDownload,createElement('div').myText('Put all pages (or images or videos) in a zip-file and download.'));
   var aBUFilesToComp=createElement('a').prop({rel:'nofollow', download:''}).myText('(...)page.zip');
   aBUFilesToComp.setUp=function(boUsePrefix){
     var tmpUrl='BUPage'+(boUsePrefix?'':'?{"boUsePrefixOnDefaultSitePages":0}'); this.prop({href:tmpUrl});
@@ -517,7 +553,7 @@ var adminMoreDivExtend=function(el){
   var aBUVideoToComp=createElement('a').prop({href:'BUVideo', rel:'nofollow', download:''}).myText('(...)video.zip');
   var aBUMeta=createElement('a').prop({href:'BUMeta', rel:'nofollow', download:''}).myText('(...)meta.zip');
   var aBUMetaSQL=createElement('a').prop({href:'BUMetaSQL', rel:'nofollow', download:''}).myText('(...)meta.sql');
-  var imgHSql=imgHelp.cloneNode().css({'margin':'0 1em'}); popupHover(imgHSql,createElement('div').myHtml('<p>Download "meta-data":<br>-extra data for pages/images (modification dates, access rights ...). <br>-redirect table.'));
+  var imgHSql=imgHelp.cloneNode(1).css({'margin':'0 1em'}); popupHover(imgHSql,createElement('div').myHtml('<p>Download "meta-data":<br>-extra data for pages/images (modification dates, access rights ...). <br>-redirect table.<br>-site table.'));
   
   var butBUPageServ=createElement('button').myText('page.zip').on('click',  function(){    httpGetAsync('BUPageServ',function(err, str) {setMess(str,3);});    });
   var butBUImageServ=createElement('button').myText('image.zip').on('click',function(){    httpGetAsync('BUImageServ',function(err, str) {setMess(str,3);});   });
@@ -550,13 +586,13 @@ var adminMoreDivExtend=function(el){
   var Menu=[menuA0, menuA, menuB0, menuB,menuC,menuE,menuF,menuG, menuH, menuJ]; Menu.forEach(ele=>ele.css({margin:'0.5em 0'})); //,menuD , menuI
 
   el.divCont=createElement('div').myAppend(...Menu);
-  el.divCont.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'1em auto'});
+  el.divCont.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'1em auto'});
 
 
     // menuBottom
   //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
   var spanLabel=createElement('span').myText('adminMore').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var menuBottom=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
+  var menuBottom=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
 
 
   el.fixedDiv=createElement('div').myAppend(menuBottom).css(cssFixed);
@@ -785,7 +821,7 @@ var diffBackUpDivExtend=function(el){
           StrReuse.push(key);
         }else{
           StrFetch.push(key);
-          objFetch[key]={dSize:dSize,dUnix:dUnix};
+          objFetch[key]={dSize,dUnix};
         }
       } else {
         StrFetch.push(key);
@@ -958,10 +994,10 @@ var diffBackUpDivExtend=function(el){
 
   var imgDone=createElement('span').myText('Done').css({'background':'lightgreen'}).hide();
 
-  var imgHHead=imgHelp.cloneNode().css({'margin-left':'1em'}); popupHover(imgHHead,createElement('div').myHtml('<p>If the old files\' size and modification date match then they are considered up to date.'));
+  var imgHHead=imgHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHHead,createElement('div').myHtml('<p>If the old files\' size and modification date match then they are considered up to date.'));
   var head=createElement('div').myAppend('Differential backup of images',imgHHead).css({'font-weight':'bold'});
   var strTmpExt=StrImageExt.join(', ');
-  var imgHLoad=imgHelp.cloneNode().css({'margin-left':'1em'}); popupHover(imgHLoad,createElement('div').myHtml('<p>Accepted file endings: '+strTmpExt+', or zip files containing these formats (no folders in the zip file)'));
+  var imgHLoad=imgHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHLoad,createElement('div').myHtml('<p>Accepted file endings: '+strTmpExt+', or zip files containing these formats (no folders in the zip file)'));
   var formFile=createElement('form').prop({enctype:"multipart/form-data"});
   var inpFile=createElement('input').prop({name:"file", type:"file", accept:"application/zip"}).css({background:'lightgrey'}); //multiple
   var ul=createElement('ul');//.hide();
@@ -1010,7 +1046,7 @@ var uploadAdminDivExtend=function(el){
     //for(var i=0;i<arrName.length;i++){
     //  var Match=regTxt.exec(arrName[i]); if(Match) { StrTxt.push(Match[1]); }else{ StrImage.push(arrName[i]); }  
     //}
-    majax(oAJAX,[['getPageInfo',{objName:StrTxt, strKeyDefault:strKeyDefault},sendConflictCheckReturnA],['getImageInfo',{arrName:StrImage},sendConflictCheckReturnB]]);
+    majax(oAJAX,[['getPageInfo',{objName:StrTxt, strKeyDefault},sendConflictCheckReturnA],['getImageInfo',{arrName:StrImage},sendConflictCheckReturnB]]);
   }
   var sendConflictCheckReturnA=function(data){ 
     var FileInfo=data.FileInfo, len=FileInfo.length;
@@ -1092,7 +1128,7 @@ var uploadAdminDivExtend=function(el){
     xhr.onprogress=progressHandlingFunction;
     xhr.onload=function() {
       var dataFetched=this.response;
-      var data; try{ data=JSON.parse(this.response); }catch(e){ setMess(e);  return; }
+      var data; try{ data=JSON.parse(this.response); }catch(e){ setMess(e); debugger; return; }
       
       var dataArr=data.dataArr;  // Each argument of dataArr is an array, either [argument] or [altFuncArg,altFunc]
       delete data.dataArr;
@@ -1114,7 +1150,7 @@ var uploadAdminDivExtend=function(el){
   }
 
   var strTmpExt=StrImageExt.join(', ');
-  var imgHUpload=imgHelp.cloneNode().css({'margin-left':'1em'}); popupHover(imgHUpload,createElement('div').myText('Accepted file endings: '+strTmpExt+', txt or zip files containing these formats (no folders in the zip file)'));
+  var imgHUpload=imgHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHUpload,createElement('div').myText('Accepted file endings: '+strTmpExt+', txt or zip files containing these formats (no folders in the zip file)'));
 
 
   var formFile=createElement('form').prop({enctype:"multipart/form-data"});
@@ -1191,7 +1227,7 @@ var uploadUserDivExtend=function(el){
     xhr.onprogress=progressHandlingFunction;
     xhr.onload=function() {
       var dataFetched=this.response;
-      var data; try{ data=JSON.parse(this.response); }catch(e){ setMess(e);  return; }
+      var data; try{ data=JSON.parse(this.response); }catch(e){ setMess(e); debugger; return; }
       
       var dataArr=data.dataArr;  // Each argument of dataArr is an array, either [argument] or [altFuncArg,altFunc]
       delete data.dataArr;
@@ -1282,16 +1318,16 @@ var PageFilterDiv=function(Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst=
   //el.Prop=Prop; el.Label=Label; el.StrOrderFilt=StrOrderFilt; el.changeFunc=changeFunc; el.StrGroupFirst=StrGroupFirst; el.StrGroup=StrGroup;
   //$.extend(el,FilterDivProt);
   
-  //el.divCont=createElement('div').css({'max-width':menuMaxWidth+'px',margin:'0em auto','text-align':'left'}); //cssFixed
-  var objArg={Prop:Prop, Label:Label, StrOrderFilt:StrOrderFilt, changeFunc:changeFunc, StrGroupFirst:StrGroupFirst, StrGroup:StrGroup, helpBub:helpBub, objSetting:objFilterSetting};
+  //el.divCont=createElement('div').css({'max-width':menuMaxWidth,margin:'0em auto','text-align':'left'}); //cssFixed
+  var objArg={Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst, StrGroup, helpBub, objSetting:objFilterSetting};
   //objArg.StrProp=oRole.filter.StrProp;
 
-  el.divCont=filterDivICreator(objArg, changeFunc).addClass('contDiv').css({'max-width':menuMaxWidth+'px',margin:'0em auto','text-align':'left'});
+  el.divCont=filterDivICreator(objArg, changeFunc).addClass('contDiv').css({'max-width':menuMaxWidth,margin:'0em auto','text-align':'left'});
 
       // menuA
   var buttClear=createElement('button').myText('C').on('click',function(){el.Filt.filtAll(); pageList.histReplace(-1); pageList.loadTab();}).css({'margin-left':'1em'});
   var infoWrap=createElement('span'),     spanLabel=createElement('span').myAppend('Page filter',' (',infoWrap,')').css({'float':'right',margin:'0.2em 0 0 0.2em'});
-  var menuA=createElement('div').myAppend(buttClear,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  // buttonBack,
+  var menuA=createElement('div').myAppend(buttClear,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});  // buttonBack,
   
   el.addClass('unselectable').prop({unselectable:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie
 
@@ -1308,16 +1344,16 @@ var ImageFilterDiv=function(Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst
   
   //el.Prop=Prop; el.Label=Label; el.StrOrderFilt=StrOrderFilt; el.changeFunc=changeFunc; el.StrGroupFirst=StrGroupFirst; el.StrGroup=StrGroup;
   //$.extend(el,FilterDivProt);
-  //el.divCont=createElement('div').css({'max-width':menuMaxWidth+'px',margin:'0em auto','text-align':'left'}); //cssFixed
-  var objArg={Prop:Prop, Label:Label, StrOrderFilt:StrOrderFilt, changeFunc:changeFunc, StrGroupFirst:StrGroupFirst, StrGroup:StrGroup, helpBub:helpBub, objSetting:objFilterSetting};
+  //el.divCont=createElement('div').css({'max-width':menuMaxWidth,margin:'0em auto','text-align':'left'}); //cssFixed
+  var objArg={Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst, StrGroup, helpBub, objSetting:objFilterSetting};
   //objArg.StrProp=oRole.filter.StrProp;
   
-  el.divCont=filterDivICreator(objArg, changeFunc).addClass('contDiv').css({'max-width':menuMaxWidth+'px',margin:'0em auto','text-align':'left'});
+  el.divCont=filterDivICreator(objArg, changeFunc).addClass('contDiv').css({'max-width':menuMaxWidth,margin:'0em auto','text-align':'left'});
   
       // menuA
   var buttClear=createElement('button').myText('C').on('click',function(){el.Filt.filtAll(); imageList.histReplace(-1); imageList.loadTab()}).css({'margin-left':'1em'});
   var infoWrap=createElement('span'),     spanLabel=createElement('span').myAppend('Image filter',' (',infoWrap,')').css({'float':'right',margin:'0.2em 0 0 0.2em'});
-  var menuA=createElement('div').myAppend(buttClear,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
+  var menuA=createElement('div').myAppend(buttClear,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
 
   el.addClass('unselectable').prop({unselectable:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie
 
@@ -1366,7 +1402,7 @@ var headExtend=function(el, tableDiv, StrName, BoAscDefault, Label, strTR='tr', 
   var Th=Array(len), arrImgSort=Array(len);
   for(var i=0;i<len;i++){
     var strName=StrName[i];  
-    var imgSort=createElement('img').attr('data-type', 'sort').prop({src:uUnsorted});
+    var imgSort=createElement('img').attr('data-type', 'sort').prop({src:uUnsorted, alt:"sort"});
     var boAscDefault=(strName in BoAscDefault)?BoAscDefault[strName]:true;
     var label=(strName in Label)?Label[strName]:ucfirst(strName);
     var h=createElement(strTH).myAppend(imgSort).addClass('unselectable').prop({UNSELECTABLE:"on"}).attr('name',strName).prop('boAscDefault',boAscDefault).prop('title',label).on('click',thClick);
@@ -1417,15 +1453,15 @@ var pageListExtend=function(el){
       var tdTCreated=createElement('span').attr('name','tCreated').prop('title',PageRowLabel.tCreated);
       var tdDate=createElement('span').attr('name','date').prop('title',PageRowLabel.date);
       var tdSite=createElement('span').attr('name','siteName'); //.hide();
-      var aLink=createElement('a').prop({target:"_blank"});
+      var aLink=createElement('a').prop({target:"_blank", rel:"noopener"});
       var tdLink=createElement('span').attr('name','link').myAppend(aLink); //.hide();
       var tdSize=createElement('span').attr('name','size');
       var buttonNChild=createElement('button').myHtml('<span></span>').on('click',clickSetParentFilter);
       var buttonNImage=createElement('button').on('click',clickSetParentFilterI);
       var tdNChild=createElement('span').myAppend(buttonNChild).attr('name','nChild').prop('title','Children'); 
       var tdNImage=createElement('span').myAppend(buttonNImage).attr('name','nImage').prop('title','Images');  
-      r.append(tdNParent, tdCB, tdExecute, tdTCreated, tdDate, tdR, tdW, tdP, tdSize, tdNImage, tdNChild, tdVer, ' ', tdSite,tdLink);  //    , tdName     ,createElement('span').append(bView)
-      //r.data({tdCB:tdCB, tdDate:tdDate, tdR:tdR, tdW:tdW, tdP:tdP, tdLink:tdLink, tdVer:tdVer, tdSize:tdSize, tdNChild:tdNChild, tdNImage:tdNImage});
+      r.append(tdNParent, tdCB, tdExecute, tdTCreated, tdDate, tdR, tdW, tdP, tdSize, tdNImage, tdNChild, tdVer, ' ', tdSite,' ',tdLink);  //    , tdName     ,createElement('span').append(bView)
+      //r.data({tdCB, tdDate, tdR, tdW, tdP, tdLink, tdVer, tdSize, tdNChild, tdNImage});
       tBody.append(r);
     }
   }
@@ -1494,7 +1530,7 @@ var pageListExtend=function(el){
   var restExecuteButton=function(){   allButton.myText('All');  buttonExecuteMult.hide();  }
   el.loadTab=function(){
     var Filt=pageFilterDiv.divCont.gatherFiltData();
-    var vec=[['setUpPageListCond',{Filt:Filt}],['getPageList',{},getListRet],['getPageHist',{},histRet]]; 
+    var vec=[['setUpPageListCond',{Filt}],['getPageList',{},getListRet],['getPageHist',{},histRet]]; 
     //var boSingleParentFilter=pageFilterDiv.Filt.checkIfSingleParent();
     var boWhite=pageFilterDiv.Filt.isWhite(),     nParentsOn=pageFilterDiv.Filt.getNParentsOn();
     if(boWhite && nParentsOn==1){
@@ -1566,7 +1602,7 @@ var pageListExtend=function(el){
   }
   el.deleteF=function(FileDelete, histBackFun){
     var Filt=pageFilterDiv.divCont.gatherFiltData();    
-    //var vec=[['deletePage',{File:FileDelete}],['setUpPageListCond',{Filt:Filt}],['getPageList',1,getListRet],['getPageHist',1,histRet]];
+    //var vec=[['deletePage',{File:FileDelete}],['setUpPageListCond',{Filt}],['getPageList',1,getListRet],['getPageHist',1,histRet]];
     var vec=[['deletePage',{File:FileDelete}, histBackFun]];
     restExecuteButton();  majax(oAJAX, vec);
   }
@@ -1664,7 +1700,7 @@ var pageListExtend=function(el){
   var buttonFastBack=createElement('button').myAppend(spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){history.fastBack(adminMoreDiv);});
   //var spanLabel=createElement('span').append('Pages').css({'float':'right',margin:'0.2em 0 0 0'});  
 
-  var tmpImg=createElement('img').prop({src:uFilter}).css({height:'1em',width:'1em','vertical-align':'text-bottom'}).addClass('undraggable');
+  var tmpImg=createElement('img').prop({src:uFilter, alt:"filter"}).css({height:'1em',width:'1em','vertical-align':'text-bottom'}).addClass('undraggable');
   el.filterInfoWrap=createElement('span');
   var buttFilter=createElement('button').myAppend(tmpImg,' (',el.filterInfoWrap,')').addClass('flexWidth').css({'float':'right','margin-right':'0.2em'}).on('click',function(){ doHistPush({view:pageFilterDiv}); pageFilterDiv.setVis();});
   var buttClear=createElement('button').myText('C').on('click',function(){pageFilterDiv.Filt.filtAll(); pageList.histPush(); pageList.loadTab()}).css({'float':'right','margin-right':'1em'});
@@ -1672,7 +1708,7 @@ var pageListExtend=function(el){
   var buttOrphan=createElement('button').myText('orp­hans').on('click',function(){pageFilterDiv.Filt.setSingleParent(null);  pageList.histPush(); pageList.loadTab()}).css({'float':'right','margin-right':'1em'});
 
   var menuA=createElement('div').myAppend(buttonFastBack, allButton, buttonExecuteMult, buttFilter, buttClear, buttOrphan);  // buttonBack, 
-  menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
+  menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});
 
   el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
   el.css({'text-align':'center'});
@@ -1800,7 +1836,7 @@ var DivRowParentT=function(){
   el.tdDate=createElement('span').attr('name','date').prop('title',PageRowLabel.date);
   el.tdSite=createElement('span').attr('name','siteName');
   el.tdOrphan=createElement('span').css({color:'grey'});
-  el.aLink=createElement('a').prop({target:"_blank"});
+  el.aLink=createElement('a').prop({target:"_blank", rel:"noopener"});
   el.tdLink=createElement('span').attr('name','link').myAppend(el.aLink);
   el.tdSize=createElement('span').attr('name','size').css({'float':'right'});
   el.buttonNChild=createElement('button').on('click',setParentFilter);//.css({'background-image':'url("stylesheets/buttonRight1.png")'})
@@ -1810,7 +1846,7 @@ var DivRowParentT=function(){
   
   el.append(el.spanGrandParent, el.tdExecute, el.tdTCreated, el.tdDate, el.tdR, el.tdW, el.tdP, el.tdSize, el.tdNImage, el.tdNChild, el.tdVer, el.tdSite, el.tdOrphan, el.tdLink);
   
-  el.css({'line-height':'2.7em'});  // ,'max-width':menuMaxWidth+'px'
+  el.css({'line-height':'2.7em'});  // ,'max-width':menuMaxWidth
   el.addClass('pageList');
   return el;
 }
@@ -1921,7 +1957,7 @@ var grandParentSelPopExtend=function(el){
     for(var i=0;i<len;i++) {  
       var idPage=GrandParent[i].idPage, name=GrandParent[i].pageName, siteName=GrandParent[i].siteName;
       var boCur=idPage===idParent;
-      var but=createElement('button').prop({idPage:idPage}).myText(name).on('click',buttonPress).prop('disabled', boCur); 
+      var but=createElement('button').prop({idPage}).myText(name).on('click',buttonPress).prop('disabled', boCur); 
       var r=createElement('p').css({display:'block'}).myAppend(but);
       //if(!boEqual) r.prepend(siteName+' ');
       if(strTypeCurrent=='image') r.prepend(siteName+' ');
@@ -1963,7 +1999,7 @@ var renamePopExtend=function(el){
     resetMess();  
     var strNewName=inpName.value.trim(); inpName.value=strNewName; if(strNewName.length==0) {setMess('name can not be empty',5); return; }
     strNewName.replace(RegExp(' ','g'),'_');
-    var o1={strNewName:strNewName,id:id};
+    var o1={strNewName,id};
     var vec=[['rename'+ucfirst(strType),o1,saveRet]];   majax(oAJAX,vec);
 
     setMess('',null,true);  
@@ -2079,15 +2115,15 @@ var imageListExtend=function(el){
       var buttonExecute=createElement('button').myText(charFlash).on(strMenuOpenEvent,buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"});
       var tdExecute=createElement('span').prop('valSort',0).myAppend(buttonExecute).attr('name','execute'); 
       var tdDate=createElement('span').attr('name','date').prop('title',Label.date);  //.css({margin:'auto 0.3em'})
-      var img=createElement('img').on('click',imageClick);//.css({'margin-right':'0.1em','max-width':'50px','max-height':'50px'});
+      var img=createElement('img').prop({alt:"thumb"}).on('click',imageClick);//.css({'margin-right':'0.1em','max-width':'50px','max-height':'50px'});
       var tdImg=createElement('span').attr('name','image').myAppend(img);
       var tdBoOther=createElement('span').myText('user').attr('name','boOther');
       //var tdName=createElement('span').attr('name','imageName'); //.hide();
-      var aLink=createElement('a').prop({target:"_blank"});
+      var aLink=createElement('a').prop({target:"_blank", rel:"noopener"});
       var tdLink=createElement('span').myAppend(aLink).attr('name','link');
       var tdSize=createElement('span').attr('name','size');  //.css({'margin-left':'1em'})
       r.append(tdNParentI, tdCB, tdExecute, tdDate, tdImg, tdSize, tdBoOther, tdLink);  //  tdName  ,createElement('span').myAppend(bView)  tdNParent, 
-      //r.data({tdCB:tdCB, tdDate:tdDate, tdImg:tdImg, tdLink:tdLink, tdBoOther:tdBoOther, tdSize:tdSize});
+      //r.data({tdCB, tdDate, tdImg, tdLink, tdBoOther, tdSize});
       tBody.append(r);
     }
   }
@@ -2152,7 +2188,7 @@ var imageListExtend=function(el){
   var restExecuteButton=function(){   allButton.myText('All');  buttonExecuteMult.hide();  }
   el.loadTab=function(){
     var Filt=imageFilterDiv.divCont.gatherFiltData();
-    var vec=[['setUpImageListCond',{Filt:Filt}],['getImageList',{},getListRet],['getImageHist',{},histRet]];
+    var vec=[['setUpImageListCond',{Filt}],['getImageList',{},getListRet],['getImageHist',{},histRet]];
     //var boSingleParentFilter=imageFilterDiv.Filt.checkIfSingleParent();
     var boWhite=imageFilterDiv.Filt.isWhite(),     nParentsOn=imageFilterDiv.Filt.getNParentsOn();
     
@@ -2243,7 +2279,7 @@ var imageListExtend=function(el){
   
   el.deleteF=function(FileDelete, histBackFun){
     var Filt=imageFilterDiv.divCont.gatherFiltData();    
-    //var vec=[['deleteImage',{File:FileDelete}],['setUpImageListCond',{Filt:Filt}],['getImageList',1,getListRet],['getImageHist',1,histRet]];
+    //var vec=[['deleteImage',{File:FileDelete}],['setUpImageListCond',{Filt}],['getImageList',1,getListRet],['getImageHist',1,histRet]];
     var vec=[['deleteImage',{File:FileDelete}, histBackFun]];
     restExecuteButton();  majax(oAJAX,vec);
   }
@@ -2357,7 +2393,7 @@ var imageListExtend=function(el){
   var buttonFastBack=createElement('button').myAppend(spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){history.fastBack(adminMoreDiv);});
   //var spanLabel=createElement('span').myText('Images').css({'float':'right',margin:'0.2em 0 0 0'}); 
   
-  var tmpImg=createElement('img').prop({src:uFilter}).css({height:'1em',width:'1em','vertical-align':'text-bottom'}).addClass('undraggable');
+  var tmpImg=createElement('img').prop({src:uFilter, alt:"filter"}).css({height:'1em',width:'1em','vertical-align':'text-bottom'}).addClass('undraggable');
   el.filterInfoWrap=createElement('span');
   var buttFilter=createElement('button').myAppend(tmpImg,' (',el.filterInfoWrap,')').addClass('flexWidth').css({'float':'right','margin-right':'0.2em'}).on('click',function(){ doHistPush({view:imageFilterDiv}); imageFilterDiv.setVis();});
   var buttClear=createElement('button').myText('C').on('click',function(){imageFilterDiv.Filt.filtAll(); imageList.histPush(); imageList.loadTab()}).css({'float':'right','margin-right':'1em'});
@@ -2365,7 +2401,7 @@ var imageListExtend=function(el){
   var buttOrphan=createElement('button').myAppend(spanTmp).on('click',function(){imageFilterDiv.Filt.setSingleParent(null);  imageList.histPush(); imageList.loadTab()}).css({'float':'right','margin-right':'1em'});
 
   var menuA=createElement('div').myAppend(buttonFastBack, allButton, buttonExecuteMult, buttFilter, buttClear, buttOrphan);  // buttonBack, 
-  menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
+  menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});
 
   el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed).css({'background':'lightblue'});
   el.css({'text-align':'center'});
@@ -2426,7 +2462,7 @@ var editDivExtend=function(el){
   el.templateButton=templateButton;
   var upLoadButton=createElement('button').myAppend('Upload image').on('click',function(){  doHistPush({view:uploadUserDiv}); uploadUserDiv.setVis();}).css({'float':'right'});
   
-  var menuB=createElement('div').myAppend(el.spanSave,templateButton).addClass('fixWidth').css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'1em auto 0'});
+  var menuB=createElement('div').myAppend(el.spanSave,templateButton).addClass('fixWidth').css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'1em auto 0'});
   //,' ',upLoadButton
     // menuA
   //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
@@ -2434,7 +2470,7 @@ var editDivExtend=function(el){
   
   //el.spanCreated=createElement('span');   el.spanLastMod=createElement('span');  
   //var spanTModNCreated=createElement('span').myAppend('Page created: ', el.spanCreated, '. Last mod: ', el.spanLastMod).css({'float':'right',margin:'0.2em .5em 0 0', 'font-size':'70%'});
-  //var menuA=createElement('div').myAppend(spanTModNCreated).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //buttonBack, ,spanLabel
+  //var menuA=createElement('div').myAppend(spanTModNCreated).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});  //buttonBack, ,spanLabel
 
   el.spanClickOutside=createElement('span').myText('Click outside the textarea when ready.').hide();
   el.fixedDiv=createElement('div').myAppend(el.spanClickOutside,menuB).css(cssFixedDrag);
@@ -2571,7 +2607,7 @@ var templateListExtend=function(el){
       // menuA
   // var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
   var spanLabel=createElement('span').myText('Template list').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); // buttonBack,
+  var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); // buttonBack,
 
 
   var fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
@@ -2589,7 +2625,7 @@ var versionTableExtend=function(el){
   el.toString=function(){return 'versionTable';}
   function cbCompareWPrev(){ 
     var iVer=this.parentNode.parentNode.iMy;  arrVersionCompared=[bound(iVer-1,1),iVer];
-    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
+    var vec=[['pageCompare',{arrVersionCompared }]];   majax(oAJAX,vec); 
     doHistPush({view:diffDiv}); diffDiv.setVis();
     return false;
   }
@@ -2607,21 +2643,21 @@ var versionTableExtend=function(el){
     if(iRow==nVersion-1) { var vec=[['pageLoad',{version:nVersion-iRow}]];   majax(oAJAX,vec);   }
     else{
       arrVersionCompared=[bound(nVersion-iRow-1,1),nVersion-iRow];
-      var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
+      var vec=[['pageCompare',{arrVersionCompared }]];   majax(oAJAX,vec); 
     }
     return false;
   }*/
   function redClick(){ 
     var verR=this.parentNode.parentNode.iMy, verGT=arrVersionCompared[1]; verGT=verGT<=verR?verR+1:verGT; verGT=Math.min(verGT,nVersion);
     arrVersionCompared=[verR, verGT]; 
-    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
+    var vec=[['pageCompare',{arrVersionCompared }]];   majax(oAJAX,vec); 
     doHistPush({view:diffDiv}); diffDiv.setVis();
     return false;
   }
   function greenClick(){ 
     var verG=this.parentNode.parentNode.iMy,  verRT=arrVersionCompared[0]; verRT=verRT>=verG?verG-1:verRT; verRT=Math.max(verRT,1);
     arrVersionCompared=[verRT, verG];
-    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
+    var vec=[['pageCompare',{arrVersionCompared }]];   majax(oAJAX,vec); 
     doHistPush({view:diffDiv}); diffDiv.setVis();
     return false;
   }  
@@ -2731,7 +2767,7 @@ var versionTableExtend=function(el){
       // menuA
   // var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
   var spanLabel=createElement('span').myText('Version list').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
+  var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
 
   el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
 
@@ -2783,12 +2819,12 @@ var diffDivExtend=function(el){
         // menuC
   var nextButtonNew=createElement('button').myText('⇧').addClass('fixWidth').on('click',function(){
     arrVersionCompared[1]++;   if(arrVersionCompared[1]>nVersion) {arrVersionCompared[1]=nVersion;}
-    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
+    var vec=[['pageCompare',{arrVersionCompared }]];   majax(oAJAX,vec); 
   });
   var prevButtonNew=createElement('button').myText('⇩').addClass('fixWidth').on('click',function(){
     arrVersionCompared[1]--; if(arrVersionCompared[0]==arrVersionCompared[1]) arrVersionCompared[0]--;
     if(arrVersionCompared[0]==0) {arrVersionCompared=[nVersion-1,nVersion];}
-    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec);  
+    var vec=[['pageCompare',{arrVersionCompared }]];   majax(oAJAX,vec);  
   });
   var versionNew=createElement('span').css({'background':'#afa'}), detailNew=createElement('span'); 
   
@@ -2797,11 +2833,11 @@ var diffDivExtend=function(el){
   var nextButtonOld=createElement('button').myText('⇧').addClass('fixWidth').on('click',function(){
     arrVersionCompared[0]++; if(arrVersionCompared[0]==arrVersionCompared[1]) arrVersionCompared[1]++;
     if(arrVersionCompared[1]>nVersion) {arrVersionCompared=[1,2];}
-    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec);
+    var vec=[['pageCompare',{arrVersionCompared }]];   majax(oAJAX,vec);
   });
   var prevButtonOld=createElement('button').myText('⇩').addClass('fixWidth').on('click',function(){
     arrVersionCompared[0]--;   if(arrVersionCompared[0]==0) {arrVersionCompared[0]=1;}
-    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec); 
+    var vec=[['pageCompare',{arrVersionCompared }]];   majax(oAJAX,vec); 
   });
   var versionOld=createElement('span').css({'background':'#faa'}), detailOld=createElement('span'); 
 
@@ -2810,8 +2846,8 @@ var diffDivExtend=function(el){
   [prevButtonNew, prevButtonOld].forEach(ele=>ele.css({'margin-left':'0.8em'}));
 
   //prevButtonNew,versionNew,nextButtonNew   prevButtonOld,versionOld,nextButtonOld
-  var menuC=createElement('div').myAppend(versionNew,detailNew).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
-  var menuB=createElement('div').myAppend(versionOld,detailOld).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'});
+  var menuC=createElement('div').myAppend(versionNew,detailNew).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});
+  var menuB=createElement('div').myAppend(versionOld,detailOld).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});
 
 
 
@@ -2819,16 +2855,16 @@ var diffDivExtend=function(el){
   var nextButton=createElement('button').myText('⇧').addClass('fixWidth').css({'margin':'0 1em'}).on('click',function(){
     arrVersionCompared[0]++; arrVersionCompared[1]++;
     if(arrVersionCompared[1]>nVersion) {arrVersionCompared=[1,2];}
-    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec);
+    var vec=[['pageCompare',{arrVersionCompared }]];   majax(oAJAX,vec);
   });
   var prevButton=createElement('button').myText('⇩').addClass('fixWidth').css({'margin':'0 1em'}).on('click',function(){
     arrVersionCompared[0]--; arrVersionCompared[1]--; 
     if(arrVersionCompared[0]==0) {arrVersionCompared=[nVersion-1,nVersion];}
-    var vec=[['pageCompare',{arrVersionCompared:arrVersionCompared }]];   majax(oAJAX,vec);  
+    var vec=[['pageCompare',{arrVersionCompared }]];   majax(oAJAX,vec);  
   });
   // var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
   var spanLabel=createElement('span').myText('Diff').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var menuA=createElement('div').myAppend(prevButton,nextButton,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
+  var menuA=createElement('div').myAppend(prevButton,nextButton,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
 
   el.fixedDiv=createElement('div').myAppend(menuC,menuB,menuA).css(cssFixed);
 
@@ -2855,13 +2891,13 @@ var paymentDivExtend=function(el){
     // menuB
   var formPP=formPPExtend(createElement('form')),     divPP=createElement('div').myAppend(formPP).css({'margin-top':'1em'}); if(ppStoredButt.length==0) divPP.hide();  //'Paypal: ',
   var spanBTC=createElement('span').myAppend(strBTC).css({'font-size':'0.70em'}),    divBC=createElement('div').myAppend('฿: ',spanBTC); if(spanBTC.length==0) divBC.hide();
-  var menuB=createElement('div').myAppend(divBC,divPP).css({'text-align':'center'}).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'center',margin:'1em auto'});
+  var menuB=createElement('div').myAppend(divBC,divPP).css({'text-align':'center'}).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'center',margin:'1em auto'});
 
     // menuA
   // var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
   var spanLabel=createElement('span').myText('Pay/Donate').css({'float':'right',margin:'0.2em 0 0 0'}); 
   spanLabel.addClass('unselectable').prop({UNSELECTABLE:"on"}); // class: needed by firefox, prop: needed by opera, firefox and ie 
-  var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
+  var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
 
   el.fixedDiv=createElement('div').myAppend(menuB,menuA).css(cssFixed);
 
@@ -3119,7 +3155,7 @@ var redirectSetPopExtend=function(el){
     rMat.url=inpURL.value;  if(rMat.url.length==0){ setMess('empty url',2);  return;}
     //if(RegExp('^https?:\/\/$').test(url)) { setMess('empty domain',2);  return;}
     //if(!RegExp('^https?:\/\/').test(url)){  url="http://"+url;   }
-    var objTmp=extend({boUpd:boUpd},rMat);
+    var objTmp=extend({boUpd},rMat);
     var vec=[['redirectTabSet', objTmp, saveRet]];   majax(oAJAX,vec);
   }
   var saveRet=function(data){
@@ -3183,7 +3219,7 @@ var redirectSetPopExtend=function(el){
 var redirectDeletePopExtend=function(el){
   el.toString=function(){return 'redirectDeletePop';}
   var ok=createElement('button').myText('OK').css({'margin-top':'1em'}).on('click',function(){    
-    var pageName=elR.attr('pageName'), idSite=elR.attr('idSite'), vec=[['redirectTabDelete',{idSite:idSite,pageName:pageName},okRet]];   majax(oAJAX,vec);    
+    var pageName=elR.attr('pageName'), idSite=elR.attr('idSite'), vec=[['redirectTabDelete',{idSite,pageName},okRet]];   majax(oAJAX,vec);    
   });
   var okRet=function(data){
     if(!data.boOK) return;
@@ -3227,7 +3263,7 @@ var redirectTabExtend=function(el){
     tMod:{ mySetVal:funcTTimeTmp }
   }
   var TDConstructors={
-    url:function(){ var a=createElement('a').prop({target:"_blank"}),el=createElement('td').myAppend(a);  extend(el,TDProt.url);  return el;  },
+    url:function(){ var a=createElement('a').prop({target:"_blank", rel:"noopener"}),el=createElement('td').myAppend(a);  extend(el,TDProt.url);  return el;  },
     tCreated:function(){ var el=createElement('td');  extend(el,TDProt.tCreated);  return el;  },
     tLastAccess:function(){ var el=createElement('td');  extend(el,TDProt.tLastAccess);  return el;  },
     tMod:function(){ var el=createElement('td');  extend(el,TDProt.tMod);  return el;  }
@@ -3306,7 +3342,7 @@ var redirectTabExtend=function(el){
   el.table.prepend(tHead);
   el.nRowVisible=0;
 
-  var imgDelete=imgProt.cloneNode().prop({src:uDelete});
+  var imgDelete=imgProt.cloneNode().prop({src:uDelete, alt:"delete"});
       // menuA
   var buttonAdd=createElement('button').myText('Add').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
     redirectSetPop.openFunc.call({},0,0);
@@ -3316,7 +3352,7 @@ var redirectTabExtend=function(el){
     var vec=[['redirectTabResetNAccess', {}, function(){el.boStale=1; el.setUp();}]];   majax(oAJAX,vec);
   });
   var spanLabel=createElement('span').myText('Redirect').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var menuA=createElement('div').myAppend(buttonAdd,buttonClearNAccess,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); 
+  var menuA=createElement('div').myAppend(buttonAdd,buttonClearNAccess,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); 
 
   el.addClass('redirectTab');
   el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
@@ -3335,7 +3371,7 @@ var siteSetPopExtend=function(el){
     r.googleAnalyticsTrackingID=inpGog.value;
     r.urlIcon16=inpURLIcon16.value;
     r.urlIcon200=inpURLIcon200.value;
-    var objTmp=extend({boUpd:boUpd},r);
+    var objTmp=extend({boUpd},r);
     var vec=[['siteTabSet', objTmp, saveRet]];   majax(oAJAX,vec);
   }
   var saveRet=function(data){
@@ -3372,7 +3408,7 @@ var siteSetPopExtend=function(el){
   var selBoTLS=createElement('select').css({display:'block'}).myAppend(opt,optS); 
   var labName=createElement('b').myText('Name (used as prefix when backing up...)');
   var inpName=createElement('input').prop('type', 'text');
-  var imgHWWW=imgHelp.cloneNode().css({margin:'0em 1em'}); popupHover(imgHWWW,createElement('div').myHtml('<p>Ex:<p>www.example.com<p>127.0.0.1:5000<p>localhost:5000'));
+  var imgHWWW=imgHelp.cloneNode(1).css({margin:'0em 1em'}); popupHover(imgHWWW,createElement('div').myHtml('<p>Ex:<p>www.example.com<p>127.0.0.1:5000<p>localhost:5000'));
   var labWWW=createElement('b').myAppend('www', imgHWWW);
   var inpWWW=createElement('input').prop('type', 'text');
   var labGog=createElement('b').myText('googleAnalyticsTrackingID');
@@ -3401,7 +3437,7 @@ var siteSetPopExtend=function(el){
 var siteDeletePopExtend=function(el){
   el.toString=function(){return 'siteDeletePop';}
   var ok=createElement('button').myText('OK').css({'margin-top':'1em'}).on('click',function(){    
-    var vec=[['siteTabDelete',{siteName:siteName},okRet]];   majax(oAJAX,vec);    
+    var vec=[['siteTabDelete',{siteName},okRet]];   majax(oAJAX,vec);    
   });
   var okRet=function(data){
     if(!data.boOK) return;
@@ -3460,10 +3496,10 @@ var siteTabExtend=function(el){
   var TDConstructors={
     boDefault:function(){ var b=createElement('button').css('width','1.2em').on('click',setDefault), el=createElement('td').css('text-align','center').myAppend(b);  extend(el,TDProt.boDefault);  return el;  },
     boTLS:function(){ var el=createElement('td'); extend(el,TDProt.boTLS);  return el;  },
-    www:function(){ var a=createElement('a').prop({target:"_blank"}),  el=createElement('td').myAppend(a);  extend(el,TDProt.www);  return el;  },
+    www:function(){ var a=createElement('a').prop({target:"_blank", rel:"noopener"}),  el=createElement('td').myAppend(a);  extend(el,TDProt.www);  return el;  },
     tCreated:function(){ var el=createElement('td');  extend(el,TDProt.tCreated);  return el;  },
-    urlIcon16:function(){ var im=createElement('img').css({'vertical-align':'middle'}), el=createElement('td').myAppend(im); extend(el,TDProt.urlIcon16);  return el;  },
-    urlIcon200:function(){ var im=createElement('img').css({'vertical-align':'middle', 'max-width':'50px', 'max-height':'50px'}), el=createElement('td').myAppend(im); extend(el,TDProt.urlIcon200);  return el;  }
+    urlIcon16:function(){ var im=createElement('img').prop({alt:"icon16"}).css({'vertical-align':'middle'}), el=createElement('td').myAppend(im); extend(el,TDProt.urlIcon16);  return el;  },
+    urlIcon200:function(){ var im=createElement('img').prop({alt:"icon200"}).css({'vertical-align':'middle', 'max-width':'50px', 'max-height':'50px'}), el=createElement('td').myAppend(im); extend(el,TDProt.urlIcon200);  return el;  }
   }
   el.myAdd=function(rMat){
     var elR=createElement('tr'); elR.attr({idSite:rMat.idSite}).prop('rMat',rMat)
@@ -3544,13 +3580,13 @@ var siteTabExtend=function(el){
   el.nRowVisible=0;
 
 
-  var imgDelete=imgProt.cloneNode().prop({src:uDelete});
+  var imgDelete=imgProt.cloneNode().prop({src:uDelete, alt:"delete"});
       // menuA
   var buttonAdd=createElement('button').myText('Add').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
     siteSetPop.openFunc.call({},0,0);
   });
   var spanLabel=createElement('span').myText('SiteTab').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var menuA=createElement('div').myAppend(buttonAdd,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth+'px','text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
+  var menuA=createElement('div').myAppend(buttonAdd,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
 
   el.addClass('siteTab');
   el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
@@ -3589,9 +3625,9 @@ var majax=function(oAJAX, vecIn){  // Each argument of vecIn is an array: [serve
   
   xhr.onload=function () {
     var dataFetched=this.response;
-    var data; try{ data=JSON.parse(this.response); }catch(e){ setMess(e);  return; }
+    var data; try{ data=JSON.parse(this.response); }catch(e){ setMess(e); debugger; return; }
     
-    var dataArr=data.dataArr;  // Each argument of dataArr is an array, either [argument] or [altFuncArg,altFunc]
+    var dataArr=data.dataArr||[];  // Each argument of dataArr is an array, either [argument] or [altFuncArg,altFunc]
     delete data.dataArr;
     beRet(data);
     for(var i=0;i<dataArr.length;i++){
@@ -3691,7 +3727,6 @@ tCreated:'Created'
 }
 var helpBub={}
 
-const strSha1NotLoaded='sha1.js is not loaded yet, perhaps wait a bit';
 
 window.elHtml=document.documentElement; window.elBody=document.body;
 elBody.css({margin:'0px'}); //, position:'relative'
@@ -3699,7 +3734,7 @@ elBody.css({margin:'0px'}); //, position:'relative'
 window.boTouch = Boolean('ontouchstart' in document.documentElement);
 //boTouch=1;
 
-var boLCacheObs=document.querySelector('#boLCacheObs'); if(boLCacheObs.value.length) { boLCacheObs.value=""; location.reload(); return} //boLCacheObs.value=1;
+//var boLCacheObs=document.querySelector('#boLCacheObs'); if(boLCacheObs.value.length) { boLCacheObs.value=""; location.reload(); return} //boLCacheObs.value=1;
 
 var browser=getBrowser();
 var intBrowserVersion=parseInt(browser.version.slice(0, 2));
@@ -3712,9 +3747,11 @@ window.boFF = uaLC.indexOf("firefox") > -1;
 var versionIE=detectIE();
 window.boIE=versionIE>0; if(boIE) browser.brand='msie';
 
-window.boChrome= /chrome/i.test(uaLC);
-window.boIOS= /iPhone|iPad|iPod/i.test(uaLC);
-window.boEpiphany=/epiphany/.test(uaLC);    if(boEpiphany && !boAndroid) boTouch=false;  // Ugly workaround
+app.boChrome= /chrome/.test(uaLC);
+app.boIOS= /iphone|ipad|ipod/.test(uaLC);
+app.boEpiphany=/epiphany/.test(uaLC);    if(boEpiphany && !boAndroid) boTouch=false;  // Ugly workaround
+app.boEdge= /edge/.test(uaLC);
+
 
 window.boOpera=RegExp('OPR\\/').test(ua); if(boOpera) boChrome=false; //alert(ua);
 
@@ -3732,8 +3769,8 @@ var strFastBackSymbol=charBackSymbol+charBackSymbol;
 var charFlash='↯';//⚡↯
 var charPublicRead='<span style="font-family:courier">͡°</span>'; //☉͡°
 var charPublicRead='<span class=eye>(∘)</span>'; //☉͡° ·
-var charPublicRead='👁'; //'📖'; //👀😶☉͡° ·
-var charPublicWrite='✎'; //✎
+var charPublicRead='📖' //'👁'; //'📖'; //👀😶☉͡° · 🕮
+var charPublicWrite='🖉'; //✎ 🔏 🔒 🔓 🔐 🖉 🖊 ✏ 🖋 ✎ ✐
 var charPromote='📣'; //'🗣️';  //😗😱😮
 var charDelete='✖'; //x, ❌, X, ✕, ☓, ✖, ✗, ✘
 var charLink='🔗'; //☞🔗
@@ -3741,6 +3778,7 @@ var charThumbsUp='👍'; //👍☝
 var charThumbsDown='👎'; //👎☟
 var charSpeechBaloon='💬';
 var charCamera='📷';
+// charPhone ✆☎☏📱
 
 // ♿⚠⌂💰💋♥
 
@@ -3760,7 +3798,8 @@ var boFormDataOK=1;  if(typeof FormData=='undefined') {  boFormDataOK=0;  }
 
 if(!(typeof sessionStorage=='object' && sessionStorage.getItem)) {console.log("Your browser doesn't support sessionStorage"); return;}
 
-var menuMaxWidth=500;
+//var menuMaxWidth=500;
+var menuMaxWidth="var(--menuMaxWidth)";
 var boImgCreationOK=1;
 
 
@@ -3768,10 +3807,9 @@ var urlPayPal='https://www.paypal.com/cgi-bin/webscr';
 
 var iEdit=0, iPay=1, iVersion=2;
 var colButtonOn='#aaa', colButtonOff='#eee'; 
-var cssFixedTop={margin:'0em 0','text-align':'center',position:'fixed',top:0,width:'100%','border-top':'3px #aaa solid',background:'#ddd'}; //,'z-index':5
-var cssFixed={margin:'0em 0','text-align':'center',position:'fixed',bottom:0,width:'100%','border-top':'3px #aaa solid',background:'#ddd'}; //,'z-index':5
+var cssFixed={margin:'0em 0','text-align':'center',position:'fixed',bottom:0,width:'100%','border-top':'3px #aaa solid',background:'#fff'}; //,'z-index':5
 var cssFixedDrag={margin:'0em 0','text-align':'center',position:'fixed',bottom:0,width:'100%',background:'#ddd'}; //,'z-index':5
-if(boTouch) { cssFixedDrag=cssFixed; cssFixedDrag['border-top']=''};
+if(boTouch) { cssFixedDrag=Object.assign({},cssFixed); cssFixedDrag['border-top']=''};
 var sizeIcon=1.5, strSizeIcon=sizeIcon+'em';
 
 
@@ -3830,7 +3868,9 @@ var uSummary=uLibImageFolder+'summary.png';
 var uSignature=uLibImageFolder+'signature.png';
 
 var uPen=uLibImageFolder+'pen.png';
+var srcsetPen=uPen+" 1x, "+uPen+" 2x ";
 var uPenNot=uLibImageFolder+'penNot.png';
+var srcsetPenNot=uPenNot+" 1x, "+uPenNot+" 2x ";
 var uBitcoin=uLibImageFolder+'bitcoin.png';
 var uAdmin=uLibImageFolder+'admin.png';
 var uComment=uLibImageFolder+'comment.png';
@@ -3845,7 +3885,10 @@ var uDelete=uLibImageFolder+'delete.png';
 var uDelete1=uLibImageFolder+'delete1.png';
 
 
-var imgHelp=createElement('img').prop({src:uHelpFile}).css({'vertical-align':'-0.4em'});
+//var imgHelp=createElement('img').prop({src:uHelpFile, alt:"help"}).css({'vertical-align':'-0.4em', height:'fit-content'});
+app.hovHelpMy=createElement('span').myText('❓').addClass('btn-round', 'helpButtonGradient'); //on('click', function(){return false;})    //'pointer-events':'none',
+if(boIOS | boEdge) {hovHelpMy.css({color:'transparent', 'text-shadow':'0 0 0 #5780a8'});}
+app.imgHelp=hovHelpMy;
 
 var sizeIcon=1.5, strSizeIcon=sizeIcon+'em';
 var imgProt=createElement('img').css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable'); 
@@ -3940,11 +3983,16 @@ var warningDivW=createElement('div').myAppend(warningDiv);
 //viewDiv=createElement('div');
 var pageText=document.querySelector('#pageText').detach();
 var pageText=pageTextExtend(pageText).css({'overflow-y': 'hidden'});   pageText.modStuff();
-var imgBusy=createElement('img').prop({src:uBusy});
+var imgBusy=createElement('img').prop({src:uBusy, alt:"busy"});
 //messageText=messExtend(createElement('span'));  window.setMess=messageText.setMess;  window.resetMess=messageText.resetMess;   elBody.append(messageText); 
-var spanMessageText=spanMessageTextCreate();  window.setMess=spanMessageText.setMess;  window.setMessHtml=spanMessageText.setHtml;  window.resetMess=spanMessageText.resetMess;  window.appendMess=spanMessageText.appendMess;  elBody.append(spanMessageText)
+//var spanMessageText=spanMessageTextCreate();  window.setMess=spanMessageText.setMess;  window.setMessHtml=spanMessageText.setHtml;  window.resetMess=spanMessageText.resetMess;  window.appendMess=spanMessageText.appendMess;  elBody.append(spanMessageText)
 
-var busyLarge=createElement('img').prop({src:uBusyLarge}).css({position:'fixed',top:'50%',left:'50%','margin-top':'-42px','margin-left':'-42px','z-index':'1000',border:'black solid 1px'}).hide();
+
+var divMessageText=divMessageTextCreate();  copySome(window, divMessageText, ['setMess', 'resetMess', 'appendMess']);
+var divMessageTextW=createElement('div').myAppend(divMessageText).css({width:'100%', position:'fixed', bottom:'0px', left:'0px', 'z-index':'10'});
+elBody.append(divMessageTextW);
+
+var busyLarge=createElement('img').prop({src:uBusyLarge, alt:"busy"}).css({position:'fixed',top:'50%',left:'50%','margin-top':'-42px','margin-left':'-42px','z-index':'1000',border:'black solid 1px'}).hide();
 elBody.append(busyLarge);
 //loginInfo=loginInfoExtend(createElement('div')); elBody.prepend(loginInfo);
 
@@ -4198,19 +4246,16 @@ if(objPage.boOR==0) { // If private
 } else {   var vec=[['specSetup',{}]];   majax(oAJAX,vec); pageView.setVis(); } 
 
 
-//var scriptZip=createElement("script").prop({src:uZip}).on('load',function(){
-  //zip.workerScriptsPath = flFoundOnTheInternetFolder+'/';
-//});
-//var scriptSha1=createElement("script").prop({src:uSha1});
-//document.head.myAppend(scriptZip, scriptSha1);
-//import(uZip).then(function(zipT){ zip=zipT; zip.workerScriptsPath = flFoundOnTheInternetFolder+'/'; });
 
+setTimeout(function(){
+  var scriptZip=createElement("script").prop({src:uZip}).on('load',function(){ zip.workerScriptsPath = flFoundOnTheInternetFolder+'/'; });
+  document.head.myAppend(scriptZip);
+  var scriptSha1=createElement("script").prop({src:uSha1});  document.head.myAppend(scriptSha1);
 
-(async function(){
-  await import(uZip);
-  zip.workerScriptsPath = flFoundOnTheInternetFolder+'/';
-})();
-import(uSha1); 
+  // import(uZip).then(function(trash){  zip.workerScriptsPath = flFoundOnTheInternetFolder+'/'; });
+  // import(uSha1);
+},0);
+const strSha1NotLoaded='sha1.js is not loaded yet';
 
 
 window.divReCaptcha=divReCaptchaExtend(createElement('div'));
@@ -4270,8 +4315,11 @@ window.scroll(function(){
 };
 
 //window.onload=funLoad;
-window.on('DOMContentLoaded', funLoad);
-//window.on('load', funLoad);
+//window.on('DOMContentLoaded', funLoad);  // If one uses "import" in "DOMContentLoaded" then "load" will wait until the imported stuff is loaded.
+window.on('load', funLoad);
+window.on('load', function(){
+  window.boLCacheObs=document.querySelector('#boLCacheObs'); if(boLCacheObs.value.length) { boLCacheObs.value=""; location.reload(); return} 
+});
 //funLoad();
 //var root = document.documentElement,   node = document.createTextNode("This is some new textA.");    root.appendChild(node);
  

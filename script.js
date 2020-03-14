@@ -12,33 +12,20 @@ temporary = require('tmp');
 util =  require('util');
 concat = require('concat-stream');
 requestMod = require('request');
-//through = require('through')
 querystring = require('querystring');
-//async = require('async');
 formidable = require("formidable");
-//NodeRSA = require('node-rsa');
 crypto = require('crypto');
-//atob = require('atob');
-//childProcess = require('child_process');
 zlib = require('zlib');
 imageSize = require('image-size');
-//Fiber = require('fibers');
-//Future = require('fibers/future');
 NodeZip=require('node-zip');
-//redis = require("then-redis");
 redis = require("redis");
-//csvParse = require('csv-parse/lib/sync');
-//fastCSV = require('fast-csv');
-//csvtojson=require('csvtojson');
-papaparse = require('papaparse');  // For parsing CSV
-//Neo4j = require('neo4j-transactions');
 var minimist = require('minimist');
 //UglifyJS = require("uglify-js");
 Streamify= require('streamify-string');
+validator = require('validator');
 serialize = require('serialize-javascript');
 ejs = require("ejs");
 app=(typeof window==='undefined')?global:window;
-
 
 
 require('./lib.js');
@@ -89,17 +76,16 @@ helpTextExit=function(){
       node --load myPage.txt    // Loads "mmmWikiBU/myPage.txt"
       node --load myPages.zip   // Loads "mmmWikiBU/myPages.zip"
       node --load mymeta.zip    // Loads "mmmWikiBU/mymeta.zip". mymeta.zip must only contain meta-files (as named above)
-      node --load site.csv+myPage.txt+myImage.jpg+myPages.zip     // Loads site.csv, myPage.txt, myImage.jpg and myPages.zip`);
+      node --load site.csv+myPage.txt+myImage.jpg+myPages.zip     // Loads the named files from mmmWikiBU`);
   console.log(arr.join('\n'));
   process.exit(0);
 }
 
 var argv = minimist(process.argv.slice(2), {alias: {h:'help', p:'port'}} );  // Perhaps use yargs !? (according to https://www.youtube.com/watch?v=S-_Fx4-nal8)
 
-var C=AMinusB(Object.keys(argv),['_', 'h', 'help', 'p', 'port', 'sql', 'load']);
-var tmp=[].concat(C,argv._);
-if(tmp.length){ console.log(tmp.join(', ')+' are unknown options'); helpTextExit(); return;}
-
+var StrUnknown=AMinusB(Object.keys(argv),['_', 'h', 'help', 'p', 'port', 'sql', 'load']);
+var StrUnknown=[].concat(StrUnknown, argv._);
+if(StrUnknown.length){ console.log('Unknown arguments: '+StrUnknown.join(', ')); helpTextExit(); return;}
 
 
     // Set up redisClient
@@ -220,7 +206,7 @@ var flow=( function*(){
   var [err]=yield* writeCacheDynamicJS(flow);   if(err) {  console.error(err.message);  return;}
   
   if(boDbg){
-    fs.watch('.', makeWatchCB('.', ['filter.js','client.js','libClient.js']) );
+    fs.watch('.', makeWatchCB('.', ['filter.js', 'client.js', 'libClient.js', 'lib.js']) );
     fs.watch('stylesheets', makeWatchCB('stylesheets', ['style.css']) );
   }
   
@@ -277,22 +263,24 @@ var flow=( function*(){
       var objUrl=url.parse(req.url),  pathNameOrg=objUrl.pathname;
       var wwwReq=domainName+pathNameOrg;
       
+      var wwwSite=domainName, pathName=pathNameOrg;
+      
         // Check if cross site request
       //var boCrossSite=domainName==;
       
       var cookies = parseCookies(req);
       req.cookies=cookies;
 
-      req.boCookieDDOSOK=false; //req.boCookieLaxOK=req.boCookieStrictOK=
+      var boCookieDDOSOK=false; //req.boCookieLaxOK=req.boCookieStrictOK=
       
         // Check if a valid sessionIDDDos-cookie came in
       var sessionIDDDos=null, redisVarDDos;
       if('sessionIDDDos' in cookies) {
         sessionIDDDos=cookies.sessionIDDDos;  redisVarDDos=sessionIDDDos+'_DDOS';
-        var [err, tmp]=yield* cmdRedis(req.flow, 'EXISTS', redisVarDDos); req.boCookieDDOSOK=tmp;
+        var [err, tmp]=yield* cmdRedis(req.flow, 'EXISTS', redisVarDDos); boCookieDDOSOK=tmp;
       }
         // If non-valid sessionIDDDos, then create a new one.
-      if(!req.boCookieDDOSOK) { sessionIDDDos=randomHash();  redisVarDDos=sessionIDDDos+'_DDOS'; }
+      if(!boCookieDDOSOK) { sessionIDDDos=randomHash();  redisVarDDos=sessionIDDDos+'_DDOS'; }
       
         // Increase redisVarDDos 
       var luaCountFunc=`local c=redis.call('INCR',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
@@ -306,15 +294,15 @@ var flow=( function*(){
       res.setHeader("Set-Cookie", "sessionIDDDos="+sessionIDDDos+strCookiePropNormal);
       
         // If to many, then ban
-      if(req.boCookieDDOSOK) {  var intCountT=intCount, intDDOSMaxT=intDDOSMax, tDDOSBanT=tDDOSBan;   }   else   {    intCountT=intCountIP; intDDOSMaxT=intDDOSIPMax; tDDOSBanT=tDDOSIPBan;   }
-      if(intCountT>intDDOSMaxT) {res.outCode(429,"Too Many Requests ("+intCountT+"), wait "+tDDOSBanT+"s\n"); return; }
-      
+      if(boCookieDDOSOK) {  var intCountT=intCount, intDDOSMaxT=intDDOSMax, tDDOSBanT=tDDOSBan;   }   else   {    intCountT=intCountIP; intDDOSMaxT=intDDOSIPMax; tDDOSBanT=tDDOSIPBan;   }
+      if(intCountT>intDDOSMaxT) {
+        var strMess="Too Many Requests ("+intCountT+"), wait "+tDDOSBanT+"s\n";
+        if(pathName=='/'+leafBE){ var reqBE=new ReqBE({req, res}); reqBE.mesEO(strMess, 429); }
+        else res.outCode(429,strMess);
+        return;
+      }
       
 
-      
-      
-      
-      var wwwSite=domainName, pathName=pathNameOrg;
 
         // Set mimetype if the extention is recognized
       var regexpExt=RegExp('\.([a-zA-Z0-9]+)$');
@@ -344,13 +332,12 @@ var flow=( function*(){
 
 
       var strScheme='http'+(boTLS?'s':''),   strSchemeLong=strScheme+'://';
-      //req.strSite=strSite; req.site=site;
-      req.wwwSite=wwwSite;
-      req.objUrl=objUrl;    req.boTLS=boTLS;  req.strSchemeLong=strSchemeLong;    req.pathName=pathName; 
+
+      extend(req, {wwwSite, objUrl, boTLS, strSchemeLong, pathName}); 
       
       
       if(levelMaintenance){res.outCode(503, "Down for maintenance, try again in a little while."); return;}
-      var objReqRes={req:req, res:res};
+      var objReqRes={req, res};
       objReqRes.myMySql=new MyMySql(mysqlPool);
       //if(pathName=='/'+leafPageLoadBE){ var reqPageLoadBE=new ReqPageLoadBE(objReqRes);  yield* reqPageLoadBE.go();    }
       if(pathName=='/'+leafBE){ var reqBE=new ReqBE(objReqRes);  yield* reqBE.go();    }

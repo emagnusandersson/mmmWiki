@@ -40,7 +40,10 @@ app.reqBU=function*(strArg) {
   } else if(req.method=='GET'){
     var objUrl=url.parse(req.url), qs=objUrl.query||''; jsonInput=urldecode(qs);
   } 
-  var inObj={}; if(jsonInput.length) inObj=JSON.parse(jsonInput);
+  //var inObj={}; if(jsonInput.length) inObj=JSON.parse(jsonInput);
+  var inObj={}; if(jsonInput.length) {
+    try{ inObj=JSON.parse(jsonInput); }catch(e){ res.out500(new Error("JSON.parse error")); debugger;  return; }
+  }
   var boLimited=0, arrName=[], nName, tmpQ; 
   if('arrName' in inObj) {
     boLimited=1; arrName=inObj.arrName;
@@ -291,7 +294,11 @@ var makeOutput=function*(objOut, strHtmlText){
   var wwwSite=req.wwwSite
 
   var ua=req.headers['user-agent']||''; ua=ua.toLowerCase();
-  var boMSIE=RegExp('msie').test(ua), boAndroid=RegExp('android').test(ua), boFireFox=RegExp('firefox').test(ua), boIOS= RegExp('iPhone|iPad|iPod','i').test(ua);
+  var boMSIE=RegExp('msie').test(ua);
+  var boAndroid=RegExp('android').test(ua);
+  var boFireFox=RegExp('firefox').test(ua);
+  //var boIOS= RegExp('iPhone|iPad|iPod','i').test(ua);
+  var boIOS= RegExp('iphone','i').test(ua);
 
   var strMetaNoIndex='', boTemplate=RegExp('^template:','i').test(pageName);
   if(!objPage || !objPage.boSiteMap || !objPage.boOR || boTemplate){ strMetaNoIndex='<meta name="robots" content="noindex">\n'; }
@@ -326,7 +333,7 @@ var makeOutput=function*(objOut, strHtmlText){
 </script>`;
   }
   
-  extend(objOut, {uZip, uSha1});
+  Object.assign(objOut, {uZip, uSha1});
   
   objOut.boARLoggedIn=objPage.boOR?'':this.boARLoggedIn;
   objOut.boAWLoggedIn=objPage.boOR?'':this.boAWLoggedIn;
@@ -344,7 +351,8 @@ var makeOutput=function*(objOut, strHtmlText){
   } else strTitle=pageName.replace(RegExp('_','g'),' ');
   
   
-  var strTmp, objData={urlIcon16:objSite.urlIcon16, strMetaNoIndex, uCanonical, uSiteCommon, strTracker, strObjOut, strTitle, strHtmlText}; if(boDbgT) strTmp=strIndexTemplateIOSLoc; else strTmp=strIndexTemplate;   
+  var objData={urlIcon16:objSite.urlIcon16, uIcon114:objSite.urlIcon200, strMetaNoIndex, uCanonical, uSiteCommon, strTracker, strObjOut, strTitle, strHtmlText, strDescription:strTitle};
+  var strTmp; if(boDbgT) strTmp=strIndexTemplateIOSLoc; else strTmp=strIndexTemplate;   
   var strOut=ejs.render(strTmp, objData, {});
   return strOut;
 }
@@ -399,11 +407,11 @@ app.reqIndex=function*() {
  
 
     // getInfoNData
-  //var arg={boFront:1, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage:queredPage, rev:rev, strHashIn:strHashIn, requesterCacheTime:requesterCacheTime, myMySql:this.myMySql}
+  //var arg={boFront:1, boTLS:req.boTLS, wwwSite:req.wwwSite, queredPage, rev, strHashIn, requesterCacheTime, myMySql:this.myMySql}
   //var [err, Ou]=yield* getInfoNData(flow, arg); if(err) { res.out500(err); return;   }
   //var {mess, version, rev, strHash, idPage, boOR, boOW, boSiteMap, boTalkExist, tMod, tModCache, urlRedir, boTLS, boTLSCommon, wwwCommon, siteName, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aWPassword, aRPassword, Version, objTemplateE, strEditText, strHtmlText}=Ou;
   
-  //var objArg=extend({}, {queredPage, rev, strHashIn, requesterCacheTime});   copySome(objArg, req, ['boTLS', 'wwwSite']);     
+  //var objArg=Object.assign({}, {queredPage, rev, strHashIn, requesterCacheTime});   copySome(objArg, req, ['boTLS', 'wwwSite']);     
   //var [err,objDBData]=yield* getInfoNData(flow, objArg); if(err) {res.out500(err);  return; }
   
   var Sql=[];
@@ -428,7 +436,7 @@ app.reqIndex=function*() {
   if(!objPage){ // No such page 
     res.statusCode=404;
     var boTalkExist=0, strEditText='', objTemplateE={}, arrVersionCompared=[null,1], matVersion=[];
-    var boOR=1, boOW=1, boSiteMap=1, idPage=null, tCreated=null, tMod=null,   objPage=extend({}, {pageName:queredPage, boOR, boOW, boSiteMap, idPage, tCreated, tMod});
+    var boOR=1, boOW=1, boSiteMap=1, idPage=null, tCreated=null, tMod=null,   objPage=Object.assign({}, {pageName:queredPage, boOR, boOW, boSiteMap, idPage, tCreated, tMod});
     var objOut={ strReCaptchaSiteKey, uRecaptcha, CSRFCode:'',   boTalkExist, strEditText, arrVersionCompared, matVersion, objTemplateE, objSiteDefault, objSite, objPage};
     var strHtmlText='';
     var strOut=yield* makeOutput.call(this, objOut, strHtmlText);
@@ -471,7 +479,7 @@ app.reqIndex=function*() {
     var [err,tmp]=yield* cmdRedis(flow, 'SET', [sessionIDCSRF+'_CSRF', CSRFCode, 'EX', maxAdminRUnactivityTime]);
     res.setHeader("Set-Cookie", "sessionIDCSRF="+sessionIDCSRF+strCookiePropLax);
     
-    var objOut={strReCaptchaSiteKey, uRecaptcha, CSRFCode:CSRFCode,   boTalkExist:0, strEditText:'', objTemplateE:{}, arrVersionCompared:[null,1], matVersion:[], objSiteDefault, objSite, objPage};
+    var objOut={strReCaptchaSiteKey, uRecaptcha, CSRFCode,   boTalkExist:0, strEditText:'', objTemplateE:{}, arrVersionCompared:[null,1], matVersion:[], objSiteDefault, objSite, objPage};
     var strHtmlText='';
     var strOut=yield* makeOutput.call(this, objOut, strHtmlText);
     res.setHeader("Content-Encoding", 'gzip');   res.setHeader('Content-Type', MimeType.html); 
@@ -504,7 +512,7 @@ app.reqIndex=function*() {
       //var strHashNew=md5(strHtmlText +JSON.stringify(objTemplateE) +tMod +boOR +boOW +boSiteMap +boTalkExist +JSON.stringify(matVersion));
       var strHashNew=md5(strHtmlText +JSON.stringify(objTemplateE) +JSON.stringify(objPage) +boTalkExist +JSON.stringify(matVersion));
   
-      extend(objOut, {objTemplateE});
+      Object.assign(objOut, {objTemplateE});
       var strOut=yield* makeOutput.call(this, objOut, strHtmlText);
       //var strHash=md5(strHtmlText +strOut);
     
@@ -525,13 +533,13 @@ app.reqIndex=function*() {
       return;
     } else {
         // parse
-      var arg={strEditText:strEditText, wwwSite:req.wwwSite, boOW:objPage.boOW, myMySql:this.myMySql};
+      var arg={strEditText, wwwSite:req.wwwSite, boOW:objPage.boOW, myMySql:this.myMySql};
       var [err, [objTemplateE, StrSubImage, strHtmlText, arrSub]]=yield* parse(flow, arg); if(err) { res.out500(err); return; }
       
       //var strHashNew=md5(strHtmlText +JSON.stringify(objTemplateE) +tMod +boOR +boOW +boSiteMap +boTalkExist +JSON.stringify(matVersion));
       var strHashNew=md5(strHtmlText +JSON.stringify(objTemplateE) +JSON.stringify(objPage) +boTalkExist +JSON.stringify(matVersion));
       
-      extend(objOut, {objTemplateE});
+      Object.assign(objOut, {objTemplateE});
       var strOut=yield* makeOutput.call(this, objOut, strHtmlText);
       //var strHashNew=md5(strHtmlText +strOut);
       
@@ -607,7 +615,7 @@ app.reqIndexNew=function*(){
     // Assign stuff to objOut (to be serialized to client)
   const uRecaptcha='https://www.google.com/recaptcha/api.js?onload=cbRecaptcha&render=explicit';
   
-  var objArg=extend({}, {queredPage, rev, strHashIn, requesterCacheTime, req,res});   copySome(objArg, req, ['boTLS', 'wwwSite']);     
+  var objArg=Object.assign({}, {queredPage, rev, strHashIn, requesterCacheTime, req,res});   copySome(objArg, req, ['boTLS', 'wwwSite']);     
   var tmp=yield* getInfoNData(flow, objArg); if(res.finished) return;
   var [err, objDBData]=tmp; if(err) {res.out500(err);  return; }
   var mess=objDBData.mess;
@@ -811,7 +819,7 @@ app.reqMediaImage=function*(){
   
 
   if(boThumb) {
-    extend(this, {nameCanonical:nameCanonical, wMax:wMax, hMax:hMax, kind:kind, idImage:idImage, idFileOrg:idFileOrg, maxModTime:maxModTime});
+    Object.assign(this, {nameCanonical, wMax, hMax, kind, idImage, idFileOrg, maxModTime});
     yield* reqMediaImageThumb.call(this); return;
   }
 
@@ -1137,7 +1145,7 @@ app.reqMonitor=function*(){
 
     var resP=results[0], nEdit=results[1][0].n, pageName=nEdit==1?resP[0].siteName+':'+resP[0].pageName:nEdit;
     var resI=results[2], nImage=results[3][0].n, imageName=nImage==1?resI[0].imageName:nImage;
-    objOthersActivity={nEdit:nEdit, pageName:pageName,  nImage:nImage, imageName:imageName};
+    objOthersActivity={nEdit, pageName,  nImage, imageName};
   }
   
   
@@ -1190,7 +1198,7 @@ app.reqStat=function*(){
 
   var Str=[]; 
   Str.push(`<!DOCTYPE html>
-  <html><head>
+  <html lang="en"><head>
   <meta name="robots" content="noindex">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" >
   <meta name="viewport" id="viewportMy" content="initial-scale=1" />`);
@@ -1208,15 +1216,15 @@ app.reqStat=function*(){
 
     // Include site specific JS-files
   //var uSite=req.strSchemeLong+req.wwwSite;
-  //var keyCache=req.strSite+'/'+leafSiteSpecific, vTmp=CacheUri[keyCache].strHash; if(boDbg) vTmp=0;  Str.push('<script src="'+uSite+'/'+leafSiteSpecific+'?v='+vTmp+'"></script>');
+  //var keyCache=req.strSite+'/'+leafSiteSpecific, vTmp=CacheUri[keyCache].strHash; if(boDbg) vTmp=0;  Str.push('<script src="'+uSite+'/'+leafSiteSpecific+'?v='+vTmp+'" async></script>');
 
     // Include JS-files
   var StrTmp=['lib.js', 'libClient.js'];
   for(var i=0;i<StrTmp.length;i++){
-    var pathTmp='/'+StrTmp[i], vTmp=CacheUri[pathTmp].strHash; if(boDbg) vTmp=0;    Str.push('<script src="'+uSiteCommon+pathTmp+'?v='+vTmp+'" crossorigin="anonymous"></script>');  // crossorigin : to make request cors (not needed really)
+    var pathTmp='/'+StrTmp[i], vTmp=CacheUri[pathTmp].strHash; if(boDbg) vTmp=0;    Str.push('<script src="'+uSiteCommon+pathTmp+'?v='+vTmp+'" crossorigin="anonymous" async></script>');  // crossorigin : to make request cors (not needed really)
   }
 
-  Str.push('<script src="'+uSiteCommon+'/lib/foundOnTheInternet/sortable.js" crossorigin="anonymous"></script>');
+  Str.push('<script src="'+uSiteCommon+'/lib/foundOnTheInternet/sortable.js" crossorigin="anonymous" async></script>');
 
   Str.push("</head>");
   Str.push('<body style="margin:0">');
@@ -1510,7 +1518,7 @@ app.SetupSql.prototype.createView=function*(flow, boDropOnly){
   SqlView.push(`CREATE VIEW `+pageSiteView+` (boDefault, idPage, boTLS, idSite, siteName, www, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, tCreated, intPriority, tLastAccess, nAccess, nChild, nImage, nParent, boOther, tMod, tModCache, size) AS
 SELECT boDefault, p.idPage, boTLS, st.idSite, st.siteName, st.www, p.pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, p.tCreated, intPriority, tLastAccess, nAccess, nChild, nImage, nParent, boOther, tMod, tModCache, size FROM `+pageTab+` p JOIN `+siteTab+` st ON p.idSite=st.idSite`);
 
-  SqlViewDrop.push("DROP VIEW IF EXISTS "+pageLastView);  // pageTab with versionTab-fields: boOther, tMod, tModCache, strHash, size, idFile and idFileCache for the last version
+  //SqlViewDrop.push("DROP VIEW IF EXISTS "+pageLastView);  // pageTab with versionTab-fields: boOther, tMod, tModCache, strHash, size, idFile and idFileCache for the last version
   //SqlView.push(`CREATE VIEW `+pageLastView+` (idPage, idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, boOther, tCreated, intPriority, tLastAccess, nAccess, tMod, tModCache, strHash, size, idFile, idFileCache, nChild, nImage, nParent) AS
 //SELECT p.idPage, p.idSite, pageName, boTalk, boTemplate, boOR, boOW, boSiteMap, lastRev, v.boOther, tCreated, intPriority, tLastAccess, nAccess, v.tMod, v.tModCache, strHash, v.size, idFile, idFileCache, nChild, nImage, nParent FROM `+pageTab+` p JOIN `+versionTab+` v ON p.idPage=v.idPage AND p.lastRev=v.rev`);
 
@@ -1913,6 +1921,7 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
       DECLARE VstrHash varchar(32);
       DECLARE strEditText, strHtmlText MEDIUMBLOB;
       DECLARE VboTLS, VboRedirectCase, VboOR INT(1);
+      DECLARE VtNow TIMESTAMP DEFAULT now();
 
           # Get site
       SELECT SQL_CALC_FOUND_ROWS boDefault, @boTLS:=boTLS AS boTLS, @VidSite:=idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aWPassword, aRPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM `+siteTab+` WHERE www=Iwww;#  <-- result #0
@@ -1922,7 +1931,7 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
           # Check if there is a redirect for this page
       SELECT SQL_CALC_FOUND_ROWS @tmp:=url AS urlRedir FROM `+redirectTab+` WHERE idSite=VidSite AND pageName=Iname;     #  <-- result #1
       IF FOUND_ROWS() THEN
-        UPDATE `+redirectTab+` SET nAccess=nAccess+1, tLastAccess=now() WHERE idSite=VidSite AND pageName=Iname;
+        UPDATE `+redirectTab+` SET nAccess=nAccess+1, tLastAccess=VtNow WHERE idSite=VidSite AND pageName=Iname;
         LEAVE proc_label;
       END IF;
 
@@ -2061,6 +2070,7 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
   SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`saveByReplace(IsiteName varchar(128), Iwww varchar(128), Iname varchar(128), Idata MEDIUMBLOB, Ihtml MEDIUMBLOB, IstrHash varchar(32), OUT Omess varchar(128), OUT OidPage INT) 
       proc_label:BEGIN 
         DECLARE Vc, VidSite, VidFile, VidFileCache, VboTalk, VboTemplate, Vlen, VboInsert INT; 
+        DECLARE VtNow TIMESTAMP DEFAULT now();
 
           # Get VidSite 
         IF(LENGTH(Iwww)) THEN 
@@ -2079,10 +2089,10 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
         SET VboTalk=isTalk(Iname);   SET VboTemplate=isTemplate(Iname); 
         SET VidFile=NULL, VidFileCache=NULL; 
 
-        #INSERT INTO `+pageTab+` (idSite, pageName, boTalk, boTemplate, boOther, tMod, tModCache, size) VALUES (VidSite, Iname, VboTalk, VboTemplate, 0, now(), now(), Vlen)  
-        #  ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=Iname, boTalk=VboTalk, boTemplate=VboTemplate, lastRev=0, boOther=0, tMod=now(), tModCache=now(), size=Vlen; 
+        #INSERT INTO `+pageTab+` (idSite, pageName, boTalk, boTemplate, boOther, tMod, tModCache, size) VALUES (VidSite, Iname, VboTalk, VboTemplate, 0, VtNow, VtNow, Vlen)  
+        #  ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=Iname, boTalk=VboTalk, boTemplate=VboTemplate, lastRev=0, boOther=0, tMod=VtNow, tModCache=VtNow, size=Vlen; 
         INSERT INTO `+pageTab+` (idSite, pageName, boTalk, boTemplate, size) VALUES (VidSite, Iname, VboTalk, VboTemplate, Vlen)  
-          ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=Iname, boTalk=VboTalk, boTemplate=VboTemplate, lastRev=0, boOther=0, tMod=now(), tModCache=now(), size=Vlen; 
+          ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=Iname, boTalk=VboTalk, boTemplate=VboTemplate, lastRev=0, boOther=0, tMod=VtNow, tModCache=VtNow, size=Vlen; 
         SELECT LAST_INSERT_ID() INTO OidPage; 
         SELECT ROW_COUNT()=1 INTO VboInsert; 
         
@@ -2107,9 +2117,9 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
         END IF; 
   
         IF Vc=0 THEN 
-          INSERT INTO `+versionTab+` (idPage,rev,idFile,tMod,idFileCache,tModCache,strHash,size) VALUES (OidPage,0,VidFile,now(),VidFileCache,now(),IstrHash,Vlen); 
+          INSERT INTO `+versionTab+` (idPage,rev,idFile,tMod,idFileCache,tModCache,strHash,size) VALUES (OidPage,0,VidFile,VtNow,VidFileCache,VtNow,IstrHash,Vlen); 
         ELSE 
-          UPDATE `+versionTab+` SET idFile=VidFile, boOther=0, tMod=now(), idFileCache=VidFileCache, tModCache=now(), strHash=IstrHash, size=Vlen WHERE idPage=OidPage AND rev=0; 
+          UPDATE `+versionTab+` SET idFile=VidFile, boOther=0, tMod=VtNow, idFileCache=VidFileCache, tModCache=VtNow, strHash=IstrHash, size=Vlen WHERE idPage=OidPage AND rev=0; 
         END IF; 
   
         CALL `+strDBPrefix+`writeSubTables(OidPage); 
@@ -2121,7 +2131,7 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
         END IF; 
         
         SET Omess='done'; 
-        SELECT UNIX_TIMESTAMP(now()) AS tMod, UNIX_TIMESTAMP(now()) AS tModCache; 
+        SELECT UNIX_TIMESTAMP(VtNow) AS tMod, UNIX_TIMESTAMP(VtNow) AS tModCache; 
       END`);
 
 
@@ -2157,6 +2167,7 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
   SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`saveByAdd(Iwww varchar(128), Iname varchar(128), Isummary varchar(128), Isignature varchar(128), Idata MEDIUMBLOB, Ihtml MEDIUMBLOB, IstrHash varchar(32)) 
       proc_label:BEGIN 
         DECLARE nversion, VidSite, VidPage, VidFile, VidFileCache, VboTalk, VboTemplate, VboInsert, Vlen INT; 
+        DECLARE VtNow TIMESTAMP DEFAULT now();
 
         SET Vlen=LENGTH(Idata);
         
@@ -2164,9 +2175,9 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
         SELECT SQL_CALC_FOUND_ROWS idSite INTO VidSite FROM `+siteTab+` WHERE www=Iwww; 
         IF FOUND_ROWS()=0 THEN SELECT 'IwwwNotFound' AS mess; LEAVE proc_label; END IF; 
 
-        SET VboTalk=isTalk(Iname);   SET VboTemplate=isTemplate(Iname); 
+        SET VboTalk=isTalk(Iname);   SET VboTemplate=isTemplate(Iname);
         INSERT INTO `+pageTab+` (idSite, pageName, boTalk, boTemplate, lastRev, boOR, boOW, boSiteMap, boOther, size) VALUES (VidSite, Iname, VboTalk, VboTemplate, 0, 1,1,1, 1, Vlen) 
-          ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=Iname, boTalk=VboTalk, boTemplate=VboTemplate, lastRev=lastRev+1, boOther=1, tMod=now(), tModCache=now(), size=Vlen; 
+          ON DUPLICATE KEY UPDATE idPage=LAST_INSERT_ID(idPage), pageName=Iname, boTalk=VboTalk, boTemplate=VboTemplate, lastRev=lastRev+1, boOther=1, tMod=VtNow, tModCache=VtNow, size=Vlen; 
         SELECT LAST_INSERT_ID() INTO VidPage; 
         SELECT ROW_COUNT()=1 INTO VboInsert; 
         
@@ -2181,7 +2192,7 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
         SELECT LAST_INSERT_ID() INTO VidFileCache;     
        
         INSERT INTO `+versionTab+` (idPage,rev,summary,signature,boOther,idFile,tMod,idFileCache,tModCache,strHash,size)  
-        VALUES (VidPage,nversion,Isummary,Isignature,1,VidFile,now(),VidFileCache,now(),IstrHash,LENGTH(Idata)); 
+        VALUES (VidPage,nversion,Isummary,Isignature,1,VidFile,VtNow,VidFileCache,VtNow,IstrHash,LENGTH(Idata)); 
           
         CALL `+strDBPrefix+`writeSubTables(VidPage); 
         
@@ -2191,7 +2202,7 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
           UPDATE `+pageTab+` SET nParent=@VnParent WHERE idPage=VidPage;
         END IF; 
         
-        SELECT 'done' AS mess, UNIX_TIMESTAMP(now()) AS tMod, UNIX_TIMESTAMP(now()) AS tModCache; LEAVE proc_label;
+        SELECT 'done' AS mess, UNIX_TIMESTAMP(VtNow) AS tMod, UNIX_TIMESTAMP(VtNow) AS tModCache; LEAVE proc_label;
       END`);
 
   if(0){
@@ -2211,6 +2222,7 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
       proc_label:BEGIN
         DECLARE VidSite, VidPage, VidFileCache INT;
         DECLARE VboTalk, VboTemplate INT;
+        DECLARE VtNow TIMESTAMP DEFAULT now();
 
           # Get VidSite
         SELECT SQL_CALC_FOUND_ROWS idSite INTO VidSite FROM `+siteTab+` WHERE www=Iwww;
@@ -2221,12 +2233,12 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
         SELECT idPage INTO VidPage FROM `+pageTab+` WHERE idSite=VidSite AND pageName=Iname;
         SELECT idFileCache INTO VidFileCache FROM `+versionTab+` WHERE idPage=VidPage AND rev=Irev;    
         UPDATE `+fileTab+` SET data=Ihtml WHERE idFile=VidFileCache;   
-        UPDATE `+versionTab+` SET tModCache=now(), strHash=IstrHash WHERE idPage=VidPage AND rev=Irev; 
-        UPDATE `+pageTab+` SET tModCache=now() WHERE idPage=VidPage; 
+        UPDATE `+versionTab+` SET tModCache=VtNow, strHash=IstrHash WHERE idPage=VidPage AND rev=Irev; 
+        UPDATE `+pageTab+` SET tModCache=VtNow WHERE idPage=VidPage; 
 
 
         CALL `+strDBPrefix+`writeSubTables(VidPage);
-        SELECT 'done' AS mess, UNIX_TIMESTAMP(now()) AS tModCache;
+        SELECT 'done' AS mess, UNIX_TIMESTAMP(VtNow) AS tModCache;
       END`);
 
 
@@ -2252,6 +2264,7 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
   SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`storeImage(Iname varchar(128), IboOther TINYINT, Idata MEDIUMBLOB, IstrHash varchar(32), OUT OboOk INT)
       proc_label:BEGIN
         DECLARE VidImage, VidFile, Vc, Vlen INT;
+        DECLARE VtNow TIMESTAMP DEFAULT now();
  
         #START TRANSACTION;
         SELECT idImage, idFile, count(*) INTO VidImage,VidFile,Vc FROM `+imageTab+` WHERE imageName=Iname;
@@ -2259,13 +2272,13 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
         IF Vc=0 THEN
           INSERT INTO `+fileTab+` (data) VALUES (Idata); 
           SELECT LAST_INSERT_ID() INTO VidFile;
-          INSERT INTO `+imageTab+` (imageName,idFile,boOther,tCreated,strHash,size) VALUES (Iname,VidFile,IboOther,now(),IstrHash,Vlen);
+          INSERT INTO `+imageTab+` (imageName,idFile,boOther,tCreated,strHash,size) VALUES (Iname,VidFile,IboOther,VtNow,IstrHash,Vlen);
             # Calculate nParent 
           SELECT COUNT(*) INTO @VnParent FROM `+subImageTab+` s WHERE imageName=Iname;
           UPDATE `+imageTab+` SET nParent=@VnParent WHERE idImage=VidImage;
         ELSEIF Vc=1 THEN
           IF IboOther THEN SET OboOk=0; LEAVE proc_label; END IF;
-          UPDATE `+imageTab+` SET imageName=Iname,boOther=IboOther,tCreated=now(),strHash=IstrHash,size=Vlen WHERE idImage=VidImage;
+          UPDATE `+imageTab+` SET imageName=Iname,boOther=IboOther,tCreated=VtNow,strHash=IstrHash,size=Vlen WHERE idImage=VidImage;
           UPDATE `+fileTab+` SET data=Idata WHERE idFile=VidFile;
           #DELETE FROM `+thumbTab+` WHERE idImage=VidImage;
           CALL `+strDBPrefix+`deleteThumb(VidImage);
@@ -2278,19 +2291,20 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
   SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`storeThumb(IidImage INT, Iwidth INT, Iheight INT, Idata MEDIUMBLOB, IstrHash varchar(32))
       BEGIN
         DECLARE VidFile, Vc, Vlen INT;
+        DECLARE VtNow TIMESTAMP DEFAULT now();
         #START TRANSACTION;
         SELECT idFile, count(*) INTO VidFile,Vc FROM `+thumbTab+` WHERE idImage=IidImage AND width=Iwidth AND height=Iheight;
         SET Vlen=LENGTH(Idata);
         IF Vc=0 THEN
           INSERT INTO `+fileTab+` (data) VALUES (Idata);
           SELECT LAST_INSERT_ID() INTO VidFile;
-          INSERT INTO `+thumbTab+` (idImage,width,height,idFile,tCreated,strHash, size) VALUES (IidImage,Iwidth,Iheight,VidFile,now(),IstrHash, Vlen);
+          INSERT INTO `+thumbTab+` (idImage,width,height,idFile,tCreated,strHash, size) VALUES (IidImage,Iwidth,Iheight,VidFile,VtNow,IstrHash, Vlen);
         ELSEIF Vc=1 THEN
-          UPDATE `+thumbTab+` SET tCreated=now(),strHash=IstrHash, size=Vlen WHERE idImage=IidImage AND width=Iwidth AND height=Iheight;
+          UPDATE `+thumbTab+` SET tCreated=VtNow,strHash=IstrHash, size=Vlen WHERE idImage=IidImage AND width=Iwidth AND height=Iheight;
           UPDATE `+fileTab+` SET data=Idata WHERE idFile=VidFile;
         END IF;
-        #SET OtCreated=UNIX_TIMESTAMP(now());
-        SELECT UNIX_TIMESTAMP(now()) AS tCreated;
+        #SET OtCreated=UNIX_TIMESTAMP(VtNow);
+        SELECT UNIX_TIMESTAMP(VtNow) AS tCreated;
         #COMMIT;
       END`);
   //SqlFunction.push("CALL "+strDBPrefix+"storeImage('abc.jpg',1,'01234','0123456789abcdef0123456789abcdef',@boOK)"); 
@@ -2304,15 +2318,16 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
   SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`storeVideo(Iname varchar(128), Idata MEDIUMBLOB, IstrHash varchar(32))
       proc_label:BEGIN
         DECLARE VidVideo, VidFile, Vc, Vlen INT;
+        DECLARE VtNow TIMESTAMP DEFAULT now();
         #START TRANSACTION;
         SELECT idVideo, idFile, count(*) INTO VidVideo,VidFile,Vc FROM `+videoTab+` WHERE name=Iname;
         SET Vlen=LENGTH(Idata);
         IF Vc=0 THEN
           INSERT INTO `+fileTab+` (data) VALUES (Idata);
           SELECT LAST_INSERT_ID() INTO VidFile;
-          INSERT INTO `+videoTab+` (name,idFile,tCreated,strHash,size) VALUES (Iname,VidFile,now(),IstrHash,Vlen);
+          INSERT INTO `+videoTab+` (name,idFile,tCreated,strHash,size) VALUES (Iname,VidFile,VtNow,IstrHash,Vlen);
         ELSEIF Vc=1 THEN
-          UPDATE `+videoTab+` SET name=Iname,tCreated=now(),strHash=IstrHash,size=Vlen WHERE idVideo=VidVideo;
+          UPDATE `+videoTab+` SET name=Iname,tCreated=VtNow,strHash=IstrHash,size=Vlen WHERE idVideo=VidVideo;
           UPDATE `+fileTab+` SET data=Idata WHERE idFile=VidFile;
         END IF;
         #COMMIT;
@@ -2324,15 +2339,16 @@ app.SetupSql.prototype.createFunction=function*(flow, boDropOnly){
   SqlFunction.push(`CREATE PROCEDURE `+strDBPrefix+`redirectSet(Iname varchar(128), Idata MEDIUMBLOB, IstrHash varchar(32))
       proc_label:BEGIN
         DECLARE VidVideo, VidFile, Vc, Vlen INT;
+        DECLARE VtNow TIMESTAMP DEFAULT now();
         START TRANSACTION;
         SELECT idVideo, idFile, count(*) INTO VidVideo,VidFile,Vc FROM `+videoTab+` WHERE name=Iname;
         SET Vlen=LENGTH(Idata);
         IF Vc=0 THEN
           INSERT INTO `+fileTab+` (data) VALUES (Idata);
           SELECT LAST_INSERT_ID() INTO VidFile;
-          INSERT INTO `+videoTab+` (name,idFile,tCreated,strHash,size) VALUES (Iname,VidFile,now(),IstrHash,Vlen);
+          INSERT INTO `+videoTab+` (name,idFile,tCreated,strHash,size) VALUES (Iname,VidFile,VtNow,IstrHash,Vlen);
         ELSEIF Vc=1 THEN
-          UPDATE `+videoTab+` SET name=Iname,tCreated=now(),strHash=IstrHash,size=Vlen WHERE idVideo=VidVideo;
+          UPDATE `+videoTab+` SET name=Iname,tCreated=VtNow,strHash=IstrHash,size=Vlen WHERE idVideo=VidVideo;
           UPDATE `+fileTab+` SET data=Idata WHERE idFile=VidFile;
         END IF;
         COMMIT;

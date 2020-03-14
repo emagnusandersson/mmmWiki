@@ -110,7 +110,7 @@ app.parse=function*(flow, arg) {
   
   //var strHash=md5(strHtmlText +JSON.stringify(objTemplateE) +arg.tMod +arg.boOR +arg.boOW +arg.boSiteMap +arg.boTalkExist +JSON.stringify(arg.arrVersionCompared) +JSON.stringify(arg.matVersion));
 
-  //var Ou={StrTemplate:StrTemplate, objTemplateE:objTemplateE, StrSub:StrSub, StrSubImage:StrSubImage, strHtmlText:strHtmlText, arrSub:arrSub, strHash:strHash};
+  //var Ou={StrTemplate, objTemplateE, StrSub, StrSubImage, strHtmlText, arrSub, strHash};
   var Ou=[objTemplateE, StrSubImage, strHtmlText, arrSub];
   return [null, Ou];
 }
@@ -151,8 +151,8 @@ app.createSubImageStr=function(StrT){
   //Sql.push("SELECT @Omess AS mess");
   //var sql=Sql.join('\n'); 
   //var Val=array_merge(arrSubV, StrSubImage, [siteName, wwwSite, strName, strEditText, strHtmlText, strHash]);
-  ////return {sql:sql,Val:Val,nEndingResults:1};
-  //return {sql:sql,Val:Val};
+  ////return {sql,Val,nEndingResults:1};
+  //return {sql,Val};
 //}
 
 app.createSaveByAddSQL=function(wwwSite, strName, summary, signature, strEditText, strHtmlText, strHash, arrSub, StrSubImage){ 
@@ -167,7 +167,7 @@ app.createSaveByAddSQL=function(wwwSite, strName, summary, signature, strEditTex
   Sql.push("CALL "+strDBPrefix+"saveByAdd(?,?,?,?,?,?,?);"); //  COMMIT;
   var sql=Sql.join('\n');
   var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, summary, signature, strEditText, strHtmlText, strHash]);
-  return {sql:sql,Val:Val,nEndingResults:1};
+  return {sql,Val,nEndingResults:1};
 }
 
 app.createSetNewCacheSQL=function(wwwSite, strName, rev, strHtmlText, strHash, arrSub, StrSubImage){
@@ -182,19 +182,9 @@ app.createSetNewCacheSQL=function(wwwSite, strName, rev, strHtmlText, strHash, a
   Sql.push("CALL "+strDBPrefix+"setNewCache(?,?,?,?,?);"); //  COMMIT;
   var sql=Sql.join('\n');
   var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, rev, strHtmlText, strHash]);
-  return {sql:sql,Val:Val,nEndingResults:1}; 
+  return {sql,Val,nEndingResults:1}; 
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-app.echoAllAndExitObj=function(){
-  //global Out,GRet; 
-  Out.GRet=GRet;
-  Out.GRet.strMessageText=Out.GRet.strMessageText.join(', ');; 
-  //echo json_encode(Out);
-}
-
-
 
 app.is_crawler=function() {
    //sites = 'Google|msnbot|Rambler|Yahoo|AbachoBOT|accoona|AcioRobot|ASPSeek|CocoCrawler|Dumbot|FAST-WebCrawler|GeonaBot|Gigabot|Lycos|MSRBOT|Scooter|AltaVista|IDBot|eStyle|Scrubby|ozi';
@@ -217,7 +207,7 @@ app.createCommonJS=function() {
   tmp.trash='trash';
   Str.push(`assignCommonJS=function(){
   var tmp=`+JSON.stringify(tmp)+`;
-  extend(window,tmp);
+  Object.assign(window,tmp);
 }`);
   var str=Str.join('\n');    return str;
 }

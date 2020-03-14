@@ -27,6 +27,7 @@ app.Parser=function(text, boTrustEditors){
   this.arrILink=[]; // For storing of all the internal links 
 
   this.arrExtLink=[]; // For storing of all the external links
+  this.arrExtLinkContent=[]; // For storing of all the external links
 
   this.arrImageLink=[]; // For storing of all the image links
   this.arrImageWidth=[];
@@ -170,25 +171,17 @@ Parser.prototype.parse = function(callback) {
   // Remove external links
   //
   
-    // Setting up for external links
-  var arrUrlProtocols = ['http://', 'https://', 'ftp://', 'irc://', 'gopher://', 'telnet://', 'nntp://', 'worldwind://', 'mailto:', 'news:'];
-  var protocols = [];   for(var i in arrUrlProtocols){var tmp=arrUrlProtocols[i].replace(/\//g,'\\/');   protocols.push(tmp);   }
-  var strUrlProtocolsRegEx=protocols.join('|');  // Create a regular expression used to match url protocols
 
-  
     // External links with hook paranthesis '[]' and special linktext
-  //var patt=/\[((?:blabla)[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|]) +([^\]\x0a\x0d]+?)\]/ig;
-  //var tmp=patt.toString().replace(/blabla/,strUrlProtocolsRegEx);    tmp=tmp.substr(1,tmp.length-4); //remove first '/' and last '/ig'
-  //var patt=new RegExp(tmp,'ig'); debugger
-  var patt=new RegExp('\\[((?:'+strUrlProtocolsRegEx+')[^\\][<>"\\x00-\\x20\\x7F]+) *([^\\]\\x0a\\x0d]*?)\\]','ig');
+  var patt=/\[(https?:[^\][<>"\x00-\x20\x7F]+) *([^\]\x0a\x0d]*?)\]/ig;
   text=text.replace(patt,thisChanged(this.replaceExternalLinkCB,this)); 
 
     // External links without hook parantheseis
-  //var patt=/((?:blabla)[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
-  //var tmp=patt.toString().replace(/blabla/,strUrlProtocolsRegEx);    tmp=tmp.substr(1,tmp.length-4); //remove first '/' and last '/ig'
-  //var patt=new RegExp(tmp,'ig');
-  var patt=new RegExp('((?:'+strUrlProtocolsRegEx+')[^\\][<>"\\x00-\\x20\\x7F]+)\\b','ig');
+  var patt=/(https?:[^\][<>"\x00-\x20\x7F]+)/ig;
   text=text.replace(patt,thisChanged(this.replaceExternalLinkCB,this)); 
+  
+    // Note! Input like [http://exampleA.com http://exampleB.com] will cause embedded links (<a href=http://exampleA.com><a href=http://exampleB.com></a></a>) which I guess is illegal.
+    // Although the browser (at least Chrome) rewrites this to two links next to each other (<a href=http://exampleA.com></a><a href=http://exampleB.com>http://exampleB.com></a>)
   
 
   //
@@ -314,6 +307,8 @@ Parser.prototype.endParse = function(callback) {
   text = text.replace(RegExp(STARTCHARSTR +'iLink(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/iLink(\\1)' +ENDCHARSTR,'g') ,thisChanged(this.putBackILinkCB,this)); //Put back Internal links
   text = text.replace(RegExp(STARTCHARSTR +'iWLink(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/iWLink(\\1)' +ENDCHARSTR,'g') ,thisChanged(this.putBackInterWikiLinkCB,this));
   text = text.replace(RegExp(STARTCHARSTR +'eLink(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/eLink(\\1)' +ENDCHARSTR,'g'),thisChanged(this.putBackExternalLinkCB,this)); 
+  text = text.replace(RegExp(STARTCHARSTR +'eLink(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/eLink(\\1)' +ENDCHARSTR,'g'),thisChanged(this.putBackExternalLinkCB,this)); // Two times since we call replaceExternalLinkCB two times
+  //text = text.replace(/\x01eLink(\d+)\x02([\s\S]*?)\x01\/eLink(\1)\x02/g, thisChanged(this.putBackExternalLinkCB,this)); 
   text = text.replace(RegExp(STARTCHARSTR +'img(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/img(\\1)' +ENDCHARSTR,'g'), thisChanged(this.putBackImageCB,this)); //Put back Images  
   text = text.replace(RegExp(STARTCHARSTR +'gall(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/gall(\\1)' +ENDCHARSTR,'g'), thisChanged(this.putBackGalleryCB,this)); //Put back Gallerys 
   text = text.replace(RegExp(STARTCHARSTR +'hl(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/hl(\\1)' +ENDCHARSTR,'g'), thisChanged(this.putBackHLCB,this)); //Put back HL  
@@ -439,11 +434,17 @@ Parser.prototype.putBackImageCB=function(m,i,caption){
   //confirm(width.length+' '+tmp.length)
   //var widthstr;  if(width.length>0) widthstr='width=' +width; else widthstr='';
   //var str='<a href="' +file +'" class=image><img src="' +file +'" ' +widthstr +' class=thumbimage></a>';
-  var thumb, strStyle, strClass;
+  var thumb, thumb2, strSrc, strStyle, strClass;
   if(width.length) {
-    thumb=width+'px-'+file;  strStyle='style="max-width:'+width+'px"'; strClass='class=thumbimage';
-  } else { thumb=file; strStyle=""; strClass="";}
-  var str='<a href="'+file+'" class=image><img src="'+thumb+'" '+strStyle+' '+strClass+'></a>';
+    thumb=width+'px-'+file;
+    //strStyle='style="max-width:'+width+'px"';
+    strStyle='style="width:'+width+'px"';
+    strClass='class=thumbimage';
+    thumb2=(2*width)+'px-'+file;
+    //strSrc='src="'+thumb+'"';
+    strSrc='srcset="'+thumb+' 1x, '+thumb2+' 2x"';
+  } else { thumb=file; strStyle=""; strClass=""; strSrc='src="'+thumb+'"'}
+  var str='<a href="'+file+'" class=image><img '+strSrc+' '+strStyle+' '+strClass+' alt="'+file+'"></a>';
   var boFrame=this.arrImageFrame[i], halign=this.arrImageHAlign[i];
   var strAlignClass, strFrameWidth, strOuterFrameClass, strInnerFrameClass, strCaptionClass;
   if(boFrame) {
@@ -525,9 +526,22 @@ Parser.prototype.putBackInterWikiLinkCB=function(m,n,o){
 
 
     // externalLink
+//Parser.prototype.replaceExternalLinkCB=function(m,n,o){
+  //var i=this.arrExtLink.length;
+  //var str1; this.arrExtLink.push(n);   if(arguments.length>2 && o.length>0) str1=o; else str1=''; 
+  //return STARTCHAR +'eLink' +i +ENDCHAR +str1 +STARTCHAR +'/eLink' +i +ENDCHAR;
+//}
+//Parser.prototype.putBackExternalLinkCB=function(m,n,o){
+  //var linkname=this.arrExtLink[n], text;    if(o.length>0) {text=o;} else {text=linkname;}
+  //var strClass='class="external"';
+  //return '<a href="' +linkname +'" ' +strClass +'>' +text +'</a>';
+//}
+    // externalLink
 Parser.prototype.replaceExternalLinkCB=function(m,n,o){
   var i=this.arrExtLink.length;
-  var str1; this.arrExtLink.push(n);   if(arguments.length>2 && o.length>0) str1=o; else str1=''; 
+  var boOK=validator.isURL(n, {protocols: ['http','https'], require_tld:false}); if(!boOK) return '<link-url does not pass validator test>';
+  var str1; this.arrExtLink.push(n);   if(typeof o=='string') str1=o; else str1=''; 
+  //str1=myJSEscape(str1);
   return STARTCHAR +'eLink' +i +ENDCHAR +str1 +STARTCHAR +'/eLink' +i +ENDCHAR;
 }
 Parser.prototype.putBackExternalLinkCB=function(m,n,o){

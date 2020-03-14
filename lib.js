@@ -10,12 +10,17 @@ app.thisChanged=function(func,selfT){return function(){return func.apply(selfT,a
 
 app.ucfirst=function(string){  return string.charAt(0).toUpperCase() + string.slice(1);  }
 app.isAlpha=function(star){  var regEx = /^[a-zA-Z0-9]+$/;  return str.match(regEx); } 
-String.prototype.trim = function() { return this.replace(/^\s+|\s+$/g,"");}
-String.prototype.ltrim = function() {return this.replace(/^\s+/,"");}
-String.prototype.rtrim = function() {return this.replace(/\s+$/,"");}
+//String.prototype.trim = function() { return this.replace(/^\s+|\s+$/g,"");}
+//String.prototype.ltrim = function() {return this.replace(/^\s+/,"");}
+//String.prototype.rtrim = function() {return this.replace(/\s+$/,"");}
 
-app.trim=function(str,charlist){
-  if (charlist === undefined) charlist = "\\s";
+app.ltrim=function(str,charlist=String.raw`\s`){
+  return str.replace(new RegExp("^[" + charlist + "]+"), "");
+};
+app.rtrim=function(str,charlist=String.raw`\s`){
+  return str.replace(new RegExp("[" + charlist + "]+$"), "");
+};
+app.trim=function(str,charlist=String.raw`\s`){
   return str.replace(new RegExp("^[" + charlist + "]+([^" + charlist + "]*)[" + charlist + "]+$"), function(m,n){return n;});
 }
 
@@ -211,7 +216,7 @@ app.t2dosTime=function(t){
   var year=t.getFullYear();
   var dosTime= Math.round(sec/2) |minute<<5 |hour<<11;
   var dosDate=date |month<<5 |(year-1980)<<9;
-  return {dosDate:dosDate,dosTime:dosTime};
+  return {dosDate,dosTime};
 }
 
 //
@@ -304,9 +309,68 @@ app.parsePageNameHD=function(strPage){ // parsePageNameHD (PageNameHD = pageName
   return obj;
 }
 
-app.csvParseMy=function*(flow, strCSV){ // My parser of csv, where the type of each column is determined by the prefix of the column name.
-  var indNL=strCSV.search('\n'), strHead=strCSV.substr(0,indNL), arrHead=strHead.split(','), arrType=Array(arrHead.length); arrHead.forEach(function(str,ind){
-    str=trim(str,'"'); arrHead[ind]=str;
+
+app.csvParseMy=function(strCSV){ // My parser of csv, where the type of each column is determined by the prefix of the column name.
+  // var indNL=strCSV.search('\n'), strHead=strCSV.substr(0,indNL), arrHead=strHead.split(','), arrType=Array(arrHead.length); arrHead.forEach(function(str,ind){
+  //   str=trim(str,'"'); arrHead[ind]=str;
+  //   var strType;
+  //   if(str.slice(0,2)=='bo' && isUpperCase(str[2])) strType='boolean';
+  //   else if(str.slice(0,3)=='int' && isUpperCase(str[3])) strType='number';
+  //   else if(str[0]=='n' && isUpperCase(str[1])) strType='number';
+  //   else if(str[0]=='t' && isUpperCase(str[1])) strType='number';
+  //   else strType='string';
+  //   arrType[ind]=strType;
+  // });
+  
+  var arrStr=[];
+  var replaceStr=function(m, str){
+    var i=arrStr.length;
+    arrStr.push(str);
+    return '"'+i+'"';
+  }
+  var putBackStr=function(m, str){ return arrStr[Number(str)];  }
+
+  //strCSV="0, \"a\\\"b\", 1, \"a\"";
+  //var regString=/"(.*?)(?<!\\)"/g;
+  var regString=RegExp('"(.*?)(?<!\\\\)"', 'g');
+  //strCSV.match(regString)
+  strCSV=strCSV.trim();
+  strCSV = strCSV.replace(regString, replaceStr);
+  
+  var arrAll=strCSV.split('\n');
+  var arrHead=arrAll[0].trim().split(',');
+  arrHead=arrHead.map(function(it){
+    it = it.replace(/^"(.*)"$/, putBackStr); return it;
+  })
+  if(arrAll.length==1) return [arrHead,null];
+
+  var arrRow=arrAll.slice(1);
+  arrRow=arrRow.map(function(strRow){
+    var row=strRow.trim().split(',');
+    row=row.map(function(it){
+      it = it.replace(/^"(.*)"$/, putBackStr); return it;
+    });
+    return row;
+  });
+
+  // var arrData;
+  // var arrTmp=strCSV.substr(indNL).trim();
+  // papaparse.parse(arrTmp, { complete: function(results, file) { //dynamicTyping:true,
+  //     arrData=results.data;
+  //   }, transform:function(val, col){
+  //     if(arrType[col]=='boolean') return val.toLowerCase()=='true';
+  //     else if(arrType[col]=='number') return Number(val);
+  //     return val;
+  //   }
+  // });
+  
+  return [arrHead,arrRow];
+}
+
+
+app.formatCSVAsHeadPrefix=function(arrHead,arrRow){
+  var arrType=Array(arrHead.length);
+  arrHead.forEach(function(str,ind){
     var strType;
     if(str.slice(0,2)=='bo' && isUpperCase(str[2])) strType='boolean';
     else if(str.slice(0,3)=='int' && isUpperCase(str[3])) strType='number';
@@ -314,22 +378,15 @@ app.csvParseMy=function*(flow, strCSV){ // My parser of csv, where the type of e
     else if(str[0]=='t' && isUpperCase(str[1])) strType='number';
     else strType='string';
     arrType[ind]=strType;
+    //arrHead[ind]=str;
+  });
+  arrRow.forEach(function(row, iRow){
+    row.forEach(function(val, iCol){
+      if(arrType[iCol]=='boolean') val=val.toLowerCase()=='true';
+      else if(arrType[iCol]=='number') val=Number(val);
+      row[iCol]=val;
+    });
+    arrRow[iRow]=row;
   });
   
-  var arrData;
-  papaparse.parse(strCSV.substr(indNL).trim(), { complete: function(results, file) { //dynamicTyping:true,
-    arrData=results.data;
-  }, transform:function(val, col){
-    if(arrType[col]=='boolean') return val.toLowerCase()=='true';
-    else if(arrType[col]=='number') return Number(val);
-    return val;
-  }
-  });
-  
-  return [arrHead,arrData];
 }
-
-
-
-
-
