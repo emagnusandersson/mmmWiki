@@ -190,7 +190,7 @@ div.gallerytext{overflow:hidden;font-size:94%;padding:2px 4px}
 li.gallerybox{vertical-align:top;background-color:#f9f9f9;border:solid 1px white;display:-moz-inline-box}
 ul.gallery,li.gallerybox{display:inline-block;zoom:1} /*;*display:inline*/
 ul.gallery{margin:2px;padding:2px;background-color:white;display:block}
-li.gallerycaption{font-weight:bold;text-align:center;display:block;word-wrap:break-word}
+li.gallerycaption{font-weight:bold;text-align:center;display:block;overflow-wrap:break-word}
 li.gallerybox div.thumb{text-align:center;border:1px solid #ccc;margin:2px}
 
 li.HLbox{vertical-align:top;background-color:#f9f9f9;border:solid 2px white;display:-moz-inline-box}
@@ -282,14 +282,14 @@ button.fixWidth{} /*width:2em*/
   /* parentRow, pageHead and pageList */
 .pageList span[name=nChild], .pageList span[name=nImage] { min-width:1.5em; float: right;}
 .pageList span[name=boOR], .pageList span[name=boOW], .pageList span[name=boSiteMap] { width:.7em;font-family:courier}
-.pageList span[name=siteName] { margin-right:0.5em}
+/*.pageList span[name=siteName] { margin-right:0.5em; }*/
 
 .pageList span[name=nChild] > button, .pageList span[name=nImage] > button { padding:0; min-width:1.4em}
 .pageList span[name=nChild] button {background-image: url("buttonRight1.png");}
 .pageList span[name=nImage] button {background-image: url("buttonRightBlue1.png");}
 
   /* parentRow, pageList and imageList */
-.pageList span[name=link] > a, .imageList span[name=link] > a { word-break:break-word} /*; vertical-align:top */
+.pageList span[name=link] > a, .imageList span[name=link] > a { word-break:break-all} /*; vertical-align:top */
 
   /* pageHead, pageList, imageHead and imageList */
 .pageList span[name=nParent], .imageList span[name=nParent], .imageList span[name=nParentI] { min-width:1.5em;}
@@ -406,21 +406,17 @@ button.fixWidth{} /*width:2em*/
 
 .boardTransition {transition-property: left; transition-duration: 1s;}
 
-span.message{
+.message{
   border:black 1px solid;
-  position:fixed;
-  /*_position:absolute;*/
+  position:absolute;
   bottom:0%;
-  /*_top:expression(eval(document.body.scrollTop+0.975*document.body.clientHeight));*/
-  /*_bottom:expression(eval(document.body.scrollBottom+0.975*document.body.clientHeight));*/
   right:0%;
   margin:0;
   padding:1px;
-  /*#background:lightgray;*/
   background-color:#F7F700;
   font-size: 0.8em;
   z-index: 10000;
- }
+}
 
 
 .footDiv {margin: 0em auto;

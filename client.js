@@ -173,34 +173,58 @@ var createColJIndexNamesObj=function(arrName){
 }
 
 
-var spanMessageTextCreate=function(){
-  var el=createElement('span');
+//var spanMessageTextCreate=function(){
+  //var el=createElement('span');
+  //var spanInner=createElement('span');
+  //el.myAppend(spanInner, imgBusy.hide())
+  //el.resetMess=function(time){
+    //clearTimeout(messTimer);
+    //if(typeof time =='number') { messTimer=setTimeout('resetMess()',time*1000); return; }
+    //spanInner.myText(' ');
+    //imgBusy.hide();
+  //}
+  //el.setMess=function(str,time,boRot){
+    //spanInner.myText(str);
+    //clearTimeout(messTimer);
+    //if(typeof time =='number')     messTimer=setTimeout('resetMess()',time*1000);
+    //imgBusy.toggle(Boolean(boRot));
+  //};
+  //el.setHtml=function(str,time,boRot){
+    //spanInner.myHtml(str);
+    //clearTimeout(messTimer);
+    //if(typeof time =='number')     messTimer=setTimeout('resetMess()',time*1000);
+    //imgBusy.toggle(Boolean(boRot));
+  //};
+  //var messTimer;
+  //el.addClass('message');
+  //return el;
+//}
+var divMessageTextCreate=function(){
   var spanInner=createElement('span');
-  el.myAppend(spanInner, imgBusy.hide())
+  var imgBusyLoc=imgBusy.cloneNode().css({zoom:'65%','margin-left':'0.4em'}).hide();
+  var el=createElement('div').myAppend(spanInner, imgBusyLoc);
   el.resetMess=function(time){
     clearTimeout(messTimer);
-    if(typeof time =='number') { messTimer=setTimeout('resetMess()',time*1000); return; }
+    if(time) { messTimer=setTimeout(resetMess, time*1000); return; }
     spanInner.myText(' ');
-    imgBusy.hide();
+    imgBusyLoc.hide();
   }
-  el.setMess=function(str,time,boRot){
+  el.setMess=function(str='',time,boRot){
     spanInner.myText(str);
     clearTimeout(messTimer);
-    if(typeof time =='number')     messTimer=setTimeout('resetMess()',time*1000);
-    imgBusy.toggle(Boolean(boRot));
+    if(time)     messTimer=setTimeout(resetMess, time*1000);
+    imgBusyLoc.toggle(Boolean(boRot));
   };
-  el.setHtml=function(str,time,boRot){
+  el.setHtml=function(str='',time,boRot){
     spanInner.myHtml(str);
     clearTimeout(messTimer);
-    if(typeof time =='number')     messTimer=setTimeout('resetMess()',time*1000);
-    imgBusy.toggle(Boolean(boRot));
+    if(time)     messTimer=setTimeout(resetMess, time*1000);
+    imgBusyLoc.toggle(Boolean(boRot));
   };
   var messTimer;
-  el.addClass('message');//.css({'z-index':8100,position:'fixed'});
-  //el.css({border:'black 1px solid',bottom:'0%',right:'0%',margin:'0',padding:'1px','background-color':'#F7F700','font-size':'0.8em','z-index':18100,position:'fixed'}); 
+  el.addClass('message');
   return el;
 }
-
 
 /*******************************************************************************
  * pageView
@@ -1424,7 +1448,7 @@ var pageListExtend=function(el){
       var buttonNImage=createElement('button').on('click',clickSetParentFilterI);
       var tdNChild=createElement('span').myAppend(buttonNChild).attr('name','nChild').prop('title','Children'); 
       var tdNImage=createElement('span').myAppend(buttonNImage).attr('name','nImage').prop('title','Images');  
-      r.append(tdNParent, tdCB, tdExecute, tdTCreated, tdDate, tdR, tdW, tdP, tdSize, tdNImage, tdNChild, tdVer, ' ', tdSite,tdLink);  //    , tdName     ,createElement('span').append(bView)
+      r.append(tdNParent, tdCB, tdExecute, tdTCreated, tdDate, tdR, tdW, tdP, tdSize, tdNImage, tdNChild, tdVer, ' ', tdSite,' ',tdLink);  //    , tdName     ,createElement('span').append(bView)
       //r.data({tdCB:tdCB, tdDate:tdDate, tdR:tdR, tdW:tdW, tdP:tdP, tdLink:tdLink, tdVer:tdVer, tdSize:tdSize, tdNChild:tdNChild, tdNImage:tdNImage});
       tBody.append(r);
     }
@@ -3699,7 +3723,7 @@ elBody.css({margin:'0px'}); //, position:'relative'
 window.boTouch = Boolean('ontouchstart' in document.documentElement);
 //boTouch=1;
 
-var boLCacheObs=document.querySelector('#boLCacheObs'); if(boLCacheObs.value.length) { boLCacheObs.value=""; location.reload(); return} //boLCacheObs.value=1;
+//var boLCacheObs=document.querySelector('#boLCacheObs'); if(boLCacheObs.value.length) { boLCacheObs.value=""; location.reload(); return} //boLCacheObs.value=1;
 
 var browser=getBrowser();
 var intBrowserVersion=parseInt(browser.version.slice(0, 2));
@@ -3942,7 +3966,12 @@ var pageText=document.querySelector('#pageText').detach();
 var pageText=pageTextExtend(pageText).css({'overflow-y': 'hidden'});   pageText.modStuff();
 var imgBusy=createElement('img').prop({src:uBusy});
 //messageText=messExtend(createElement('span'));  window.setMess=messageText.setMess;  window.resetMess=messageText.resetMess;   elBody.append(messageText); 
-var spanMessageText=spanMessageTextCreate();  window.setMess=spanMessageText.setMess;  window.setMessHtml=spanMessageText.setHtml;  window.resetMess=spanMessageText.resetMess;  window.appendMess=spanMessageText.appendMess;  elBody.append(spanMessageText)
+//var spanMessageText=spanMessageTextCreate();  window.setMess=spanMessageText.setMess;  window.setMessHtml=spanMessageText.setHtml;  window.resetMess=spanMessageText.resetMess;  window.appendMess=spanMessageText.appendMess;  elBody.append(spanMessageText)
+
+
+var divMessageText=divMessageTextCreate();  copySome(window, divMessageText, ['setMess', 'resetMess', 'appendMess']);
+var divMessageTextW=createElement('div').myAppend(divMessageText).css({width:'100%', position:'fixed', bottom:'0px', left:'0px', 'z-index':'10'});
+elBody.append(divMessageTextW);
 
 var busyLarge=createElement('img').prop({src:uBusyLarge}).css({position:'fixed',top:'50%',left:'50%','margin-top':'-42px','margin-left':'-42px','z-index':'1000',border:'black solid 1px'}).hide();
 elBody.append(busyLarge);
@@ -4271,7 +4300,9 @@ window.scroll(function(){
 
 //window.onload=funLoad;
 window.on('DOMContentLoaded', funLoad);
-//window.on('load', funLoad);
+window.on('load', function(){
+  window.boLCacheObs=document.querySelector('#boLCacheObs'); if(boLCacheObs.value.length) { boLCacheObs.value=""; location.reload(); return} 
+});
 //funLoad();
 //var root = document.documentElement,   node = document.createTextNode("This is some new textA.");    root.appendChild(node);
  

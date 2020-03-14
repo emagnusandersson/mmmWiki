@@ -10,12 +10,17 @@ app.thisChanged=function(func,selfT){return function(){return func.apply(selfT,a
 
 app.ucfirst=function(string){  return string.charAt(0).toUpperCase() + string.slice(1);  }
 app.isAlpha=function(star){  var regEx = /^[a-zA-Z0-9]+$/;  return str.match(regEx); } 
-String.prototype.trim = function() { return this.replace(/^\s+|\s+$/g,"");}
-String.prototype.ltrim = function() {return this.replace(/^\s+/,"");}
-String.prototype.rtrim = function() {return this.replace(/\s+$/,"");}
+//String.prototype.trim = function() { return this.replace(/^\s+|\s+$/g,"");}
+//String.prototype.ltrim = function() {return this.replace(/^\s+/,"");}
+//String.prototype.rtrim = function() {return this.replace(/\s+$/,"");}
 
-app.trim=function(str,charlist){
-  if (charlist === undefined) charlist = "\\s";
+app.ltrim=function(str,charlist=String.raw`\s`){
+  return str.replace(new RegExp("^[" + charlist + "]+"), "");
+};
+app.rtrim=function(str,charlist=String.raw`\s`){
+  return str.replace(new RegExp("[" + charlist + "]+$"), "");
+};
+app.trim=function(str,charlist=String.raw`\s`){
   return str.replace(new RegExp("^[" + charlist + "]+([^" + charlist + "]*)[" + charlist + "]+$"), function(m,n){return n;});
 }
 

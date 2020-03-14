@@ -575,7 +575,7 @@ ReqBE.prototype.pageCompare=function*(inObj){
 
 
   var Sql=[], Val=[];
-  Sql.push("SELECT SQL_CALC_FOUND_ROWS boOR, boOW, @idPage:=idPage FROM "+pageSiteView+" WHERE www=? AND pageName=?;");
+  Sql.push("SELECT SQL_CALC_FOUND_ROWS boOR, boOW, @idPage:=idPage AS idPage FROM "+pageSiteView+" WHERE www=? AND pageName=?;");
   Sql.push("SELECT data AS strEditTextOld FROM "+versionTab+" v JOIN "+fileTab+" f on v.idFile=f.idFile WHERE v.idPage=@idPage AND v.rev=?;");
   Sql.push("SELECT data AS strEditText FROM "+versionTab+" v JOIN "+fileTab+" f on v.idFile=f.idFile WHERE v.idPage=@idPage AND v.rev=?;");
   Val.push(req.wwwSite, this.pageName, versionOld-1, version-1);
@@ -849,7 +849,7 @@ ReqBE.prototype.saveByAdd=function*(inObj){
   
       // getInfoNData
   var Sql=[], Val=[];
-  Sql.push("SELECT SQL_CALC_FOUND_ROWS siteName, boOR, boOW, boSiteMap, @idSite:=idSite, @idPage:=idPage, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod FROM "+pageLastSiteView+" WHERE www=? AND pageName=?;");
+  Sql.push("SELECT SQL_CALC_FOUND_ROWS siteName, boOR, boOW, boSiteMap, @idSite:=idSite AS idSite, @idPage:=idPage AS idPage, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod FROM "+pageLastSiteView+" WHERE www=? AND pageName=?;");
   Sql.push("SELECT SQL_CALC_FOUND_ROWS summary, signature, UNIX_TIMESTAMP(tMod) AS tMod FROM "+versionTab+" WHERE idPage=@idPage;");
   Sql.push("SELECT pageName, boOnWhenCached FROM "+subTab+" WHERE idPage=@idPage AND pageName REGEXP '^template:';");
   Val.push(req.wwwSite, this.pageName);
@@ -994,10 +994,19 @@ ReqBE.prototype.setUpPageListCond=function*(inObj){
 ReqBE.prototype.getParent=function*(inObj){
   var req=this.req, res=this.res;
   //var Ou={}, sql="SELECT p.pageName FROM "+pageTab+" p JOIN "+subTab+" s ON s.idPage=p.idPage WHERE s.pageName=?;",   Val=[inObj.pageName];
-  var Ou={}, sql="SELECT p.boTLS, p.siteName, p.www, p.idPage, p.pageName FROM "+pageSiteView+" p JOIN "+subTab+" s ON s.idPage=p.idPage JOIN "+pageTab+" c ON s.pageName=c.pageName WHERE c.idPage=?;",   Val=[inObj.idPage];
+  var Ou={};
+  //var sql="SELECT p.boTLS, p.siteName, p.www, p.idPage, p.pageName FROM "+pageSiteView+" p JOIN "+subTab+" s ON s.idPage=p.idPage JOIN "+pageTab+" c ON s.pageName=c.pageName WHERE c.idPage=?;";
+  var Sql=[];
+  Sql.push(`SELECT @idSite:=idSite, @idPage:=idPage FROM mmmWiki_page p WHERE idPage=?;`);
+  Sql.push(`SELECT p.boTLS, p.siteName, p.www, p.idPage, p.pageName FROM mmmWiki_pageSite p
+JOIN mmmWiki_sub s ON s.idPage=p.idPage
+JOIN mmmWiki_page c ON s.pageName=c.pageName WHERE p.idSite=@idSite AND c.idPage=@idPage;`);
+  var Val=[inObj.idPage];
+  var sql=Sql.join('\n');
+  
   var flow=req.flow
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
-  Ou=arrObj2TabNStrCol(results);
+  Ou=arrObj2TabNStrCol(results[1]);
   return [null, [Ou]];
 }
 

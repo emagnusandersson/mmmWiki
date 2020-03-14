@@ -35,6 +35,7 @@ papaparse = require('papaparse');  // For parsing CSV
 var minimist = require('minimist');
 //UglifyJS = require("uglify-js");
 Streamify= require('streamify-string');
+validator = require('validator');
 serialize = require('serialize-javascript');
 ejs = require("ejs");
 app=(typeof window==='undefined')?global:window;
@@ -283,16 +284,16 @@ var flow=( function*(){
       var cookies = parseCookies(req);
       req.cookies=cookies;
 
-      req.boCookieDDOSOK=false; //req.boCookieLaxOK=req.boCookieStrictOK=
+      var boCookieDDOSOK=false; //req.boCookieLaxOK=req.boCookieStrictOK=
       
         // Check if a valid sessionIDDDos-cookie came in
       var sessionIDDDos=null, redisVarDDos;
       if('sessionIDDDos' in cookies) {
         sessionIDDDos=cookies.sessionIDDDos;  redisVarDDos=sessionIDDDos+'_DDOS';
-        var [err, tmp]=yield* cmdRedis(req.flow, 'EXISTS', redisVarDDos); req.boCookieDDOSOK=tmp;
+        var [err, tmp]=yield* cmdRedis(req.flow, 'EXISTS', redisVarDDos); boCookieDDOSOK=tmp;
       }
         // If non-valid sessionIDDDos, then create a new one.
-      if(!req.boCookieDDOSOK) { sessionIDDDos=randomHash();  redisVarDDos=sessionIDDDos+'_DDOS'; }
+      if(!boCookieDDOSOK) { sessionIDDDos=randomHash();  redisVarDDos=sessionIDDDos+'_DDOS'; }
       
         // Increase redisVarDDos 
       var luaCountFunc=`local c=redis.call('INCR',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
@@ -306,7 +307,7 @@ var flow=( function*(){
       res.setHeader("Set-Cookie", "sessionIDDDos="+sessionIDDDos+strCookiePropNormal);
       
         // If to many, then ban
-      if(req.boCookieDDOSOK) {  var intCountT=intCount, intDDOSMaxT=intDDOSMax, tDDOSBanT=tDDOSBan;   }   else   {    intCountT=intCountIP; intDDOSMaxT=intDDOSIPMax; tDDOSBanT=tDDOSIPBan;   }
+      if(boCookieDDOSOK) {  var intCountT=intCount, intDDOSMaxT=intDDOSMax, tDDOSBanT=tDDOSBan;   }   else   {    intCountT=intCountIP; intDDOSMaxT=intDDOSIPMax; tDDOSBanT=tDDOSIPBan;   }
       if(intCountT>intDDOSMaxT) {res.outCode(429,"Too Many Requests ("+intCountT+"), wait "+tDDOSBanT+"s\n"); return; }
       
       
