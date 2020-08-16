@@ -989,9 +989,9 @@ ReqBE.prototype.setUpPageListCond=function*(inObj){
   var Ou={};
   if(typeof inObj.Filt!='object') return [new ErrorClient('typeof inObj.Filt!="object"')]; 
   this.Filt=inObj.Filt;
-  var arg={KeySel:[], Prop:PropPage, Filt:inObj.Filt};
+  var arg={Prop:PropPage, Filt:inObj.Filt};  //
   var tmp=setUpCond(arg);
-  copySome(this,tmp,['strCol', 'Where']);
+  copySome(this,tmp,['Where']); //'strCol', 
   return [null, [Ou]];
 }
  
@@ -1075,11 +1075,13 @@ ReqBE.prototype.getPageHist=function*(inObj){
   //var strTableRefCount=pageTab+' p';
   var arg={strTableRef:strTableRefPageHist, WhereExtra:[], Prop:PropPage, strDBPrefix};  
   copySome(arg, this, ['myMySql', 'Filt', 'Where']);
-  var [err, Hist]=yield* getHist(flow, arg); if(err) return [err];  Ou.Hist=Hist;
+  //var [err, Hist]=yield* getHist(flow, arg); if(err) return [err];  Ou.Hist=Hist;
+  var histCalc=new HistCalc(arg);   var [err, Hist]=yield* histCalc.getHist(flow, arg); if(err) return [err];  Ou.Hist=Hist;
+
 
   
     // Fetching the names of (non-null) parents
-  var iColParent=KeyColPageFlip.parent, arrTmpA=Ou.Hist[iColParent], IdParent=[];
+  var iColParent=StrOrderFiltPageFlip.parent, arrTmpA=Ou.Hist[iColParent], IdParent=[];
   for(var i=0;i<arrTmpA.length;i++){var tmp=arrTmpA[i], boKeep=(tmp instanceof Array) && (typeof tmp[0]==='number'); if(boKeep) IdParent.push(tmp[0]);  }
 
   var len=IdParent.length;
@@ -1104,9 +1106,9 @@ ReqBE.prototype.setUpImageListCond=function*(inObj){
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
   if(typeof inObj.Filt!='object') return [new ErrorClient('typeof inObj.Filt!="object"')];
   this.Filt=inObj.Filt;
-  var arg={KeySel:[], Prop:PropImage, Filt:inObj.Filt};
+  var arg={Prop:PropImage, Filt:inObj.Filt};
   var tmp=setUpCond(arg);
-  copySome(this,tmp,['strCol', 'Where']);
+  copySome(this,tmp,['Where']); //'strCol', 
   return [null, [Ou]];
 }
 
@@ -1134,11 +1136,13 @@ ReqBE.prototype.getImageHist=function*(inObj){
   var arg={strTableRef:strTableRefImageHist, Ou, WhereExtra:[], Prop:PropImage, strDBPrefix};
   copySome(arg, this, ['myMySql', 'Filt', 'Where']);
   
-  var [err, Hist]=yield* getHist(flow, arg); if(err) return [err];
-  Ou.Hist=Hist;
+  //var [err, Hist]=yield* getHist(flow, arg); if(err) return [err];  Ou.Hist=Hist;
+  var histCalc=new HistCalc(arg);  var [err, Hist]=yield* histCalc.getHist(flow, arg); if(err) return [err];  Ou.Hist=Hist;
+
+
 
     // Fetching the names of (non-null) parents
-  var iColParent=KeyColImageFlip.parent, arrTmpA=Ou.Hist[iColParent], IdParent=[];
+  var iColParent=StrOrderFiltImageFlip.parent, arrTmpA=Ou.Hist[iColParent], IdParent=[];
   for(var i=0;i<arrTmpA.length;i++){var tmp=arrTmpA[i], boKeep=(tmp instanceof Array) && (typeof tmp[0]==='number'); if(boKeep) IdParent.push(tmp[0]);  }
 
   var len=IdParent.length;

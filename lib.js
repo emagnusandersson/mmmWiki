@@ -1,5 +1,5 @@
 "use strict"
-var app=(typeof window==='undefined')?global:window;
+var app;  if(typeof window!=='undefined') app=window; else if(typeof global!=='undefined') app=global; else app=self;  // if browser else if server else serviceworker
 
 app.thisChanged=function(func,selfT){return function(){return func.apply(selfT,arguments);}}
 
@@ -111,6 +111,7 @@ app.StrComp=function(A,B){var lA=A.length; if(lA!==B.length) return false; for(v
 // Object
 //
 
+app.extend=Object.assign;
 app.copySome=function(a,b,Str){for(var i=0;i<Str.length;i++) { var name=Str[i]; a[name]=b[name]; } return a; }
 app.object_values=function(obj){
   var arr=[];      for(var name in obj) arr.push(obj[name]);

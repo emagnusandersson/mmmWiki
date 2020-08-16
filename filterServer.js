@@ -1,7 +1,7 @@
 "use strict"
 
 app.setUpCond=function(arg){
-  var {KeySel, Prop, Filt}=arg;
+  var {Prop, Filt}=arg; // KeySel, 
   var StrProp=Object.keys(Filt);
   var Where=[];
 
@@ -12,8 +12,8 @@ app.setUpCond=function(arg){
   for(var i=0;i<StrProp.length;i++){
     var name=StrProp[i];
     if(Filt[name].length==0) continue;
-    var pre; if('pre' in Prop[name]) pre=Prop[name].pre; else pre=preDefault;
-    var feat=Prop[name].feat;
+    var prop=Prop[name], pre; if('pre' in prop) pre=prop.pre; else pre=preDefault;
+    var feat=prop.feat;
     var arrCondInFeat=[];
     var filt=Filt[name];
     if(feat.kind[0]=='B'){
@@ -27,8 +27,8 @@ app.setUpCond=function(arg){
          
       if(arrSpec.length==0){   if(boWhite==1) arrCondInFeat.push('FALSE'); }  // "FALSE" to prevent all matches 
       else {
-        var boAddExtraNull=Prop[name].boIncludeNull && !boWhite,    arrCondOuter=[];
-        var tmpName; if('condBNameF' in Prop[name]) tmpName=Prop[name].condBNameF(name,arrSpec); else tmpName="`"+name+"`";
+        var boAddExtraNull=prop.boIncludeNull && !boWhite,    arrCondOuter=[];
+        var tmpName; if('condBNameF' in prop) tmpName=prop.condBNameF(name,arrSpec); else tmpName="`"+name+"`";
         var arrCondInner=[];
         var ind=arrSpec.indexOf(null);
         if(ind!=-1) {arrCondInner.push(pre+tmpName+" IS "+strNot+" NULL"); mySplice1(arrSpec,ind);  boAddExtraNull=0;}
@@ -51,22 +51,23 @@ app.setUpCond=function(arg){
       var val0=feat.min[filt[0]]; if(filt[0]==feat.n) val0=feat.max[feat.n-1];
       var val1=feat.max[filt[1]-1]; if(filt[1]==0) val1=feat.min[0];
       if(filt[0]>0) {
-        var tmp; if('cond0F' in Prop[name]) tmp=Prop[name].cond0F(pre+"`"+name+"`",val0);  else tmp=pre+"`"+name+"`>="+val0;       arrCondInFeat.push(tmp);
+        var tmp; if('cond0F' in prop) tmp=prop.cond0F(pre+"`"+name+"`",val0);  else tmp=pre+"`"+name+"`>="+val0;       arrCondInFeat.push(tmp);
       }
       if(filt[1]<feat.n) {
-        var tmp; if('cond1F' in Prop[name]) tmp=Prop[name].cond1F(pre+"`"+name+"`",val1);  else tmp=pre+"`"+name+"`<"+val1;       arrCondInFeat.push(tmp);
+        var tmp; if('cond1F' in prop) tmp=prop.cond1F(pre+"`"+name+"`",val1);  else tmp=pre+"`"+name+"`<"+val1;       arrCondInFeat.push(tmp);
       }
     }
     Where.push(arrCondInFeat.join(' AND '));
   }
-  var arrCol=[],ii=0;
-  for(var i=0;i<KeySel.length;i++) {
-    var key=KeySel[i], b=Prop[key].b, pre=Prop[key].pre||preDefault;
-    var tmp; if('selF' in Prop[key]) { tmp=Prop[key].selF(pre+key);  }   else tmp=pre+"`"+key+"`";
-    arrCol.push(tmp+" AS "+"`"+key+"`"); ii++;
-  }
-  var strCol=arrCol.join(', ');
-  return {strCol, Where}; //, nColTrans:ii
+  // var arrCol=[],ii=0;
+  // for(var i=0;i<KeySel.length;i++) {
+  //   var key=KeySel[i], b=Prop[key].b, pre=Prop[key].pre||preDefault;
+  //   var tmp; if('selF' in Prop[key]) { tmp=Prop[key].selF(pre+key);  }   else tmp=pre+"`"+key+"`";
+  //   arrCol.push(tmp+" AS "+"`"+key+"`"); ii++;
+  // }
+  // var strSel=arrCol.join(', ');
+  // return {strSel, Where}; //, nColTrans:ii
+  return {Where}; //, nColTrans:ii
 
 }
 
@@ -76,82 +77,93 @@ app.setUpCond=function(arg){
 
 
 
-app.getHist=function*(flow, arg){
-  var Sql=[], TypeNInd=[];
-  var {Prop}=arg;
-  var StrProp=Object.keys(arg.Filt), nFilt=StrProp.length;
-  var WhereWExtra=array_merge(arg.Where,arg.WhereExtra);
+
+app.HistCalc=function(arg){
+  //var {Prop}=arg;
+  //var StrProp=Object.keys(arg.Filt), nFilt=StrProp.length;
+  copySome(this, arg, ['Prop', 'myMySql', 'Filt', 'strDBPrefix', 'strTableRef']);
+  this.WhereWExtra=array_merge(arg.Where,arg.WhereExtra);
+}
+app.HistCalc.prototype.getHist=function*(flow){
+  var StrProp=Object.keys(this.Filt), nFilt=StrProp.length;
+  var Hist=Array(nFilt);
   for(var i=0;i<nFilt;i++){
-    var name=StrProp[i];
-    var pre; if('pre' in Prop[name]) pre=Prop[name].pre; else pre=preDefault;
-    var feat=Prop[name].feat;
-    var kind=feat.kind;
-    
-    var WhereTmp=[].concat(WhereWExtra); WhereTmp.splice(i,1);
-    Sql.push("\n  -- "+name);
-    
-    var boIsButt=(kind[0]=='B'); 
-    if(boIsButt){ 
-      var strOrder; if(kind=='BF') strOrder='bin ASC'; else strOrder="groupCount DESC, bin ASC";
-      var WhereTmp=array_filter(WhereTmp), strCond=''; if(WhereTmp.length) strCond='WHERE '+WhereTmp.join(' AND ');
-
-      var relaxCountExp; if('relaxCountExp' in Prop[name]) { relaxCountExp=Prop[name].relaxCountExp(name);  }  else relaxCountExp='count(*)';
-      if(relaxCountExp!==null) {
-        Sql.push("SELECT "+relaxCountExp+" AS n FROM \n"+arg.strTableRef+" "+strCond+";");
-        TypeNInd.push(['c',i]); 
-      }
-
-      var sqlHist;
-      if('histF' in Prop[name]) { sqlHist=Prop[name].histF(name, arg.strTableRef, strCond, strOrder);  }
-      else{
-        var colExp;  if('binKeyF' in Prop[name]) { colExp=Prop[name].binKeyF(name);  }  else if(kind=='BF') colExp=pre+"`"+name+"`-1";   else colExp=pre+"`"+name+"`";
-        var countExp;  if('binValueF' in Prop[name]) { countExp=Prop[name].binValueF(name);  }   else countExp="COUNT("+pre+"`"+name+"`)";
-        //Sql.push("SELECT "+colExp+" AS bin, "+countExp+" AS groupCount FROM \n"+arg.strTableRef+" \n"+strCond+"\nGROUP BY bin ORDER BY "+strOrder+";");
-        sqlHist="SELECT "+colExp+" AS bin, "+countExp+" AS groupCount FROM \n"+arg.strTableRef+" \n"+strCond+"\nGROUP BY bin ORDER BY "+strOrder+";";
-      }
-      Sql.push(sqlHist);
-
-      TypeNInd.push([kind,i]);
-    }else{
-      var countExp;  if('binValueF' in Prop[name]) { countExp=Prop[name].binValueF(name);  } else countExp="SUM("+pre+"`"+name+"` IS NOT NULL)";
-      var colExpCond;  if('histCondF' in Prop[name]) { colExpCond=Prop[name].histCondF(name);  }    else colExpCond=pre+"`"+name+"`";
-      
-      var strOrder='bin ASC';
-
-      var nameT=name; if('nameDBBinTab' in feat){ nameT=feat.nameDBBinTab; }
-      var binTable=arg.strDBPrefix+"_bins"+ucfirst(nameT);
-      WhereTmp.push(colExpCond+" BETWEEN b.minVal AND b.maxVal");
-      var WhereTmp=array_filter(WhereTmp), strCond=''; if(WhereTmp.length) strCond='WHERE '+WhereTmp.join(' AND ');
-      Sql.push("SELECT b.id AS bin, "+countExp+" AS groupCount FROM "+binTable+" b, \n("+arg.strTableRef+")\n"+strCond+"\nGROUP BY bin ORDER BY "+strOrder+";");
-      TypeNInd.push([kind,i]);
-    }
-  }
-  var sql=Sql.join('\n\n'), Val=[]; //set GLOBAL max_heap_table_size=128*1024*1024, GLOBAL tmp_table_size=128*1024*1024
-  var [err, results]=yield* arg.myMySql.query(flow, sql, Val);  if(err) return [err];
-  var NInRelaxedCond=[], Hist=[];
-  for(var i=0;i<results.length;i++){
-    var [kind,ii]=TypeNInd[i]; 
-    if(kind=='c') NInRelaxedCond[ii]=results[i][0].n;
-    else {
-      var nGroupsInFeat=results[i].length,     boTrunk=nGroupsInFeat>maxGroupsInFeat,   nDisp=boTrunk?maxGroupsInFeat:nGroupsInFeat,     nWOTrunk=0;
-      Hist[ii]=[]; 
-      for(var j=0;j<nDisp;j++){ 
-        var tmpRObj=results[i][j], tmpR, bin=tmpRObj.bin, val=Number(tmpRObj.groupCount); 
-        if(kind=='BF') tmpR=[Number(bin), val]; 
-        else if(kind[0]=='B') tmpR=[bin, val];   
-        else tmpR=[Number(bin), val];
-        nWOTrunk+=val;
-        Hist[ii].push(tmpR);
-      }
-        // Note! calculating the trunk this way is wrong (when you have nxn relations). Should be done with a query with a "NOT IN(...)" condition.
-      if(boTrunk){Hist[ii].push(['',NInRelaxedCond[ii]-nWOTrunk]); } // (if boTrunk) the second-last-item is the trunk (remainder)
-      Hist[ii].push(boTrunk);  // The last item marks if the second-last-item is a trunk (remainder)
-    }
+    var tStart=new Date();
+    var name=StrProp[i], prop=this.Prop[name], Where=[].concat(this.WhereWExtra); Where.splice(i,1); var arg={name, prop, Where};
+    var [err, hist]=yield* this.getHistOne(flow, arg); if(err) return [err];
+    Hist[i]=hist;
+    var tMeas=(new Date())-tStart; console.log(name+': '+tMeas+'ms');
   }
   return [null,Hist];
-
 }
+app.HistCalc.prototype.getHistOne=function*(flow, arg){
+  //var {prop, strName:name, WhereWExtra, strTableRef, strDBPrefix, myMySql}=this;
+  var {strTableRef, strDBPrefix, myMySql}=this;
+  var {prop, name, Where}=arg;
+  //var pre; if('pre' in prop) pre=prop.pre; else pre=preDefault;
+  var pre=prop.pre||preDefault;
+  var feat=prop.feat;
+  var kind=feat.kind;
+  
+  var boIsButt=(kind[0]=='B'); 
+  if(boIsButt){ 
+    var strOrder; if(kind=='BF') strOrder='bin ASC'; else strOrder="groupCount DESC, bin ASC";
+    var Where=array_filter(Where), strCond=''; if(Where.length) strCond='WHERE '+Where.join(' AND ');
 
+    if('histF' in prop) { var sql=prop.histF(name, strTableRef, strCond, strOrder);  }
+    else{
+      var colExp;  if('binKeyF' in prop) { colExp=prop.binKeyF(name);  }  else if(kind=='BF') colExp=pre+"`"+name+"`-1";   else colExp=pre+"`"+name+"`";
+      var countExp;  if('binValueF' in prop) { countExp=prop.binValueF(name);  }   else countExp="COUNT("+pre+"`"+name+"`)";
+      var sql="SELECT "+colExp+" AS bin, "+countExp+" AS groupCount FROM \n"+strTableRef+" \n"+strCond+"\nGROUP BY bin ORDER BY "+strOrder+";";
+    }
+
+    var Val=[];  //set GLOBAL max_heap_table_size=128*1024*1024, GLOBAL tmp_table_size=128*1024*1024
+    var [err, results]=yield* myMySql.query(flow, sql, Val);  if(err) return [err];
+    
+    var nGroupsInFeat=results.length,     boTrunk=nGroupsInFeat>maxGroupsInFeat,   nDisp=boTrunk?maxGroupsInFeat:nGroupsInFeat,     nWOTrunk=0;
+    var hist=[]; 
+    for(var j=0;j<nDisp;j++){ 
+      var tmpRObj=results[j], tmpR, bin=tmpRObj.bin, val=Number(tmpRObj.groupCount); 
+      if(kind=='BF') tmpR=[Number(bin), val]; 
+      else if(kind[0]=='B') tmpR=[bin, val];  
+      else tmpR=[Number(bin), val];
+      //else tmpR=[bin, val];
+      nWOTrunk+=val;
+      hist.push(tmpR);
+    }
+
+    if(boTrunk){
+      var relaxCountExp; if('relaxCountExp' in prop) { relaxCountExp=prop.relaxCountExp(name);  }  else relaxCountExp='count(*)';
+      if(relaxCountExp===null) { return [new Error('relaxCountExp===null')]; }
+      var sql="SELECT "+relaxCountExp+" AS n FROM \n"+strTableRef+" "+strCond+";",   Val=[];
+      var [err, results]=yield* myMySql.query(flow, sql, Val);  if(err) return [err];
+      var nInRelaxedCond=results[0].n;
+      var nTrunk=nInRelaxedCond-nWOTrunk;  hist.push(['', nTrunk]);
+    } 
+    hist.push(boTrunk);  // The last item marks if the second-last-item is a trunk (remainder)
+
+  }else{
+    var countExp;  if('binValueF' in prop) { countExp=prop.binValueF(name);  } else countExp="SUM("+pre+"`"+name+"` IS NOT NULL)";
+    var colExpCond;  if('histCondF' in prop) { colExpCond=prop.histCondF(name);  }    else colExpCond=pre+"`"+name+"`";
+    
+    var strOrder='bin ASC';
+
+    var nameT=name; if('nameDBBinTab' in feat){ nameT=feat.nameDBBinTab; }
+    var binTable=strDBPrefix+"_bins"+ucfirst(nameT);
+    Where.push(colExpCond+" BETWEEN b.minVal AND b.maxVal");
+    var Where=array_filter(Where), strCond=''; if(Where.length) strCond='WHERE '+Where.join(' AND ');
+    var sql="SELECT b.id AS bin, "+countExp+" AS groupCount FROM "+binTable+" b, \n("+strTableRef+")\n"+strCond+"\nGROUP BY bin ORDER BY "+strOrder+";";
+    
+    var Val=[];
+    var [err, results]=yield* myMySql.query(flow, sql, Val);  if(err) return [err];
+    var hist=[], nDisp=results.length;
+    for(var j=0;j<nDisp;j++){   hist.push([Number(results[j].bin), Number(results[j].groupCount)]);    }
+    hist.push(false);  // The last item marks if the second-last-item is a trunk (remainder)
+    
+  }
+  
+  return [null,hist];
+}
 
 app.addBinTableSql=function(SqlTabDrop,SqlTab,strDBPrefix,Prop,engine,collate){
   var SqlTabDropTmp=[]

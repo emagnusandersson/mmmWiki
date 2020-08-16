@@ -9,7 +9,6 @@ mysql =  require('mysql');
 gm =  require('gm').subClass({ imageMagick: true });
 im = require('imagemagick');
 temporary = require('tmp');
-util =  require('util');
 concat = require('concat-stream');
 requestMod = require('request');
 querystring = require('querystring');
@@ -25,7 +24,7 @@ Streamify= require('streamify-string');
 validator = require('validator');
 serialize = require('serialize-javascript');
 ejs = require("ejs");
-app=(typeof window==='undefined')?global:window;
+app=global;
 
 
 require('./lib.js');
@@ -37,7 +36,6 @@ require('./myDiff.js');
 //require('./store.js');
 
 strAppName='mmmWiki';
-extend=util._extend;
 
 strInfrastructure=process.env.strInfrastructure||'local';
 boHeroku=strInfrastructure=='heroku'; 

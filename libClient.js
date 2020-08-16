@@ -21,49 +21,8 @@ var httpGetAsync=function(theUrl, callback){
 }
 
 //
-// Hardware checking
+// Checking browser capabilites
 //
-
-var getBrowser=function(){
-    var ua=navigator.userAgent.toLowerCase();
-
-    var match = /(chrome)[ \/]([\w.]+)/.exec( ua ) ||
-        /(webkit)[ \/]([\w.]+)/.exec( ua ) ||
-        /(opera)(?:.*version|)[ \/]([\w.]+)/.exec( ua ) ||
-        /(msie) ([\w.]+)/.exec( ua ) ||
-        ua.indexOf("compatible") < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec( ua ) ||
-        [];
-
-    var brand=match[ 1 ] || "";
-    var version=match[ 2 ] || "0";
-    
-    return {brand,version};
-};
-var detectIE=function() {
-    var ua = window.navigator.userAgent;
-
-    var msie = ua.indexOf('MSIE ');
-    if (msie > 0) {
-        // IE 10 or older => return version number
-        return parseInt(ua.substring(msie + 5, ua.indexOf('.', msie)), 10);
-    }
-
-    var trident = ua.indexOf('Trident/');
-    if (trident > 0) {
-        // IE 11 => return version number
-        var rv = ua.indexOf('rv:');
-        return parseInt(ua.substring(rv + 3, ua.indexOf('.', rv)), 10);
-    }
-
-    var edge = ua.indexOf('Edge/');
-    if (edge > 0) {
-       // IE 12 => return version number
-       return parseInt(ua.substring(edge + 5, ua.indexOf('.', edge)), 10);
-    }
-
-    // other browser
-    return false;
-}
 
 var isGeneratorSupported = function(){
     try {
@@ -99,16 +58,6 @@ var merge=function(left, right, compare){
   return result;
 }
 
-
-// var extend=function(out) {
-//   out=out||{};
-//   for(var i=1; i<arguments.length; i++) {
-//     if(!arguments[i]) continue;
-//     for(var key in arguments[i]) {    if(arguments[i].hasOwnProperty(key)) out[key]=arguments[i][key];     }
-//   }
-//   return out;
-// };
-var extend=Object.assign;
 
 var deepExtend=function(oA, oB) {
     // Handle the 3 simple types, and null or undefined

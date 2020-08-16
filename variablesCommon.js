@@ -245,8 +245,8 @@ featCalcValExtend=function(Prop){
 
 
 
-KeyColPage=Object.keys(PropPage);   nColPage=KeyColPage.length;   KeyColPageFlip=array_flip(KeyColPage);
-KeyColImage=Object.keys(PropImage);   nColImage=KeyColImage.length;   KeyColImageFlip=array_flip(KeyColImage);
+StrOrderFiltPageFlip=array_flip(StrOrderFiltPage);
+StrOrderFiltImageFlip=array_flip(StrOrderFiltImage);
 
 
 featCalcValExtend(PropPage);

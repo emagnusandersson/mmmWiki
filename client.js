@@ -1105,7 +1105,7 @@ var uploadAdminDivExtend=function(el){
     verifyFun2();
   }
   var sendFun=function(){
-    if(boFormDataOK==0) {alert("Your browser doesn't support FormData"); return; };
+    if(boFormDataOK==0) {alert("This browser doesn't support FormData"); return; };
     var formData = new FormData();
     formData.append("type", 'multi');
     for(var i=0;i<arrFile.length;i++)  {
@@ -1202,7 +1202,7 @@ var uploadUserDivExtend=function(el){
   }
   var sendFun=function(){
     clearMess();
-    if(boFormDataOK==0) {alert("Your browser doesn't support FormData"); return; };
+    if(boFormDataOK==0) {alert("This browser doesn't support FormData"); return; };
     var formData = new FormData();
     formData.append("type", 'single');
     formData.append("strName", inpName.value+spanExtension.myText());
@@ -1298,7 +1298,6 @@ var uploadUserDivExtend=function(el){
   var blanket=createElement('div').addClass("blanket");
   var centerDiv=createElement('div').myAppend(head, formFile, divName, divMess, progress, menuBottom);  
   centerDiv.addClass("Center").css({padding: '0.3em 0.2em 1.2em 0.3em', 'box-sizing':'content-box'}); // 'width':'20em', height:'26em', 
-  //if(boIE) centerDiv.css({'width':'20em'}); 
   el.addClass("Center-Container").myAppend(centerDiv,blanket); //
   
 
@@ -1622,12 +1621,12 @@ var pageListExtend=function(el){
 
 
   var IndSiteName, IndParentName;
-  PropPage.siteName.setRowButtF=function(span,val,boOn){
+  PropPage.siteName.setFilterButtF=function(span,val,boOn){
     var text=''; if(val in IndSiteName) text=IndSiteName[val].siteName;
     else if(val===null) text='(no parent)';
     span.myText(text);
   }
-  PropPage.parent.setRowButtF=function(span,val,boOn){
+  PropPage.parent.setFilterButtF=function(span,val,boOn){
     var text=''; if(val in IndParentName) text=IndParentName[val].text;
     else if(val===null) text='(no parent)';
     span.myText(text);
@@ -1986,7 +1985,6 @@ var grandParentSelPopExtend=function(el){
 
   var blanket=createElement('div').addClass("blanket");
   var centerDiv=createElement('div').addClass("Center").myAppend(head,div,cancel).css({'max-width':'20em', padding: '0.5em 0.5em 1.2em 1.2em'});  // height:'22em', 
-  //if(boIE) centerDiv.css({'width':'20em'}); 
   el.addClass("Center-Container").myAppend(centerDiv,blanket); 
   
   return el;
@@ -2038,7 +2036,6 @@ var renamePopExtend=function(el){
 
   var blanket=createElement('div').addClass("blanket");
   var centerDiv=createElement('div').addClass("Center").myAppend(head,nameLab,inpName,cancelButton,saveButton).css({'min-width':'17em', 'max-width':'30em', padding: '0.3em 0.5em 1.2em 1.2em'}); // height:'12em', 
-  //if(boIE) centerDiv.css({'width':'20em'}); 
   el.addClass("Center-Container").myAppend(centerDiv,blanket); 
   
   return el;
@@ -2069,7 +2066,6 @@ var areYouSurePopExtend=function(el){
 
   var blanket=createElement('div').addClass("blanket");
   var centerDiv=createElement('div').addClass("Center").myAppend(labPageName,divBottom).css({'max-width':'20em', padding: '1.2em 0.5em 1.2em 1.2em'});  // height:'8em', '
-  //if(boIE) centerDiv.css({'width':'20em'}); 
   el.addClass("Center-Container").myAppend(centerDiv,blanket); 
   
   return el;
@@ -2299,12 +2295,12 @@ var imageListExtend=function(el){
   }
 
   var IndSiteName, IndParentName;
-  PropImage.siteName.setRowButtF=function(span,val,boOn){
+  PropImage.siteName.setFilterButtF=function(span,val,boOn){
     var text=''; if(val in IndSiteName) text=IndSiteName[val].siteName;
     else if(val===null) text='(no parent)';
     span.myText(text);
   }
-  PropImage.parent.setRowButtF=function(span,val,boOn){
+  PropImage.parent.setFilterButtF=function(span,val,boOn){
     var text=''; if(val in IndParentName) text=IndParentName[val].text;
     else if(val===null) text='(no parent)';
     span.myText(text);
@@ -2566,11 +2562,6 @@ var editTextExtend=function(el){
 var spanSaveExtend=function(el){
   var summary=createElement('input').prop({type:'text', placeholder:'Summary'}).css({width:'5em'}); //spanSummary=createElement('span').myAppend('Summary: ',summary).css({'white-space':'nowrap'});
   var signature=createElement('input').prop({type:'text', placeholder:'Signature'}).css({width:'5em'}); //spanSignature=createElement('span').myAppend('Signature: ',signature).css({'white-space':'nowrap'});
-  //if(boIE && versionIE<10) { 
-    //var tmpf=function(){this.css({background:'#fff'});}
-    //var tmpSu='url('+uSummary+') no-repeat scroll 0 50% #fff'; summary.css({background: tmpSu}).focusin(tmpf).focusout(function(){this.css({background:tmpSu});});
-    //var tmpSi='url('+uSignature+') no-repeat scroll 0 50% #fff'; signature.css({background: tmpSi}).focusin(tmpf).focusout(function(){this.css({background:tmpSi});});
-  //}
   var save=createElement('button').myText('Save').on('click',function(){
     if(!summary.value || !signature.value) { setMess('Summary- or signature- field is empty',5); return;}
     
@@ -3209,7 +3200,6 @@ var redirectSetPopExtend=function(el){
 
   var blanket=createElement('div').addClass("blanket");
   var centerDiv=createElement('div').addClass("Center").myAppend(...inpNLab,divBottom).css({'min-width':'17em','max-width':'30em', padding: '1.2em 0.5em 1.2em 1.2em'});  // height:'18em', 
-  //if(boIE) centerDiv.css({'width':'20em'}); 
   el.addClass("Center-Container").myAppend(centerDiv,blanket); 
    
   return el;
@@ -3243,7 +3233,6 @@ var redirectDeletePopExtend=function(el){
 
   var blanket=createElement('div').addClass("blanket");
   var centerDiv=createElement('div').addClass("Center").myAppend(head,p,ok).css({'min-width':'17em','max-width':'25em', padding:'0.5em'}); //,cancel height:'10em', 
-  //if(boIE) centerDiv.css({'width':'20em'}); 
   el.addClass("Center-Container").myAppend(centerDiv,blanket); 
  
   return el; 
@@ -3428,7 +3417,6 @@ var siteSetPopExtend=function(el){
 
   var blanket=createElement('div').addClass("blanket");
   var centerDiv=createElement('div').addClass("Center").myAppend(...inpNLab,divBottom).css({'min-width':'17em','max-width':'30em', padding: '1.2em 0.5em 1.2em 1.2em'}); //height:'24em', 
-  //if(boIE) centerDiv.css({'width':'20em'}); 
   el.addClass("Center-Container").myAppend(centerDiv,blanket); 
    
   return el;
@@ -3462,7 +3450,6 @@ var siteDeletePopExtend=function(el){
 
   var blanket=createElement('div').addClass("blanket");
   var centerDiv=createElement('div').addClass("Center").myAppend(head,p,ok).css({'min-width':'17em','max-width':'25em', padding:'0.5em'});  //,cancel height:'10em', 
-  //if(boIE) centerDiv.css({'width':'20em'}); 
   el.addClass("Center-Container").myAppend(centerDiv,blanket); 
  
   return el;
@@ -3736,21 +3723,17 @@ window.boTouch = Boolean('ontouchstart' in document.documentElement);
 
 //var boLCacheObs=document.querySelector('#boLCacheObs'); if(boLCacheObs.value.length) { boLCacheObs.value=""; location.reload(); return} //boLCacheObs.value=1;
 
-var browser=getBrowser();
-var intBrowserVersion=parseInt(browser.version.slice(0, 2));
+
 
 
 var ua=navigator.userAgent, uaLC = ua.toLowerCase(); //alert(ua);
 window.boAndroid = uaLC.indexOf("android") > -1;
 window.boFF = uaLC.indexOf("firefox") > -1; 
-//window.boIE = uaLC.indexOf("msie") > -1; 
-var versionIE=detectIE();
-window.boIE=versionIE>0; if(boIE) browser.brand='msie';
 
 app.boChrome= /chrome/.test(uaLC);
 app.boIOS= /iphone|ipad|ipod/.test(uaLC);
 app.boEpiphany=/epiphany/.test(uaLC);    if(boEpiphany && !boAndroid) boTouch=false;  // Ugly workaround
-app.boEdge= /edge/.test(uaLC);
+app.boEdge= /\bedg\b/.test(uaLC);
 
 
 window.boOpera=RegExp('OPR\\/').test(ua); if(boOpera) boChrome=false; //alert(ua);
@@ -3794,9 +3777,7 @@ if(!boStateInHistory) { console.log('This browser does not support history.state
 var boIsGeneratorSupported=isGeneratorSupported();
 var boFormDataOK=1;  if(typeof FormData=='undefined') {  boFormDataOK=0;  }
 
-//if(boIE && intBrowserVersion<10) return;
-
-if(!(typeof sessionStorage=='object' && sessionStorage.getItem)) {console.log("Your browser doesn't support sessionStorage"); return;}
+if(!(typeof sessionStorage=='object' && sessionStorage.getItem)) {console.log("This browser doesn't support sessionStorage"); return;}
 
 //var menuMaxWidth=500;
 var menuMaxWidth="var(--menuMaxWidth)";
@@ -3820,16 +3801,9 @@ setItem('CSRFCode',CSRFCode);
 assignCommonJS();
 
 
-var KeyColPage=Object.keys(PropPage),  KeyColImage=Object.keys(PropImage);
-
-
-
-
-
 var nVersion=matVersion.length;
 
-//colsFlip=array_flip(KeyCol);
-//StrOrderFiltFlip=array_flip(StrOrderFilt);
+
 var strScheme='http'+(objSite.boTLS?'s':''),    strSchemeLong=strScheme+'://',    uSite=strSchemeLong+objSite.www;
 var strScheme='http'+(objSiteDefault.boTLS?'s':''),    strSchemeLong=strScheme+'://',       uSiteCommon=strSchemeLong+objSiteDefault.www;
 var uBE=uSite+"/"+leafBE;
@@ -3970,11 +3944,6 @@ var errorFunc=function(jqXHR, textStatus, errorThrown){
 var oAJAX={ type: "POST"};  
 var oAJAXCacheable={type: "GET"};
 
-
-//versionC.sel=createChildInd(versionC.backSel);
-//versionC.vis=createChildInd(versionC.backVis);    var tmp=createColJIndexNamesObj(versionC.KeyCol); $.extend(versionC,tmp);
-
-
 var strClickOutside='Click outside the textarea to get back the buttons';
 
 var warningDiv=createElement('div').myText("The page has unconfirmed changes. Use the buttons below to see older versions.").css({'background':'yellow','padding':'0.2em','text-align':'center','font-weight':'bold','font-size':'0.9em'}).hide();
@@ -4052,9 +4021,9 @@ var StrCompact=['boOR', 'boOW', 'boSiteMap', 'boTalk', 'boTemplate', 'boOther'];
 var tmpRowButtf=function(span,val,boOn){   span.myText(Number(val)?'Yes':'No');   };
 for(var i=0;i<StrCompact.length;i++) {
   var strName=StrCompact[i];
-  extend(PropPage[strName], {    setRowButtF:tmpRowButtf  });
+  extend(PropPage[strName], {    setFilterButtF:tmpRowButtf  });
 }
-extend(PropImage.boOther, {    setRowButtF:tmpRowButtf  });
+extend(PropImage.boOther, {    setFilterButtF:tmpRowButtf  });
 
 pageFilterDiv.divCont.createDivs();   pageFilterDiv.Filt=pageFilterDiv.divCont.Filt;
 imageFilterDiv.divCont.createDivs();  imageFilterDiv.Filt=imageFilterDiv.divCont.Filt; 
