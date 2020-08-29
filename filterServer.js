@@ -92,7 +92,7 @@ app.HistCalc.prototype.getHist=function*(flow){
     var name=StrProp[i], prop=this.Prop[name], Where=[].concat(this.WhereWExtra); Where.splice(i,1); var arg={name, prop, Where};
     var [err, hist]=yield* this.getHistOne(flow, arg); if(err) return [err];
     Hist[i]=hist;
-    var tMeas=(new Date())-tStart; console.log(name+': '+tMeas+'ms');
+    var tMeas=(new Date())-tStart; if(boDbg) console.log(name+': '+tMeas+'ms');
   }
   return [null,Hist];
 }

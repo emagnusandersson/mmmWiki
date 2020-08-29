@@ -5,7 +5,7 @@
  * ReqBE
  ******************************************************************************/
 app.ReqBE=function(objReqRes){
-  Object.assign(this, objReqRes);
+  extend(this, objReqRes);
   //this.Str=[];  this.Out={GRet:{}, dataArr:[]}; this.GRet=this.Out.GRet;
   this.Str=[];  this.dataArr=[];  this.GRet={}; 
 }
@@ -15,10 +15,10 @@ ReqBE.prototype.mes=function(str){ this.Str.push(str); }
 ReqBE.prototype.mesO=function(e){
   var res=this.res;
     // Prepare an error-message for the browser.
-  var strEBrowser;
+  var strEBrowser, statusCode=200;
   if(typeof e=='string'){strEBrowser=e; }
   else if(typeof e=='object'){
-    if(e instanceof Error) {strEBrowser='message: ' + e.message; }
+    if(e instanceof Error) {var {message,statusCode}=e; strEBrowser='message: ' + message; }
     else { strEBrowser=e.toString(); }
   }
   
@@ -31,6 +31,7 @@ ReqBE.prototype.mesO=function(e){
   
   var objOut=copySome({}, this, ["dataArr", "GRet"]);
   var str=serialize(objOut);
+  res.statusCode=statusCode;
   if(str.length<lenGZ) res.end(str);
   else{
     res.setHeader("Content-Encoding", 'gzip');
@@ -67,23 +68,36 @@ ReqBE.prototype.mesEO=function(e, statusCode=500){
 
 
 
-ReqBE.prototype.go=function*(){
-  var req=this.req, res=this.res;
+ReqBE.prototype.go=function*(){ 
+  var {req, res}=this;
   var flow=req.flow;
   
-
-  
   var strT=req.headers['Sec-Fetch-Site'];
-  if(strT && strT!='same-origin') { this.mesEO(new Error("Sec-Fetch-Site header is not 'same-origin' ("+strT+")"));  return;}
+  if(strT && strT!='same-origin') { this.mesEO(Error("Sec-Fetch-Site header is not 'same-origin' ("+strT+")"));  return;}
   
-  
-  if('x-requested-with' in req.headers && req.headers['x-requested-with']=="XMLHttpRequest") ; else { this.mesEO(new Error("Ajax-request: req.headers['x-requested-with']!='XMLHttpRequest'"));  return; }
-  var urlT=req.strSchemeLong+req.wwwSite, lTmp=urlT.length;
-  if('referer' in req.headers && req.headers.referer.slice(0,lTmp)==urlT) ; else { this.mesEO(new Error("Referer is wrong"));  return; }
+
+  if('x-requested-with' in req.headers){
+    var str=req.headers['x-requested-with'];   if(str!=="XMLHttpRequest") { this.mesEO(Error("x-requested-with: "+str));  return; }
+  } else {  this.mesEO(Error("x-requested-with not set"));  return;  }
+
+  if('referer' in req.headers) {
+    var urlT=req.strSchemeLong+req.wwwSite, lTmp=urlT.length, referer=req.headers.referer, lMin=Math.min(lTmp, referer.length);
+    if(referer.slice(0,lMin)!=urlT.slice(0,lMin)) { this.mesEO(Error('Referer does not match,  got: '+referer+', expected: '+urlT));  return;  }
+  } else { 
+    console.log("user-agent: "+req.headers['user-agent']);
+    console.log('host: '+req.headers.host);
+    console.log('origin: '+req.headers.origin);
+    console.log('referer: '+req.headers.referer);
+    console.log('x-requested-with: '+req.headers['x-requested-with']);
+    this.mesEO(Error("Referer not set"));  return;
+  }
+
 
     // Extract input data either 'POST' or 'GET'
   var jsonInput;
   if(req.method=='POST'){
+    //var strOriginTmp=req.urlSite; //if(req.port==5000) strOriginTmp+=':5000';
+    //var strT=req.headers.Origin; if(strT!=strOriginTmp) {this.mesEO(Error("Origin-header is not the same wwwSite"));return; }
     if('x-type' in req.headers ){ //&& req.headers['x-type']=='single'
       var form = new formidable.IncomingForm();
       form.multiples = true;  
@@ -111,12 +125,12 @@ ReqBE.prototype.go=function*(){
   try{ var beArr=JSON.parse(jsonInput); }catch(e){ this.mesEO(e); debugger;  return; }
   
   //this.mesEO("hello.");  return;
-  //if(!req.boCookieStrictOK) {this.mesEO(new Error('Strict cookie not set'));  return;   }
+  //if(!req.boCookieStrictOK) {this.mesEO(Error('Strict cookie not set'));  return;   }
   
     // Get boARLoggedIn / boAWLoggedIn.  Conditionally push deadlines forward ("expire" returns 1 if timer was set or 0 if variable doesn't exist)
   var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-  var [err,value]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  var [err,value]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+  var [err,value]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, req.cookies.sessionID+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  var [err,value]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, req.cookies.sessionID+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
   
   
 
@@ -138,18 +152,18 @@ ReqBE.prototype.go=function*(){
 
            // Arrays of functions
     // Functions that changes something must check and refresh CSRF-code
-  var arrCSRF=['myChMod', 'myChModImage', 'saveByAdd', 'saveByReplace', 'uploadUser', 'uploadAdmin', 'loadFrServW', 'getPageInfo', 'getImageInfo', 'getLastTModNTLastBU', 'setUpPageListCond','getPageList','getPageHist', 'setUpImageListCond','getImageList','getImageHist', 'getParent','getParentOfImage','getSingleParentExtraStuff', 'deletePage','deleteImage','renamePage','renameImage', 'redirectTabGet','redirectTabSet','redirectTabDelete', 'redirectTabResetNAccess', 'siteTabGet', 'siteTabSet', 'siteTabDelete', 'siteTabSetDefault'];
-  var arrNoCSRF=['specSetup','vLogin','aLogin','aLogout','pageLoad','pageCompare','getPreview'];  
+  var arrCSRF=['myChMod', 'myChModImage', 'saveByAdd', 'saveByReplace', 'uploadUser', 'uploadAdmin', 'loadFrServW', 'getPageInfo', 'getImageInfo', 'getLastTModNTLastBU', 'setUpPageListCond', 'getPageList', 'getPageHist', 'setUpImageListCond', 'getImageList','getImageHist', 'getParent', 'getParentOfImage','getPageInfoById', 'getImageInfoById', 'deletePage', 'deleteImage', 'renamePage', 'renameImage', 'setStrLang', 'setSiteOfPage', 'setSiteOfPageCollisionTest', 'getAWRestrictedStuff', 'redirectTabGet', 'redirectTabSet', 'redirectTabDelete', 'redirectTabResetNAccess', 'siteTabGet', 'siteTabSet', 'siteTabDelete', 'siteTabSetDefault'];
+  var arrNoCSRF=['getLoginBoolean','aRLogin','aWLogin','aWLogout','aRLogout','pageLoad','pageCompare','getPreview'];  
   allowed=arrCSRF.concat(arrNoCSRF);
 
     // Assign boCheckCSRF and boSetNewCSRF
   boCheckCSRF=0; boSetNewCSRF=0;   for(var i=0; i<beArr.length; i++){ var row=beArr[i]; if(in_array(row[0],arrCSRF)) {  boCheckCSRF=1; boSetNewCSRF=1;}  }    
-  if(StrComp(StrInFunc,['specSetup'])){ boCheckCSRF=0; boSetNewCSRF=1; } // Public pages
+  if(StrComp(StrInFunc,['getLoginBoolean'])){ boCheckCSRF=0; boSetNewCSRF=1; } // Public pages
   var boSinglePageLoad=StrComp(StrInFunc,['pageLoad']);
   if(boSinglePageLoad){ boCheckCSRF=0; boSetNewCSRF=0; } // Private pages: CSRF was set in index.html
   
     // Require POST-request for most combinations
-  if(!boSinglePageLoad && req.method=='GET')  {this.mesEO(new Error("GET-request is not allowed."));  return;}
+  if(!boSinglePageLoad && req.method=='GET')  {this.mesEO(Error("GET-request is not allowed."));  return;}
   
   //if(boDbg) boCheckCSRF=0;
   
@@ -158,7 +172,7 @@ ReqBE.prototype.go=function*(){
   //Shall look the same (be cacheable (not include boARLoggedIn etc))     no           yes
 
   // Public:
-  //                                                                 index.html  first ajax (specSetup)
+  //                                                                 index.html  first ajax (getLoginBoolean)
   //Shall look the same (be cacheable (not include boARLoggedIn etc))     yes          no
 
 
@@ -177,7 +191,7 @@ ReqBE.prototype.go=function*(){
      
 
     if(!CSRFCode) { this.mesO('No such CSRF code stored for that sessionIDCSRF (try reload page)'); return;}
-    if(CSRFIn!==CSRFCode){ this.mesO('CSRFCode not matching store value (try reload page)'); return;}
+    if(CSRFIn!==CSRFCode){ this.mesO('CSRFCode not matching stored value (try reload page)'); return;}
  
   }
   
@@ -225,155 +239,134 @@ ReqBE.prototype.go=function*(){
 }
 
 
-ReqBE.prototype.vLogin=function*(inObj){
-  var req=this.req, flow=req.flow;
-  var GRet=this.GRet;
+ReqBE.prototype.aRLogin=function*(inObj){ 
+  var {req, res, GRet}=this;
+  var flow=req.flow;
+  var aRPass=inObj.pass; 
   var Ou={};  
-  if(this.boARLoggedIn!=1 ){
-    if('pass' in inObj) {
-      var vPass=inObj.pass; 
-      if(vPass==aRPassword){
-        //var sessionIDOld=req.sessionID;
-        //var [err,tmp]=yield* cmdRedis(req.flow, 'SET', [sessionIDOld+'_adminRTimer',1,'EX', maxAdminRUnactivityTime]);
-        this.boARLoggedIn=1; this.mes('Logged in (viewing)');
-          // Changing session-token at login (as recomended by security recomendations) (to prevent session fixation)
-        //var sessionIDNew=randomHash();
-        //var StrSuffix=['_adminRTimer', '_adminWTimer', '_CSRF']; //, '_Counter' '_'+this.pageName+
-        //var Str=['sessionIDAdminR', 'sessionIDAdminW', 'sessionIDCSRF'];
-        //var err=yield* changeSessionId.call(this, sessionIDNew, StrSuffix);
-        //var err=yield* changeSessionId.call(this, 'sessionID', sessionIDNew, StrSuffix);
-        //var err=yield* changeSessionId.call(this, 'sessionID', StrSuffix);
-        //var [err, req.sessionID]=yield* changeSessionId.call(this, req.sessionID, '_adminRTimer'); if(err) return [err];
-        //var [err, req.sessionID]=yield* changeSessionId.call(this, req.sessionID, '_adminWTimer'); if(err) return [err];
-        
-        //var sessionIDOld=sessionID, sessionID=randomHash();
-        //var strSuffix='_adminRTimer', redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
-        //var [err,value]=yield* cmdRedis(req.flow, 'rename', [redisVarO, redisVarN]); if(err) return [err];
-        //var strSuffix='_adminWTimer', redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
-        //var [err,value]=yield* cmdRedis(req.flow, 'rename', [redisVarO, redisVarN]); if(err) return [err];
-        
-        if('sessionID' in req.cookies) {
-          var sessionIDOld=req.cookies.sessionID;
-          var [err]=yield* cmdRedis(flow, 'DEL', [sessionIDOld+'_adminRTimer', sessionIDOld+'_adminWTimer']);
-        }
-        var sessionID=randomHash();
-        var [err]=yield* cmdRedis(flow, 'SET', [sessionID+'_adminRTimer', 1, 'EX', maxAdminRUnactivityTime]);
-        //var luaCountFunc=`local redis.call('DEL',KEYS[1]); redis.call('SET', ARGV[1], 1, 'EX', ARGV[2]);`;
-        var arrCookie=["sessionID="+sessionID+strCookiePropLax];
-        //var luaCountFunc=`local c=redis.call('GET',KEYS[1]); if(c>0) then redis.call('RENAME', KEYS[1], ARGV[1]); return c`;
-        //var [err,CSRFCode]=yield* cmdRedis(flow, 'EVAL', [luaCountFunc, 1, req.cookies.sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
-        
-        if('sessionIDCSRF' in req.cookies) {
-          //var [err]=yield* changeSessionId.call(this, req.cookies.sessionIDCSRF, '_CSRF'); if(err) return [err];
-          var sessionIDOld=req.cookies.sessionIDCSRF, sessionID=randomHash();
-          var strSuffix='_CSRF', redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
-          var [err,value]=yield* cmdRedis(req.flow, 'rename', [redisVarO, redisVarN]); if(err) return [err];
-          var boKeyExist=1;
-          if(err){
-            if(err.message!="ERR no such key") return [err];
-            boKeyExist=false;
-          }
-          if(boKeyExist) arrCookie.push("sessionIDCSRF="+sessionID+strCookiePropLax);
-          
-        }
-        this.res.setHeader("Set-Cookie", arrCookie);
-      } else if(vPass=='')  this.mes('Password needed'); else this.mes('Wrong password');
-    }
-    else {this.mes('Password needed'); }
-  }
-  GRet.boARLoggedIn=this.boARLoggedIn;
-  return [null, [Ou]];
-}
-
-ReqBE.prototype.aLogin=function*(inObj){
-  var req=this.req, flow=req.flow;
-  var GRet=this.GRet;
-  var Ou={};  
-  if(this.boAWLoggedIn!=1 ){
-    if('pass' in inObj) {
-      var aPass=inObj.pass; 
-      if(aPass==aWPassword) {
-        //var sessionIDOld=req.sessionID;
-        //var [err,tmp]=yield* cmdRedis(req.flow, 'SET', [sessionIDOld+'_adminWTimer',1,'EX', maxAdminWUnactivityTime]);
-        this.boARLoggedIn=1; this.boAWLoggedIn=1; this.mes('Logged in');
-          // Changing session-token at login (as recomended by security recomendations) (to prevent session fixation)
-        //var sessionIDNew=randomHash();
-        //var StrSuffix=['_adminRTimer', '_adminWTimer', '_CSRF']; //, '_Counter' '_'+this.pageName+
-        ////var err=yield* changeSessionId.call(this, sessionIDNew, StrSuffix);
-        //var err=yield* changeSessionId.call(this, 'sessionID', sessionIDNew, StrSuffix);
-        
-        
-        if('sessionID' in req.cookies) {
-          var sessionIDOld=req.cookies.sessionID;
-          var [err]=yield* cmdRedis(flow, 'DEL', [sessionIDOld+'_adminRTimer', sessionIDOld+'_adminWTimer']);
-        }
-        var sessionID=randomHash();
-        var [err]=yield* cmdRedis(flow, 'SET', [sessionID+'_adminRTimer', 1, 'EX', maxAdminRUnactivityTime]);
-        var [err]=yield* cmdRedis(flow, 'SET', [sessionID+'_adminWTimer', 1, 'EX', maxAdminWUnactivityTime]);
-        //var luaCountFunc=`local redis.call('DEL',KEYS[1]); redis.call('SET', ARGV[1], 1, 'EX', ARGV[2]);`;
-        var arrCookie=["sessionID="+sessionID+strCookiePropLax];
-        //var luaCountFunc=`local c=redis.call('GET',KEYS[1]); if(c>0) then redis.call('RENAME', KEYS[1], ARGV[1]); return c`;
-        //var [err,CSRFCode]=yield* cmdRedis(flow, 'EVAL', [luaCountFunc, 1, req.cookies.sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
-        
-        if('sessionIDCSRF' in req.cookies) {
-          //var [err]=yield* changeSessionId.call(this, req.cookies.sessionIDCSRF, '_CSRF'); if(err) return [err];
-          var sessionIDOld=req.cookies.sessionIDCSRF, sessionID=randomHash();
-          var strSuffix='_CSRF', redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
-          var [err,value]=yield* cmdRedis(req.flow, 'rename', [redisVarO, redisVarN]); if(err) return [err];
-          var boKeyExist=1;
-          if(err){
-            if(err.message!="ERR no such key") return [err];
-            boKeyExist=false;
-          }
-          if(boKeyExist) arrCookie.push("sessionIDCSRF="+sessionID+strCookiePropLax);
-        }
-        this.res.setHeader("Set-Cookie", arrCookie);
-        
-        
-        if(objOthersActivity) extend(objOthersActivity,objOthersActivityDefault);
-      }
-      else if(aPass=='') {this.mes('Password needed');}
-      else {this.mes('Wrong password');}
-    }
-    else {this.mes("Password needed"); }
-  } 
-  GRet.boARLoggedIn=this.boARLoggedIn; GRet.boAWLoggedIn=this.boAWLoggedIn; 
-  return [null, [Ou]];
-}
-
-
-ReqBE.prototype.myChMod=function*(inObj){   
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
-  var Ou={};
-  if(!this.boAWLoggedIn) return [new ErrorClient('not logged in (as Administrator)')]; 
+  if(this.boARLoggedIn==1 ){ this.mesO('Already logged in'); return [null, [Ou]]; }
+  if(!aRPass) { this.mesO('Password needed');  return [null, [Ou]];  }
+  if(aRPass!=aRPassword) { this.mesO('Wrong password');  return [null, [Ou]];  }
   
-  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else { return [new ErrorClient('chmod: no files')]; }   
-  var strQ=array_fill(File.length, "?").join(', ');
+  this.boARLoggedIn=1; this.mes('Logged in (viewing)');
+
+    // Delete old session-token
+    // (Changing session-token at login (as recomended by security recomendations) (to prevent session fixation))
+  if('sessionID' in req.cookies) {
+    var sessionIDOld=req.cookies.sessionID;
+    var [err]=yield* cmdRedis(flow, 'DEL', [sessionIDOld+'_adminRTimer', sessionIDOld+'_adminWTimer']);
+  }
+  var sessionID=randomHash();
+  var [err]=yield* cmdRedis(flow, 'SET', [sessionID+'_adminRTimer', 1, 'EX', maxAdminRUnactivityTime]);
+  //var luaCountFunc=`local redis.call('DEL',KEYS[1]); redis.call('SET', ARGV[1], 1, 'EX', ARGV[2]);`;
+  var arrCookie=["sessionID="+sessionID+strCookiePropLax];
+  //var luaCountFunc=`local c=redis.call('GET',KEYS[1]); if(c>0) then redis.call('RENAME', KEYS[1], ARGV[1]); return c`;
+  //var [err,CSRFCode]=yield* cmdRedis(flow, 'EVAL', [luaCountFunc, 1, req.cookies.sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
+  
+  if('sessionIDCSRF' in req.cookies) {
+    //var [err]=yield* changeSessionId.call(this, req.cookies.sessionIDCSRF, '_CSRF'); if(err) return [err];
+    var sessionIDOld=req.cookies.sessionIDCSRF, sessionID=randomHash();
+    var strSuffix='_CSRF', redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
+    var [err,value]=yield* cmdRedis(req.flow, 'rename', [redisVarO, redisVarN]); if(err) return [err];
+    var boKeyExist=1;
+    if(err){
+      if(err.message!="ERR no such key") return [err];
+      boKeyExist=false;
+    }
+    if(boKeyExist) arrCookie.push("sessionIDCSRF="+sessionID+strCookiePropLax);
+    
+  }
+  res.setHeader("Set-Cookie", arrCookie);
+  
+  //GRet.boARLoggedIn=this.boARLoggedIn;
+  copySome(GRet,this,['boARLoggedIn','boAWLoggedIn']); 
+    // Returning both (to make it a bit simpler on the client side) 
+    //   Both are returned in aWLogin, getLoginBoolean and in index-request.
+    //     Also aWLogout, aRLogout return both even if it shouldn't be needed.
+  return [null, [Ou]];
+}
+
+ReqBE.prototype.aWLogin=function*(inObj){ 
+  var {req, res, GRet}=this;
+  var flow=req.flow;
+
+  var aWPass=inObj.pass; 
+  var Ou={};  
+  if(this.boAWLoggedIn==1 ){ this.mesO('Already logged in'); return [null, [Ou]]; }
+  if(!aWPass) { this.mesO('Password needed');  return [null, [Ou]];  }
+  if(aWPass!=aWPassword) { this.mesO('Wrong password');  return [null, [Ou]];  }
+
+  this.boARLoggedIn=1; this.boAWLoggedIn=1; this.mes('Logged in');
+  
+    // Delete old session-token
+    // (Changing session-token at login (as recomended by security recomendations) (to prevent session fixation))
+  if('sessionID' in req.cookies) {
+    var sessionIDOld=req.cookies.sessionID;
+    var [err]=yield* cmdRedis(flow, 'DEL', [sessionIDOld+'_adminRTimer', sessionIDOld+'_adminWTimer']);
+  }
+  var sessionID=randomHash();
+  var [err]=yield* cmdRedis(flow, 'SET', [sessionID+'_adminRTimer', 1, 'EX', maxAdminRUnactivityTime]);
+  var [err]=yield* cmdRedis(flow, 'SET', [sessionID+'_adminWTimer', 1, 'EX', maxAdminWUnactivityTime]);
+  //var luaCountFunc=`local redis.call('DEL',KEYS[1]); redis.call('SET', ARGV[1], 1, 'EX', ARGV[2]);`;
+  var arrCookie=["sessionID="+sessionID+strCookiePropLax];
+  //var luaCountFunc=`local c=redis.call('GET',KEYS[1]); if(c>0) then redis.call('RENAME', KEYS[1], ARGV[1]); return c`;
+  //var [err,CSRFCode]=yield* cmdRedis(flow, 'EVAL', [luaCountFunc, 1, req.cookies.sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
+  
+  if('sessionIDCSRF' in req.cookies) {
+    //var [err]=yield* changeSessionId.call(this, req.cookies.sessionIDCSRF, '_CSRF'); if(err) return [err];
+    var sessionIDOld=req.cookies.sessionIDCSRF, sessionID=randomHash();
+    var strSuffix='_CSRF', redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
+    var [err,value]=yield* cmdRedis(req.flow, 'rename', [redisVarO, redisVarN]); if(err) return [err];
+    var boKeyExist=1;
+    if(err){
+      if(err.message!="ERR no such key") return [err];
+      boKeyExist=false;
+    }
+    if(boKeyExist) arrCookie.push("sessionIDCSRF="+sessionID+strCookiePropLax);
+  }
+  res.setHeader("Set-Cookie", arrCookie);
+  
+  
+  if(objOthersActivity) extend(objOthersActivity,objOthersActivityDefault);
+
+
+  copySome(GRet,this,['boARLoggedIn','boAWLoggedIn']);
+  return [null, [Ou]];
+}
+
+
+ReqBE.prototype.myChMod=function*(inObj){    
+  var {req, res, GRet}=this;
+  var flow=req.flow;
+  var Ou={};
+  if(!this.boAWLoggedIn) return [new ErrorClient('not logged in (as Administrator)', 401)]; 
+  
+  if('Id' in inObj && inObj.Id instanceof Array && inObj.Id.length) var Id=inObj.Id; else { return [new ErrorClient('chmod: no files')]; }   
+  var strQ=array_fill(Id.length, "?").join(', ');
   var tmpBit; if('boOR' in inObj) tmpBit='boOR'; else if('boOW' in inObj) tmpBit='boOW'; else if('boSiteMap' in inObj) tmpBit='boSiteMap'; 
   var Sql=[],Val=[inObj[tmpBit]];
   Sql.push("UPDATE "+pageTab+" SET "+tmpBit+"=? WHERE idPage IN ("+strQ+");");
-  array_mergeM(Val,File);
+  array_mergeM(Val,Id);
   
-  array_mergeM(Sql, array_fill(File.length, "CALL "+strDBPrefix+"markStale(?);"));
-  array_mergeM(Val,File); 
+  array_mergeM(Sql, array_fill(Id.length, "CALL "+strDBPrefix+"markStale(?);"));
+  array_mergeM(Val,Id); 
   var sql=Sql.join('\n');
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   this.mes('chmod');
   GRet[tmpBit]=inObj[tmpBit]; // Sending boOW/boSiteMap  back will trigger closing/opening of the save/preview buttons
   return [null, [Ou]];
 }
-ReqBE.prototype.myChModImage=function*(inObj){   
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.myChModImage=function*(inObj){ 
+  var {req, res, GRet}=this;
+  var flow=req.flow;
   var Ou={};
-  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')];}
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)];}
   
-  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else {  return [new ErrorClient('chmodImage: no files')]; }   
-  var strQ=array_fill(File.length, "?").join(', ');
+  if('Id' in inObj && inObj.Id instanceof Array && inObj.Id.length) var Id=inObj.Id; else {  return [new ErrorClient('chmodImage: no files')]; }   
+  var strQ=array_fill(Id.length, "?").join(', ');
   var Sql=[], Val=[inObj.boOther];
   Sql.push("UPDATE "+imageTab+" SET boOther=? WHERE idImage IN ("+strQ+");");
-  array_mergeM(Val,File);
+  array_mergeM(Val,Id);
   
   var sql=Sql.join('\n');
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
@@ -382,15 +375,15 @@ ReqBE.prototype.myChModImage=function*(inObj){
   return [null, [Ou]];
 }
 
-ReqBE.prototype.deletePage=function*(inObj){   
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.deletePage=function*(inObj){
+  var {req, res, GRet}=this;
+  var flow=req.flow;
   var Ou={};
-  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')];}
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)];}
   
-  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else { return [new ErrorClient('deletePage: no files')]; }
+  if('Id' in inObj && inObj.Id instanceof Array && inObj.Id.length) var Id=inObj.Id; else { return [new ErrorClient('deletePage: no files')]; }
   
-  var Sql=[], len=File.length;
+  var Sql=[], len=Id.length;
   if(len>=3){ // This way is quicker if many pages are to be deleted
     Sql.push("START TRANSACTION;");
     //Sql.push("CREATE TEMPORARY TABLE IF NOT EXISTS arrPageID (idPage int(4) NOT NULL);");
@@ -403,26 +396,26 @@ ReqBE.prototype.deletePage=function*(inObj){
     var sql=Sql.join('\n');
   }else{
     Sql.push("START TRANSACTION;");
-    Sql=Sql.concat(array_fill(File.length, "CALL "+strDBPrefix+"deletePageID(?);")); 
+    Sql=Sql.concat(array_fill(Id.length, "CALL "+strDBPrefix+"deletePageID(?);")); 
     Sql.push("COMMIT;");
     var sql=Sql.join('\n');
   }  
-  var Val=File;
+  var Val=Id;
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   this.mes('pages deleted');
   return [null, [Ou]];
 }
   
   
-ReqBE.prototype.deleteImage=function*(inObj){   
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.deleteImage=function*(inObj){ 
+  var {req, res, GRet}=this;
+  var flow=req.flow;
   var Ou={};
-  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
 
-  if('File' in inObj && inObj.File instanceof Array && inObj.File.length) var File=inObj.File; else { return [new ErrorClient('deleteImage: no files')]; }
+  if('Id' in inObj && inObj.Id instanceof Array && inObj.Id.length) var Id=inObj.Id; else { return [new ErrorClient('deleteImage: no files')]; }
   
-  var Sql=[], len=File.length;
+  var Sql=[], len=Id.length;
   if(len>=3){ // This way is quicker if many pages are to be deleted
     Sql.push("START TRANSACTION;");
     //Sql.push("CREATE TEMPORARY TABLE IF NOT EXISTS arrImageID (idImage int(4) NOT NULL);");
@@ -434,25 +427,93 @@ ReqBE.prototype.deleteImage=function*(inObj){
     Sql.push("COMMIT;");
     var sql=Sql.join('\n');
   }else{
-    var sql=array_fill(File.length, "CALL "+strDBPrefix+"deleteImageID(?);").join('\n'); 
+    var sql=array_fill(Id.length, "CALL "+strDBPrefix+"deleteImageID(?);").join('\n'); 
   }
   
-  //var sql=array_fill(File.length, "CALL "+strDBPrefix+"deleteImage(?);").join('\n');
-  var Val=File;
+  //var sql=array_fill(Id.length, "CALL "+strDBPrefix+"deleteImage(?);").join('\n');
+  var Val=Id;
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   this.mes('images deleted');   
   return [null, [Ou]];
   
 }
-ReqBE.prototype.aLogout=function*(inObj){  
-  var req=this.req, res=this.res;
-  var GRet=this.GRet;
+
+ReqBE.prototype.setStrLang=function*(inObj){   
+  var {req, res, GRet}=this;
+  var flow=req.flow;
   var Ou={};
-  var redisVar=req.sessionID+'_adminWTimer';
+  if(!this.boAWLoggedIn) return [new ErrorClient('not logged in (as Administrator)', 401)]; 
+  var {strLang='',Id=[]}=inObj;
+  //if('Id' in inObj && inObj.Id instanceof Array && inObj.Id.length) var Id=inObj.Id; else { return [new ErrorClient('setStrLang: no files')]; }
+  if(!(Id instanceof Array) || Id.length==0) { return [new ErrorClient('no files')]; }
+  if(strLang.length==0) { return [new ErrorClient('strLang not set / empty')]; }
+  strLang=myJSEscape(strLang);
+
+  var strQ=array_fill(Id.length, "?").join(',');
+  var sql="UPDATE "+pageTab+" SET strLang=? WHERE idPage IN("+strQ+")";
+  var Val=[strLang].concat(Id);
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
+  this.mes(results.changedRows+' rows changed');   
+  return [null, [Ou]];
+}
+
+ReqBE.prototype.setSiteOfPageCollisionTest=function*(inObj){   
+  var {req, res, GRet}=this;
+  var flow=req.flow;
+  var Ou={};
+  if(!this.boAWLoggedIn) return [new ErrorClient('not logged in (as Administrator)', 401)]; 
+  var {idSite,Id=[]}=inObj;
+  if(!(Id instanceof Array) || Id.length==0) { return [new ErrorClient('no files')]; }
+  if(idSite==undefined) { return [new ErrorClient('idSite not set')]; }
+
+  var strQ=array_fill(Id.length, "?").join(',');
+  var sql="SELECT pageName FROM "+pageTab+" WHERE idSite=? AND idPage IN("+strQ+");";
+  var Val=[idSite].concat(Id);
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
+  Ou.tabCollision=arrObj2TabNStrCol(results);
+  var len=results.length;
+  if(len) this.mes(len+' collisions');   
+  return [null, [Ou]];
+}
+ReqBE.prototype.setSiteOfPage=function*(inObj){   
+  var {req, res, GRet}=this;
+  var flow=req.flow;
+  var Ou={};
+  if(!this.boAWLoggedIn) return [new ErrorClient('not logged in (as Administrator)', 401)]; 
+  var {idSite,Id=[]}=inObj;
+  if(!(Id instanceof Array) || Id.length==0) { return [new ErrorClient('no files')]; }
+  if(idSite==undefined) { return [new ErrorClient('idSite not set')]; }
+
+  var strQ=array_fill(Id.length, "?").join(',');
+  // var sql="UPDATE "+pageTab+" SET idSite=? WHERE idPage IN("+strQ+")";
+  // var Val=[idSite].concat(Id);
+  var sql=`CALL `+strDBPrefix+`changeSiteOne(?, ?);`;
+  var Val=Id.concat(idSite);
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
+  this.mes(results.changedRows+' rows changed');   
+  return [null, [Ou]];
+}
+
+ReqBE.prototype.aWLogout=function*(inObj){ 
+  var {req, res, GRet}=this;
+  var Ou={};
+  var redisVar=req.cookies.sessionID+'_adminWTimer';
   var [err,tmp]=yield* cmdRedis(req.flow, 'DEL', [redisVar]);
 
-  if(this.boAWLoggedIn) {this.mes('Logged out (as Administrator)'); GRet.strDiffText=''; } 
-  GRet.boAWLoggedIn=0; 
+  if(this.boAWLoggedIn) {this.mes('Logged out (write access)'); GRet.strDiffText=''; } 
+  this.boAWLoggedIn=0; 
+  copySome(GRet,this,['boARLoggedIn','boAWLoggedIn']);
+  return [null, [Ou]];
+}
+ReqBE.prototype.aRLogout=function*(inObj){ 
+  var {req, res, GRet}=this;
+  var Ou={};
+  var redisVar=req.cookies.sessionID+'_adminRTimer';
+  var [err,tmp]=yield* cmdRedis(req.flow, 'DEL', [redisVar]);
+
+  if(this.boARLoggedIn) {this.mes('Logged out (read access)'); GRet.strDiffText=''; } 
+  this.boARLoggedIn=0;
+  copySome(GRet,this,['boARLoggedIn','boAWLoggedIn']);
   return [null, [Ou]];
 }
 
@@ -462,10 +523,9 @@ ReqBE.prototype.aLogout=function*(inObj){
 // pageLoad
 //////////////////////////////////////////////////////////////////////////////////////////////
   
-ReqBE.prototype.pageLoad=function*(inObj) { 
-  var req=this.req, res=this.res;
+ReqBE.prototype.pageLoad=function*(inObj) {
+  var {req, res, GRet}=this;
   var pageName=this.pageName;
-  var GRet=this.GRet;
   var Ou={}, flow=req.flow;
 
   // Private:
@@ -473,7 +533,7 @@ ReqBE.prototype.pageLoad=function*(inObj) {
   //Shall look the same (be cacheable (not include boARLoggedIn etc))     no           yes
 
   // Public:
-  //                                                                 index.html  first ajax (specSetup)
+  //                                                                 index.html  first ajax (getLoginBoolean)
   //Shall look the same (be cacheable (not include boARLoggedIn etc))     yes          no
 
 
@@ -495,9 +555,9 @@ ReqBE.prototype.pageLoad=function*(inObj) {
     return [];
   }
   var objPage=results[0][0];
-  if(!objPage.boOR && !this.boARLoggedIn) {  return [new ErrorClient('Unauthorized?!?')]; }  // res.outCode(401, "Unauthorized"); return []; 
+  if(!objPage.boOR && !this.boARLoggedIn) {  return [new ErrorClient('Unauthorized?!?', 401)]; }  // res.outCode(401, "Unauthorized"); return []; 
   var boTalkExist=results[1][0].boTalkExist;
-  if(results[2].length==0)  return [new Error('no versions?!?')];
+  if(results[2].length==0)  return [Error('no versions?!?')];
   if(rev>=results[2].length) {
     res.setHeader("Cache-Control", "must-revalidate");  res.setHeader('Last-Modified',(new Date(0)).toUTCString());  res.setHeader('ETag','');
     res.outCode(400, "no such version");
@@ -505,7 +565,7 @@ ReqBE.prototype.pageLoad=function*(inObj) {
   }
   if(rev==-1) rev=results[2].length-1;    version=rev+1;
   var matVersion=makeMatVersion(results[2]);
-  var objRev=Object.assign({},results[2][rev]);
+  var objRev=extend({},results[2][rev]);
     //objRev.tMod=new Date(objRev.tMod*1000);
     //objRev.tModCache=new Date(objRev.tModCache*1000);
   var {boValidServerCache, strHash}=results[3][0];
@@ -568,8 +628,8 @@ ReqBE.prototype.pageLoad=function*(inObj) {
 
 
 ReqBE.prototype.pageCompare=function*(inObj){ 
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
+  var {req, res, GRet}=this;
+  var flow=req.flow;
   var Ou={};
   var versionOld=arr_min(inObj.arrVersionCompared),  version=arr_max(inObj.arrVersionCompared); 
   versionOld=Math.max(1,versionOld);  version=Math.max(1,version);
@@ -587,8 +647,8 @@ ReqBE.prototype.pageCompare=function*(inObj){
   var [err, results]=yield* this.myMySql.query(flow, sql, Val);  if(err) return [err];
   var boOR=results[0][0].boOR,  boOW=results[0][0].boOW;
   
-  if(boOR===false && !this.boARLoggedIn){return [new ErrorClient('Not logged in')]; }
-  if(boOR===null){return [new ErrorClient('Page does not exist')]; } 
+  if(boOR===false && !this.boARLoggedIn){return [new ErrorClient('Not logged in', 401)]; }
+  if(boOR===null){return [new ErrorClient('Page does not exist', 404)]; } 
   
   var strEditTextOld=results[1][0].strEditTextOld.toString();
   var strEditText=results[2][0].strEditText.toString();
@@ -612,8 +672,8 @@ ReqBE.prototype.pageCompare=function*(inObj){
 
 
 ReqBE.prototype.getPreview=function*(inObj){ 
-  var req=this.req, res=this.res;
-  var Ou={}, GRet=this.GRet, flow=req.flow;
+  var {req, res, GRet}=this;
+  var Ou={}, flow=req.flow;
   var strEditText=inObj.strEditText;
   
   var boOW=1;
@@ -630,11 +690,11 @@ ReqBE.prototype.getPreview=function*(inObj){
 } 
 
 
-ReqBE.prototype.saveByReplace=function*(inObj){   
-  var req=this.req, res=this.res;
-  var Ou={}, GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.saveByReplace=function*(inObj){ 
+  var {req, res, GRet}=this;
+  var Ou={}, flow=req.flow;
   
-  if(!this.boAWLoggedIn) {return [new ErrorClient('Not logged in as admin')]; } 
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; } 
  
   var [err]=yield* this.myMySql.startTransaction(flow);  if(err) return [err]; 
   stuff:
@@ -645,7 +705,7 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   Sql.push("START TRANSACTION;");
   
     // Getting objSite, hmm the data from this query isn't used (so one could probably remove it)
-  Sql.push("SELECT SQL_CALC_FOUND_ROWS boDefault, @boTLS:=boTLS AS boTLS, @idSite:=idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aWPassword, aRPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+" WHERE www=?;"), Val.push(req.wwwSite);
+  Sql.push("SELECT SQL_CALC_FOUND_ROWS boDefault, @boTLS:=boTLS AS boTLS, @idSite:=idSite AS idSite, siteName, www, googleAnalyticsTrackingID, srcIcon16, strLangSite, aWPassword, aRPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+" WHERE www=?;"), Val.push(req.wwwSite);
   
     // Getting tMod, boOW and tNow
   //Sql.push("SELECT boOW, UNIX_TIMESTAMP(v.tMod) AS tMod FROM "+pageTab+" p JOIN "+versionTab+" v ON p.idPage=v.idPage AND p.lastRev=v.rev WHERE idSite=@idSite AND pageName=?;"), Val.push(this.pageName);
@@ -663,8 +723,8 @@ ReqBE.prototype.saveByReplace=function*(inObj){
       //arrRet=[new ErrorClient("tMod from the version on your browser: "+this.dateTModBrowser+" < tMod on the version on the server: "+dateTMod+", "+messPreventBecauseOfNewerVersions)]; break stuff;
       //var [tDiff,unit]=getSuitableTimeUnit(tMod-this.dateTModBrowser.toUnix());
       //arrRet=[new ErrorClient("Someone else has made a change ("+Math.round(tDiff)+" "+unit+" after the tMod you're editing). Copy your edits temporary, then reload page.")]; break stuff;
-      var [tDiff,unit]=getSuitableTimeUnit(tNow-tMod); if(unit=='m') unit='min';
-      arrRet=[new ErrorClient("Someone else has made a change ("+Math.round(tDiff)+" "+unit+" ago). Copy your edits temporary, then reload the page.")]; break stuff;
+      var strT=getSuitableTimeUnit(tNow-tMod).join(' ');
+      arrRet=[new ErrorClient("Someone else has made a change ("+strT+" ago). Copy your edits temporary, then reload the page.")]; break stuff;
     }
   } else {var boOW=1, tMod=0;}
   
@@ -697,6 +757,7 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   Sql.push("SELECT @idPage:=LAST_INSERT_ID() AS idPage;");
   Sql.push("SELECT ROW_COUNT()=1 AS boInsert;");
   Sql.push("CALL "+strDBPrefix+"markStaleParentsOfPage(@idSite, @pageName, 1, @boTemplate);");
+  Sql.push(`REPLACE INTO `+settingTab+` VALUES ('tModLast',CONVERT(UNIX_TIMESTAMP(@tNow),char)), ('pageTModLast',@pageName);`);
   var sql=Sql.join('\n'); 
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {arrRet=[err]; break stuff;}
   
@@ -772,8 +833,8 @@ ReqBE.prototype.saveByReplace=function*(inObj){
   if(!boTalk) {var talkPage=calcTalkName(this.pageName); Sql.push("SELECT count(idPage) AS boTalkExist FROM "+pageTab+" WHERE idSite=@idSite AND pageName=?;"); Val.push(talkPage); }
   var sql=Sql.join('\n');
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) {arrRet=[err]; break stuff;}
-  var objPage=Object.assign({},results[0][0]);
-  var objRev=Object.assign({},results[1][0]);      //objRev.tMod=new Date(objRev.tMod*1000);    objRev.tModCache=new Date(objRev.tModCache*1000);
+  var objPage=extend({},results[0][0]);
+  var objRev=extend({},results[1][0]);      //objRev.tMod=new Date(objRev.tMod*1000);    objRev.tModCache=new Date(objRev.tModCache*1000);
   var matVersion=makeMatVersion(results[2]);
   var objTemplateE=createObjTemplateE(results[3]);
   var boTalkExist=!boTalk?results[4][0].boTalkExist:false;
@@ -791,9 +852,9 @@ ReqBE.prototype.saveByReplace=function*(inObj){
 }
 
 
-ReqBE.prototype.saveByAdd=function*(inObj){  
-  var req=this.req, res=this.res;
-  var Ou={}, GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.saveByAdd=function*(inObj){ 
+  var {req, res, GRet}=this;
+  var Ou={}, flow=req.flow;
 
     // Check reCaptcha with google
   var strCaptchaIn=inObj['g-recaptcha-response'];
@@ -821,15 +882,16 @@ ReqBE.prototype.saveByAdd=function*(inObj){
 
   if(row){
     var {boOR,boOW,boSiteMap,tMod}=row, dateTMod=new Date(tMod*1000);
-    if(!boOR && !this.boARLoggedIn) {return [new ErrorClient('Not logged in')]; }
+    if(!boOR && !this.boARLoggedIn) {return [new ErrorClient('Not logged in', 401)]; }
     if(this.dateTModBrowser<dateTMod) {
       //return [new ErrorClient("tMod from the version on your browser: "+this.dateTModBrowser+" < tMod on the version on the server: "+dateTMod+", "+messPreventBecauseOfNewerVersions)]; 
       //var [tDiff,unit]=getSuitableTimeUnit(tMod-this.dateTModBrowser.toUnix());
       //return [new ErrorClient("Someone else has made a change ("+Math.round(tDiff)+" "+unit+" after the tMod you're editing). Copy your edits temporary, then reload page")];
-      var [tDiff,unit]=getSuitableTimeUnit(tNow-tMod); if(unit=='m') unit='min';
-      return [new ErrorClient("Someone else has made a change ("+Math.round(tDiff)+" "+unit+" ago). Copy your edits temporary, then reload the page")];
+      //var [tDiff,unit]=getSuitableTimeUnit(tNow-tMod); if(unit=='m') unit='min';
+      var strT=getSuitableTimeUnit(tNow-tMod).join(' ');
+      return [new ErrorClient("Someone else has made a change ("+strT+" ago). Copy your edits temporary, then reload the page")];
     }
-    if(boOW==0) {return [new ErrorClient('Not authorized')]; }  
+    if(boOW==0) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }  
   }else{
     var boOW=1, boOW=1, boSiteMap=1;
   }
@@ -881,10 +943,10 @@ ReqBE.prototype.saveByAdd=function*(inObj){
 }
 
 ReqBE.prototype.renamePage=function*(inObj){ 
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
+  var {req, res, GRet}=this;
+  var flow=req.flow;
   var Ou={};
-  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   
   var Sql=[];
   Sql.push("START TRANSACTION;");
@@ -898,7 +960,7 @@ ReqBE.prototype.renamePage=function*(inObj){
   
   var Sql=[], Val=[];
   var nIdPage=resIdPage.length;
-  if(nIdPage==0) { this.mes('OK (No parent links needed to be renamed)'); Ou.boOK=1;  return [null, [Ou]]; }
+  if(nIdPage==0) { this.mes('OK'); Ou.boOK=1;  return [null, [Ou]]; }
   for(var i=0;i<nIdPage;i++){ Val.push(resIdPage[i].idPage); }
   var tmp=array_fill(nIdPage, "?").join(',');
   Sql.push("UPDATE "+pageTab+" SET tModCache=FROM_UNIXTIME(1) WHERE idPage IN ("+tmp+");");
@@ -929,11 +991,11 @@ ReqBE.prototype.renamePage=function*(inObj){
   return [null, [Ou]];
 }
 
-ReqBE.prototype.renameImage=function*(inObj){ 
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.renameImage=function*(inObj){
+  var {req, res, GRet}=this;
+  var flow=req.flow;
   var Ou={};
-  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   
   var Sql=[];
   Sql.push("START TRANSACTION;");
@@ -975,13 +1037,28 @@ ReqBE.prototype.renameImage=function*(inObj){
   return [null, [Ou]];
 }
 
-ReqBE.prototype.specSetup=function*(inObj){
-  var req=this.req, res=this.res;
-  var GRet=this.GRet;
 
-  var Ou={};
-  GRet.boARLoggedIn=this.boARLoggedIn; 
-  GRet.boAWLoggedIn=this.boAWLoggedIn;
+
+
+ReqBE.prototype.getLoginBoolean=function*(inObj){ 
+  var {req, res, GRet}=this, Ou={};
+  copySome(GRet, this, ['boARLoggedIn', 'boAWLoggedIn']);
+
+  return [null, [Ou]];  
+}
+ReqBE.prototype.getAWRestrictedStuff=function*(inObj){ 
+  var {req, res, GRet}=this, Ou={};
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
+  var flow=req.flow;
+
+  var Sql=[], Val=[];
+  Sql.push(`SELECT name, value FROM `+settingTab+` WHERE name IN ('tModLast', 'pageTModLast', 'tLastBU');`);
+  //Sql.push("SELECT idSite, siteName, www FROM "+siteTab+";");
+  var sql=Sql.join('\n');
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
+  GRet.objSetting=convertKeyValueToObj(results); 
+  //GRet.ObjSite=arrObj2TabNStrCol(results[1]);
+
   return [null, [Ou]];  
 }
 
@@ -995,16 +1072,17 @@ ReqBE.prototype.setUpPageListCond=function*(inObj){
   return [null, [Ou]];
 }
  
-ReqBE.prototype.getParent=function*(inObj){
-  var req=this.req, res=this.res;
+ReqBE.prototype.getParent=function*(inObj){ 
+  var {req, res}=this;
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   //var Ou={}, sql="SELECT p.pageName FROM "+pageTab+" p JOIN "+subTab+" s ON s.idPage=p.idPage WHERE s.pageName=?;",   Val=[inObj.pageName];
   var Ou={};
   //var sql="SELECT p.boTLS, p.siteName, p.www, p.idPage, p.pageName FROM "+pageSiteView+" p JOIN "+subTab+" s ON s.idPage=p.idPage JOIN "+pageTab+" c ON s.pageName=c.pageName WHERE c.idPage=?;";
   var Sql=[];
-  Sql.push(`SELECT @idSite:=idSite, @idPage:=idPage FROM mmmWiki_page p WHERE idPage=?;`);
-  Sql.push(`SELECT p.boTLS, p.siteName, p.www, p.idPage, p.pageName FROM mmmWiki_pageSite p
-JOIN mmmWiki_sub s ON s.idPage=p.idPage
-JOIN mmmWiki_page c ON s.pageName=c.pageName WHERE p.idSite=@idSite AND c.idPage=@idPage;`);
+  Sql.push(`SELECT @idSite:=idSite, @idPage:=idPage FROM `+pageTab+` p WHERE idPage=?;`);
+  Sql.push(`SELECT p.boTLS, p.siteName, p.www, p.idPage, p.pageName, p.nChild, p.nImage, p.size, p.strLang, p.boOR, p.boOW, p.boSiteMap, p.nParent, UNIX_TIMESTAMP(p.tCreated) AS tCreated, UNIX_TIMESTAMP(p.tMod) AS tMod FROM `+pageSiteView+` p
+JOIN `+subTab+` s ON s.idPage=p.idPage
+JOIN `+pageTab+` c ON s.pageName=c.pageName WHERE p.idSite=@idSite AND c.idPage=@idPage;`);
   var Val=[inObj.idPage];
   var sql=Sql.join('\n');
   
@@ -1014,48 +1092,65 @@ JOIN mmmWiki_page c ON s.pageName=c.pageName WHERE p.idSite=@idSite AND c.idPage
   return [null, [Ou]];
 }
 
-ReqBE.prototype.getParentOfImage=function*(inObj){
-  var req=this.req, res=this.res;
+ReqBE.prototype.getParentOfImage=function*(inObj){ 
+  var {req, res}=this;
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   //var Ou={}, sql="SELECT p.pageName FROM "+pageTab+" p JOIN "+subImageTab+" s ON s.idPage=p.idPage WHERE s.imageName=?;",   Val=[inObj.imageName];
-  var Ou={}, sql="SELECT p.boTLS, p.siteName, p.www, p.idPage, p.pageName FROM "+pageSiteView+" p JOIN "+subImageTab+" s ON s.idPage=p.idPage JOIN "+imageTab+" c ON s.imageName=c.imageName  WHERE c.idImage=?;",   Val=[inObj.idImage];
+  var Ou={}, sql=`SELECT p.boTLS, p.siteName, p.www, p.idPage, p.pageName, p.nChild, p.nImage, p.size, p.strLang, p.boOR, p.boOW, p.boSiteMap, p.nParent, UNIX_TIMESTAMP(p.tCreated) AS tCreated, UNIX_TIMESTAMP(p.tMod) AS tMod FROM `+pageSiteView+` p JOIN `+subImageTab+` s ON s.idPage=p.idPage JOIN `+imageTab+` c ON s.imageName=c.imageName  WHERE c.idImage=?;`,   Val=[inObj.idImage];
   var flow=req.flow;
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   Ou=arrObj2TabNStrCol(results);
   return [null, [Ou]];
 }
 
-ReqBE.prototype.getSingleParentExtraStuff=function*(inObj){
-  var req=this.req, res=this.res;
+ReqBE.prototype.getPageInfoById=function*(inObj){ 
+  var {req, res}=this;
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   var Ou={}, flow=req.flow, Sql=[], Val=[];
   if(inObj.idPage===null){
-    Sql.push("SELECT COUNT(*) AS nSub FROM "+pageTab+" p LEFT JOIN "+subTab+" s ON s.pageName=p.pageName AND s.idSite=p.idSite WHERE s.pageName IS NULL;");   
+    Sql.push("SELECT COUNT(*) AS nChild FROM "+pageTab+" p LEFT JOIN "+subTab+" s ON s.pageName=p.pageName AND s.idSite=p.idSite WHERE s.pageName IS NULL;");   
     Sql.push("SELECT COUNT(*) AS nImage FROM "+imageTab+" p LEFT JOIN "+subImageTab+" s ON s.imageName=p.imageName WHERE s.imageName IS NULL;"); 
-    //Sql.push("SELECT p.siteName AS siteName FROM "+pageView+" p WHERE p.pageName=?;"); 
-
   } else {
-    Sql.push("SELECT COUNT(*) AS nSub FROM "+pageTab+" p JOIN "+subTab+" s ON s.idPage=p.idPage WHERE p.idPage=?;");   
-    Sql.push("SELECT COUNT(*) AS nImage FROM "+pageTab+" p JOIN "+subImageTab+" s ON s.idPage=p.idPage WHERE p.idPage=?;"); 
-    //Sql.push("SELECT boTLS, siteName, www, pageName, idPage, boOR, boOW, boSiteMap FROM "+pageSiteView+" p WHERE p.idPage=?;"); 
-    Sql.push("SELECT boTLS, siteName, www, pageName, idPage, boOR, boOW, boSiteMap, size, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod, boOther, lastRev FROM "+pageLastSiteView+" p WHERE p.idPage=?;"); 
+    Sql.push("SELECT boTLS, siteName, www, pageName, idPage, boOR, boOW, boSiteMap, size, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod, boOther, lastRev, strLang, nChild, nImage, nParent FROM "+pageLastSiteView+" p WHERE p.idPage=?;"); 
     Sql.push("SELECT COUNT(*) AS nSame FROM "+pageTab+" pA JOIN "+pageTab+" pB ON pA.pageName=pB.pageName WHERE pB.idPage=?;"); // nSame is >1 if multiple sites have the same pageName 
-    Val.push(inObj.idPage, inObj.idPage, inObj.idPage, inObj.idPage);
+    Val.push(inObj.idPage, inObj.idPage);
   }  
   var sql=Sql.join('\n');
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
-  Ou.nSub=results[0][0].nSub;
-  Ou.nImage=results[1][0].nImage;
-  if(inObj.idPage!==null) { extend(Ou, results[2][0]); extend(Ou, results[3][0]); }
+  if(inObj.idPage===null) {  Ou.nChild=results[0][0].nChild; Ou.nImage=results[1][0].nImage;}
+  else{   extend(Ou, results[0][0]); extend(Ou, results[1][0]); } 
   return [null, [Ou]];
 }
+ReqBE.prototype.getImageInfoById=function*(inObj){ 
+  var {req, res}=this;
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
+  var Ou={}, flow=req.flow, Sql=[], Val=[];
+  if(inObj.idImage===null){
+    Sql.push("SELECT COUNT(*) AS nChild FROM "+pageTab+" p LEFT JOIN "+subTab+" s ON s.pageName=p.pageName AND s.idSite=p.idSite WHERE s.pageName IS NULL;");   
+    Sql.push("SELECT COUNT(*) AS nImage FROM "+imageTab+" p LEFT JOIN "+subImageTab+" s ON s.imageName=p.imageName WHERE s.imageName IS NULL;"); 
+  } else {
+    Sql.push("SELECT idImage, imageName, boOther, UNIX_TIMESTAMP(tCreated) AS tCreated, strHash, size, widthSkipThumb, width, height, extension, UNIX_TIMESTAMP(tLastAccess) AS tLastAccess, nAccess, UNIX_TIMESTAMP(tMod) AS tMod, hash, nParent FROM "+imageTab+" WHERE idImage=?;"); 
+    Val.push(inObj.idImage);
+  }  
+  var sql=Sql.join('\n');
+  var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
+  if(inObj.idImage===null) {  Ou.nChild=results[0][0].nChild; Ou.nImage=results[1][0].nImage;}
+  else{   extend(Ou, results[0]); } 
+  return [null, [Ou]];
+}
+
+
+
+
     // nAccess, tCreated, tLastAccess;
 
-ReqBE.prototype.getPageList=function*(inObj) {
-  var req=this.req, res=this.res;
-  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
+ReqBE.prototype.getPageList=function*(inObj) { 
+  var {req, res}=this;
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   var Sql=[], flow=req.flow;
   var tmpCond=array_filter(this.Where), strCond=''; if(tmpCond.length) strCond='WHERE '+tmpCond.join(' AND ');
 
-  Sql.push("SELECT SQL_CALC_FOUND_ROWS p.boTLS, p.siteName AS siteName, p.www AS www, p.pageName AS pageName, p.boOR AS boOR, p.boOW AS boOW, p.boSiteMap AS boSiteMap, UNIX_TIMESTAMP(p.tCreated) AS tCreated, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther AS boOther, p.idPage AS idPage, p.size AS size, p.nChild AS nChild, p.nImage AS nImage, p.nParent, s.idPage AS idParent, pp.pageName AS parent  FROM "+strTableRefPage+" "+strCond+" GROUP BY siteName, pageName;"); //, p.idFile AS idFile
+  Sql.push("SELECT SQL_CALC_FOUND_ROWS p.boTLS, p.idSite, p.siteName, p.www, p.pageName, p.boOR, p.boOW, p.boSiteMap, UNIX_TIMESTAMP(p.tCreated) AS tCreated, UNIX_TIMESTAMP(p.tMod) AS tMod, p.lastRev, p.boOther, p.idPage, p.strLang, p.size, p.nChild, p.nImage, p.nParent, s.idPage AS idParent, pp.pageName AS parent FROM "+strTableRefPage+" "+strCond+" GROUP BY siteName, pageName;"); //, p.idFile AS idFile
 
   Sql.push("SELECT FOUND_ROWS() AS n;"); // nFound
   Sql.push("SELECT count(idPage) AS n FROM "+pageTab+";"); // nUnFiltered
@@ -1068,9 +1163,9 @@ ReqBE.prototype.getPageList=function*(inObj) {
 
 
 
-ReqBE.prototype.getPageHist=function*(inObj){
-  var req=this.req, res=this.res;
-  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
+ReqBE.prototype.getPageHist=function*(inObj){ 
+  var {req, res}=this;
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   var Ou={}, flow=req.flow
   //var strTableRefCount=pageTab+' p';
   var arg={strTableRef:strTableRefPageHist, WhereExtra:[], Prop:PropPage, strDBPrefix};  
@@ -1103,7 +1198,7 @@ ReqBE.prototype.getPageHist=function*(inObj){
 
 ReqBE.prototype.setUpImageListCond=function*(inObj){
   var Ou={};
-  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   if(typeof inObj.Filt!='object') return [new ErrorClient('typeof inObj.Filt!="object"')];
   this.Filt=inObj.Filt;
   var arg={Prop:PropImage, Filt:inObj.Filt};
@@ -1112,9 +1207,9 @@ ReqBE.prototype.setUpImageListCond=function*(inObj){
   return [null, [Ou]];
 }
 
-ReqBE.prototype.getImageList=function*(inObj) {
-  var req=this.req, res=this.res;
-  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
+ReqBE.prototype.getImageList=function*(inObj) { 
+  var {req, res}=this;
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   var Sql=[], flow=req.flow;
   //var sql="SELECT imageName, UNIX_TIMESTAMP(tCreated) AS tCreated, boOther, idImage, idFile FROM "+imageTab+"";
   var tmpCond=array_filter(this.Where), strCond=''; if(tmpCond.length) strCond='WHERE '+tmpCond.join(' AND ');
@@ -1129,9 +1224,9 @@ ReqBE.prototype.getImageList=function*(inObj) {
   return [null, [Ou]];
 }
 
-ReqBE.prototype.getImageHist=function*(inObj){
-  var req=this.req, res=this.res;
-  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
+ReqBE.prototype.getImageHist=function*(inObj){ 
+  var {req, res}=this;
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   var Ou={}, flow=req.flow
   var arg={strTableRef:strTableRefImageHist, Ou, WhereExtra:[], Prop:PropImage, strDBPrefix};
   copySome(arg, this, ['myMySql', 'Filt', 'Where']);
@@ -1160,10 +1255,10 @@ ReqBE.prototype.getImageHist=function*(inObj){
   return [null, [Ou]];
 }
 
-ReqBE.prototype.getPageInfo=function*(inObj){  // Used by uploadAdminDiv, by sendConflictCheck
-  var req=this.req, res=this.res, Ou={}
-  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
-  var GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.getPageInfo=function*(inObj){  // Used by uploadAdminDiv, by sendConflictCheck 
+  var {req, res, GRet}=this;
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
+  var flow=req.flow;
   var Ou={};
 
   var sql="SELECT pageName, boOR, boOW, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther, strHash, size FROM "+pageLastSiteView;
@@ -1187,10 +1282,10 @@ ReqBE.prototype.getPageInfo=function*(inObj){  // Used by uploadAdminDiv, by sen
 }
 
 
-ReqBE.prototype.getImageInfo=function*(inObj){  // Used by diffBackUpDiv, uploadAdminDiv, uploadUserDiv
-  var req=this.req, res=this.res, Ou={}
-  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)')]; }
-  var GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.getImageInfo=function*(inObj){  // Used by diffBackUpDiv, uploadAdminDiv, uploadUserDiv 
+  var {req, res, GRet}=this;
+  if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
+  var flow=req.flow;
   var Ou={};
 
   var boLimited=0, arrName=[], nName, tmpQ; 
@@ -1210,18 +1305,19 @@ ReqBE.prototype.getImageInfo=function*(inObj){  // Used by diffBackUpDiv, upload
 }
 
 
-ReqBE.prototype.getLastTModNTLastBU=function*(inObj){
-  var req=this.req, res=this.res, flow=req.flow, Ou={};
-  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+ReqBE.prototype.getLastTModNTLastBU=function*(inObj){ 
+  var {req, res}=this;
+  var flow=req.flow, Ou={};
+  if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
 
-  //var sql='SELECT UNIX_TIMESTAMP(MAX(tMod)) AS tLastMod FROM '+versionTab;
-  //var sql='SELECT pageName, UNIX_TIMESTAMP(MAX(tMod)) AS tLastMod FROM '+pageTab+' p JOIN '+versionTab+' v USING (idPage)';
-  //var sql='SELECT pageName, UNIX_TIMESTAMP(v.tMod) AS tLastMod FROM '+pageTab+' p JOIN '+versionTab+' v USING (idPage) WHERE  v.tMod=(SELECT MAX(tMod) FROM '+versionTab+')';
-  var sql='SELECT pageName, UNIX_TIMESTAMP(p.tMod) AS tLastMod FROM '+pageTab+' p WHERE  p.tMod=(SELECT MAX(tMod) FROM '+pageTab+')';
+  //var sql='SELECT UNIX_TIMESTAMP(MAX(tMod)) AS tModLast FROM '+versionTab;
+  //var sql='SELECT pageName, UNIX_TIMESTAMP(MAX(tMod)) AS tModLast FROM '+pageTab+' p JOIN '+versionTab+' v USING (idPage)';
+  //var sql='SELECT pageName, UNIX_TIMESTAMP(v.tMod) AS tModLast FROM '+pageTab+' p JOIN '+versionTab+' v USING (idPage) WHERE  v.tMod=(SELECT MAX(tMod) FROM '+versionTab+')';
+  var sql='SELECT pageName, UNIX_TIMESTAMP(p.tMod) AS tModLast FROM '+pageTab+' p WHERE  p.tMod=(SELECT MAX(tMod) FROM '+pageTab+')';
 
   var Val={};
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
-  if(results[0]) copySome(Ou, results[0], ['pageName', 'tLastMod']);
+  if(results[0]) copySome(Ou, results[0], ['pageName', 'tModLast']);
   
   var [err,strTmp]=yield* cmdRedis(req.flow, 'GET', ['mmmWiki_tLastBU']);
   Ou.tLastBU=strTmp;
@@ -1232,10 +1328,10 @@ ReqBE.prototype.getLastTModNTLastBU=function*(inObj){
 ////////////////////////////////////////////////////////////////////////
 // RedirectTab
 ////////////////////////////////////////////////////////////////////////
-ReqBE.prototype.redirectTabGet=function*(inObj){ 
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
-  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+ReqBE.prototype.redirectTabGet=function*(inObj){  
+  var {req, res, GRet}=this;
+  var flow=req.flow;
+  if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
   var sql="SELECT idSite, siteName, www, pageName, url, UNIX_TIMESTAMP(tCreated) AS tCreated, nAccess, UNIX_TIMESTAMP(tLastAccess) AS tLastAccess, UNIX_TIMESTAMP(tMod) AS tMod FROM "+redirectSiteView+";";
   var Val=[];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
@@ -1245,11 +1341,11 @@ ReqBE.prototype.redirectTabGet=function*(inObj){
   return [null, [Ou]];
 }
 
-ReqBE.prototype.redirectTabSet=function*(inObj){
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.redirectTabSet=function*(inObj){ 
+  var {req, res, GRet}=this;
+  var flow=req.flow;
   var Ou={};
-  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
   var boUpd=inObj.boUpd||false;
   if(boUpd){
     //var sql="UPDATE "+redirectTab+" SET url=?, tCreated=now(), tMod=now() WHERE idSite=? AND pageName=?;";
@@ -1269,11 +1365,11 @@ ReqBE.prototype.redirectTabSet=function*(inObj){
   extend(Ou, {boOK});
   return [null, [Ou]];
 }
-ReqBE.prototype.redirectTabDelete=function*(inObj){ 
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.redirectTabDelete=function*(inObj){  
+  var {req, res, GRet}=this;
+  var flow=req.flow;
   var Ou={};
-  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
   var sql="DELETE FROM "+redirectTab+" WHERE idSite=? AND pageName=?";
   var Val=[inObj.idSite, inObj.pageName];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
@@ -1284,11 +1380,11 @@ ReqBE.prototype.redirectTabDelete=function*(inObj){
   return [null, [Ou]];
 }
 
-ReqBE.prototype.redirectTabResetNAccess=function*(inObj){
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.redirectTabResetNAccess=function*(inObj){ 
+  var {req, res, GRet}=this;
+  var flow=req.flow;
   var Ou={};
-  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
   var sql="UPDATE "+redirectTab+" SET nAccess=0;"; 
   var Val=[];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
@@ -1302,13 +1398,13 @@ ReqBE.prototype.redirectTabResetNAccess=function*(inObj){
 // SiteTab
 ////////////////////////////////////////////////////////////////////////
 
-ReqBE.prototype.siteTabGet=function*(inObj){ 
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.siteTabGet=function*(inObj){  // Used by siteTab and setSiteOfPagePop
+  var {req, res, GRet}=this;
+  var flow=req.flow;
   var Ou={};
-  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
-  //var sql="SELECT idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+";";
-  var sql="SELECT boDefault, boTLS, st.idSite AS idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, UNIX_TIMESTAMP(st.tCreated) AS tCreated, SUM(p.idSite IS NOT NULL) AS nPage FROM "+siteTab+" st LEFT JOIN "+pageTab+" p ON st.idSite=p.idSite GROUP BY idSite;"
+  if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
+  //var sql="SELECT idSite, siteName, www, googleAnalyticsTrackingID, srcIcon16, strLangSite, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+";";
+  var sql="SELECT boDefault, boTLS, st.idSite AS idSite, siteName, www, googleAnalyticsTrackingID, srcIcon16, strLangSite, UNIX_TIMESTAMP(st.tCreated) AS tCreated, SUM(p.idSite IS NOT NULL) AS nPage FROM "+siteTab+" st LEFT JOIN "+pageTab+" p ON st.idSite=p.idSite GROUP BY idSite;"
   var Val=[];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   var Ou=arrObj2TabNStrCol(results);
@@ -1317,19 +1413,19 @@ ReqBE.prototype.siteTabGet=function*(inObj){
   return [null, [Ou]];
 }
   
-ReqBE.prototype.siteTabSet=function*(inObj){ 
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.siteTabSet=function*(inObj){
+  var {req, res, GRet}=this;
+  var flow=req.flow;
   var Ou={};
-  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   var boUpd=inObj.boUpd||false;
 
   if(boUpd){
-    var sql="UPDATE "+siteTab+" SET boTLS=?, siteName=?, www=?, googleAnalyticsTrackingID=?, urlIcon16=?, urlIcon200=? WHERE idSite=?;";  //, tCreated=now() 
-    var Val=[inObj.boTLS, inObj.siteName, inObj.www, inObj.googleAnalyticsTrackingID, inObj.urlIcon16, inObj.urlIcon200, inObj.idSite];
+    var sql="UPDATE "+siteTab+" SET boTLS=?, siteName=?, www=?, googleAnalyticsTrackingID=?, srcIcon16=?, strLangSite=? WHERE idSite=?;";  //, tCreated=now() 
+    var Val=[inObj.boTLS, inObj.siteName, inObj.www, inObj.googleAnalyticsTrackingID, inObj.srcIcon16, inObj.strLangSite, inObj.idSite];
   } else {
-    var sql="INSERT INTO "+siteTab+" (boTLS, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, tCreated) VALUES (?, ?, ?, ?, ?, ?, now());";
-    var Val=[inObj.boTLS, inObj.siteName, inObj.www, inObj.googleAnalyticsTrackingID, inObj.urlIcon16, inObj.urlIcon200];
+    var sql="INSERT INTO "+siteTab+" (boTLS, siteName, www, googleAnalyticsTrackingID, srcIcon16, strLangSite, tCreated) VALUES (?, ?, ?, ?, ?, ?, now());";
+    var Val=[inObj.boTLS, inObj.siteName, inObj.www, inObj.googleAnalyticsTrackingID, inObj.srcIcon16, inObj.strLangSite];
     sql+="SELECT LAST_INSERT_ID() AS idSite;";
   }
   var [err, results]=yield* this.myMySql.query(flow, sql, Val);
@@ -1340,16 +1436,18 @@ ReqBE.prototype.siteTabSet=function*(inObj){
     boOK=1; mestmp="Done";
     if(boUpd){}
     else{idSite=results[1][0].idSite;}
+
+    var [err]=yield* createManifestNStoreToCache(flow, inObj);   if(err) return [err];
   }
   this.mes(mestmp);
   extend(Ou, {boOK, idSite});
   return [null, [Ou]];
 }
-ReqBE.prototype.siteTabDelete=function*(inObj){ 
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.siteTabDelete=function*(inObj){  
+  var {req, res, GRet}=this;
+  var flow=req.flow;
   var Ou={};
-  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
   var sql="DELETE FROM "+siteTab+" WHERE siteName=?";
   var Val=[inObj.siteName];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
@@ -1359,11 +1457,11 @@ ReqBE.prototype.siteTabDelete=function*(inObj){
   Ou.boOK=boOK;      
   return [null, [Ou]];
 }
-ReqBE.prototype.siteTabSetDefault=function*(inObj){
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.siteTabSetDefault=function*(inObj){ 
+  var {req, res, GRet}=this;
+  var flow=req.flow;
   var Ou={};
-  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   var Sql=[];
   Sql.push("START TRANSACTION;");
   Sql.push("UPDATE "+siteTab+" SET boDefault=0;");
@@ -1393,9 +1491,10 @@ ReqBE.prototype.siteTabSetDefault=function*(inObj){
  *   app.loadMetaFrBU
  *********************************************************************/
 
-ReqBE.prototype.uploadUser=function*(inObj){
-  var self=this, req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.uploadUser=function*(inObj){ 
+  var {req, res, GRet}=this;
+  var self=this;
+  var flow=req.flow;
   var Ou={};
   var regImg=RegExp("^(png|jpeg|jpg|gif|svg)$"), regVid=RegExp('^(mp4|ogg|webm)$');
 
@@ -1487,7 +1586,7 @@ app.storeFile=function*(fileName, type, data, flow){
     var iRowLast=results.length-1;
     var mess=results[iRowLast][0].mess;
     var tDBOperations=(new Date())-tStart;
-    console.log('  size:'+strEditText.length+'/'+strHtmlText.length+' [byte], nSub:'+arrSub.length+', nsubImage:'+StrSubImage.length+', tDBOperations:'+tDBOperations+'ms');
+    console.log('  size:'+strEditText.length+'/'+strHtmlText.length+' [byte], nChild:'+arrSub.length+', nImage:'+StrSubImage.length+', tDBOperations:'+tDBOperations+'ms');
     
     /*
           // saveByReplace
@@ -1501,7 +1600,7 @@ app.storeFile=function*(fileName, type, data, flow){
     var mess=results[iRowLast][0].mess;//if(typeof results[iRowLast][0]=='object')
     if(mess!='done' && mess!='deleting') { console.log(mess); return [new ErrorClient('Error: '+mess+' ('+fileName+')')]; }
     var tDBOperations=(new Date())-tStart;
-    console.log('  size:'+strEditText.length+'/'+strHtmlText.length+' [byte], nSub:'+arrSub.length+', nsubImage:'+StrSubImage.length+', tDBOperations:'+tDBOperations+'ms');
+    console.log('  size:'+strEditText.length+'/'+strHtmlText.length+' [byte], nChild:'+arrSub.length+', nImage:'+StrSubImage.length+', tDBOperations:'+tDBOperations+'ms');
     //console.timeEnd('dbOperations');
 */
 
@@ -1517,7 +1616,7 @@ app.storeFile=function*(fileName, type, data, flow){
     var Val=[fileName,data,strHash];
     var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   }
-  else{  return [new Error("Unrecognized file type: "+type)]; }
+  else{  return [Error("Unrecognized file type: "+type)]; }
   
   return [null, [{}]];
   //process.stdout.write("*");
@@ -1575,11 +1674,11 @@ app.storeFileMult=function*(flow, File){
   
   return [null];
 }
-ReqBE.prototype.uploadAdmin=function*(inObj){
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
+ReqBE.prototype.uploadAdmin=function*(inObj){ 
+  var {req, res, GRet}=this;
+  var flow=req.flow;
   var Ou={};
-  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')];  }
+  if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
   this.mes("Working... (check server console for progress) ");
   var [err]=yield* storeFileMult.call(this, flow, this.File); if(err) return [err];
   return [null, [0]];
@@ -1604,14 +1703,14 @@ app.loadMetaFrBU=function*(flow, oFile){
   
   var Sql=[], Val=[]; 
   if(strFile=='site.csv'){
-    Sql.push('INSERT INTO '+siteTab+' (boDefault, boTLS, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aWPassword, aRPassword, tCreated) VALUES');
+    Sql.push('INSERT INTO '+siteTab+' (boDefault, boTLS, siteName, www, googleAnalyticsTrackingID, srcIcon16, strLangSite, aWPassword, aRPassword, tCreated) VALUES');
     var tmpQ=array_fill(9, "?").join(',')+", FROM_UNIXTIME(GREATEST(1,?))";
     var tmpQ2='('+array_fill(nRow, tmpQ).join('),\n(')+')';
     Sql.push(tmpQ2);
-    Sql.push("ON DUPLICATE KEY UPDATE boDefault=VALUES(boDefault), boTLS=VALUES(boTLS), siteName=VALUES(siteName), www=VALUES(www), googleAnalyticsTrackingID=VALUES(googleAnalyticsTrackingID), urlIcon16=VALUES(urlIcon16), urlIcon200=VALUES(urlIcon200), aWPassword=VALUES(aWPassword), aRPassword=VALUES(aRPassword), tCreated=VALUES(tCreated)"); 
+    Sql.push("ON DUPLICATE KEY UPDATE boDefault=VALUES(boDefault), boTLS=VALUES(boTLS), siteName=VALUES(siteName), www=VALUES(www), googleAnalyticsTrackingID=VALUES(googleAnalyticsTrackingID), srcIcon16=VALUES(srcIcon16), strLangSite=VALUES(strLangSite), aWPassword=VALUES(aWPassword), aRPassword=VALUES(aRPassword), tCreated=VALUES(tCreated)"); 
     var arrDataN=Array(nRow)
-    for(var j=0;j<nRow;j++){ //"boDefault","boTLS","urlIcon16","urlIcon200","googleAnalyticsTrackingID","aWPassword","aRPassword","name","www"
-      var rowN=arrArrange(arrData[j],[ICol.boDefault, ICol.boTLS, ICol.name, ICol.www, ICol.googleAnalyticsTrackingID, ICol.urlIcon16, ICol.urlIcon200, ICol.aWPassword, ICol.aRPassword]);
+    for(var j=0;j<nRow;j++){ //"boDefault","boTLS","srcIcon16","strLangSite","googleAnalyticsTrackingID","aWPassword","aRPassword","name","www"
+      var rowN=arrArrange(arrData[j],[ICol.boDefault, ICol.boTLS, ICol.name, ICol.www, ICol.googleAnalyticsTrackingID, ICol.srcIcon16, ICol.strLangSite, ICol.aWPassword, ICol.aRPassword]);
       rowN.push(1);
       arrDataN[j]=rowN;
     }
@@ -1710,10 +1809,10 @@ app.loadFrBUOnServ=function*(flow, StrFile){
   obj.myMySql.fin(); 
   return [null, [0]];
 }
-ReqBE.prototype.loadFrBUOnServ=function*(inObj){
-  var req=this.req, res=this.res;
-  var GRet=this.GRet, flow=req.flow;
-  if(!this.boAWLoggedIn) { return [new ErrorClient('Not logged in as admin')]; }
+ReqBE.prototype.loadFrBUOnServ=function*(inObj){ 
+  var {req, res, GRet}=this;
+  var flow=req.flow;
+  if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   this.mes("Working... (check server console for progress) ");
   var StrFile=inObj.File;
   var [err]=yield* loadFrBUOnServ(flow, StrFile); if(err) return [err];

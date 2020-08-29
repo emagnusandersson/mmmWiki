@@ -23,13 +23,6 @@ app.rtrim=function(str,charlist=String.raw`\s`){
 app.trim=function(str,charlist=String.raw`\s`){
   return str.replace(new RegExp("^[" + charlist + "]+([^" + charlist + "]*)[" + charlist + "]+$"), function(m,n){return n;});
 }
-
-app.arrArrange=function(arrV,arrI){
-  var arrNew=[]; if(typeof arrV=='String') arrNew='';
-  //for(var i=0;i<arrI.length;i++){    arrNew.push(arrV[arrI[i]]);    }
-  for(var i=0;i<arrI.length;i++){    arrNew[i]=arrV[arrI[i]];    }
-  return arrNew;
-}
 app.pad2=function(n) {return (n<10?'0':'')+n;}
 app.calcLabel=function(Label,strName){ var strLabel=ucfirst(strName); if(strName in Label) strLabel=Label[strName]; return strLabel;}
 
@@ -66,19 +59,26 @@ app.str_repeat=function(str,n){ return Array(n+1).join(str);}
 app.arr_max=function(arr){return Math.max.apply(null, arr);}
 app.arr_min=function(arr){return Math.min.apply(null, arr);}
 
+app.arrArrange=function(arrV,arrI){
+  var n=arrI.length, arrNew;
+  if(typeof arrV=='string') arrNew=" ".repeat(n); else arrNew=Array(n);
+  //for(var i=0;i<arrI.length;i++){    arrNew.push(arrV[arrI[i]]);    }
+  for(var i=0;i<arrI.length;i++){    arrNew[i]=arrV[arrI[i]];    }
+  return arrNew;
+}
 app.intersectionAB=function(A,B){var Rem=[]; for(var i=A.length-1;i>=0;i--){var a=A[i]; if(B.indexOf(a)==-1) A.splice(i,1); else Rem.push(a);} return Rem.reverse();}  // Changes A, returns the remainder
 app.AMinusB=function(A,B){var ANew=[]; for(var i=0;i<A.length;i++){var a=A[i]; if(B.indexOf(a)==-1) ANew.push(a);} return ANew;}  // Does not change A, returns ANew
 app.isAWithinB=function(A,B){ for(var i=0; i<A.length; i++){if(B.indexOf(A[i])==-1) return false;} return true;}  
 
+app.mySplice1=function(arr,iItem){ var item=arr[iItem]; for(var i=iItem, len=arr.length-1; i<len; i++)  arr[i]=arr[i+1];  arr.length = len; return item; }  // GC-friendly splice
+app.myCopy=function(arr,brr){ var len=brr.length; if(typeof arr=="undefined") arr=Array(len); else arr.length = len; for(var i=0; i<len; i++)  arr[i]=brr[i];   return arr; }  // GC-friendly copy
 
-app.array_flip=function(A){ var B={}; for(var i=0;i<A.length;i++){B[A[i]]=i;} return B;}
-app.array_fill=function(n, val){ return Array.apply(null, new Array(n)).map(String.prototype.valueOf,val); }
 app.array_merge=function(){  return Array.prototype.concat.apply([],arguments);  } // Does not modify origin
 //app.array_mergeM=function(a,b){  a.push.apply(a,b); return a; } // Modifies origin (first argument)
 app.array_mergeM=function(){var t=[], a=arguments[0], b=t.slice.call(arguments, 1), c=t.concat.apply([],b); t.push.apply(a,c); return a; } // Modifies origin (first argument)
 
-app.mySplice1=function(arr,iItem){ var item=arr[iItem]; for(var i=iItem, len=arr.length-1; i<len; i++)  arr[i]=arr[i+1];  arr.length = len; return item; }  // GC-friendly splice
-app.myCopy=function(arr,brr){ var len=brr.length; if(typeof arr=="undefined") arr=Array(len); for(var i=0; i<len; i++)  arr[i]=brr[i];  arr.length = len; return arr; }  // GC-friendly copy
+app.array_flip=function(A){ var B={}; for(var i=0;i<A.length;i++){B[A[i]]=i;} return B;}
+app.array_fill=function(n, val){ return Array.apply(null, new Array(n)).map(String.prototype.valueOf,val); }
 
 app.is_array=function(a){return a instanceof Array;}
 app.in_array=function(needle,haystack){ return haystack.indexOf(needle)!=-1;}
@@ -93,14 +93,6 @@ app.arrValRemove=function(arr,val){  var indOf=arr.indexOf(val); if(indOf!=-1) m
 
 
 
-app.arrArrange=function(arrV,arrI){
-  var n=arrI.length, arrNew;
-  if(typeof arrV=='string') arrNew=''; else arrNew=Array(n);
-  //for(var i=0;i<arrI.length;i++){    arrNew.push(arrV[arrI[i]]);    }
-  for(var i=0;i<arrI.length;i++){    arrNew[i]=arrV[arrI[i]];    }
-  return arrNew;
-}
-
 //
 // Str (Array of Strings)
 //
@@ -113,6 +105,7 @@ app.StrComp=function(A,B){var lA=A.length; if(lA!==B.length) return false; for(v
 
 app.extend=Object.assign;
 app.copySome=function(a,b,Str){for(var i=0;i<Str.length;i++) { var name=Str[i]; a[name]=b[name]; } return a; }
+app.copyIfExist=function(a,b,Str){for(var i=0;i<Str.length;i++) { var name=Str[i]; if(name in b) a[name]=b[name]; } return a; }
 app.object_values=function(obj){
   var arr=[];      for(var name in obj) arr.push(obj[name]);
   return arr;
@@ -173,18 +166,25 @@ app.UTC2Readable=function(utcTime){ var tmp=new Date(Number(utcTime)*1000);   re
 app.unixNow=function(){return (new Date()).toUnix();}
 
 app.getSuitableTimeUnit=function(t){ // t in seconds
-  var tAbs=Math.abs(t), tSign=t>=0?+1:-1;
-  if(tAbs<=90) return [tSign*tAbs,'s'];
+  var tAbs=Math.abs(t), tSign=t>=0?+1:-1, strU
+  lab:{
+  if(tAbs<=90) {strU='s'; break lab;}
   tAbs/=60; // t in minutes
-  if(tAbs<=90) return [tSign*tAbs,'m']; 
+  if(tAbs<=90) {strU='m'; break lab;}; 
   tAbs/=60; // t in hours
-  if(tAbs<=36) return [tSign*tAbs,'h'];
+  if(tAbs<=36) {strU='h'; break lab;}
   tAbs/=24; // t in days
-  if(tAbs<=2*365) return [tSign*tAbs,'d'];
-  tAbs/=365; // t in years
-  return [tSign*tAbs,'y'];
+  if(tAbs<=2*365) {strU='d'; break lab;}
+  tAbs/=365; strU='y'; break lab;  // t in years 
+  }
+  tAbs=Math.round(tAbs)
+  return [tSign*tAbs,strU];
 }
-
+app.getSuitableTimeUnitStr=function(tdiff,objLang=langHtml.timeUnit,boLong=0,boArr=0){
+  var [ttmp,u]=getSuitableTimeUnit(tdiff), n=Math.round(ttmp);
+  var strU=objLang[u][boLong][Number(n!=1)];
+  if(boArr){  return [n,strU];  } else{  return n+' '+strU;   }
+}
 app.dosTime2Arr=function(dosDate,dosTime){
   var sec=(dosTime & 0x1f)*2;
   var minute=dosTime>>>5 & 0x3f;
@@ -226,7 +226,15 @@ app.t2dosTime=function(t){
 
 app.randomInt=function(min, max){    return min + Math.floor(Math.random() * (max - min + 1));  }
 app.randomHash=function(){ return Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);}
-
+app.genRandomString=function(len) {
+  //var characters = 'abcdefghijklmnopqrstuvwxyz';
+  var characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  var str ='';    
+  for(var p=0; p<len; p++) {
+    str+=characters[randomInt(0, characters.length-1)];
+  }
+  return str;
+}
 
 //
 // Math
@@ -260,6 +268,7 @@ app.numWithUnitPrefixArr=function(N){var l=N.length, StrOut=Array(l);for(var i=0
 //
 
 app.arrObj2TabNStrCol=function(arrObj){ //  Ex: [{abc:0,def:1},{abc:2,def:3}] => {tab:[[0,1],[2,3]],StrCol:['abc','def']}
+    // Note! empty arrObj returns {tab:[]}
   var Ou={tab:[]}, lenI=arrObj.length, StrCol=[]; if(!lenI) return Ou;
   StrCol=Object.keys(arrObj[0]);  var lenJ=StrCol.length;
   for(var i=0;i<lenI;i++) {
@@ -271,11 +280,23 @@ app.arrObj2TabNStrCol=function(arrObj){ //  Ex: [{abc:0,def:1},{abc:2,def:3}] =>
   return Ou;
 }
 app.tabNStrCol2ArrObj=function(tabNStrCol){  //Ex: {tab:[[0,1],[2,3]],StrCol:['abc','def']}    =>    [{abc:0,def:1},{abc:2,def:3}] 
+    // Note! An "empty" input should look like this:  {tab:[]}
   var tab=tabNStrCol.tab, StrCol=tabNStrCol.StrCol, arrObj=Array(tab.length);
   for(var i=0;i<tab.length;i++){
     var row={};
     for(var j=0;j<StrCol.length;j++){  var key=StrCol[j]; row[key]=tab[i][j];  }
     arrObj[i]=row;
+  }
+  return arrObj;
+}
+  // GC friendly version of the above
+  // Note!!! If StrCol changes then this function wont work.
+app.tabNStrCol2ArrObjGC=function(tabNStrCol, arrObj){ 
+  var tab=tabNStrCol.tab, StrCol=tabNStrCol.StrCol, len=tab.length; if(arrObj==undefined) arrObj=Array(len); else arrObj.length=len;
+  for(var i=0;i<len;i++){
+    if(arrObj[i]==undefined) arrObj[i]={};
+    var row=arrObj[i];
+    for(var j=0;j<StrCol.length;j++){  var key=StrCol[j]; row[key]=tab[i][j];  }
   }
   return arrObj;
 }
@@ -391,3 +412,20 @@ app.formatCSVAsHeadPrefix=function(arrHead,arrRow){
   });
   
 }
+
+app.convertKeyValueToObj=function(arr){
+  var oOut={};
+  arr.forEach(function(it){oOut[it.name]=it.value;});
+  return oOut;
+}
+
+
+//
+// Escaping data
+//
+
+app.myJSEscape=function(str){return str.replace(/&/g,"&amp;").replace(/</g,"&lt;");}
+  // myAttrEscape
+  // Only one of " or ' must be escaped depending on how it is wrapped when on the client.
+app.myAttrEscape=function(str){return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/\//g,"&#47;");} // This will keep any single quataions.
+app.myLinkEscape=function(str){ str=myAttrEscape(str); if(str.startsWith('javascript:')) str='javascript&#58;'+str.substr(11); return str; }

@@ -16,11 +16,11 @@ app.getInfoNDataNoReqRes=function*(flow, objArg){
   //return [null,Ou];
 
     // Get site
-  var sql=`SELECT boDefault, @boTLS:=boTLS AS boTLS, @idSite:=idSite AS idSite, siteName, @www:=www AS www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aWPassword, aRPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM `+siteTab+` WHERE www=?;`;
+  var sql=`SELECT boDefault, @boTLS:=boTLS AS boTLS, @idSite:=idSite AS idSite, siteName, @www:=www AS www, googleAnalyticsTrackingID, srcIcon16, strLangSite, aWPassword, aRPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM `+siteTab+` WHERE www=?;`;
   var Val=[wwwSite];
   var [err, results]=yield* this.myMySql.query(flow, sql, Val); if(err) return [err];
   if(results.length==0) { extend(Ou, {mess:'wwwNotFound'}); return [null,Ou]; } //res.out500(wwwSite+', site not found'); return [];
-  var {boTLS, idSite, siteName, www, googleAnalyticsTrackingID, urlIcon16, urlIcon200, aWPassword, aRPassword, tCreated}=results[0]; 
+  var {boTLS, idSite, siteName, www, googleAnalyticsTrackingID, srcIcon16, strLangSite, aWPassword, aRPassword, tCreated}=results[0]; 
   
     // Check if there is a redirect for this page
   var sql=`SET @queredPage=?;

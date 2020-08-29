@@ -250,9 +250,7 @@ tbody,thead {border-width:inherit;border-style:inherit }
 
 .eye {font-family:courier; font-size:90%; letter-spacing:-.5em; transform:translate(0px, 0em) rotate(90deg); display:block;width:1.1em;text-align:start}
 
-button, select { box-sizing:border-box; height:2.5em; font-size:0.8em; margin:0.5 0.5; padding:0 0.2em; font-size: inherit;vertical-align:middle;background-color:#eee;border-radius:0.4em;user-select:none}
-button.flexWidth{} /*height:1.8em;padding-left:0.7em;padding-right:0.7em*/
-button.fixWidth{} /*width:2em*/
+button, button-toggle, select { box-sizing:border-box; height:2.5em; font-size:0.8em; margin:0.5 0.5; padding:0 0.2em; font-size: inherit;vertical-align:middle;background-color:#eee;border-radius:0.4em;user-select:none; display:inline-flex; align-items: center; justify-content: center;}
 .rowButtonFeat  span { vertical-align:bottom}
 .rowButtonFeat button, .rowButtonFeat select { box-sizing:border-box; min-height:1.5em; font-size:0.8em; margin:0.5 0.5; padding:0 0.2em; font-size: inherit;vertical-align:bottom;background-color:#eee;border-radius:0.4em}
 .rowButtonFeat button > span:first-child { vertical-align:baseline;line-height:2.3em}
@@ -261,42 +259,72 @@ button.fixWidth{} /*width:2em*/
 .redirectTab td, .siteTab td { background-color: #ccc;}
 
 
-.pageList p { overflow:hidden;background: #ccc; line-height:2em}
-.imageList p { background: #ddd; line-height:3em}
+.aArrow {
+  --notchSizeX: 0.5em;
+  --notchSizeY: 5%;
+  --notchSizeR: 1.6em;
+display: inline-flex;
+justify-content: center;
+align-items: center;
+border-radius: 0;
+border:0px;
+}
 
-.listHead span{  vertical-align:top; display:inline-block}
+.aArrowLeft {
+clip-path: polygon( 0% calc(50% - var(--notchSizeY)), var(--notchSizeX) 0%, 100% 0%, 100% 100%, var(--notchSizeX) 100%, 0% calc(50% + var(--notchSizeY)) );
+padding: .5em .1em .5em .3em;
+/*border-bottom-left-radius: var(--notchSizeR);
+border-top-left-radius: var(--notchSizeR);*/
+}
+
+.aArrowRight {
+clip-path: polygon( 0% 0%, calc(100% - var(--notchSizeX)) 0%, 100% calc(50% - var(--notchSizeY)), 100% calc(50% + var(--notchSizeY)), calc(100% - var(--notchSizeX)) 100%, 0% 100% );
+padding: .5em .3em .5em .1em;
+/*border-bottom-right-radius: var(--notchSizeR);
+border-top-right-radius: var(--notchSizeR);*/
+}
+
+.pageList p { overflow:hidden;background: #ccc; } /*line-height:2em*/
+.imageList p { background: #ddd} /*; line-height:3em*/
+
+.listHead span{  vertical-align:top}
 .listHead {margin:.5em 0 0; } /* position:sticky; position:-webkit-sticky; top:57px; z-index:1 */
 .listHead span {cursor:pointer}
 .listHead img {transform:scale(1.5,1.5);margin:0.3em auto;display:block}
 
+.pageList span, .imageList span { display:inline-block}
 
   /* parentRow, pageHead, pageList, imageHead and imageList */
 .pageList span[name=execute] , .imageList span[name=execute] { min-width:1.2em; margin-left:0.5em;}
-.pageList span[name=date], .imageList span[name=date] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
-.pageList span[name=size], .imageList span[name=size] { min-width:2em; float: right;text-align:right}
+.pageList span[name=tMod] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
+.pageList span[name=tCreated] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
+.imageList span[name=tCreated] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
+.pageList span[name=size], .imageList span[name=size] { min-width:2em; text-align:right}  /*float: right;*/
 .pageList span[name=execute] > button, .imageList span[name=execute] > button { width:1.2em;padding:0em;}
 
   /* parentRow, pageHead and pageList */
-.pageList span[name=nChild], .pageList span[name=nImage] { min-width:1.5em; float: right;}
+.pageList span[name=nChild], .pageList span[name=nImage] { min-width:1.5em}  /*float: right;*/
 .pageList span[name=boOR], .pageList span[name=boOW], .pageList span[name=boSiteMap] { width:.7em;font-family:courier}
-/*.pageList span[name=siteName] { margin-right:0.5em; }*/
+.pageList span[name=siteName] { margin:0 0.2em; }
 
 .pageList span[name=nChild] > button, .pageList span[name=nImage] > button { padding:0; min-width:1.4em}
-.pageList span[name=nChild] button {background-image: url("buttonRight1.png");}
-.pageList span[name=nImage] button {background-image: url("buttonRightBlue1.png");}
+.pageList span[name=nChild] button {background: #eeeeee;}
+.pageList span[name=nImage] button {background: lightblue;}
 
   /* parentRow, pageList and imageList */
 .pageList span[name=link] > a, .imageList span[name=link] > a { word-break:break-all} /*; vertical-align:top */
 
   /* pageHead, pageList, imageHead and imageList */
 .pageList span[name=nParent], .imageList span[name=nParent], .imageList span[name=nParentI] { min-width:1.5em;}
+
+
 .pageList span[name=nParent] > button, .imageList span[name=nParent] > button, .imageList span[name=nParentI] > button { padding:0; min-width:1.4em}
-.pageList span[name=nParent] button, .imageList span[name=nParent] button {background-image: url("buttonLeft1.png");}
-.imageList span[name=nParentI] button {background-image: url("buttonLeftBlue1.png");}
+.pageList span[name=nParent] button, .imageList span[name=nParent] button {background: #eeeeee;}
+.imageList span[name=nParentI] button {background: lightblue;}
 .pageList span[name=cb], .imageList span[name=cb] { margin-left:0.5em; width:1.4em;}
 
-.pageList span[name=version] {  margin-left:0.5em; margin-right:0.5em; float: right}
-.imageList span[name=boOther] {  margin-left:0.5em; margin-right:0.5em; float: right; }
+.pageList span[name=version] {  margin:0 0.2em;}  /*float: right;*/
+.imageList span[name=boOther] {  margin-left:0.5em; margin-right:0.5em }  /*float: right;*/
   
   /* pageList and imageList */
 .pageList span[name=cb] > input, .imageList span[name=cb] > input { transform:scale(1.5,1.5);}
@@ -304,10 +332,6 @@ button.fixWidth{} /*width:2em*/
   /* imageHead and imageList */
 .imageList span[name=image] { margin-left:0.5em; width:50px;}
 .imageList span[name=image] > img { vertical-align: middle;margin-right:0.1em; max-width:50px; max-height:50px}
-
-
-    /* Arrow buttons */
-.pageList span[name=nChild] button, .pageList span[name=nImage] button, .pageList span[name=nParent] button, .imageList span[name=nParent] button, .imageList span[name=nParentI] button { background-position: center; background-repeat: no-repeat; background-size: 100% 100%; border: 0;border-radius: 0;background-color: transparent;}
 
 
 
@@ -324,7 +348,7 @@ button.fixWidth{} /*width:2em*/
 
 .popupHover {
   position:absolute;
-  z-index:200; 
+  z-index:9010; 
   padding: 0.2em;
   margin-left: .7em;
   margin-top: .3em;
