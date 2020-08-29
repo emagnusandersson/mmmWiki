@@ -32,7 +32,6 @@ strSalt='abcdef'; // Random letters to prevent that the hashed passwords looks t
 googleSiteVerification="googleXXXXXXXXXXXXXXXX.html"; // Needed if you use Google Webmaster Tools  (www.google.com/webmasters)
 
 
-weIconLib='lib/image/Icon/';  wIconRed16=weIconLib+'iconRed16.png';   wIconRed200=weIconLib+'iconRed200.png';  wIcon16=weIconLib+'icon16.png';  wIcon200=weIconLib+'icon200.png';
 
 
   //

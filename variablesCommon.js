@@ -1,6 +1,6 @@
 
 
-two31=Math.pow(2,31);  intMax=two31-1;  intMin=-two31;
+two31=Math.pow(2,31);  intMax=two31-1;  intMin=-two31; uintMax=Math.pow(2,32)-1;
 sPerDay=24*3600;  sPerMonth=sPerDay*30;
 
 fsWebRootFolder=process.cwd();
@@ -12,6 +12,7 @@ flLibImageFolder=flLibFolder+"/image";
   // Files: 
 leafBE='be.json';
 leafCommon='common.js';
+leafManifest='manifest.json'
 
 
 StrImageExt=['jpg','jpeg','png','gif','svg'];
@@ -68,6 +69,7 @@ tModCache:           {b:'11',feat:tFeat},
 nChild:              {b:'10',feat:nChildFeat},
 nImage:              {b:'10',feat:nChildFeat},
 intPriority:         {b:'10',feat:intPriorityFeat},
+strLang:             {b:'10',feat:{kind:'B'}},
 tLastAccess:         {b:'10',feat:tFeat},
 nAccess:             {b:'10',feat:nAccessFeat},
 nParent:             {b:'10',feat:nParentFeat},
@@ -105,6 +107,7 @@ PropPage.parent.pre='s.';
   // relaxCountExp
 PropPage.siteName.relaxCountExp=function(name){ return "COUNT(DISTINCT p.idPage)"; }
 PropPage.parent.relaxCountExp=function(name){ return "COUNT(DISTINCT p.idPage)"; }
+PropPage.strLang.relaxCountExp=function(name){ return "COUNT(DISTINCT p.strLang)"; }
 var tmpRelaxCountExp=function(){ return null;}
 var StrTmp=['boOR','boOW','boSiteMap','boTalk','boTemplate','boOther']; // These will never need a trunk, so no need to do a separate count query.
 for(var i=0;i<StrTmp.length;i++){  var name=StrTmp[i]; PropPage[name].relaxCountExp=tmpRelaxCountExp; }
@@ -112,20 +115,20 @@ for(var i=0;i<StrTmp.length;i++){  var name=StrTmp[i]; PropPage[name].relaxCount
   // histF
 PropPage.siteName.histF=function(name, strTableRef,strCond,strOrder){
   return `SELECT p.idSite AS bin, COUNT(DISTINCT p.idPage) AS groupCount FROM 
-`+pageLastSiteView+` p LEFT JOIN `+subTab+` s  ON s.idSite=p.idSite AND s.pageName=p.pageName 
+`+pageLastSiteView+` p LEFT JOIN `+subTab+` s ON s.idSite=p.idSite AND s.pageName=p.pageName 
 `+strCond+`
 GROUP BY bin ORDER BY `+strOrder+`;`;
 }
 PropPage.parent.histF=function(name, strTableRef,strCond,strOrder){
   return `SELECT s.idPage AS bin, COUNT(DISTINCT p.idPage) AS groupCount FROM 
-`+pageLastSiteView+` p LEFT JOIN `+subTab+` s  ON s.idSite=p.idSite AND s.pageName=p.pageName 
+`+pageLastSiteView+` p LEFT JOIN `+subTab+` s ON s.idSite=p.idSite AND s.pageName=p.pageName 
 `+strCond+`
 GROUP BY bin ORDER BY `+strOrder+`;`;
 }
 
   // binValueF
 var tmpBinValueF=function(name){ return "COUNT(DISTINCT p.idPage)";}
-var StrTmp=['siteName','parent', 'size','boOR','boOW','boSiteMap','boTalk','boTemplate','boOther','tCreated','tMod','tModCache', 'nChild', 'nImage','intPriority', 'tLastAccess', 'nAccess', 'nParent', 'lastRev'];
+var StrTmp=['siteName','parent', 'size','boOR','boOW','boSiteMap','boTalk','boTemplate','boOther','tCreated','tMod','tModCache', 'nChild', 'nImage', 'intPriority', 'strLang', 'tLastAccess', 'nAccess', 'nParent', 'lastRev'];
 for(var i=0;i<StrTmp.length;i++){  var name=StrTmp[i]; PropPage[name].binValueF=tmpBinValueF; }
 
   // histCondF

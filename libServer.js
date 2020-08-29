@@ -207,7 +207,7 @@ app.createCommonJS=function() {
   tmp.trash='trash';
   Str.push(`assignCommonJS=function(){
   var tmp=`+JSON.stringify(tmp)+`;
-  Object.assign(window,tmp);
+  extend(window,tmp);
 }`);
   var str=Str.join('\n');    return str;
 }
@@ -222,4 +222,49 @@ app.calcTalkName=function(pageName){ // Examples: "abc"=>"talk:abc", "template:a
     if(pageName.substr(0,9)=='template:') talkPage='template_talk:'+pageName; else talkPage='talk:'+pageName;
   }
   return talkPage;
+}
+
+
+
+
+app.createManifest=function(arg){
+  var {siteName, www, srcIcon16}=arg;
+
+  //var srcIcon16=srcIcon16 || srcIcon16Default;
+  var Match=srcIcon16.match(/^.*\.([0-9a-zA-Z]+)$/);
+  var strType=Match?mime.getType(Match[1]):'';
+  var Match=srcIcon16.match(/^(.*)16(.*)$/);
+
+  var IntSizeIcon=[16, 114, 192, 200, 512, 1024];
+  //IntSizeIconFlip=array_flip(IntSizeIcon);
+  if(Match) {
+    var [, p1, p2]=Match;
+    var icons=Array(IntSizeIcon.length);
+    IntSizeIcon.forEach((size, ind)=>{icons[ind]={ src: p1+size+p2, type:strType, sizes: size+"x"+size, purpose: "any maskable" }; })
+  } else { var icons=[{ src: srcIcon16, type:strType, sizes: "16x16", purpose: "any maskable" }]}
+  var uSite="https://"+www;
+  let objOut={theme_color:"#fff", background_color:"#fff", display:"minimal-ui", prefer_related_applications:false,  short_name:siteName, name:siteName, start_url: uSite, icons }
+  
+  //let str=serialize(objOut);
+  let str=JSON.stringify(objOut);
+  return str;
+}
+
+
+app.createManifestNStoreToCache=function*(flow, arg){
+  var {www}=arg;
+  var strT=createManifest(arg);
+  var buf=Buffer.from(strT, 'utf8');
+  var [err]=yield* CacheUri.set(flow, www+'/'+leafManifest, buf, 'json', true, false);   if(err) return [err];
+  return [null];
+}
+app.createManifestNStoreToCacheMult=function*(flow, results){
+  for(var i=0;i<results.length;i++){   var [err]=yield* createManifestNStoreToCache(flow, results[i]);   if(err) return [err];   }
+  return [null];
+}
+app.createManifestNStoreToCacheFrDB=function*(flow, myMySql){
+  var sql="SELECT boDefault, boTLS, idSite, siteName, www, googleAnalyticsTrackingID, srcIcon16, strLangSite, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+" GROUP BY idSite;"
+  var [err, results]=yield* myMySql.query(flow, sql); if(err) return [err];
+  var [err]=yield* createManifestNStoreToCacheMult(flow, results);   if(err) return [err];
+  return [null];
 }

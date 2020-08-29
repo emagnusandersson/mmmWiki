@@ -10,25 +10,33 @@ app.setUpCond=function(arg){
       // Hist (client-side): 'B'-features: [vPosName,vPosVal],       'S'/'BF'-features: [vPosInd,vPosVal]
       // Hist (server-side): histsPHP[iFeat][buttonNumber]=['name',value], (converts to:) Hist[iFeat][0]=names,  Hist[iFeat][1]=values
   for(var i=0;i<StrProp.length;i++){
-    var name=StrProp[i];
-    if(Filt[name].length==0) continue;
-    var prop=Prop[name], pre; if('pre' in prop) pre=prop.pre; else pre=preDefault;
-    var feat=prop.feat;
+    var name=StrProp[i], filt=Filt[name];
+    if(!is_array(filt)) {return [new Error('Filt['+name+'] is not an array.')];  }
+    //if(filt.length==0) continue;
+    var {feat, boIncludeNull, condBNameF, cond0F, cond1F, pre}=Prop[name];
+    if(!pre) pre=preDefault;
+    //var prop=Prop[name], pre; if('pre' in prop) pre=prop.pre; else pre=preDefault;
+    //var feat=prop.feat;
     var arrCondInFeat=[];
-    var filt=Filt[name];
     if(feat.kind[0]=='B'){
-      var arrSpec, boWhite;
-      if(filt.length==1){arrSpec=[]; boWhite=filt[0];} //jQuery $.post deletes empty arrays 
-      else {
-        if(!is_array(filt[0])) {console.log('Filt['+name+'][0] is not an array ('+arrSpec+')');  }
-        arrSpec=filt[0].slice(); boWhite=filt[1]; 
-      }
+      // var arrSpec, boWhite;
+      // if(filt.length==1){arrSpec=[]; boWhite=filt[0];} //jQuery $.post deletes empty arrays 
+      // else {
+      //   if(!is_array(filt[0])) {console.log('Filt['+name+'][0] is not an array ('+arrSpec+')');  }
+      //   arrSpec=filt[0].slice(); boWhite=filt[1]; 
+      // }
+
+      if(!is_array(filt[0])) {return [new Error('Filt['+name+'][0] is not an array.')];  }
+      var [arrSpecProt, boWhite]=filt;
+      var arrSpec=arrSpecProt.slice(); // Copying since arrSpec is modified (might not be needed)
+
+
       var strNot=boWhite?'':' NOT';
          
       if(arrSpec.length==0){   if(boWhite==1) arrCondInFeat.push('FALSE'); }  // "FALSE" to prevent all matches 
       else {
-        var boAddExtraNull=prop.boIncludeNull && !boWhite,    arrCondOuter=[];
-        var tmpName; if('condBNameF' in prop) tmpName=prop.condBNameF(name,arrSpec); else tmpName="`"+name+"`";
+        var boAddExtraNull=boIncludeNull && !boWhite,    arrCondOuter=[];
+        var tmpName; if(condBNameF) tmpName=condBNameF(name,arrSpec); else tmpName="`"+name+"`";
         var arrCondInner=[];
         var ind=arrSpec.indexOf(null);
         if(ind!=-1) {arrCondInner.push(pre+tmpName+" IS "+strNot+" NULL"); mySplice1(arrSpec,ind);  boAddExtraNull=0;}
@@ -48,13 +56,14 @@ app.setUpCond=function(arg){
         if(strCond) arrCondInFeat.push("("+strCond+")");
       }
     } else {
-      var val0=feat.min[filt[0]]; if(filt[0]==feat.n) val0=feat.max[feat.n-1];
-      var val1=feat.max[filt[1]-1]; if(filt[1]==0) val1=feat.min[0];
-      if(filt[0]>0) {
-        var tmp; if('cond0F' in prop) tmp=prop.cond0F(pre+"`"+name+"`",val0);  else tmp=pre+"`"+name+"`>="+val0;       arrCondInFeat.push(tmp);
+      var [iOn,iOff]=filt;
+      var val0=feat.min[iOn]; if(iOn==feat.n) val0=feat.max[feat.n-1];
+      var val1=feat.max[iOff-1]; if(iOff==0) val1=feat.min[0];
+      if(iOn>0) {
+        var tmp; if(cond0F) tmp=cond0F(pre+"`"+name+"`",val0);  else tmp=pre+"`"+name+"`>="+val0;       arrCondInFeat.push(tmp);
       }
-      if(filt[1]<feat.n) {
-        var tmp; if('cond1F' in prop) tmp=prop.cond1F(pre+"`"+name+"`",val1);  else tmp=pre+"`"+name+"`<"+val1;       arrCondInFeat.push(tmp);
+      if(iOff<feat.n) {
+        var tmp; if(cond1F) tmp=cond1F(pre+"`"+name+"`",val1);  else tmp=pre+"`"+name+"`<"+val1;       arrCondInFeat.push(tmp);
       }
     }
     Where.push(arrCondInFeat.join(' AND '));
@@ -67,7 +76,7 @@ app.setUpCond=function(arg){
   // }
   // var strSel=arrCol.join(', ');
   // return {strSel, Where}; //, nColTrans:ii
-  return {Where}; //, nColTrans:ii
+  return [null, {Where}]; //, nColTrans:ii
 
 }
 
@@ -92,7 +101,7 @@ app.HistCalc.prototype.getHist=function*(flow){
     var name=StrProp[i], prop=this.Prop[name], Where=[].concat(this.WhereWExtra); Where.splice(i,1); var arg={name, prop, Where};
     var [err, hist]=yield* this.getHistOne(flow, arg); if(err) return [err];
     Hist[i]=hist;
-    var tMeas=(new Date())-tStart; console.log(name+': '+tMeas+'ms');
+    var tMeas=(new Date())-tStart; if(boDbg) console.log(name+': '+tMeas+'ms');
   }
   return [null,Hist];
 }

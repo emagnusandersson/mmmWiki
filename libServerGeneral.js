@@ -26,7 +26,7 @@ MyMySql.prototype.startTransaction=function*(flow){
   this.transactionState='started';
   return [null];
 }
-MyMySql.prototype.query=function*(flow, sql, Val){
+MyMySql.prototype.query=function*(flow, sql, Val=[]){
   if(!this.connection) {var [err]=yield* this.getConnection(flow); if(err) return [err];}
   var err, results, fields;    this.connection.query(sql, Val, function (errT, resultsT, fieldsT) { err=errT; results=resultsT; fields=fieldsT; flow.next(); }); yield;   return [err, results, fields];
 }
@@ -59,9 +59,10 @@ MyNeo4j.prototype.escape=function(str){  if(typeof str=='string') str=str.replac
 //
 
 app.ErrorClient=class extends Error {
-  constructor(message) {
+  constructor(message,statusCode=400) {
     super(message);
     this.name = 'ErrorClient';
+    this.statusCode = statusCode;
   }
 }
 
@@ -81,7 +82,6 @@ tmp.out301Loc=function(url){  this.writeHead(301, {Location: '/'+url});  this.en
 tmp.out403=function(){ this.outCode(403, "403 Forbidden\n");  }
 tmp.out304=function(){  this.outCode(304);   }
 tmp.out404=function(str){ str=str||"404 Not Found\n"; this.outCode(404, str);    }
-//tmp.out500=function(err){ var errN=(err instanceof Error)?err:(new MyError(err)); console.log(errN.stack); this.writeHead(500, {"Content-Type": MimeType.txt});  this.end(err+ "\n");   }
 tmp.out500=function(e){
   if(e instanceof Error) {var mess=e.name + ': ' + e.message; console.error(e);} else {var mess=e; console.error(mess);} 
   this.writeHead(500, {"Content-Type": MimeType.txt});  this.end(mess+ "\n");
@@ -142,18 +142,7 @@ app.MimeType={
 };
 
 
-
-app.genRandomString=function(len) {
-  //var characters = 'abcdefghijklmnopqrstuvwxyz';
-  var characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  var str ='';    
-  for(var p=0; p<len; p++) {
-    str+=characters[randomInt(0, characters.length-1)];
-  }
-  return str;
-}
 app.md5=function(str){return crypto.createHash('md5').update(str).digest('hex');}
-
 
 
   // Redis
@@ -178,62 +167,6 @@ app.delRedis=function*(flow, arr){
   var [err,strTmp]=yield* cmdRedis(flow, 'DEL', arr);
 }
 
-    // closebymarket
-  //var StrSuffix=['_LoginIdP', '_LoginIdUser', '_UserInfoFrDB', '_Counter'];  var StrCaller=['index'], for(var i=0;i<StrCaller.length;i++){  StrSuffix.push('_CSRFCode'+ucfirst(StrCaller[i])); }
-  //var err=yield* changeSessionId.call(this, sessionIDNew, StrSuffix);
-  //var err=yield* changeSessionId.call(this, 'sessionID', sessionIDNew, StrSuffix);
-app.changeSessionId=function*(sessionIDNew, StrSuffix){
-  for(var i=0;i<StrSuffix.length;i++){
-    var strSuffix=StrSuffix[i];
-    var redisVarO=this.req.sessionID+strSuffix, redisVarN=sessionIDNew+strSuffix; 
-    var [err,value]=yield* cmdRedis(this.req.flow, 'rename', [redisVarO, redisVarN]); //if(err) return err;
-  }
-  this.req.sessionID=sessionIDNew;
-  return null;
-}
-app.changeSessionId=function*(strSessionIDOld, sessionIDNew, StrSuffix){
-  if(typeof StrSuffix=='string') StrSuffix=[StrSuffix];
-  for(var i=0;i<StrSuffix.length;i++){
-    var strSuffix=StrSuffix[i];
-    var redisVarO=this.req[strSessionIDOld]+strSuffix, redisVarN=sessionIDNew+strSuffix; 
-    var [err,value]=yield* cmdRedis(this.req.flow, 'rename', [redisVarO, redisVarN]); //if(err) return err;
-  }
-  this.req[strSessionIDOld]=sessionIDNew;
-  return null;
-}
-app.changeSessionId=function*(StrSessionIDOld, StrSuffix){
-  if(typeof StrSessionIDOld=='string') StrSessionIDOld=[StrSessionIDOld];
-  if(typeof StrSuffix=='string') StrSuffix=[StrSuffix];
-  for(var i=0;i<StrSuffix.length;i++){
-    var sessionIDNew=randomHash();
-    var strSuffix=StrSuffix[i];
-    var redisVarO=this.req[strSessionIDOld]+strSuffix, redisVarN=sessionIDNew+strSuffix; 
-    var [err,value]=yield* cmdRedis(this.req.flow, 'rename', [redisVarO, redisVarN]); //if(err) return err;
-  }
-  this.req[strSessionIDOld]=sessionIDNew;
-  return null;
-}
-app.changeSessionId=function*(sessionID, strSuffix){
-  
-  var sessionIDOld=sessionID, strSuffix='_adminRTimer', sessionID=randomHash();
-  var redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
-  var [err,value]=yield* cmdRedis(this.req.flow, 'rename', [redisVarO, redisVarN]); //if(err) return err;
-  
-  var sessionIDOld=sessionID, strSuffix='_adminRTimer', sessionID=randomHash();
-  var redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
-  var [err,value]=yield* cmdRedis(this.req.flow, 'rename', [redisVarO, redisVarN]); //if(err) return err;
-  
-  this.req[strSession]=sessionID;
-  return null;
-}
-
-app.changeSessionId=function*(sessionID, strSuffix){
-  var sessionIDOld=sessionID, sessionID=randomHash();
-  var redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
-  var [err,value]=yield* cmdRedis(this.req.flow, 'rename', [redisVarO, redisVarN]); if(err) return [err];
-  //this.req[strSession]=sessionID;
-  return [null, sessionID];
-}
 
 
 app.getIP=function(req){
@@ -262,14 +195,6 @@ app.getIP=function(req){
   return false
 }
 
-
-app.luaCountFunc=`
-local boSessionExist=redis.call('EXISTS',KEYS[1]);
-local c;
-if(boSessionExist>0) then c=redis.call('INCR',KEYS[2]); redis.call('EXPIRE',KEYS[2], ARGV[1]);
-else c=redis.call('INCR',KEYS[3]); redis.call('EXPIRE', KEYS[3], ARGV[1]);
-end;
-return {boSessionExist, c}`;
 
 
 app.CacheUriT=function(){
@@ -325,12 +250,6 @@ app.isRedirAppropriate=function(req){
   }
   return false;
 }
-
-app.myJSEscape=function(str){return str.replace(/&/g,"&amp;").replace(/</g,"&lt;");}
-  // myAttrEscape
-  // Only one of " or ' must be escaped depending on how it is wrapped when on the client.
-app.myAttrEscape=function(str){return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/\//g,"&#47;");} // This will keep any single quataions.
-
 
 
 

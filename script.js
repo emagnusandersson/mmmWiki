@@ -24,7 +24,8 @@ Streamify= require('streamify-string');
 validator = require('validator');
 serialize = require('serialize-javascript');
 ejs = require("ejs");
-app=global;
+mime = require("mime");
+app=global;app.extend=Object.assign;
 
 
 require('./lib.js');
@@ -62,19 +63,19 @@ helpTextExit=function(){
     The meta-files must be named any of: `+StrValidLoadMeta.join(', ')+`.
     zip-files which name DOESN'T contain the string "meta", may contain further txt/image-files.
     zip-files which name DOES contain the string "meta" are assumed to contain any of the above named csv-files.
-    fileOrDirPath is a path relative to the "mmmWikiBU"-folder (a sibling of the "mmmWiki"-program folder).
+    fileOrDirPath is a path relative to the "mmmWikiBackUp"-folder (a sibling of the "mmmWiki"-program folder).
     If fileOrDirPath is a folder, then the files in that folder is loaded.
     The fileOrDirPath-string is "splitted" on "+"-characters, (so one can supply multiple files like: fileA+fileB+fileC) .
-    If fileOrDirPath is empty, the program looks for files in the "mmmWikiBU"-folder.
-    Files named page.zip, image.zip resp meta.zip in the top level of "mmmWikiBU" are overwritten by the program (when the admin clicks resp BU-to-server-button in the web interface).
+    If fileOrDirPath is empty, the program looks for files in the "mmmWikiBackUp"-folder.
+    Files named page.zip, image.zip resp meta.zip in the top level of "mmmWikiBackUp" are overwritten by the program (when the admin clicks resp BU-to-server-button in the web interface).
 
     Ex: 
-      node --load               // Loads all files (not entering any folders) in "mmmWikiBU"
-      node --load myDir         // Loads all files (not entering any folders) in "mmmWikiBU/myDir"
-      node --load myPage.txt    // Loads "mmmWikiBU/myPage.txt"
-      node --load myPages.zip   // Loads "mmmWikiBU/myPages.zip"
-      node --load mymeta.zip    // Loads "mmmWikiBU/mymeta.zip". mymeta.zip must only contain meta-files (as named above)
-      node --load site.csv+myPage.txt+myImage.jpg+myPages.zip     // Loads the named files from mmmWikiBU`);
+      node --load               // Loads all files (not entering any folders) in "mmmWikiBackUp"
+      node --load myDir         // Loads all files (not entering any folders) in "mmmWikiBackUp/myDir"
+      node --load myPage.txt    // Loads "mmmWikiBackUp/myPage.txt"
+      node --load myPages.zip   // Loads "mmmWikiBackUp/myPages.zip"
+      node --load mymeta.zip    // Loads "mmmWikiBackUp/mymeta.zip". mymeta.zip must only contain meta-files (as named above)
+      node --load site.csv+myPage.txt+myImage.jpg+myPages.zip     // Loads the named files from mmmWikiBackUp`);
   console.log(arr.join('\n'));
   process.exit(0);
 }
@@ -106,10 +107,10 @@ urlPayPal='https://www.paypal.com/cgi-bin/webscr';
 maxAdminRUnactivityTime=24*60*60;
 maxAdminWUnactivityTime=5*60;  
 intDDOSMax=100; tDDOSBan=5; 
-strSalt='abcdef';
 strBTC="";
 ppStoredButt="";
 boUseSelfSignedCert=false;
+//srcIcon16Default="Site/Icon/iconRed16.png"
 
 
 var flow=( function*(){
@@ -119,7 +120,7 @@ var flow=( function*(){
 
   var strConfig;
   if(boHeroku){ 
-    if(!process.env.jsConfig) { console.error(new Error('jsConfig-environment-variable is not set')); return;}  //process.exit(1);
+    if(!process.env.jsConfig) { console.error(Error('jsConfig-environment-variable is not set')); return;}  //process.exit(1);
     strConfig=process.env.jsConfig||'';
   }
   else{
@@ -131,6 +132,8 @@ var flow=( function*(){
     // Detecting if the config-file has changed since last time (might be usefull to speed up things when the program is auto started)
   var strMd5Config=md5(strConfig);
   eval(strConfig);
+  if(typeof strSalt=='undefined') {console.error("typeof strSalt=='undefined'"); return; }
+  
   var redisVar='str'+ucfirst(strAppName)+'Md5Config';
   var [err,tmp]=yield* cmdRedis(flow, 'GET',[redisVar]);
   var boNewConfig=strMd5Config!==tmp; 
@@ -194,6 +197,8 @@ var flow=( function*(){
   }
   regexpPakoJS=RegExp('^/bower_components/pako/dist/pako(|_deflate|_inflate)'); //siteSpecific
 
+
+    // Write files to Cache
   CacheUri=new CacheUriT();
   StrFilePreCache=['filter.js', 'lib.js', 'libClient.js', 'client.js', 'stylesheets/style.css', 'lib/foundOnTheInternet/zip.js', 'lib/foundOnTheInternet/sha1.js'];
   StrFilePreCache=StrFilePreCache.concat(StrPako);
@@ -207,7 +212,14 @@ var flow=( function*(){
     fs.watch('.', makeWatchCB('.', ['filter.js', 'client.js', 'libClient.js', 'lib.js']) );
     fs.watch('stylesheets', makeWatchCB('stylesheets', ['style.css']) );
   }
+
+    // Write manifest to Cache
+  var myMySql=new MyMySql(mysqlPool);
+  var [err]=yield* createManifestNStoreToCacheFrDB(flow, myMySql);
+  myMySql.commitNRelease();
+  if(err) {  console.error(err.message);  return;}
   
+
     // Read index template and do some initial insertions of data, then calc its hash.
   var err, buf; fs.readFile('views/index.html', function(errT, bufT) {  err=errT; buf=bufT;  flow.next();   });  yield;  if(err) return [err];
   app.strIndexTemplate=buf.toString();
@@ -229,18 +241,20 @@ var flow=( function*(){
   var luaCountFunc=`local strHash=redis.call('GET',KEYS[1]);     if(strHash==ARGV[1]) then return 1; else redis.call('SET',KEYS[1],ARGV[1]); return 0; end;`;
   var [err, boHashTemplateMatch]=yield* cmdRedis(flow, 'EVAL',[luaCountFunc, 1, redisVar, strHashTemplate]);
   if(!boHashTemplateMatch){
-    var myMySql=new MyMySql(mysqlPool);
+    //var myMySql=new MyMySql(mysqlPool);
     var {versionTab, pageTab}=TableName;
     var sql=`UPDATE `+pageTab+` p JOIN `+versionTab+` v ON p.idPage=v.idPage SET p.tModCache=FROM_UNIXTIME(1), v.tModCache=FROM_UNIXTIME(1), v.strHash='template changed' WHERE p.boOR;`, Val=[];
     var [err, results]=yield* myMySql.query(flow, sql, Val);  if(err) {  res.out500(err); return; }
     myMySql.fin();
   }
 
-  var StrCookiePropProt=["HttpOnly", "Path=/","max-age="+3600*24*30];
-  //if(boDO) { StrCookiePropProt.push("secure"); }
-  if(!boLocal || boUseSelfSignedCert) StrCookiePropProt.push("secure");
+  var StrCookiePropProt=["HttpOnly", "Path=/", "Max-Age="+3600*24*30];
+  //if(boDO) { StrCookiePropProt.push("Secure"); }
+  if(!boLocal || boUseSelfSignedCert) StrCookiePropProt.push("Secure");
   var StrCookiePropStrict=StrCookiePropProt.concat("SameSite=Strict"),   StrCookiePropLax=StrCookiePropProt.concat("SameSite=Lax"),   StrCookiePropNormal=StrCookiePropProt.concat("SameSite=None");
   app.strCookiePropStrict=";"+StrCookiePropStrict.join(';');  app.strCookiePropLax=";"+StrCookiePropLax.join(';');  app.strCookiePropNormal=";"+StrCookiePropNormal.join(';');
+  //'Expires='+new Date(new Date().getTime()+3600*24*365*1000).toUTCString()
+  //'Max-Age='+3600*24*365
 
   handler=function(req, res){
     req.flow=(function*(){
@@ -340,7 +354,8 @@ var flow=( function*(){
       //if(pathName=='/'+leafPageLoadBE){ var reqPageLoadBE=new ReqPageLoadBE(objReqRes);  yield* reqPageLoadBE.go();    }
       if(pathName=='/'+leafBE){ var reqBE=new ReqBE(objReqRes);  yield* reqBE.go();    }
       //else if(pathName.indexOf('/image/')==0){  yield* reqImage.call(objReqRes);   } //RegExp('^/image/').test(pathName)
-      else if(regexpLib.test(pathName) || regexpLooseJS.test(pathName) || regexpPakoJS.test(pathName) || pathName=='/conversion.html'){    yield* reqStatic.call(objReqRes);   }
+      else if(regexpLib.test(pathName) || regexpLooseJS.test(pathName) || regexpPakoJS.test(pathName) || pathName=='/conversion.html' || pathName=='/'+leafManifest){    yield* reqStatic.call(objReqRes);   }
+      //else if(pathName=='/'+leafManifest){    yield* reqManifest.call(objReqRes);   }
       else if(regexpImage.test(pathName)){    yield* reqMediaImage.call(objReqRes);    }
       else if(regexpVideo.test(pathName)){  yield* reqMediaVideo.call(objReqRes);    }
       else if(pathName=='/monitor.html'){   yield* reqMonitor.call(objReqRes);  }
