@@ -103,6 +103,7 @@ var divReCaptchaExtend=function(el){
     document.head.myAppend(scriptRecaptcha);
   }
   el.setUp=function(){
+    //if(boDbg) return;
     if(typeof grecaptcha=='undefined') {const tmp="typeof grecaptcha=='undefined'"; setMess(tmp); console.log(tmp); return; }
     if(!('render' in grecaptcha)) {const tmp="!('render' in grecaptcha)"; setMess(tmp); console.log(tmp); return; }
     if(el.children.length==0){    grecaptcha.render(el, {sitekey:strReCaptchaSiteKey});    } else grecaptcha.reset();
@@ -196,32 +197,7 @@ var createColJIndexNamesObj=function(arrName){
 }
 
 
-//var spanMessageTextCreate=function(){
-  //var el=createElement('span');
-  //var spanInner=createElement('span');
-  //el.myAppend(spanInner, imgBusy.hide())
-  //el.resetMess=function(time){
-    //clearTimeout(messTimer);
-    //if(typeof time =='number') { messTimer=setTimeout('resetMess()',time*1000); return; }
-    //spanInner.myText(' ');
-    //imgBusy.hide();
-  //}
-  //el.setMess=function(str,time,boRot){
-    //spanInner.myText(str);
-    //clearTimeout(messTimer);
-    //if(typeof time =='number')     messTimer=setTimeout('resetMess()',time*1000);
-    //imgBusy.toggle(Boolean(boRot));
-  //};
-  //el.setHtml=function(str,time,boRot){
-    //spanInner.myHtml(str);
-    //clearTimeout(messTimer);
-    //if(typeof time =='number')     messTimer=setTimeout('resetMess()',time*1000);
-    //imgBusy.toggle(Boolean(boRot));
-  //};
-  //var messTimer;
-  //el.addClass('message');
-  //return el;
-//}
+
 var divMessageTextCreate=function(){
   var spanInner=createElement('span');
   var imgBusyLoc=imgBusy.cloneNode().css({zoom:'65%','margin-left':'0.4em'}).hide();
@@ -284,19 +260,19 @@ var pageViewExtend=function(el){
   el.toString=function(){return 'pageView';}
   
   el.setUp=function(){
-    var tmp=objPage.tMod; el.spanLastMod.myText(UTC2TimeOrDate(tmp)).prop('title','Last Modified:\n'+UTC2JS(tmp));
-    var tCreated=objPage.tCreated; el.spanCreated.myText(UTC2TimeOrDate(tCreated)).prop('title','Created:\n'+UTC2JS(tCreated));
-    //spanTModNCreated.toggle(Boolean(objPage.tMod));
-    divLastModW.toggle(Boolean(objPage.tMod));
-    divCreatedW.toggle(tCreated>1); // tCreated==1 means that it is unknown (and should be hidden)
+    var {tMod, tCreated}=objPage; el.spanLastMod.myText(date2ToSuitableString(tMod)).prop('title','Last Modified:\n'+tMod);
+    el.spanCreated.myText(date2ToSuitableString(tCreated)).prop('title','Created:\n'+tCreated);
+    divLastModW.toggle(Boolean(tMod));
+    divCreatedW.toggle(tCreated>1000); // tCreated==1000 means that it is unknown (and should be hidden)
     
   }
   el.setDetail=function(){
     var strNR='',  str='';
     if(matVersion.length){
       var ver=arrVersionCompared[1], rev=ver-1;
-      var r=matVersion[rev];
-      strNR='v'+ver+'/'+nVersion;  str=r[1]+' <b><i>'+r[2]+'</i></b>';//+mySwedDate(r[0]);
+      //var r=matVersion[rev];  strNR='v'+ver+'/'+nVersion;  str=r[1]+' <b><i>'+r[2]+'</i></b>';//+mySwedDate(r[0]);
+      var {summary, signature}=matVersion[rev];
+      strNR='v'+ver+'/'+nVersion;  str=summary+' <b><i>'+signature+'</i></b>';//+mySwedDate(r[0]);
     }
     el.spanNR.myHtml(strNR);  spanDetail.myHtml(str);
   }
@@ -514,6 +490,7 @@ var adminMoreDivExtend=function(el){
   el.toString=function(){return 'adminMoreDiv';}
   el.setBUNeededInfo=function(){
     var {tModLast, pageTModLast, tLastBU}=objSetting;
+    //if(!(tLastBU instanceof Date)) tLastBU=new Date(tLastBU);
     var boBUNeeded=tModLast>tLastBU,     strTmp='tLastBU: '+swedTime(tLastBU)+', tModLast: '+swedTime(tModLast)+' ('+pageTModLast+')';
     aBUFilesToComp.prop('title', strTmp).css({'background':boBUNeeded?'red':''});
   }
@@ -530,7 +507,8 @@ var adminMoreDivExtend=function(el){
     var strType=this.strType;
     var b=this, boOn=b.myToggle();
     var o={Id:[objPage.idPage]}; o[strType]=boOn;
-    var vec=[['myChMod',o]];   myFetch('POST',vec); 
+    //var vec=[['myChMod',o]]; myFetch('POST',vec).then(a=>{var [e,r]=a; if(e) setMess(e.message);}).catch(err=> {setMEss('ee');});
+    var vec=[['myChMod',o]]; myFetch('POST',vec);
     //setButMod.call(b, boOn);
   }
   var butModRead=createElement('button-toggle').myHtml(strPublicRead).prop({title:'Public read access', strType:'boOR'}).on('click', clickModF );  
@@ -650,38 +628,44 @@ var dumpDivExtend=function(el){
 
 var tabBUDivExtend=function(el){
   el.toString=function(){return 'tabBUDiv';}
-  el.setUp=function(arrStr,objFetch){
+  el.setUp=function(arrStr,objFetchChanged){
     table.empty();
-    var StrOld=arrStr[0], StrDeleted=arrStr[1], StrReuse=arrStr[2], StrFetch=arrStr[3], StrNew=arrStr[4];
-    var nOld=StrOld.length, nDel=StrDeleted.length, nReuse=StrReuse.length, nFetch=StrFetch.length, nNew=StrNew.length;
+    var StrOld=arrStr[0], StrDeleted=arrStr[1], StrReuse=arrStr[2], StrFetchChanged=arrStr[3], StrFetchNew=arrStr[4], StrNew=arrStr[5];
+    var nOld=StrOld.length, nDel=StrDeleted.length, nReuse=StrReuse.length, nFetchChanged=StrFetchChanged.length, nFetchNew=StrFetchNew.length, nNew=StrNew.length;
 
     var tha=createElement('th').myText('Deleted ('+nDel+')').css({background:'orange'});
     var thb=createElement('th').myText('Reused ('+nReuse+')').css({background:'yellow'});
-    var thc=createElement('th').myText('Fetch ('+nFetch+')').css({background:'lightgreen'});
-    table.myAppend(createElement('tr').myAppend(tha,thb,thc));
+    var thc=createElement('th').myText('Fetch Changed ('+nFetchChanged+')').css({background:'lightgreen'});
+    var thd=createElement('th').myText('Fetch New ('+nFetchNew+')').css({background:'lightblue'});
+    table.myAppend(createElement('tr').myAppend(tha,thb,thc,thd));
 
     //var nMax=Math.max(nOld,nNew);
-    var nMax=Math.max(nDel,nReuse,nFetch);
+    var nMax=Math.max(nDel,nReuse,nFetchChanged, nFetchNew);
     for(var i=0;i<nMax;i++){
       var r=createElement('tr');
-      var tda=createElement('td'), tdb=createElement('td'), tdc=createElement('td');
+      var tda=createElement('td'), tdb=createElement('td'), tdc=createElement('td'), tdd=createElement('td');
       var strNameA='', strColorA=''; if(i<nDel) {strNameA=StrDeleted[i]; strColorA='orange'; }
 
       var strNameB='', strColorB=''; if(i<nReuse) {strNameB=StrReuse[i]; strColorB='yellow'; }
       var strNameC='', strColorC='';
-      if(i<nFetch){
-        strNameC=StrFetch[i];
-        if(strNameC in objFetch) {var tmp=objFetch[strNameC];
-          if(tmp.dSize) strNameC+=', Δsize='+tmp.dSize; 
-          if(tmp.dUnix) { var strT=getSuitableTimeUnitStr(tmp.dUnix);  strNameC+=',  Δt='+strT; }
+      if(i<nFetchChanged){
+        strNameC=StrFetchChanged[i];
+        if(strNameC in objFetchChanged) {var {dSize,dateNew,dateOld,dUnix}=objFetchChanged[strNameC];
+          if(dSize) strNameC+=', Δsize='+dSize; 
+          if(dUnix) { 
+            var strT=getSuitableTimeUnitStr(dUnix);  strNameC+=',  Δt='+strT; 
+            tdc.prop('title','Old: '+dateOld+"\u000d"+'New: '+dateNew);
+          }
         }
         strColorC='lightgreen';
       }
+      var strNameD='', strColorD=''; if(i<nFetchNew) {strNameD=StrFetchNew[i]; strColorD='lightblue'; }
       tda.myText(strNameA).css({background:strColorA}); 
       tdb.myText(strNameB).css({background:strColorB}); 
       tdc.myText(strNameC).css({background:strColorC}); 
+      tdd.myText(strNameD).css({background:strColorD}); 
 
-      r.myAppend(tda,tdb,tdc);
+      r.myAppend(tda, tdb, tdc, tdd);
       table.myAppend(r);
     }
     
@@ -693,47 +677,42 @@ var tabBUDivExtend=function(el){
 
 
 var tabBUSumExtend=function(el){
-  el.setUp=function(arrN){
-    //var StrOld=arrStr[0], StrDeleted=arrStr[1], StrReuse=arrStr[2], StrFetch=arrStr[3], StrNew=arrStr[4];
-    //var nOld=StrOld.length, nDel=StrDeleted.length, nReuse=StrReuse.length, nFetch=StrFetch.length, nNew=StrNew.length;
-    for(var i=0;i<nRow;i++){
-      var r=R[i], jNn=1, leftMargin=0;
-      //if(i%2==0){        jNn=1; leftMargin=0;      }else{        jNn=1; leftMargin=nReuse;      }
+  el.setUp=function(nOld,nNew,arrN){
+    var iToFetchNew=3, iToBeDeleted=0;
+    for(var i=0;i<nAction;i++){
       var len=arrN[i];
-      //r.querySelector('td:nth-of-type('+(jNn+1)+')').myText(len);
-      r.children[jNn].myText(len);
-      //r.querySelector('td:nth-of-type(3)>div').css({width:len+'px','margin-left':leftMargin+'px'});
-      r.children[2].querySelector('div').css({width:len+'px','margin-left':leftMargin+'px'});
-      //var arrTmp; if(arrStr[i].length>10) arrTmp=arrStr[i].slice(0,10).concat('...'); else arrTmp=arrStr[i];
-      //DivPop[i].myHtml(arrTmp.join('<br>'));
-
+      var lenT=len; if(i==iToFetchNew) lenT=0;   tdOld.children[i].css({width:lenT+'px'});
+      var lenT=len; if(i==iToBeDeleted) lenT=0;   tdNew.children[i].css({width:lenT+'px'});
+      tdColor.children[i*3+2].myText(len);
+      tdOldNum.myText(nOld);
+      tdNewNum.myText(nNew);
     }
   }
-  var StrLabel=['Old Zip','To be deleted','To be reused','To fetch (changed)','To fetch (new)','New Zip'], nRow=StrLabel.length;
-  //var StrColor=['red','orange','yellow','lightgreen','lightgreen','lightblue'];
-  var StrColor=['black','black','black','black','black','black'];
+  var StrAction=['toBeDeleted','toBeReused','toFetchChanged','toFetchNew'], nAction=StrAction.length;
+  var StrActionLabel=['To be deleted','To be reused','To fetch (changed)','To fetch (new)'];
+  var StrActionColor=['orange','yellow','lightgreen','lightblue'];
+  var tdOld=createElement('td'), tdNew=createElement('td'), tdColor=createElement('td').attr({colspan:"3"});
+  for(var i=0;i<nAction;i++){
+    var divAction=createElement('div').css({'background':StrActionColor[i],'height':'20px', width:'25%', display:'inline-block'});
+    tdOld.myAppend(divAction);
+    tdNew.myAppend(divAction.cloneNode());
+    var divColor=createElement('span').css({'background':StrActionColor[i],'height':'1em', width:'1em', display:'inline-block', 'margin-right':'0.4em'});
+    var spanColor=createElement('span').myText(StrActionLabel[i]+": ");
+    var spanN=createElement('span').css({'margin-right':'0.4em', 'font-weight':'bold'});
+    tdColor.myAppend(divColor, spanColor, spanN);
+  }
+
+  var tdOldNum=createElement('td'), tdNewNum=createElement('td');
+  var trOld=createElement('tr').myHtml("<td>Old Zip</td>").myAppend(tdOldNum, tdOld);
+  var trNew=createElement('tr').myHtml("<td>New Zip</td>").myAppend(tdNewNum, tdNew);
+  var trColor=createElement('tr').myAppend(tdColor);
+
   //var DivPop=[]; //, Button=([]);
   var tHead=createElement('thead').myHtml("<tr><th></th><th>nFiles</th></tr>");
   var tBody=createElement('tbody');
-  el.myAppend(tHead,tBody);
+  tBody.myAppend(trOld, trNew, trColor);
+  el.myAppend(tHead, tBody);
 
-  for(var i=0;i<nRow;i++){
-    var r=createElement('tr');
-    for(var j=0;j<5;j++){
-      var td=createElement('td');  r.append(td);
-      if(j==2){
-        var div=createElement('div').css({'background':StrColor[i],'height':'20px'});
-        td.append(div);
-      }
-      if(j==0){    
-        td.append(StrLabel[i]);
-      }
-    }
-    //var divPop=createElement('div'); DivPop.push(divPop);
-    //popupHover(r,divPop);
-    tBody.append(r);
-  }
-  var R=tBody.childNodes;
   el.css({'border-collapse':'collapse'});
   return el;
 }
@@ -768,37 +747,26 @@ var diffBackUpDivExtend=function(el){
 
 
 
-  var inpSelChange=function*(){  
+  var inpSelChange=async function(arrOrg){ 
     ul.empty().show();
     //saveButton.prop("disabled",true);
-    var arrOrg=this.files;  
     var file=arrOrg[0];
     EntryLocal={}; // Create EntryLocal
-    
-    var semCB=0, semY=0, zipReader;  // Create zipReader
-    zip.createReader(new zip.BlobReader(file), function(zipReaderT) {
-      zipReader=zipReaderT;
-      if(semY) { flowDiff.next(); } semCB=1;
-    }, onerror);
-    if(!semCB) { semY=1; yield;}
 
-    var semCB=0, semY=0, EntryTmp;   // Create EntryTmp
-    zipReader.getEntries(function(EntryT) {
-      EntryTmp=EntryT;
-      if(semY) { flowDiff.next(); } semCB=1;
-    }, onerror);
-    if(!semCB) { semY=1; yield;}
+    var blobReader=new zip.BlobReader(file);
+    var [err, zipReader]=await new Promise(resolve=>{   zip.createReader(blobReader, zipReaderT=>resolve([null,zipReaderT]), err=>resolve([err]));   }); 
+    if(err) return [err];
 
-    EntryTmp.forEach(function(entry) {
-      EntryLocal[entry.filename]=entry;
-    });  
+    var [err, EntryTmp]=await new Promise(resolve=>{   zipReader.getEntries( EntryT=>resolve([null,EntryT]), err=>resolve([err]));    });   if(err) return [err];
+
+
+    EntryTmp.forEach(function(entry){  EntryLocal[entry.filename]=entry;   });  
 
     StrOld=Object.keys(EntryLocal); //var li=createElement('li').myAppend('Old zip-file has <b>'+nOld+'</b> files.'); ul.append(li);
-    myFetch('POST',[['getImageInfo',{},function(data){ flowDiff=getImageInfoRet.call(this,data);  flowDiff.next();}]]);  
-  }
 
+    var [err, data]=await new Promise(resolve=>{ myFetch('POST',[['getImageInfo',{},data=>resolve([null,data]) ]]);  });
+    if(err) return [err];
 
-  var getImageInfoRet=function*(data){
     var FileNewInfo=data.FileInfo, FileNew={};
     for(var i=0;i<FileNewInfo.length;i++){ FileNew[FileNewInfo[i].imageName]=FileNewInfo[i]; } 
     StrNew=Object.keys(FileNew);
@@ -807,23 +775,19 @@ var diffBackUpDivExtend=function(el){
     if(creationMethod == "Blob") {
       writer=new zip.BlobWriter();
     } else {
-      var semCB=0, semY=0;
-      createTempFile(function(fileEntryT) {
-        zipFileEntry=fileEntryT;
-        if(semY) { flowDiff.next(); } semCB=1;
-      }, onerror);
-      if(!semCB) { semY=1; yield;}
+
+      var [err, zipFileEntryT]=await new Promise(resolve=>{   createTempFile(fileEntryT=>resolve([null, fileEntryT]), err=>resolve([err]));   });
+      if(err) return [err];
+      zipFileEntry=zipFileEntryT;
+
       writer=new zip.FileWriter(zipFileEntry);
     }
-    var semCB=0, semY=0;  // Create zipWriter
-    zip.createWriter(writer, function(writerT) {
-      zipWriter=writerT;
-      if(semY) { flowDiff.next(); } semCB=1;
-    }, onerror);
-    if(!semCB) { semY=1; yield;}
 
+      // Create zipWriter
+    var [err, zipWriterT]=await new Promise(resolve=>{   zip.createWriter(writer, writerT=>resolve([null,writerT]), err=>resolve([err])); }); if(err) return [err];
+    zipWriter=zipWriterT;
 
-    StrDeleted=[]; StrReuse=[]; StrFetch=[]; objFetch={};   
+    StrDeleted=[]; StrReuse=[]; StrFetchAll=[]; StrFetchChanged=[]; StrFetchNew=[]; objFetchChanged={};   
 
     for(var key in EntryLocal){
       if(!(key in FileNew)){ StrDeleted.push(key); }
@@ -832,87 +796,81 @@ var diffBackUpDivExtend=function(el){
     var progress=createElement('progress'), iNew=0, imgDoneLast=imgDone.cloneNode();
     var li=createElement('li').myText('Extracting meta data from the selected file (names, modification dates and file-sizes): ').myAppend(progress, imgDoneLast); ul.append(li);
     
-    for(var key in FileNew){  // Create StrReuse, StrFetch and objFetch
+    for(var key in FileNew){  // Create StrReuse, StrFetchChanged, StrFetchNew and objFetchChanged
       if(key in EntryLocal){
-        var entryLocal = EntryLocal[key], blob;
+        var entryLocal = EntryLocal[key];
         var writer = new zip.BlobWriter(entryLocal);
-        var semCB=0, semY=0;
-        entryLocal.getData(writer, function(blobT) {
-          blob=blobT;
-          if(semY) { flowDiff.next(); } semCB=1;
-        }, onprogress);
-        if(!semCB) { semY=1; yield;}
+
+        //var [err, blob]=await new Promise(resolve=>{   entryLocal.getData(writer, blobT=>resolve([null,blobT]), onprogress); }); if(err) return [err];
+
         //var dateOld=new Date(entryLocal.lastModDate);
         var size=entryLocal.uncompressedSize;
         var dosRaw=entryLocal.lastModDateRaw, dosDate=dosRaw>>>16, dosTime=dosRaw&0xffff, dateOld=dosTime2tUTC(dosDate,dosTime);
-        var dateOldUnix=dateOld.toUnix();
+        //var dateOldUnix=dateOld.toUnix();
       
 // local database 1411715164
-        var dSize=FileNew[key].size-size, dUnix=FileNew[key].tCreated-dateOldUnix;
+        var dSize=FileNew[key].size-size, dateNew=FileNew[key].tCreated, dUnix=dateNew-dateOld; dUnix=dUnix/1000;
         //if(FileNew[key].size==size && FileNew[key].tCreated>>1==dateOldUnix>>1){  // Division by two (>>1) because zip uses microsoft time 
         if(dSize==0 && dUnix>>1==0){  // Division by two (>>1) because zip uses microsoft time 
           StrReuse.push(key);
         }else{
-          StrFetch.push(key);
-          objFetch[key]={dSize,dUnix};
+          objFetchChanged[key]={dSize,dUnix,dateNew,dateOld};
+          StrFetchChanged.push(key);
         }
       } else {
-        StrFetch.push(key);
+        StrFetchNew.push(key);
       }
       iNew++; progress.attr({value:iNew,max:StrNew.length});
     }
     imgDoneLast.show();
 
       // Display tab
-    var ArrStr=[StrOld, StrDeleted, StrReuse, StrFetch, StrNew];
-    var tabBUSum=tabBUSumExtend(createElement('table')), nChanged=Object.keys(objFetch).length;
-    tabBUSum.setUp([StrOld.length, StrDeleted.length, StrReuse.length, nChanged, StrFetch.length-nChanged, StrNew.length]);
-    tabBUDiv.setUp(ArrStr, objFetch);
+    var ArrStr=[StrOld, StrDeleted, StrReuse, StrFetchChanged, StrFetchNew, StrNew];
+    var tabBUSum=tabBUSumExtend(createElement('table'));
+    tabBUSum.setUp(StrOld.length, StrNew.length, [StrDeleted.length, StrReuse.length, StrFetchChanged.length, StrFetchNew.length]);
+    tabBUDiv.setUp(ArrStr, objFetchChanged);
     var buttonDetail=createElement('button').myText('Details').on('click',function(){
       doHistPush({view:tabBUDiv});
       tabBUDiv.setVis();
     });
     var li=createElement('li').myAppend('Summary: ( ',buttonDetail,' )',tabBUSum); ul.append(li);
 
-
+    StrFetchAll=StrFetchChanged.concat(StrFetchNew);
       // Check if it is OK to abort
-    if(StrFetch.length==0 && StrDeleted.length==0) {
-      var li=createElement('li').myText('Aborting since your local files are up to date.'); ul.append(li); progress.detach();
-      return;
+    if(StrFetchAll.length==0 && StrDeleted.length==0) {
+      var strMess='Aborting since your local files are up to date.';
+      var li=createElement('li').myText(strMess); ul.append(li); progress.detach();
+      return [null];
     }
 
     //if(confirm("Continue ?")) {} else {progress.detach(); return;}
-    var buttonContinue=createElement('button').myText('Continue').on('click',function(){
-      flowDiff=continueFunc.call(this);  flowDiff.next(); buttonContinue.prop("disabled",true);
+    var buttonContinue=createElement('button').myText('Continue').on('click',async function(){
+      var [err]=await continueFunc(); if(err) return [err];
+      buttonContinue.prop("disabled",true);
     });
     var li=createElement('li').myAppend(buttonContinue); ul.append(li); progress.detach();
- 
+    return [null];
   }
 
-  var continueFunc=function*(){    
+  var continueFunc=async function(){
     var progress=createElement('progress')
       // Writing fresh files
     var iAdded=0, imgDoneLast=imgDone.cloneNode();
     var li=createElement('li').myText('Reusing (adding) old images to new zip: ').myAppend(progress, imgDoneLast); ul.append(li);
-    //for(var key in StrReuse){
     for(var i=0;i<StrReuse.length;i++){
       var key=StrReuse[i];
-      var entryLocal = EntryLocal[key], blob;
+      var entryLocal = EntryLocal[key];
       var writer = new zip.BlobWriter(entryLocal);
-      var semCB=0, semY=0;
-      entryLocal.getData(writer, function(blobT) {
-        blob=blobT;
-        if(semY) { flowDiff.next(); } semCB=1;
-      }, onprogress);
-      if(!semCB) { semY=1; yield;}
+
+      var [err, blob]=await new Promise(resolve=>{   entryLocal.getData(writer, blobT=>resolve([null,blobT]), onprogress); }); if(err) return [err];
+
       var date=new Date(entryLocal.lastModDate), size=entryLocal.uncompressedSize;
-    
-      var semCB=0, semY=0;
-      zipWriter.add(key, new zip.BlobReader(blob), function() {
-        if(semY) { flowDiff.next(); } semCB=1;
-      }, onprogress,  {lastModDate:date});
-      if(!semCB) { semY=1; yield;}
+
+      var blobReader=new zip.BlobReader(blob);
+      var [err]=await new Promise(resolve=>{   zipWriter.add(key, blobReader, ()=>resolve([null]), onprogress, {lastModDate:date}); }); if(err) return [err];
+
       iAdded++;  progress.attr({value:iAdded,max:StrReuse.length}); 
+      return [null];
     }
     imgDoneLast.show();
 
@@ -929,74 +887,51 @@ var diffBackUpDivExtend=function(el){
     xhr.setRequestHeader('X-Requested-With','XMLHttpRequest'); 
     xhr.responseType = 'blob';
     xhr.addEventListener("progress", progressHandlingFunction, false);
-    xhr.onload=function(e) {
-      if(this.status!=200) { debugger; alert('error'); return;}
-      dataFetched=this.response;
-      if(semY) { flowDiff.next(); } semCB=1;
-    };
-    var jsonTmp=JSON.stringify({arrName:StrFetch});
-    xhr.send(jsonTmp); 
-    if(!semCB) { semY=1; yield;}
+    var jsonTmp=JSON.stringify({arrName:StrFetchAll});
+
+    var [err, dataFetched]=await new Promise(resolve=>{   
+      xhr.onload=function(e) {
+        if(this.status!=200) resolve([new Error('this.status!=200')]);
+        resolve([null, this.response]);
+      };
+      xhr.send(jsonTmp); 
+    }); if(err) return [err];
 
     
     // var headers={'X-Requested-With':'XMLHttpRequest'};
-    // var jsonTmp=JSON.stringify({arrName:StrFetch});
+    // var jsonTmp=JSON.stringify({arrName:StrFetchAll});
     // var argFetch={method:'POST', headers, body:jsonTmp}
-    // try{
-    //   var response= await fetch('BUimage', argFetch);
-    //   var dataFetched=await response.blob();
-    // }catch(e){ var tmp='error : '+e;  setMess(tmp); console.log(tmp); }
-    
+    // var [err, response]=await fetch('BUimage', argFetch).toNBP(); if(err) return [err];
 
-    // var headers={'X-Requested-With':'XMLHttpRequest'};
-    // var jsonTmp=JSON.stringify({arrName:StrFetch});
-    // var argFetch={method:'POST', headers, body:jsonTmp}
-    // var semCB=0, semY=0, response;  fetch('BUimage', argFetch).then(function(responseT){response=responseT; if(semY) { flowDiff.next();}});  if(!semCB) { semY=1; yield;}
     // //tmp.on('data',progressHandlingFunction);
-    // var semCB=0, semY=0, dataFetched; response.blob().then(function(dataFetchedT){dataFetched=dataFetchedT; if(semY) { flowDiff.next();}});  if(!semCB) { semY=1; yield;}
-    // //var tmp='error : '+e;  setMess(tmp); console.log(tmp); 
+    // var [err, dataFetched]=await response.blob().toNBP(); if(err) return [err];
 
     imgDoneLast.show();
 
-    var semCB=0, semY=0, zipReader;  // Create zipReader
-    zip.createReader(new zip.BlobReader(dataFetched), function(zipReaderT) {
-      zipReader=zipReaderT;
-      if(semY) { flowDiff.next(); } semCB=1;
-    }, onerror);
-    if(!semCB) { semY=1; yield;}
+    var blobReader=new zip.BlobReader(dataFetched);
+    var [err, zipReader]=await new Promise(resolve=>{   zip.createReader(blobReader, zipReaderT=>resolve([null,zipReaderT]), err=>resolve([err]));   }); 
+    if(err) return [err];
 
-    var semCB=0, semY=0, EntryTmp;   // Create EntryTmp
-    zipReader.getEntries(function(EntryT) {
-      EntryTmp=EntryT;
-      if(semY) { flowDiff.next(); } semCB=1;
-    }, onerror);
-    if(!semCB) { semY=1; yield;}
+    var [err, EntryTmp]=await new Promise(resolve=>{   zipReader.getEntries( EntryT=>resolve([null,EntryT]), err=>resolve([err]));    });   if(err) return [err];
 
     var EntryFetched={};
-    EntryTmp.forEach(function(entry) {
-      EntryFetched[entry.filename]=entry;
-    });
+    EntryTmp.forEach(function(entry) {  EntryFetched[entry.filename]=entry;  });
 
     var iAdded=0, imgDoneLast=imgDone.cloneNode();
     var li=createElement('li').myAppend('Adding the fetched images to new zip: ', progress, imgDoneLast); ul.append(li);
     for(var key in EntryFetched){
-      var entry = EntryFetched[key], blob;
+      var entry = EntryFetched[key];
       
       var writer = new zip.BlobWriter(entry);
-      var semCB=0, semY=0;
-      entry.getData(writer, function(blobT) {
-        blob=blobT;
-        if(semY) { flowDiff.next(); } semCB=1;
-      }, onprogress);
-      if(!semCB) { semY=1; yield;}
+
+      var [err, blob]=await new Promise(resolve=>{   entry.getData(writer, blobT=>resolve([null,blobT]), onprogress); }); if(err) return [err];
+
       var date=new Date(entry.lastModDate);
-      
-      var semCB=0, semY=0;
-      zipWriter.add(key, new zip.BlobReader(blob), function() {
-        if(semY) { flowDiff.next(); } semCB=1;
-      }, onprogress,  {lastModDate:date});
-      if(!semCB) { semY=1; yield;}
-      iAdded++; progress.attr({value:iAdded,max:StrFetch.length});
+
+      var blobReader=new zip.BlobReader(blob);
+      var [err]=await new Promise(resolve=>{   zipWriter.add(key, blobReader, ()=>resolve([null]), onprogress, {lastModDate:date}); }); if(err) return [err];
+
+      iAdded++; progress.attr({value:iAdded,max:StrFetchAll.length});
     }
     var saveButton=createElement('button').myText('Save to disk').on('click',saveFun);  //.prop("disabled",true)
     var li=createElement('li').myAppend(saveButton); ul.append(li);
@@ -1031,7 +966,7 @@ var diffBackUpDivExtend=function(el){
     //saveButton.prop("disabled",true);
   
   }
-  var StrOld, StrDeleted, StrReuse, StrFetch, StrNew, objFetch;
+  var StrOld, StrDeleted, StrReuse, StrFetchAll, StrFetchChanged, StrFetchNew, StrNew, objFetchChanged;
   var regTxt=RegExp('^(.*)\\.txt$');
   var regZip=RegExp(/\.zip$/i);
 
@@ -1048,24 +983,18 @@ var diffBackUpDivExtend=function(el){
 
   var imgHHead=imgHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHHead,createElement('div').myHtml('<p>If the old files\' size and modification date match then they are considered up to date.'));
   var head=createElement('div').myAppend('Differential backup of images',imgHHead).css({'font-weight':'bold'});
-  var strTmpExt=StrImageExt.join(', ');
-  var imgHLoad=imgHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHLoad,createElement('div').myHtml('<p>Accepted file endings: '+strTmpExt+', or zip files containing these formats (no folders in the zip file)'));
+  var imgHLoad=imgHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHLoad,createElement('div').myHtml('<p>Accepted file endings: '+strImageExtWComma+', or zip files containing these formats (no folders in the zip file)'));
   var formFile=createElement('form').prop({enctype:"multipart/form-data"});
   var inpFile=createElement('input').prop({name:"file", type:"file", accept:"application/zip"}).css({background:'lightgrey'}); //multiple
   var ul=createElement('ul');//.hide();
   
-  
-
   var EntryLocal, StrOld;
-  var nFilesUpload;
 
   formFile.myHtml('<b>Select your old backup (zip) file:</b> ').myAppend(inpFile);   formFile.css({display:'inline'});
   el.append(head, formFile, imgHLoad, ul);
 
-  var flowDiff;
-  inpFile.on('change', function(e) {
-    flowDiff=inpSelChange.call(this,e);  flowDiff.next();
-    //inpSelChange.call(this,e);
+  inpFile.on('change', async function(e) {
+    var [err]=await inpSelChange(this.files); if(err) {setMess(err); return;}
   });
 
   return el;
@@ -1075,30 +1004,23 @@ var diffBackUpDivExtend=function(el){
   
 var uploadAdminDivExtend=function(el){
   var progressHandlingFunction=function(e){      if(e.lengthComputable){   progress.attr({value:e.loaded,max:e.total});      }      }
-  var onerror=function(message) {
-    debugger; alert(message);
-  }
   var regTxt=RegExp('^(.*)\\.txt$');
   var sendConflictCheck=function(arrName){
-    var StrTxt={}, StrImage=[];
+    var IdPage=[], StrImageT=[];
     var strKeyDefault=randomHash();
     for(var i=0;i<arrName.length;i++){
       var Match=regTxt.exec(arrName[i]);
       if(Match) { 
-        var tmp=Match[1];
-        var obj=parsePageNameHD(tmp);
-        var siteName=obj.siteName, pageName=obj.pageName;
-        if(siteName.length==0) siteName=strKeyDefault;
-        if(!(siteName in StrTxt)) StrTxt[siteName]=[];
+        var idPagetmp=Match[1], {siteName, pageName}=parsePageNameHD(idPagetmp);
+        var idPagetmpN;  if(siteName.length==0) {siteName=strKeyDefault; idPagetmpN=siteName+":"+pageName;} else idPagetmpN=idPagetmp;
+        IdPage.push(idPagetmpN.toLowerCase());
+        //if(!(siteName in StrTxt)) StrTxt[siteName]=[];
         //StrTxt[siteName].push(pageName);
-        StrTxt[siteName].push(pageName.toLowerCase());
+        //StrTxt[siteName].push(pageName.toLowerCase());
       }
-      else{ StrImage.push(arrName[i]); }  
+      else{ StrImageT.push(arrName[i]); }  
     }
-    //for(var i=0;i<arrName.length;i++){
-    //  var Match=regTxt.exec(arrName[i]); if(Match) { StrTxt.push(Match[1]); }else{ StrImage.push(arrName[i]); }  
-    //}
-    myFetch('POST',[['getPageInfo',{objName:StrTxt, strKeyDefault},sendConflictCheckReturnA],['getImageInfo',{arrName:StrImage},sendConflictCheckReturnB]]);
+    myFetch('POST',[['getPageInfo',{IdPage},sendConflictCheckReturnA],['getImageInfo',{arrName:StrImageT},sendConflictCheckReturnB]]);  // {objName:StrTxt, strKeyDefault}
   }
   var sendConflictCheckReturnA=function(data){ 
     var FileInfo=data.FileInfo, len=FileInfo.length;
@@ -1112,17 +1034,12 @@ var uploadAdminDivExtend=function(el){
       var tmpLab='WARNING!!! These files will be OVERWRITTEN (if you click "Upload")';
       StrConflict.unshift(tmpLab);
       if(StrConflict.length>10) StrConflict.push(tmpLab);
-      setMessHtml(StrConflict.join('<br>'));
+      divMessageText.setHtml(StrConflict.join('<br>'));
     }        
   }
-  var verifyFun2=function(){ 
-    nFilesUpload=arrFile.length;  
-    uploadButton.prop("disabled",!nFilesUpload);
-    sendConflictCheck(arrName);
-  }
   
-  var verifyFun=function*(){    
-    arrOrg=this.files; nOrg=arrOrg.length;
+  var verifyFun=async function(arrOrg){
+    var nOrg=arrOrg.length;
     //name = file.name; size = file.size; type = file.type;
     var regZip=RegExp(/\.zip$/i);
     arrName=[]; arrFile=[];
@@ -1130,31 +1047,22 @@ var uploadAdminDivExtend=function(el){
       var file=arrOrg[i];
       if(regZip.test(file.name) ){ //arrOrg[i].name.match(/\.zip$/i)
 
-        var semCB=0, semY=0, zipReader;
-        zip.createReader(new zip.BlobReader(file), function(zipReaderT) {
-          zipReader=zipReaderT;
-          if(semY) { flowVerify.next(); } semCB=1;
-        }, onerror);
-        if(!semCB) { semY=1; yield;}
+        var blobReader=new zip.BlobReader(file);
+        var [err, zipReader]=await new Promise(resolve=>{   zip.createReader(blobReader, zipReaderT=>resolve([null,zipReaderT]), err=>resolve([err]));   }); 
+        if(err) return [err];
 
-        var semCB=0, semY=0, Entry;
-        zipReader.getEntries(function(EntryT) {
-          Entry=EntryT;
-          if(semY) { flowVerify.next(); } semCB=1;
-        }, onerror);
-        if(!semCB) { semY=1; yield;}
+        var [err, Entry]=await new Promise(resolve=>{   zipReader.getEntries( EntryT=>resolve([null,EntryT]), err=>resolve([err]));    });   if(err) return [err];
 
-        Entry.forEach(function(entry) {
-          arrName.push(entry.filename);
-        });
+        Entry.forEach(function(entry) {   arrName.push(entry.filename);   });
         arrFile.push(file);  
-
       } else {
         arrFile.push(file);
         arrName.push(file.name);   
       }
     }
-    verifyFun2();
+    var boEmpty=arrFile.length==0;    uploadButton.prop("disabled",boEmpty);
+    sendConflictCheck(arrName);
+    return [null];
   }
   var sendFun=function(){
     if(boFormDataOK==0) {alert("This browser doesn't support FormData"); return; };
@@ -1165,7 +1073,6 @@ var uploadAdminDivExtend=function(el){
     }
     
     
-    //var vecIn=[['uploadAdmin', {}], ['page',objPage.pageName], ['tMod',objPage.tMod], ['CSRFCode',CSRFCode]];
     var vecIn=[['uploadAdmin', {}], ['page',objPage.pageName], ['tMod',objPage.tMod], ['CSRFCode',getItem('CSRFCode')]];
     var arrRet=[function(){  progress.hide(); uploadButton.prop("disabled",false);}];
     
@@ -1180,13 +1087,15 @@ var uploadAdminDivExtend=function(el){
     xhr.onprogress=progressHandlingFunction;
     xhr.onload=function() {
       var dataFetched=this.response;
-      var data; try{ data=JSON.parse(this.response); }catch(e){ setMess(e); debugger; return; }
+      //var data; try{ data=JSON.parse(this.response); }catch(e){ setMess(e); debugger; return; }
+      var data=deserialize(this.response);
       
-      var dataArr=data.dataArr;  // Each argument of dataArr is an array, either [argument] or [altFuncArg,altFunc]
+      var dataArr=data.dataArr;  // Each element of dataArr looks like [argument] or [altFuncArg,altFunc]
       delete data.dataArr;
       beRet(data);
       for(var i=0;i<dataArr.length;i++){
         var r=dataArr[i];
+        if(typeof r=="undefined") continue;
         //if(r.length!=1) { window[r[1]].call(window,r[0]);   }
         if(r.length==1) {var f=arrRet[i]; if(f) f(r[0]);} else { window[r[1]].call(window,r[0]);   }
       }
@@ -1201,8 +1110,8 @@ var uploadAdminDivExtend=function(el){
   
   }
 
-  var strTmpExt=StrImageExt.join(', ');
-  var imgHUpload=imgHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHUpload,createElement('div').myText('Accepted file endings: '+strTmpExt+', txt or zip files containing these formats (no folders in the zip file)'));
+  app.strImageExtWComma=StrImageExt.join(', ');
+  var imgHUpload=imgHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHUpload,createElement('div').myText('Accepted file endings: '+strImageExtWComma+', txt or zip files containing these formats (no folders in the zip file)'));
 
 
   var formFile=createElement('form').prop({enctype:"multipart/form-data"});
@@ -1211,15 +1120,15 @@ var uploadAdminDivExtend=function(el){
   var uploadButton=createElement('button').myText('Upload').prop("disabled",true);
   var progress=createElement('progress').prop({max:100, value:0}).hide();
   
-  var arrOrg, arrName, arrFile, StrConflict;
-  var nOrg, nFilesUpload;
+  var arrName, arrFile, StrConflict;  //arrOrg, 
 
   formFile.myHtml('<b>Upload:</b> ').myAppend(inpFile).css({display:'inline'});
   el.append(formFile, uploadButton, imgHUpload, progress);
 
-  var flowVerify;
-  inpFile.on('change', function(e) {
-    flowVerify=verifyFun.call(this,e);  flowVerify.next();
+  //var flowVerify;
+  inpFile.on('change', async function(e) {
+    //flowVerify=verifyFun.call(this,e);  flowVerify.next();
+    var [err]=await verifyFun(this.files); if(err) {setMess(err); return;}
   }).on('click',function(){inpFile.value=""; uploadButton.prop("disabled",true);});
   uploadButton.on('click',sendFun);
 
@@ -1264,8 +1173,6 @@ var uploadUserDivExtend=function(el){
     
     
     
-    
-    //var vecIn=[['uploadUser', {}], ['page',objPage.pageName], ['tMod',objPage.tMod], ['CSRFCode',CSRFCode]];
     var vecIn=[['uploadUser', {}], ['page',objPage.pageName], ['tMod',objPage.tMod], ['CSRFCode',getItem('CSRFCode')]];
     var arrRet=[function(data){if('strMessage' in data) setMess(data.strMessage); progress.invisible(); uploadButton.prop("disabled",false);}];
     formData.append('vec', JSON.stringify(vecIn));
@@ -1279,13 +1186,15 @@ var uploadUserDivExtend=function(el){
     xhr.onprogress=progressHandlingFunction;
     xhr.onload=function() {
       var dataFetched=this.response;
-      var data; try{ data=JSON.parse(this.response); }catch(e){ setMess(e); debugger; return; }
+      //var data; try{ data=JSON.parse(this.response); }catch(e){ setMess(e); debugger; return; }
+      var data=deserialize(this.response);
       
-      var dataArr=data.dataArr;  // Each argument of dataArr is an array, either [argument] or [altFuncArg,altFunc]
+      var dataArr=data.dataArr;  // Each element of dataArr looks like [argument] or [altFuncArg,altFunc]
       delete data.dataArr;
       beRet(data);
       for(var i=0;i<dataArr.length;i++){
         var r=dataArr[i];
+        if(typeof r=="undefined") continue;
         //if(r.length) { if('strMessage' in r[0]) setMess(r[0].strMessage);   }
         if(r.length==1) {var f=arrRet[i]; if(f) f(r[0]);} else { window[r[1]].call(window,r[0]);   }
       }
@@ -1479,7 +1388,7 @@ var clickSetParentFilterI=function(){
 }
 
 
-var PageRowLabel={nParent:'Parents / Alternative parents', cb:'Select',tCreated:'Created',tMod:'Last Modified',boOR:'Public read access', boOW:'Public write access', boSiteMap:'Promote (include in Sitemap.xml etc)', nImage:'Images on page', nChild:'Child pages', version:'Supplied by user / mult versions', strLang:'Language code', siteName:'Site'};
+var PageRowLabel={nParent:'Parents / Alternative parents', cb:'Select',tCreated:'Created',tMod:'Last Modified',tLastAccess:'Last Access', nAccess:'nAccess',boOR:'Public read access', boOW:'Public write access', boSiteMap:'Promote (include in Sitemap.xml etc)', nImage:'Images on page', nChild:'Child pages', version:'Supplied by user / mult versions', strLang:'Language code', siteName:'Site'};
   
   
 var pageListExtend=function(el){ 
@@ -1500,6 +1409,8 @@ var pageListExtend=function(el){
       var tdVer=createElement('span').attr('name','version'); //.css({'margin-left':'0.15em'});
       var tdTCreated=createElement('span').attr('name','tCreated').prop('title',PageRowLabel.tCreated);
       var tdTMod=createElement('span').attr('name','tMod').prop('title',PageRowLabel.tMod);
+      var tdTLastAccess=createElement('span').attr('name','tLastAccess').prop('title',PageRowLabel.tLastAccess);
+      var tdNAccess=createElement('span').attr('name','nAccess').prop('title',PageRowLabel.nAccess);
       var tdStrLang=createElement('span').attr('name','strLang').prop('title','Language code');
       var tdSite=createElement('span').attr('name','siteName').prop('title','Site'); //.hide();
       var aLink=createElement('a').prop({target:"_blank", rel:"noopener"});
@@ -1509,7 +1420,7 @@ var pageListExtend=function(el){
       var buttonNImage=createElement('button').addClass('aArrow','aArrowRight').on('click',clickSetParentFilterI);
       var tdNChild=createElement('span').myAppend(buttonNChild).attr('name','nChild').prop('title','Children'); 
       var tdNImage=createElement('span').myAppend(buttonNImage).attr('name','nImage').prop('title','Images');  
-      r.append(tdNParent, tdCB, tdExecute, tdTCreated, tdTMod, tdR, tdW, tdP, tdSize, tdNImage, tdNChild, tdVer, tdStrLang, tdSite,tdLink);  //    , tdName     ,createElement('span').append(bView)
+      r.append(tdNParent, tdCB, tdExecute, tdTCreated, tdTMod, tdTLastAccess, tdNAccess, tdR, tdW, tdP, tdSize, tdNImage, tdNChild, tdVer, tdStrLang, tdSite,tdLink);  //    , tdName     ,createElement('span').append(bView)
       //r.data({tdCB, tdTMod, tdR, tdW, tdP, tdLink, tdVer, tdSize, tdNChild, tdNImage});
       tBody.append(r);
     }
@@ -1535,7 +1446,7 @@ var pageListExtend=function(el){
     myRows.forEach(function(r, i){ 
       r.show();
       r.prop(File[i]);  r.prop({iFlip:i}); 
-      var {nParent, idPage, parent, boOR, boOW, boSiteMap, boOther, lastRev, tCreated, tMod, size, nChild, nImage, strLang, boTLS, siteName, www, pageName}=File[i];  
+      var {nParent, idPage, parent, boOR, boOW, boSiteMap, boOther, lastRev, tCreated, tMod, tLastAccess, nAccess, size, nChild, nImage, strLang, boTLS, siteName, www, pageName}=File[i];  
       r.attr({idPage});    
       var aTmp=r.querySelector('span[name=nParent]').prop('valSort',nParent).querySelector('button');
         var boSingleFiltered=pageFilterDiv.Filt.checkIfSingleParent();
@@ -1544,10 +1455,11 @@ var pageListExtend=function(el){
            if(nParent==1) strTitle=parent; else if(nParent==0) strTitle='orphan';
         }
         aTmp.prop('title',strTitle);
-        //var boHide=boSingleFiltered && nParent<=1; 
-        var boShow=!boSingleFiltered || nParent>1; 
-        aTmp.visibilityToggle(boShow);
-        aTmp.myText(nParent);
+        var boCurNSingle=boSingleFiltered && nParent<=1;  
+        //var boShow=!boSingleFiltered || nParent>1; 
+        //aTmp.visibilityToggle(boShow);
+        aTmp.prop({disabled:boCurNSingle});
+        aTmp.myText(boCurNSingle?"cur":nParent);
       r.querySelector('span[name=cb]').prop('valSort',0).querySelector('input').prop({'checked':false}); 
       r.querySelector('span[name=boOR]').prop('valSort',boOR).visibilityToggle(boOR); 
       r.querySelector('span[name=boOW]').prop('valSort',boOW).visibilityToggle(boOW);
@@ -1555,8 +1467,10 @@ var pageListExtend=function(el){
       var strVersion=''; if(Boolean(boOther)) strVersion='v'+(Number(lastRev)+1);   
       //r.querySelector('span[name=version]').toggle(Boolean(boOther)).myText(strVersion);
       r.querySelector('span[name=version]').prop('valSort',strVersion).visibilityToggle(Boolean(boOther)).myText(strVersion);
-      r.querySelector('span[name=tCreated]').prop('valSort',-tCreated.valueOf()).myText(mySwedDate(tCreated)).prop('title','Created:\n'+UTC2JS(tCreated));  
-      r.querySelector('span[name=tMod]').prop('valSort',-tMod.valueOf()).myText(mySwedDate(tMod)).prop('title','Last Mod:\n'+UTC2JS(tMod));    
+      r.querySelector('span[name=tCreated]').prop('valSort',-tCreated.valueOf()).myText(mySwedDate(tCreated)).prop('title','Created:\n'+tCreated);  
+      r.querySelector('span[name=tMod]').prop('valSort',-tMod.valueOf()).myText(mySwedDate(tMod)).prop('title','Last Mod:\n'+tMod);  
+      r.querySelector('span[name=tLastAccess]').prop('valSort',-tLastAccess.valueOf()).myText(mySwedDate(tLastAccess)).prop('title','Last Access:\n'+tLastAccess);  
+      r.querySelector('span[name=nAccess]').prop('valSort',nAccess).myText(nAccess).prop('title','nAccess:\n'+nAccess);    
       var sizeDisp=size, pre=''; if(size>=1024) {sizeDisp=Math.round(size/1024); pre='k';} if(size>=1048576) { sizeDisp=Math.round(size/1048576); pre='M';}
       var tmp=r.querySelector('span[name=size]').prop('valSort',size).myHtml(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; tmp.prop('title',strTitle);   //tmp.css({weight:pre=='M'?'bold':'',color:pre==''?'grey':''}); 
       //var  buttonTmp=r.querySelector('span[name=nChild]').prop('valSort',nChild).querySelector('button'); buttonTmp.querySelector('span:nth-of-type(1)').myText(nChild); buttonTmp.visibilityToggle(nChild); 
@@ -1601,25 +1515,25 @@ var pageListExtend=function(el){
   var histRet=function(data){
     var tmp, HistPHP=data.Hist||[];
     
-      // Create IndSiteName
-    var SiteName=[]; if('SiteName' in data) SiteName=tabNStrCol2ArrObj(data.SiteName);  
-    IndSiteName={}; for(var i=0;i<SiteName.length;i++) { var row=SiteName[i]; IndSiteName[row.idSite]=row; }
-      // Create IndParentName
-      // If there are pages (parents) with the same "pageName" (on different sites) then use siteName:pageName (when the page is listed). 
-    var ParentName=[]; if('ParentName' in data) ParentName=tabNStrCol2ArrObj(data.ParentName);  
-    IndParentName={}; var objOne={}, objMult={};
-    for(var i=0;i<ParentName.length;i++) {
-      var row=ParentName[i];
-      if(row.pageName in objOne) objMult[row.pageName]=1; else objOne[row.pageName]=1;
-      IndParentName[row.idPage]=row;
-    }
-    for(var i=0;i<ParentName.length;i++) {
-      var row=ParentName[i];
-      if(row.pageName in objMult) row.text=row.siteName+':'+row.pageName; else row.text=row.pageName;
-    }
-  
-    
     pageFilterDiv.divCont.interpretHistPHP(HistPHP);
+
+      // Create TextByParentId
+      // If there are pages (parents) with the same "pageName" (on different sites) then use siteName:pageName (when the page is listed). 
+    var StrOrderFiltPageFlip=array_flip(StrOrderFiltPage);
+    var IdParent=pageFilterDiv.divCont.Hist[StrOrderFiltPageFlip.parent][0];
+    TextByParentId={}; var len=IdParent.length, objCount={}, ObjParentInfo=Array(len);
+    for(var i=0;i<len;i++) {
+      var idParent=IdParent[i]; if(idParent===null) continue;
+      var ind=idParent.indexOf(":"); ObjParentInfo[i]={siteName:idParent.substr(0,ind), pageName:idParent.substr(ind+1)};
+      if(pageName in objCount) objCount[pageName]++; else objCount[pageName]=1;
+    }
+    for(var i=0;i<len;i++) {
+      var idParent=IdParent[i]; if(idParent===null) continue;
+      var {pageName,siteName}=ObjParentInfo[i];
+      TextByParentId[idParent]=(objCount[pageName]>1)?siteName+':'+pageName:pageName;
+    }
+
+
     pageFilterDiv.divCont.update();
     //pageList.setCBStat(0);
   }
@@ -1682,17 +1596,29 @@ var pageListExtend=function(el){
   }
 
 
-  var IndSiteName, IndParentName;
+  //var IndSiteName, 
+  var TextByParentId;
   PropPage.siteName.setFilterButtF=function(span,val,boOn){
-    var text=''; if(val in IndSiteName) text=IndSiteName[val].siteName;
-    else if(val===null) text='(no parent)';
+    // var text=''; if(val in IndSiteName) text=IndSiteName[val].siteName;
+    // else if(val===null) text='(null!?!)';
+    var text=(val===null)?text='(null!?!)':val;
     span.myText(text);
   }
   PropPage.parent.setFilterButtF=function(span,val,boOn){
-    var text=''; if(val in IndParentName) text=IndParentName[val].text;
+    var text=''; if(val in TextByParentId) text=TextByParentId[val];
     else if(val===null) text='(no parent)';
     span.myText(text);
   }
+  // PropPage.child.setFilterButtF=function(span,val,boOn){
+  //   //var text=''; if(val in TextByChildId) text=TextByChildId[val];
+  //   //else if(val===null) text='(no child)';
+  //   var text=(val===null)?text='(no child)':val;
+  //   span.myText(text);
+  // }
+  // PropPage.image.setFilterButtF=function(span,val,boOn){
+  //   var text=(val===null)?text='(no image)':val;
+  //   span.myText(text);
+  // }
 
   //var myRows;
   var tBody=el.tBody=createElement('div').addClass('pageList', 'listBody'); //.addClass('listBody')
@@ -1700,8 +1626,8 @@ var pageListExtend=function(el){
   el.divCont=createElement('div').myAppend(el.table).css({margin:'0em auto 1em','text-align':'left',display:'inline-block'});//
   //el.divCont.on('mouseover','button[name=nChild]',function(){console.log('gg');});
 
-  var StrCol=['nParent','cb','execute','tCreated','tMod','boOR','boOW','boSiteMap','size','nImage','nChild','version','strLang','siteName', 'link'];
-  var BoAscDefault={cb:0,boOR:0,boOW:0,boSiteMap:0,nImage:0,nChild:0,nParent:0,version:0,size:0}; // Default is 1
+  var StrCol=['nParent','cb','execute','tCreated','tMod','tLastAccess','nAccess','boOR','boOW','boSiteMap','size','nImage','nChild','version','strLang','siteName', 'link'];
+  var BoAscDefault={cb:0,boOR:0,boOW:0,boSiteMap:0,nImage:0,nChild:0,nParent:0,version:0,nAccess:0,size:0}; // Default is 1
   //var spanFill=createElement('span').css({height:'calc(1.5*8px + 0.6em)'});
   //var headFill=createElement('p').append().css({background:'white',margin:'0px',height:'calc(12px + 1.2em)'});
   var head=headExtend(createElement('p'),el,StrCol,BoAscDefault,PageRowLabel,'p','span').addClass('pageList');
@@ -1881,8 +1807,8 @@ SpanGrandParent.tmpPrototype.setUp=function(GrandParent){
   this.spanButt.empty();
   if(!boPop){
     for(var i=0;i<nGrandParent;i++){
-      var str=GrandParent[i].pageName; if(str.length>lenMax) str=str.substr(0,lenMax-2)+'...';
-      var butt=createElement('button').myText(str).prop('title',GrandParent[i].pageName).prop({ind:i});       this.spanButt.append(butt);
+      var {pageName}=GrandParent[i], str=pageName;   if(str.length>lenMax) str=str.substr(0,lenMax-2)+'...';
+      var butt=createElement('button').myText(str).prop('title', pageName).prop({ind:i});       this.spanButt.append(butt);
       //var intSize=1; if(str.length>6) intSize=3;  else if(str.length>3) intSize=2; // Determine size of background image
       //butt.css({'background-image':'url("stylesheets/buttonLeft'+intSize+'.png")'}); //+this.strColor
       butt.addClass('aArrow','aArrowLeft');
@@ -1892,7 +1818,9 @@ SpanGrandParent.tmpPrototype.setUp=function(GrandParent){
   var On=filterDiv.Filt.getParentsOn(), boOrphanFiltering=Boolean(On.length==1 && On[0]==null), boShow=!boOrphanFiltering && nGrandParent==0;  this.buttOrphan.toggle(boShow); // this.toggle(boShow);
 }
 SpanGrandParent.tmpPrototype.clickFunc=function(parent){ 
-  var idTmp=parent?parent.idPage:null;   pageFilterDiv.Filt.setSingleParent(idTmp); 
+  var idPage=parent?parent.idPage:null;
+  //var {idPage=null}=parent;
+  pageFilterDiv.Filt.setSingleParent(idPage); 
   pageList.histPush(); pageList.loadTab();    if(pageList.style.display=='none') { pageList.setVis(); }  
 }
    
@@ -1917,6 +1845,8 @@ var DivRowParentT=function(){
   el.tdVer=createElement('span').attr('name','version').css({'min-width':'1.5em', background:'red'}); //, 'float':'right'  .css({'margin-left':'0.15em'});
   el.tdTCreated=createElement('span').attr('name','tCreated').prop('title',PageRowLabel.tCreated);
   el.tdTMod=createElement('span').attr('name','tMod').prop('title',PageRowLabel.tMod);
+  el.tdTLastAccess=createElement('span').attr('name','tLastAccess').prop('title',PageRowLabel.tLastAccess);
+  el.tdNAccess=createElement('span').attr('name','nAccess').prop('title',PageRowLabel.nAccess);
   el.tdSite=createElement('span').attr('name','siteName');
   el.tdOrphan=createElement('span').css({color:'grey'});
   el.aLink=createElement('a').prop({target:"_blank", rel:"noopener"});
@@ -1928,7 +1858,7 @@ var DivRowParentT=function(){
   el.tdNChild=createElement('span').myAppend(el.buttonNChild).attr('name','nChild');//.css({'float':'right'}); 
   el.tdNImage=createElement('span').myAppend(el.buttonNImage).attr('name','nImage');//.css({'float':'right'});  
   
-  el.append(el.spanGrandParent, el.tdExecute, el.tdTCreated, el.tdTMod, el.tdR, el.tdW, el.tdP, el.tdSize, el.tdNImage, el.tdNChild, el.tdVer, el.tdStrLang, el.tdSite, el.tdLink, el.tdOrphan);
+  el.append(el.spanGrandParent, el.tdExecute, el.tdTCreated, el.tdTMod, el.tdTLastAccess, el.tdNAccess, el.tdR, el.tdW, el.tdP, el.tdSize, el.tdNImage, el.tdNChild, el.tdVer, el.tdStrLang, el.tdSite, el.tdLink, el.tdOrphan);
   
   el.css({'line-height':'2.7em'});  // ,'max-width':menuMaxWidth
   el.addClass('pageList');
@@ -1961,11 +1891,11 @@ DivRowParentT.tmpPrototype.getParentRet=function(data){
   if('tab' in data) { var Parent=tabNStrCol2ArrObj(data); this.spanGrandParent.setUp(Parent);  } 
 }
 DivRowParentT.tmpPrototype.getPageInfoByIdRet=function(data){
-  var {nParent, idPage, parent, boOR, boOW, boSiteMap, boOther, lastRev, tCreated, tMod, size, nChild, nImage, strLang, boTLS, siteName, www, pageName}=data;
+  var {nParent, idPage, parent, boOR, boOW, boSiteMap, boOther, lastRev, tCreated, tMod, tLastAccess, nAccess, size, nChild, nImage, strLang, boTLS, siteName, www, pageName}=data;
   Object.assign(this.spanGrandParent.objParent, data);
   var boImageList=imageList.style.display!='none', boPageList=!boImageList;
-  this.buttonNChild.myText(nChild).prop("disabled",!boImageList).visibilityToggle(nChild);
-  this.buttonNImage.myText(nImage).prop("disabled",boImageList).visibilityToggle(nImage);
+  this.buttonNChild.myText(boPageList?"cur":nChild).prop("disabled",boPageList).visibilityToggle(nChild);
+  this.buttonNImage.myText(boImageList?"cur":nImage).prop("disabled",boImageList).visibilityToggle(nImage);
   
   if(idPage==null) {
     //this.children().hide();
@@ -1984,8 +1914,10 @@ DivRowParentT.tmpPrototype.getPageInfoByIdRet=function(data){
     var strVersion=Boolean(boOther)?'v'+(Number(lastRev)+1):'';  
       this.tdVer.visibilityToggle(Boolean(boOther)).myText(strVersion);
     this.tdR.visibilityToggle(Boolean(boOR)); this.tdW.visibilityToggle(Boolean(boOW)); this.tdP.visibilityToggle(Boolean(boSiteMap));
-    this.tdTCreated.myText(mySwedDate(tCreated)).prop('title','Created:\n'+UTC2JS(tCreated));   
-    this.tdTMod.myText(mySwedDate(tMod)).prop('title','Last Mod:\n'+UTC2JS(tMod));   
+    this.tdTCreated.myText(mySwedDate(tCreated)).prop('title','Created:\n'+tCreated);   
+    this.tdTMod.myText(mySwedDate(tMod)).prop('title','Last Mod:\n'+tMod);   
+    this.tdTLastAccess.myText(mySwedDate(tLastAccess)).prop('title','Last Access:\n'+tLastAccess);   
+    this.tdNAccess.myText(nAccess).prop('title','nAccess:\n'+nAccess);   
     this.tdStrLang.myText(strLang); 
     this.tdSite.myText(siteName).prop('title',www); 
     var url=createUrlFrPageData({boTLS,www,pageName});  this.aLink.prop({href:url}).myText(pageName);   
@@ -2033,15 +1965,15 @@ var parentSelPopExtend=function(el){
       //var {idPage, idImage}=arg3;
       if(strType=='page'){ var vec=[['getParent', {idPage}], ['getPageInfoById',{idPage}]]; }
       else{ var vec=[['getParentOfImage', {idImage}], ['getImageInfoById',{idImage}]]; }
-      var [err,dataArr]=await myFetch('POST',vec,1); if(err){setMess('Error: '+err); return;}
+      var [err,dataArr]=await myFetch('POST',vec,1); if(err){setMess(err); return;}
       var data=dataArr[0][0], Parent=[]; if('tab' in data) Parent=tabNStrCol2ArrObj(data); 
       var data=dataArr[1][0];
     }
     var FiltT=strType=='page'?pageFilterDiv.Filt:imageFilterDiv.Filt;
     var idPageList=FiltT.getSingleParent();
     if(strType=='page'){
-      var {nParent, idPage, parent, boOR, boOW, boSiteMap, boOther, lastRev, tCreated, tMod, size, nChild, nImage, strLang, boTLS, siteName, www, pageName}=data;
-      var butP=createElement('button').prop({disabled:1}).myText(nParent).addClass('aArrow', 'aArrowLeft');
+      var {nParent, idPage, parent, boOR, boOW, boSiteMap, boOther, lastRev, tCreated, tMod, tLastAccess, nAccess, size, nChild, nImage, strLang, boTLS, siteName, www, pageName}=data;
+      var butP=createElement('button').prop({disabled:1}).myText("cur").addClass('aArrow', 'aArrowLeft'); //nParent
       var butC=createElement('button').prop({idPage, strType:'page'}).myText(nChild).on('click',cbGotoList).visibilityToggle(nChild);
       var butI=createElement('button').prop({idPage, strType:'image'}).myText(nImage).on('click',cbGotoList).css({background:'lightblue'}).visibilityToggle(nImage);
       var spanSite=createElement('span').myText(siteName);
@@ -2052,7 +1984,7 @@ var parentSelPopExtend=function(el){
       child.empty().myAppend(...ElTmp, a);
     }else{
       var {idImage, imageName, boOther, tCreated, strHash, size, widthSkipThumb, width, height, extension, tLastAccess, nAccess, tMod, hash, nParent}=data;
-      var butP=createElement('button').prop({disabled:1}).myText(nParent).addClass('aArrow', 'aArrowLeft');
+      var butP=createElement('button').prop({disabled:1}).myText("cur").addClass('aArrow', 'aArrowLeft'); // nParent
       var url=createUrlFrPageData({boTLS, www, imageName});
       var img=createElement('img').prop({src:'50apx-'+imageName, alt:"thumb"}).css({'vertical-align':'middle', 'max-width':'50px', 'max-height':'50px'}).on('click',function(){window.open(imageName);});
       var a=createElement('a').prop({href:url, target:"_blank", rel:"noopener"}).myText(imageName).css({display:'inline-block'});
@@ -2062,13 +1994,15 @@ var parentSelPopExtend=function(el){
     
     div.empty();
     for(var i=0;i<Parent.length;i++) {  
-      var {boTLS, siteName, www, idPage, pageName, nChild, nImage, size, strLang, boOR, boOW, boSiteMap, nParent, tCreated, tMod}=Parent[i];
+      var {boTLS, siteName, www, idPage, pageName, nChild, nImage, size, strLang, boOR, boOW, boSiteMap, nParent, tCreated, tMod, tLastAccess, nAccess}=Parent[i];
       //var idPage=Parent[i].idPage, name=Parent[i].pageName, siteName=Parent[i].siteName;
       var boCur=idPage===idPageList;
       var cbTmp=nParent==0?cbGotoList:cbChange;
       var butP=createElement('button').prop({idPage, strType:'page'}).myText(nParent).addClass('aArrow', 'aArrowLeft').on('click',cbTmp);
-      var butC=createElement('button').prop({idPage, strType:'page', disabled:boCur && strType=='page'}).myText(nChild).on('click',cbGotoList).visibilityToggle(nChild);
-      var butI=createElement('button').prop({idPage, strType:'image', disabled:boCur && strType=='image'}).myText(nImage).on('click',cbGotoList).css({background:'lightblue'}).visibilityToggle(nImage);
+      var boDisabled=boCur && strType=='page';
+      var butC=createElement('button').prop({idPage, strType:'page', disabled:boDisabled}).myText(boDisabled?"cur":nChild).on('click',cbGotoList).visibilityToggle(nChild);
+      var boDisabled=boCur && strType=='image';
+      var butI=createElement('button').prop({idPage, strType:'image', disabled:boDisabled}).myText(boDisabled?"cur":nImage).on('click',cbGotoList).css({background:'lightblue'}).visibilityToggle(nImage);
       var spanSite=createElement('span').myText(siteName);
       var url=createUrlFrPageData({boTLS, www, pageName});
       var a=createElement('a').prop({href:url, target:"_blank", rel:"noopener"}).myText(pageName).css({display:'inline-block'});
@@ -2223,7 +2157,7 @@ var setSiteOfPagePopExtend=function(el){
   var cbTestForCollision=function(){ 
     resetMess();  
     idSite=selSite.value;
-    var o1={idSite,Id}, vec=[['setSiteOfPageCollisionTest',o1,cbTestForCollisionRet]];   myFetch('POST',vec);
+    var o1={idSite,Id}, vec=[['collisionTestForSetSiteOfPage',o1,cbTestForCollisionRet]];   myFetch('POST',vec);
     setMess('',null,true);  
   }
   var cbTestForCollisionRet=function(data){
@@ -2238,7 +2172,7 @@ var setSiteOfPagePopExtend=function(el){
     var ObjSite=siteTab.ObjSite;
     var Opt=[];
     for(var i=0;i<ObjSite.length;i++) {
-      var strT=ObjSite[i].siteName+' ('+ObjSite[i].www+')';
+      var strT=ObjSite[i].idSite+' ('+ObjSite[i].www+')';
       var optT=createElement('option').myText(strT).prop('value',ObjSite[i].idSite); Opt.push(optT);
     }
     selSite.empty().myAppend(...Opt);
@@ -2306,10 +2240,11 @@ var imageListExtend=function(el){
       var tr=p, imageName=tr.imageName, i=tr.iFlip;
       //var size=tr.tdSize, tCreated=tr.tdCreated.data, boOther=tr.tdBoOther
       //var size=tr.children('span[name=size]').myText(), tCreated=tr.children('span[name=tCreated]').myText(), boOther=tr.children('span[name=boOther]').myText();
-      var size=File[i].size, tCreated=mySwedDate(File[i].tCreated), boOther=File[i].boOther;
+      var {size,tCreated,tLastAccess,nAccess,boOther}=File[i];
+      tCreated=mySwedDate(tCreated); tLastAccess=mySwedDate(tLastAccess);
       StrImg.push(imageName);
       //var str='<p>'+imageName+'<p>Size: '+File[i].size+'<p>Mod: '+mySwedDate(File[i].tCreated); if(File[i].boOther) str+='<p style="color:red">Others Upload</p>'
-      var str='<p>'+imageName+'<p>Size: '+size+'<p>Created: '+tCreated; if(Number(boOther)) str+='<p style="color:red">Uploaded by user</p>'
+      var str='<p>'+imageName+'<p>Size: '+size+'<p>Created: '+tCreated+'<p>Last Access: '+tLastAccess+'<p>nAccess: '+nAccess; if(Number(boOther)) str+='<p style="color:red">Uploaded by user</p>'
       var cap=createElement('div').myHtml(str);
       Caption.push(cap);    
     });
@@ -2333,6 +2268,8 @@ var imageListExtend=function(el){
       var buttonExecute=createElement('button').myText(charFlash).on(strMenuOpenEvent,buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"});
       var tdExecute=createElement('span').prop('valSort',0).myAppend(buttonExecute).attr('name','execute'); 
       var tdTCreated=createElement('span').attr('name','tCreated').prop('title',Label.tCreated);  //.css({margin:'auto 0.3em'})
+      var tdTLastAccess=createElement('span').attr('name','tLastAccess').prop('title',Label.tLastAccess);
+      var tdNAccess=createElement('span').attr('name','nAccess').prop('title',Label.nAccess);
       var img=createElement('img').prop({alt:"thumb"}).on('click',imageClick);//.css({'margin-right':'0.1em','max-width':'50px','max-height':'50px'});
       var tdImg=createElement('span').attr('name','image').myAppend(img);
       var tdBoOther=createElement('span').myText('user').attr('name','boOther');
@@ -2340,7 +2277,7 @@ var imageListExtend=function(el){
       var aLink=createElement('a').prop({target:"_blank", rel:"noopener"});
       var tdLink=createElement('span').myAppend(aLink).attr('name','link');
       var tdSize=createElement('span').attr('name','size');  //.css({'margin-left':'1em'})
-      r.append(tdNParentI, tdCB, tdExecute, tdTCreated, tdImg, tdSize, tdBoOther, tdLink);  //  tdName  ,createElement('span').myAppend(bView)  tdNParent, 
+      r.append(tdNParentI, tdCB, tdExecute, tdTCreated, tdTLastAccess, tdNAccess, tdImg, tdSize, tdBoOther, tdLink);  //  tdName  ,createElement('span').myAppend(bView)  tdNParent, 
       //r.data({tdCB, tdTCreated, tdImg, tdLink, tdBoOther, tdSize});
       tBody.append(r);
     }
@@ -2377,14 +2314,19 @@ var imageListExtend=function(el){
         if(!boSingleFiltered) {
           if(nParent==1) strTitle=File[i].parent; else if(!nParent) strTitle='orphan';
         }
-        //var boHide=boSingleFiltered && nParent<=1; 
-        var boShow=!boSingleFiltered || nParent>1; 
-        buttonITmp.prop('title',strTitle);  buttonITmp.myText(nParent);  buttonITmp.visibilityToggle(boShow);
+        var boCurNSingle=boSingleFiltered && nParent<=1; 
+        //var boShow=!boSingleFiltered || nParent>1; 
+        buttonITmp.prop('title',strTitle);
+        buttonITmp.myText(boCurNSingle?"cur":nParent);
+        //buttonITmp.visibilityToggle(boShow);
+        buttonITmp.prop({disabled:boCurNSingle});
         
       r.querySelector('span[name=cb]').prop('valSort',0).querySelector('input').prop({'checked':false});
       var tmp=File[i].imageName; r.querySelector('span[name=image]').prop('valSort',tmp).querySelector('img').prop({src:'50apx-'+tmp});
       var tmp=File[i].boOther; r.querySelector('span[name=boOther]').prop('valSort',tmp).visibilityToggle(tmp==1);      
-      var tmp=File[i].tCreated; r.querySelector('span[name=tCreated]').prop('valSort',-tmp.valueOf()).myText(mySwedDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));    
+      var tmp=File[i].tCreated; r.querySelector('span[name=tCreated]').prop('valSort',-tmp.valueOf()).myText(mySwedDate(tmp)).prop('title','Created:\n'+tmp);       
+      var tmp=File[i].tLastAccess; r.querySelector('span[name=tLastAccess]').prop('valSort',-tmp.valueOf()).myText(mySwedDate(tmp)).prop('title','Last Access:\n'+tmp);       
+      var tmp=File[i].nAccess; r.querySelector('span[name=nAccess]').prop('valSort',tmp).myText(tmp).prop('title','nAccess:\n'+tmp);    
       var size=File[i].size, sizeDisp=size, pre=''; if(size>=1024) {sizeDisp=Math.round(size/1024); pre='k';} if(size>=1048576) { sizeDisp=Math.round(size/1048576); pre='M';}
       var tmp=r.querySelector('span[name=size]').prop('valSort',size).myHtml(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; tmp.prop('title',strTitle);   //tmp.css({weight:pre=='M'?'bold':'',color:pre==''?'grey':''}); 
       var tmp=File[i].imageName; r.querySelector('span[name=link]').prop('valSort',tmp).querySelector('a').prop({href:uSiteCommon+'/'+tmp}).myText(tmp);
@@ -2427,26 +2369,25 @@ var imageListExtend=function(el){
   }
   var histRet=function(data){
     var tmp, HistPHP=data.Hist||[];
-      
-      // Create IndSiteName
-    var SiteName=[]; if('SiteName' in data) SiteName=tabNStrCol2ArrObj(data.SiteName);  
-    IndSiteName={}; for(var i=0;i<SiteName.length;i++) { var row=SiteName[i]; IndSiteName[row.idSite]=row; }
-      // Create IndParentName
-      // If there are pages (parents) with the same "pageName" (on different sites) then use siteName:pageName (when the page (parent) is written). 
-    var ParentName=[]; if('ParentName' in data) ParentName=tabNStrCol2ArrObj(data.ParentName);  
-    IndParentName={}; var objOne={}, objMult={};
-    for(var i=0;i<ParentName.length;i++) {
-      var row=ParentName[i];
-      if(row.pageName in objOne) objMult[row.pageName]=1; else objOne[row.pageName]=1;
-      IndParentName[row.idPage]=row;
-    }
-    for(var i=0;i<ParentName.length;i++) {
-      var row=ParentName[i];
-      if(row.pageName in objMult) row.text=row.siteName+':'+row.pageName; else row.text=row.pageName;
-    }
-    
 
     imageFilterDiv.divCont.interpretHistPHP(HistPHP);
+
+      // Create TextByParentId
+      // If there are pages (parents) with the same "pageName" (on different sites) then use siteName:pageName (when the page (parent) is written). 
+    var StrOrderFiltImageFlip=array_flip(StrOrderFiltImage);
+    var IdParent=imageFilterDiv.divCont.Hist[StrOrderFiltImageFlip.parent][0];
+    TextByParentId={}; var len=IdParent.length, objCount={}, ObjParentInfo=Array(len);
+    for(var i=0;i<len;i++) {
+      var idParent=IdParent[i]; if(idParent===null) continue;
+      var ind=idParent.indexOf(":"); ObjParentInfo[i]={siteName:idParent.substr(0,ind), pageName:idParent.substr(ind+1)};
+      if(pageName in objCount) objCount[pageName]++; else objCount[pageName]=1;
+    }
+    for(var i=0;i<len;i++) {
+      var idParent=IdParent[i]; if(idParent===null) continue;
+      var {pageName,siteName}=ObjParentInfo[i];
+      TextByParentId[idParent]=(objCount[pageName]>1)?siteName+':'+pageName:pageName;
+    }
+
     imageFilterDiv.divCont.update();         
     //imageList.setCBStat(0); 
   }
@@ -2506,18 +2447,19 @@ var imageListExtend=function(el){
     doHistReplace({view:imageList, Filt:o, fun:funPopped}, indDiff); //
   }
 
-  var IndSiteName, IndParentName;
+  //var IndSiteName,
+  var TextByParentId;
   PropImage.siteName.setFilterButtF=function(span,val,boOn){
-    var text=''; if(val in IndSiteName) text=IndSiteName[val].siteName;
-    else if(val===null) text='(no parent)';
+    //var text=''; if(val in IndSiteName) text=IndSiteName[val].siteName;
+    //else if(val===null) text='(orphan)';
+    var text=(val===null)?text='(orphan)':val;
     span.myText(text);
   }
   PropImage.parent.setFilterButtF=function(span,val,boOn){
-    var text=''; if(val in IndParentName) text=IndParentName[val].text;
-    else if(val===null) text='(no parent)';
+    var text=''; if(val in TextByParentId) text=TextByParentId[val];
+    else if(val===null) text='(orphan)';
     span.myText(text);
   }
-
 
   //var myRows;
   var tBody=el.tBody=createElement('div').addClass('imageList', 'listBody');  //.addClass('listBody');
@@ -2526,8 +2468,8 @@ var imageListExtend=function(el){
   
   
   var strTmp='Parents / Alternatve parents';
-  var StrCol=['nParentI','cb','execute','tCreated','image','size','boOther','link'];
-  var BoAscDefault={cb:0,boOther:0,size:0}, Label={nParent:strTmp, nParentI:strTmp, cb:'Select',tCreated:'Created',boOther:'Supplied by user'}; //'nParent',
+  var StrCol=['nParentI','cb','execute','tCreated','tLastAccess','nAccess','image','size','boOther','link'];
+  var BoAscDefault={cb:0,boOther:0,size:0,nAccess:0}, Label={nParent:strTmp, nParentI:strTmp, cb:'Select',tCreated:'Created',tLastAccess:'Last Access',nAccess:'nAccess',boOther:'Supplied by user'}; //'nParent',
   //var headFill=createElement('p').myAppend().css({background:'white',margin:'0px',height:'calc(12px + 1.2em)'});
   var head=headExtend(createElement('p'),el,StrCol,BoAscDefault,Label,'p','span').addClass('imageList');
   head.css({background:'white', width:'inherit',height:'calc(12px + 1.2em)'});     // , position:'sticky', top:'57px', 'z-index':'1', margin:'0px'
@@ -2630,9 +2572,6 @@ var editDivExtend=function(el){
     if(editText.parentNode!==el.fixedDiv) {
       el.fixedDiv.prepend(dragHR,editText);
     }
-    //var tmp=objPage.tMod; el.spanLastMod.myText(UTC2TimeOrDate(tmp)).prop('title','Last Modified:\n'+UTC2JS(tmp));
-    //var tmp=objPage.tCreated; el.spanCreated.myText(UTC2TimeOrDate(tmp)).prop('title','Created:\n'+UTC2JS(tmp));
-    //spanTModNCreated.toggle(objPage.tMod);
     
     if(divReCaptcha.isLoaded()) { console.log('Setting up recaptcha (divReCaptcha became visible)'); divReCaptcha.setUp(); } // Otherwise cbRecaptcha will fire later
   }
@@ -2755,7 +2694,10 @@ var spanSaveExtend=function(el){
   var save=createElement('button').myText('Save').on('click',function(){
     if(!summary.value || !signature.value) { setMess('Summary- or signature- field is empty',5); return;}
     
-    var strTmp=grecaptcha.getResponse(); if(!strTmp) {setMess("Captcha response is empty"); return; }
+    if(boDbgSkipRecaptcha) var strTmp="recapcha disabled (boDbgSkipRecaptcha=true)";
+    else{
+      var strTmp=grecaptcha.getResponse(); if(!strTmp) {setMess("Captcha response is empty"); return; }
+    }
     var o={strEditText:editText.value, summary:summary.value, signature:signature.value,  'g-recaptcha-response': strTmp};
     
     var vec=[['saveByAdd',o]];   myFetch('POST',vec); 
@@ -2773,7 +2715,7 @@ var spanSaveExtend=function(el){
 
 var templateListExtend=function(el){
   el.toString=function(){return 'templateList';}
-  el.setUp=function(obj){
+  el.setUp=function(obj={}){
     div.empty(); 
     for(var key in obj) {  
       var str="template:"+key;   var a=createElement('a').prop({href:'/'+str}).myText(str).css({display:'block'}); div.append(a);
@@ -2894,8 +2836,9 @@ var versionTableExtend=function(el){
     myRows.forEach(function(tr,i){
       tr.show(); tr.iMy=nRT-i;
       tr.children[0].myText(nRT-i);
-      tr.children[1].myText(mySwedDate(matVersion[nRT-1-i][0]));
-      tr.children[2].myText(matVersion[nRT-1-i][1] + ' / '+ matVersion[nRT-1-i][2]);
+      var {tMod, summary, signature}=matVersion[nRT-1-i];
+      tr.children[1].myText(mySwedDate(tMod));
+      tr.children[2].myText(summary + ' / '+ signature);
     });
     //myRows.find('td:nth-child(1)').forEach(function(td,i){      (td).myText(nRT-i);  });
     //myRows.find('td:nth-child(2)').forEach(function(td,i){      (td).myText(mySwedDate(matVersion[nRT-1-i][0]));  });
@@ -2978,15 +2921,15 @@ var diffDivExtend=function(el){
     var strNR='', str='';
     if(matVersion.length>0){
       var ver=arrVersionCompared[1], rev=ver-1;
-      var r=matVersion[rev];
-      strNR='v'+ver;   str=r[1]+' <b><i>'+r[2]+'</i></b> '+mySwedDate(r[0]);
+      var {tMod, summary, signature}=matVersion[rev];
+      strNR='v'+ver;   str=summary+' <b><i>'+signature+'</i></b> '+mySwedDate(tMod);
     }
     versionNew.myText(strNR); detailNew.myHtml(str);  
     var strNR='', str='', ver=arrVersionCompared[0];
     if(ver){  // ver is 1-indexed
       var rev=ver-1;
-      var r=matVersion[rev];
-      strNR='v'+ver;   str=r[1]+' <b><i>'+r[2]+'</i></b> '+mySwedDate(r[0]);
+      var {tMod, summary, signature}=matVersion[rev];
+      strNR='v'+ver;   str=summary+' <b><i>'+signature+'</i></b> '+mySwedDate(tMod);
     }
     versionOld.myText(strNR); detailOld.myHtml(str); 
 
@@ -3330,7 +3273,9 @@ var redirectSetPopExtend=function(el){
   el.toString=function(){return 'redirectSetPop';}
   var save=function(){
     rMat.idSiteOld=rMat.idSite; rMat.pageNameOld=rMat.pageName;
-    rMat.idSite=selSite.value; var rS=siteTab.indexSiteTabById[rMat.idSite]; rMat.siteName=rS.siteName; rMat.www=rS.www;
+    var idSite=selSite.value;
+    rMat.idSite=idSite; 
+    var rS=siteTab.indexSiteTabById[rMat.idSite]; rMat.siteName=rS.siteName; rMat.www=rS.www;
     rMat.pageName=inpPageName.value; if(rMat.pageName.length==0){ setMess('empty page name',2);  return;}
     rMat.url=inpURL.value;  if(rMat.url.length==0){ setMess('empty url',2);  return;}
     //if(RegExp('^https?:\/\/$').test(url)) { setMess('empty domain',2);  return;}
@@ -3339,9 +3284,13 @@ var redirectSetPopExtend=function(el){
     var vec=[['redirectTabSet', objTmp, saveRet]];   myFetch('POST',vec);
   }
   var saveRet=function(data){
-    if(!data.boOK) return;
-    if(boUpd) {  redirectTab.myEdit(rMat); } //rMat.idSite=idSite;
-    else {rMat.tCreated=unixNow(); redirectTab.myAdd(rMat); }
+    var {boOK,objDoc}=data;
+    if(!boOK) return;
+    if(boUpd) { extend(rMat,objDoc); rMat.siteName=objDoc.idSite;  redirectTab.myEdit(rMat); } //rMat.idSite=idSite;
+    //else {rMat.tCreated=unixNow(); redirectTab.myAdd(rMat); }
+    //else {copySome(rMat, data.objSite, ['tCreated']); redirectTab.myAdd(rMat); }
+    //else {rMat.tCreated=data.tCreated; rMat.tMod=data.tMod; redirectTab.myAdd(rMat); }
+    else {extend(rMat,objDoc); rMat.siteName=objDoc.idSite;  redirectTab.myAdd(rMat); }
     //redirectTab.setUp();
     historyBack();
   }
@@ -3349,8 +3298,8 @@ var redirectSetPopExtend=function(el){
     //if(!siteTab.boUpToDate) {await siteTab.setUp();}
     var ObjSite=siteTab.ObjSite;
     var Opt=[]; //siteTab=redirectTab.siteTab;
-    for(var i=0;i<ObjSite.length;i++) {var optT=createElement('option').myText(ObjSite[i].siteName).prop('value',ObjSite[i].idSite); Opt.push(optT); }
-    selSite.empty().myAppend(...Opt);    var tmpVal=(typeof rMat.idSite!='undefined')?rMat.idSite:redirectTab.idSiteDefault;    selSite.value=tmpVal;
+    for(var i=0;i<ObjSite.length;i++) {var optT=createElement('option').myText(ObjSite[i].idSite).prop('value',ObjSite[i].idSite); Opt.push(optT); }
+    selSite.empty().myAppend(...Opt);    var tmpVal=(typeof rMat.idSite!='undefined')?rMat.idSite:objSite.idSite;    selSite.value=tmpVal;
     inpPageName.value=rMat.pageName; inpURL.value=rMat.url; inpPageName.focus();  return true;
   }
   el.openFunc=function(boUpdT,boGotData){
@@ -3433,7 +3382,8 @@ var createUrlFrPageData=function(r){var strS=Number(r.boTLS)?'s':'', url='http'+
 var regHttp=/^https?:\/\//;
 var redirectTabExtend=function(el){
   el.toString=function(){return 'redirectTab';}
-  var funcTTimeTmp=function(t){ var strT=getSuitableTimeUnitStr(unixNow()-t);  this.myText(strT);  }
+  //var funcTTimeTmp=function(t){ var strT=getSuitableTimeUnitStr(unixNow()-t);  this.myText(strT);  }
+  var funcTTimeTmp=function(t){ var strT=getSuitableTimeUnitStr(unixNow()-t.toUnix());  this.myText(strT);  }
   var funcLinkTmp=function(url, rMat){
     var {boTLS,www}=siteTab.indexSiteTabById[rMat.idSite], urlLink=url;
     if(!regHttp.test(url)) urlLink=createUrlFrPageData({boTLS, www, pageName:url}); this.querySelector('a').prop({href:urlLink}).myText(url);
@@ -3486,15 +3436,12 @@ var redirectTabExtend=function(el){
     var vec=[['redirectTabGet',{},setUpRetB]];   myFetch('POST',vec);
   }
   var setUpRetB=function(data){
-    var tab=data.tab||[];
-    var StrCol=data.StrCol; var nEntry=data.nEntry;
+    var ObjRedir=tabNStrCol2ArrObj(data);
+    var nEntry=ObjRedir.length;
     tBody.empty(); 
-    for(var i=0;i<tab.length;i++) {  
-      var r={}; for(var j=0;j<StrCol.length;j++){ r[StrCol[j]]=tab[i][j];}
-      el.myAdd(r);      
-    }
+    for(var i=0;i<nEntry;i++) {  el.myAdd(ObjRedir[i]);   }
     var plurEnding=nEntry==1?'y':'ies'; setMess('Got '+nEntry+' entr'+plurEnding,3);
-    el.nRowVisible=tab.length;
+    el.nRowVisible=nEntry;
   }
 
   var tBody=el.tBody=createElement('tbody');
@@ -3533,25 +3480,29 @@ var siteSetPopExtend=function(el){
   el.toString=function(){return 'siteSetPop';}
   var save=function(){ 
     r.boTLS=Number(selBoTLS.value);
-    r.siteName=inpName.value; if(r.siteName.length==0){ setMess('empty siteName',2);  return;}
+    var idSite=inpName.value; if(idSite.length==0){ setMess('empty name',2);  return;}
     r.www=inpWWW.value;  if(r.www.length==0){ setMess('empty www',2);  return;}
     r.googleAnalyticsTrackingID=inpGog.value;
     r.srcIcon16=inpSrcIcon16.value;
     r.strLangSite=inpStrLangSite.value; //if(r.strLangSite.length!=2){ setMess('strLangSite should be two characters',2);  return;}
-    var objTmp=extend({boUpd},r);
-    var vec=[['siteTabSet', objTmp, saveRet]];   myFetch('POST',vec);
+    var objTmp=extend({},r); //boUpd
+    //var vec=[['siteTabSet', objTmp, saveRet]];   myFetch('POST',vec);
+    if(boUpd){  objTmp.idSiteNew=idSite; var vec=[['siteTabUpd', objTmp, saveRet]];   myFetch('POST',vec); }
+    else { objTmp.idSite=idSite;  var vec=[['siteTabInsert', objTmp, saveRet]];   myFetch('POST',vec); }
   }
   var saveRet=function(data){
     if(!data.boOK) return;
     var idSiteOld=r.idSite; r.idSite=data.idSite;
     if(boUpd) { siteTab.myEdit(idSiteOld, r); } //r.idSite=idSite;
-    else {r.tCreated=unixNow(); siteTab.myAdd(r); }    
+    //else {r.tCreated=new Date(); siteTab.myAdd(r); }    
+    //else {r.tCreated=data.objSite.tCreated;  siteTab.myAdd(r); }   
+    else {copySome(r, data.objSite, ['tCreated']); r.nPage=0; siteTab.myAdd(r); }    
     //siteTab.setUp();
     historyBack();
   }
   el.setUp=function(){
     if(typeof r.boTLS=='undefined') r.boTLS=0;
-    selBoTLS.value=Number(r.boTLS); inpName.value=r.siteName; inpWWW.value=r.www; inpGog.value=r.googleAnalyticsTrackingID; inpSrcIcon16.value=r.srcIcon16; inpStrLangSite.value=r.strLangSite;
+    selBoTLS.value=Number(r.boTLS); inpName.value=r.idSite; inpWWW.value=r.www; inpGog.value=r.googleAnalyticsTrackingID; inpSrcIcon16.value=r.srcIcon16; inpStrLangSite.value=r.strLangSite;
     inpName.focus();  return true;
   }
   el.openFunc=function(boUpdT,boGotData){
@@ -3568,12 +3519,12 @@ var siteSetPopExtend=function(el){
     el.show(); return 1;
   }
  
-  var rDefault={idSite:'', siteName:'', www:'', googleAnalyticsTrackingID:'', srcIcon16:'', strLangSite:''};
+  var rDefault={idSite:'', www:'', googleAnalyticsTrackingID:'', srcIcon16:'', strLangSite:''};
   var boUpd, r; 
   var opt=createElement('option').prop({value:0, selected:true}).css({display:'block'}).myText('http'); 
   var optS=createElement('option').prop({value:1}).css({display:'block'}).myText('https'); 
   var selBoTLS=createElement('select').css({display:'block'}).myAppend(opt,optS); 
-  var labName=createElement('b').myText('Name (used as prefix when backing up...)');
+  var labName=createElement('b').myText('Name (used as prefix when backing up etc.)');
   var inpName=createElement('input').prop('type', 'text');
   var imgHWWW=imgHelp.cloneNode(1).css({margin:'0em 1em'}); popupHover(imgHWWW,createElement('div').myHtml('<p>Ex:<p>www.example.com<p>127.0.0.1:5000<p>localhost:5000'));
   var labWWW=createElement('b').myAppend('www (domain)', imgHWWW);
@@ -3606,7 +3557,7 @@ var siteSetPopExtend=function(el){
 var siteDeletePopExtend=function(el){
   el.toString=function(){return 'siteDeletePop';}
   var ok=createElement('button').myText('OK').css({'margin-top':'1em'}).on('click',function(){    
-    var vec=[['siteTabDelete',{siteName},okRet]];   myFetch('POST',vec);    
+    var vec=[['siteTabDelete',{idSite},okRet]];   myFetch('POST',vec);    
   });
   var okRet=function(data){
     if(!data.boOK) return;
@@ -3614,7 +3565,7 @@ var siteDeletePopExtend=function(el){
     historyBack();
   }
   el.openFunc=function(){
-    elR=this.parentNode.parentNode; siteName=elR.rMat.siteName; spanSite.myText(siteName);
+    elR=this.parentNode.parentNode; idSite=elR.rMat.idSite; spanSite.myText(idSite);
     doHistPush({view:siteDeletePop});
     el.setVis();
     ok.focus();
@@ -3623,7 +3574,7 @@ var siteDeletePopExtend=function(el){
     el.show(); return 1;
   }
  
-  var elR, siteName;
+  var elR, idSite;
   var head=createElement('h3').myText('Delete');
   var spanSite=createElement('span');//.css({'font-weight': 'bold'});
   var p=createElement('div').myAppend(spanSite);
@@ -3644,7 +3595,7 @@ var siteTabExtend=function(el){
       mySetVal:function(boOn){  var td=this, b=td.firstChild, strCol=''; if(boOn) strCol='green'; b.css('background',strCol);  }
     },
     boTLS:{
-      mySetVal:function(boOn){  this.myText(boOn?'s':'');  }
+      mySetVal:function(boOn){  this.myHtml(boOn?'s':'<s>s</s>');  }
     },
     www:{
       mySetVal:function(strText){
@@ -3652,7 +3603,7 @@ var siteTabExtend=function(el){
       }
     },
     tCreated:{
-      mySetVal:function(tCreated){      var td=this, strT=getSuitableTimeUnitStr(unixNow()-tCreated);  td.myText(strT);  }
+      mySetVal:function(tCreated){      var td=this, strT=getSuitableTimeUnitStr(unixNow()-tCreated.toUnix());  td.myText(strT);  }
     },
     srcIcon16:{
       mySetVal:function(url){     this.firstChild.prop({src:url, title:url});    }
@@ -3671,8 +3622,8 @@ var siteTabExtend=function(el){
   }
   el.myAdd=function(rMat){
     var elR=createElement('tr'); elR.attr({idSite:rMat.idSite}).prop('rMat',rMat)
-    for(var i=0;i<StrCol.length;i++) { 
-      var name=StrCol[i], val=rMat[name], td; if(name in TDConstructors) {td=new TDConstructors[name](); }   else td=createElement('td');   elR.append(td.attr('name',name));
+    for(var i=0;i<StrColOrder.length;i++) { 
+      var name=StrColOrder[i], val=rMat[name], td; if(name in TDConstructors) {td=new TDConstructors[name](); }   else td=createElement('td');   elR.append(td.attr('name',name));
       if('mySetVal' in td) { td.mySetVal(val);}   else td.append(val);
       if('mySetSortVal' in td) { td.mySetSortVal(val);}   else td.valSort=val;
     }
@@ -3697,15 +3648,17 @@ var siteTabExtend=function(el){
   el.myEdit=function(idSiteOld, rMat){
     var elR=tBody.querySelector('[idSite="'+idSiteOld+'"]');
     elR.attr({idSite:rMat.idSite});
-    for(var i=0;i<StrCol.length;i++) { var name=StrCol[i], val=rMat[name], td=elR.children[i]; if(td.mySetVal) td.mySetVal(val); else td.myText(val); }
+    //for(var i=0;i<StrCol.length;i++) { var name=StrCol[i], val=rMat[name], td=elR.children[i]; if(td.mySetVal) td.mySetVal(val); else td.myText(val); }
+    for(var i=0;i<StrColOrder.length;i++) { var name=StrColOrder[i], val=rMat[name], td=elR.children[i]; if(td.mySetVal) td.mySetVal(val); else td.myText(val); }
     return el;
   }
   el.setUp=async function(){
     if(el.boUpToDate) return;
-    var vec=[['siteTabGet',{}]];   var [err,dataArr]=await myFetch('POST',vec,1); if(err){setMess('Error: '+err); return;}  
+    var vec=[['siteTabGet',{}]];   var [err,dataArr]=await myFetch('POST',vec,1); if(err){setMess(err); return;}  
     var data=dataArr[0][0];
+    if(!data.boOK) return;
     tabNStrCol2ArrObjGC(data, ObjSite);
-    StrCol=data.StrCol;
+    //StrCol=data.StrCol;
     el.boUpToDate=1;
     
     tBody.empty(); 
@@ -3728,7 +3681,7 @@ var siteTabExtend=function(el){
   }
   //el.boRefreshNeeded; // The parent view of this view (siteTab) should set this to 1
   var ObjSite=el.ObjSite=[];
-  var StrCol;
+  //var StrCol;
   el.boUpToDate=0;
 
 
@@ -3736,10 +3689,12 @@ var siteTabExtend=function(el){
   el.table=createElement('table').myAppend(tBody).addClass('tableSticky'); //.css({width:'100%',position:'relative'});
   el.divCont=createElement('div').myAppend(el.table).css({'margin':'1em auto','text-align':'left',display:'inline-block'});
 
-  var StrColHead=['boDefault','secure (TLS)', 'idSite','siteName','www','googleAnalyticsTrackingID','srcIcon16','strLangSite','tCreated','nPage'], BoAscDefault={boDefault:0,boTLS:0,tCreated:0,nPage:0};
-  var Label={boDefault:'Default',siteName:'siteName/prefix', gog:'gog...', tCreated:'Age', nPage:'#page'};
+  var StrColOrder=['boDefault','boTLS', 'idSite','www','googleAnalyticsTrackingID','srcIcon16','strLangSite','tCreated','nPage'];
+
+  var BoAscDefault={boDefault:0,boTLS:0,tCreated:0,nPage:0};
+  var Label={boDefault:'Default',idSite:'name/key', gog:'gog...', tCreated:'Age', nPage:'#page', boTLS: 'secure (TLS)'};
   //var tHead=headExtend(createElement('thead'),el,StrColHead,BoAscDefault,Label);
-  var trTmp=headExtend(createElement('tr'),el,StrColHead,BoAscDefault,Label);
+  var trTmp=headExtend(createElement('tr'),el,StrColOrder,BoAscDefault,Label);
   var tHead=createElement('thead').myAppend(trTmp);
   tHead.css({background:'white', width:'inherit'});  //,height:'calc(12px + 1.2em)'
   el.table.prepend(tHead);
@@ -3764,7 +3719,7 @@ var siteTabExtend=function(el){
 
 
 
-var myFetch=async function(strMethod, vecIn, boThrow=1){  // Each argument of vecIn is an array: [serverSideFunc, serverSideFuncArg, returnFunc]
+var myFetch=async function(strMethod, vecIn, boHandlesErr=0){  // Each argument of vecIn is an array: [serverSideFunc, serverSideFuncArg, returnFunc]
   var headers={'X-Requested-With':'XMLHttpRequest'};
   var argFetch={method:strMethod, headers}
   var arrRet=[]; vecIn.forEach(function(el,i){var f=null; if(el.length==3) f=el.pop(); arrRet[i]=f;}); // Put return functions in a separate array
@@ -3784,17 +3739,21 @@ var myFetch=async function(strMethod, vecIn, boThrow=1){  // Each argument of ve
   busyLarge.show();
   
   if(strMethod=='GET') var uBETmp=uBE+'?'+encodeURIComponent(dataOut); else {uBETmp=uBE; argFetch.body=dataOut;}
-  try{
-    var response= await fetch(uBETmp, argFetch);
-    if(response.status>=400) return ['response.status: '+response.status];
-    var data=await response.json();
-  }catch(e){ var tmp='Error in myFetch: '+e;  setMess(tmp); console.log(tmp); if(boThrow) throw 'bla'; else return [e];}  //return [e]
+  
+  var [err, response]= await fetch(uBETmp, argFetch).toNBP();
+  if(err) { if(!boHandlesErr) {console.log(err); setMess(err);}  return [err]; }
+  //var data=await response.json();
+  var [err, data]=await response.text().toNBP();
+  if(err) { if(!boHandlesErr) {console.log(err); setMess(err);}  return [err]; } 
+  var data=deserialize(data);
+
     
-  var dataArr=data.dataArr||[];  // Each argument of dataArr is an array, either [argument] or [altFuncArg,altFunc]
+  var dataArr=data.dataArr||[];  // Each element of dataArr looks like [argument] or [altFuncArg,altFunc]
   delete data.dataArr;
   beRet(data);
   for(var i=0;i<dataArr.length;i++){
     var r=dataArr[i];
+    if(typeof r=="undefined") continue;
     if(r.length==1) {var f=arrRet[i]; if(f) f(r[0]);} else { window[r[1]].call(window,r[0]);   }
   }
   return [null,dataArr];
@@ -3820,9 +3779,10 @@ var GRet=function(data){
     copySome(app, data, ['boARLoggedIn', 'boAWLoggedIn']);
     adminDiv.setUpButtons(boAWLoggedIn);
   }
-  tmp=data.idPage;   if(typeof tmp!="undefined") { objPage.idPage=tmp;  }
+  //tmp=data.idPage;   if(typeof tmp!="undefined") { objPage.idPage=tmp;  }
   //tmp=data.objRev;   if(typeof tmp!="undefined") { objRev=tmp; }
   tmp=data.objPage;   if(typeof tmp!="undefined") {
+    //objPage.idPage=objPage._id; delete objPage._id;
     overwriteProperties(objPage, tmp);
     //objPage=tmp; 
     pageView.editButton.setImg(objPage.boOW);  editDiv.spanSave.toggle(Boolean(objPage.boOW));   //editDiv.spanCreated.myText(mySwedDate(objPage.tCreated));
@@ -3835,8 +3795,9 @@ var GRet=function(data){
 
   copyIfExist(app, data, ['arrVersionCompared']);
 
-  tmp=data.matVersion;   if(typeof tmp!='undefined') {  nVersion=tmp.length;  matVersion=tmp; versionTable.setTable(); pageView.setDetail(); }
-
+  //tmp=data.matVersion;   if(typeof tmp!='undefined') {  nVersion=tmp.length;  matVersion=tmp.tab; versionTable.setTable(); pageView.setDetail(); }
+  tmp=data.matVersion;   if(typeof tmp!='undefined') {  matVersion=tabNStrCol2ArrObj(tmp); app.nVersion=matVersion.length; versionTable.setTable(); pageView.setDetail(); }
+  
   tmp=data.strDiffText;   if(typeof tmp!="undefined") {diffDiv.setUp(tmp);  }  
   tmp=data.strHtmlText;   if(typeof tmp!="undefined") {pageText.myHtml(tmp); pageText.modStuff();}
   tmp=data.strEditText;   if(typeof tmp!="undefined") editText.value=tmp;
@@ -3887,6 +3848,8 @@ window.langHtml={
 };
 langHtml.label={
 parent:'Parent name',
+//child:'Child name',
+//image:'Image',
 size:'Size',
 boOR:'Public read access',
 boOW:'Public write access',
@@ -3895,7 +3858,9 @@ boTalk:'Talk page',
 boTemplate:'Template',
 boOther:'Supplied by user',
 tMod:'Modification age',
-tCreated:'Created'
+tCreated:'Created',
+tLastAccess:'Last Access',
+nAccess:'nAccess'
 }
 var helpBub={}
 
@@ -3918,7 +3883,7 @@ window.boFF = uaLC.indexOf("firefox") > -1;
 app.boChrome= /chrome/.test(uaLC);
 app.boIOS= /iphone|ipad|ipod/.test(uaLC);
 app.boEpiphany=/epiphany/.test(uaLC);    if(boEpiphany && !boAndroid) boTouch=false;  // Ugly workaround
-app.boEdge= /\bedg\b/.test(uaLC);
+//app.boEdge= /\bedg\b/.test(uaLC);
 
 
 window.boOpera=RegExp('OPR\\/').test(ua); if(boOpera) boChrome=false; //alert(ua);
@@ -3987,8 +3952,7 @@ setItem('CSRFCode',CSRFCode);
 
 assignCommonJS();
 
-
-var nVersion=matVersion.length;
+matVersion=tabNStrCol2ArrObj(matVersion);  app.nVersion=matVersion.length;
 
 
 var strScheme='http'+(objSite.boTLS?'s':''),    strSchemeLong=strScheme+'://',    uSite=strSchemeLong+objSite.www;
@@ -4426,7 +4390,8 @@ window.divReCaptcha=divReCaptchaExtend(editDiv.spanSave.divReCaptcha);
 window.cbRecaptcha=function(){
   if(editDiv.style.display!='none') { console.log('Setting up recaptcha (onload)'); divReCaptcha.setUp(); } // Otherwise "render" will occur when editDiv is opened.
 }
-divReCaptcha.loadScript();
+window.boDbgSkipRecaptcha=0;
+if(!boDbgSkipRecaptcha) divReCaptcha.loadScript();
 
 
 

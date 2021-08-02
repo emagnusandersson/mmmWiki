@@ -1,15 +1,18 @@
 "use strict"
-var app;  if(typeof window!=='undefined') app=window; else if(typeof global!=='undefined') app=global; else app=self;  // if browser else if server else serviceworker
+//var app;  if(typeof window!=='undefined') app=window; else if(typeof global!=='undefined') app=global; else app=self;  // if browser else if server else serviceworker
+var app=globalThis;
 
 app.thisChanged=function(func,selfT){return function(){return func.apply(selfT,arguments);}}
 
+
+Promise.prototype.toNBP=function(){   return this.then(a=>{return [null,a];}).catch(e=>{return [e];});   }  // toNodeBackPromise
 
 //
 // String
 //
 
 app.ucfirst=function(string){  return string.charAt(0).toUpperCase() + string.slice(1);  }
-app.isAlpha=function(star){  var regEx = /^[a-zA-Z0-9]+$/;  return str.match(regEx); } 
+//app.isAlpha=function(star){  var regEx = /^[a-zA-Z0-9]+$/;  return str.match(regEx); } 
 //String.prototype.trim = function() { return this.replace(/^\s+|\s+$/g,"");}
 //String.prototype.ltrim = function() {return this.replace(/^\s+/,"");}
 //String.prototype.rtrim = function() {return this.replace(/\s+$/,"");}
@@ -69,9 +72,15 @@ app.arrArrange=function(arrV,arrI){
 app.intersectionAB=function(A,B){var Rem=[]; for(var i=A.length-1;i>=0;i--){var a=A[i]; if(B.indexOf(a)==-1) A.splice(i,1); else Rem.push(a);} return Rem.reverse();}  // Changes A, returns the remainder
 app.AMinusB=function(A,B){var ANew=[]; for(var i=0;i<A.length;i++){var a=A[i]; if(B.indexOf(a)==-1) ANew.push(a);} return ANew;}  // Does not change A, returns ANew
 app.isAWithinB=function(A,B){ for(var i=0; i<A.length; i++){if(B.indexOf(A[i])==-1) return false;} return true;}  
+app.AMUnionB=function(A,B){ // Modifies A
+  for(var i=0;i<B.length;i++) { var b=B[i]; if(A.indexOf(b)==-1) A.push(b); }   return A;  
+}
+app.AUnionB=function(A,B){  var AC=arrCopy(A); return AMUnionB(AC,B) }
 
 app.mySplice1=function(arr,iItem){ var item=arr[iItem]; for(var i=iItem, len=arr.length-1; i<len; i++)  arr[i]=arr[i+1];  arr.length = len; return item; }  // GC-friendly splice
 app.myCopy=function(arr,brr){ var len=brr.length; if(typeof arr=="undefined") arr=Array(len); else arr.length = len; for(var i=0; i<len; i++)  arr[i]=brr[i];   return arr; }  // GC-friendly copy
+
+app.arrCopy=function(A){return [].concat(A);}
 
 app.array_merge=function(){  return Array.prototype.concat.apply([],arguments);  } // Does not modify origin
 //app.array_mergeM=function(a,b){  a.push.apply(a,b); return a; } // Modifies origin (first argument)
@@ -90,7 +99,7 @@ app.array_removeInd=function(a,i){a.splice(i,1);}
 app.arrValMerge=function(arr,val){  var indOf=arr.indexOf(val); if(indOf==-1) arr.push(val); }
 //app.arrValRemove=function(arr,val){  var indOf=arr.indexOf(val); if(indOf!=-1) arr.splice(indOf,1); }
 app.arrValRemove=function(arr,val){  var indOf=arr.indexOf(val); if(indOf!=-1) mySplice1(arr,indOf); }
-
+app.array_equal=function(a,b){if(a.length!==b.length) return false; for(var i in a){if(a[i]!=b[i]) return false;} return true;}
 
 
 //
@@ -118,7 +127,17 @@ app.overwriteProperties=function(oGoal, oOrg){
   return oGoal;
 }
 app.isEmpty=function(obj) {    return Object.keys(obj).length === 0;  }
-
+app.copyDeep=function(objI) { return JSON.parse(JSON.stringify(objI));};
+app.copyDeepB=function(o, isdeep=true){ // Also copies Date
+  if (o===undefined || o===null || ['string', 'number', 'boolean'].indexOf(typeof o)!==-1) return o;
+  if(o instanceof Date) return new Date(o.getTime());
+  var n= o instanceof Array? [] :{};
+  for (var k in o)
+      if (o.hasOwnProperty(k))
+          n[k]= isdeep? copyDeepB(o[k], isdeep) : o[k];
+  return n;
+}
+app.deleteFields=function(o,Str){ for(var str of Str) delete o[str]; }
 
 //
 // Dates and time
@@ -131,9 +150,10 @@ Date.prototype.toISOTimeOfDayMy=function(){return this.toISOString().substr(11,8
 var arrMonths=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 var arrDay=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 var arrDay=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-app.mySwedDate=function(tmp){ 
-  if(!tmp) return tmp;
-  var t=UTC2JS(tmp), now=new Date(), diff=(Number(now)-Number(t))/1000; //, y=t.getFullYear(), mo=t.getMonth(), d=t.getDate();
+app.mySwedDate=function(t){ 
+  if(!t) return t;
+  if(typeof t=='number') t=UTC2JS(t);
+  var now=new Date(), diff=(Number(now)-Number(t))/1000; //, y=t.getFullYear(), mo=t.getMonth(), d=t.getDate();
   if(diff>3600*24*365) return Math.floor(diff/(3600*24*365))+'y'; 
   if(diff>3600*24*275) return '¾y'; 
   if(diff>3600*24*183) return '½y'; 
@@ -152,11 +172,24 @@ app.mySwedDate=function(tmp){
   //if(diff>3600) return Math.floor(diff/3600)+'h ago'; // After 1 hour, use Hours
   //return Math.floor(diff/60)+'min';  // Else use Minutes
 }
-app.swedDate=function(tmp, sep=''){ if(tmp){tmp=UTC2JS(tmp);  tmp=tmp.getFullYear()+sep+pad2(tmp.getMonth()+1)+sep+pad2(tmp.getDate());}  return tmp;}
-app.swedTime=function(tmp){ if(tmp){tmp=UTC2JS(tmp);  tmp=tmp.getFullYear()+'-'+pad2(tmp.getMonth()+1)+'-'+pad2(tmp.getDate())+' '+pad2(tmp.getHours())+':'+pad2(tmp.getMinutes());}  return tmp;}
+app.swedDate=function(tmp, sep=''){ 
+  if(typeof tmp=="number") tmp=new Date(Number(tmp)*1000);
+  //if(tmp){tmp=UTC2JS(tmp);  
+  tmp=tmp.getFullYear()+sep+pad2(tmp.getMonth()+1)+sep+pad2(tmp.getDate());
+  return tmp;
+}
+app.swedTime=function(tmp){ 
+  if(typeof tmp=="number") tmp=new Date(Number(tmp)*1000);
+  //if(tmp){tmp=UTC2JS(tmp);
+  tmp=tmp.getFullYear()+'-'+pad2(tmp.getMonth()+1)+'-'+pad2(tmp.getDate())+' '+pad2(tmp.getHours())+':'+pad2(tmp.getMinutes());
+  return tmp;
+}
 app.UTC2JS=function(utcTime){ var tmp=new Date(Number(utcTime)*1000);  return tmp;  }
-app.UTC2TimeOrDate=function(utcTime){ 
-  var tDate=new Date(Number(utcTime)*1000), tNow=new Date(), tDiff=(tNow-tDate)/1000;
+//app.UTC2TimeOrDate=function(tDate){
+app.date2ToSuitableString=function(tDate){
+  if(tDate===null) tDate=0;
+  if(typeof tDate=="number") tDate=new Date(Number(tDate)*1000);
+  var tNow=new Date(), tDiff=(tNow-tDate)/1000;
   if(Math.abs(tDiff)<24*3600) return tDate.toISOTimeOfDayMy(); else return tDate.toISODateMy();
 }
 app.UTC2Readable=function(utcTime){ var tmp=new Date(Number(utcTime)*1000);   return tmp.toLocaleString();  }
@@ -164,6 +197,7 @@ app.UTC2Readable=function(utcTime){ var tmp=new Date(Number(utcTime)*1000);   re
 //unixNowMS=function(){var tmp=new Date(); return Number(tmp);}
 //unixNow=function(){return Math.round(unixNowMS()/1000);}
 app.unixNow=function(){return (new Date()).toUnix();}
+app.nowSFloored=function(){ const t=new Date(); t.setMilliseconds(0); return t; }
 
 app.getSuitableTimeUnit=function(t){ // t in seconds
   var tAbs=Math.abs(t), tSign=t>=0?+1:-1, strU
@@ -280,8 +314,8 @@ app.arrObj2TabNStrCol=function(arrObj){ //  Ex: [{abc:0,def:1},{abc:2,def:3}] =>
   return Ou;
 }
 app.tabNStrCol2ArrObj=function(tabNStrCol){  //Ex: {tab:[[0,1],[2,3]],StrCol:['abc','def']}    =>    [{abc:0,def:1},{abc:2,def:3}] 
-    // Note! An "empty" input should look like this:  {tab:[]}
-  var tab=tabNStrCol.tab, StrCol=tabNStrCol.StrCol, arrObj=Array(tab.length);
+  var {StrCol, tab}=tabNStrCol; if(typeof tab=="undefined") return [];
+  var arrObj=Array(tab.length);
   for(var i=0;i<tab.length;i++){
     var row={};
     for(var j=0;j<StrCol.length;j++){  var key=StrCol[j]; row[key]=tab[i][j];  }
@@ -292,7 +326,8 @@ app.tabNStrCol2ArrObj=function(tabNStrCol){  //Ex: {tab:[[0,1],[2,3]],StrCol:['a
   // GC friendly version of the above
   // Note!!! If StrCol changes then this function wont work.
 app.tabNStrCol2ArrObjGC=function(tabNStrCol, arrObj){ 
-  var tab=tabNStrCol.tab, StrCol=tabNStrCol.StrCol, len=tab.length; if(arrObj==undefined) arrObj=Array(len); else arrObj.length=len;
+  var {StrCol, tab}=tabNStrCol; if(typeof tab=="undefined") {arrObj.length=0; return arrObj;}
+  var len=tab.length; if(arrObj==undefined) arrObj=Array(len); else arrObj.length=len;
   for(var i=0;i<len;i++){
     if(arrObj[i]==undefined) arrObj[i]={};
     var row=arrObj[i];

@@ -252,7 +252,7 @@ tbody,thead {border-width:inherit;border-style:inherit }
 
 button, button-toggle, select { box-sizing:border-box; height:2.5em; font-size:0.8em; margin:0.5 0.5; padding:0 0.2em; font-size: inherit;vertical-align:middle;background-color:#eee;border-radius:0.4em;user-select:none; display:inline-flex; align-items: center; justify-content: center;}
 .rowButtonFeat  span { vertical-align:bottom}
-.rowButtonFeat button, .rowButtonFeat select { box-sizing:border-box; min-height:1.5em; font-size:0.8em; margin:0.5 0.5; padding:0 0.2em; font-size: inherit;vertical-align:bottom;background-color:#eee;border-radius:0.4em}
+.rowButtonFeat button, .rowButtonFeat select { box-sizing:border-box; min-height:1.5em; font-size:0.8em; margin:0.5 0.5; padding:0 0.2em; font-size: inherit;vertical-align:bottom;background-color:#eee;border-radius:0.4em; display:unset}
 .rowButtonFeat button > span:first-child { vertical-align:baseline;line-height:2.3em}
 .rowButtonFeat button > span:nth-child(2) { vertical-align:baseline;line-height:2.3em}
 
@@ -268,22 +268,24 @@ justify-content: center;
 align-items: center;
 border-radius: 0;
 border:0px;
+padding:0em;
+min-width:1.4em
 }
 
 .aArrowLeft {
 clip-path: polygon( 0% calc(50% - var(--notchSizeY)), var(--notchSizeX) 0%, 100% 0%, 100% 100%, var(--notchSizeX) 100%, 0% calc(50% + var(--notchSizeY)) );
-padding: .5em .1em .5em .3em;
+
+}
+/*padding: .5em .1em .5em .3em;*/
 /*border-bottom-left-radius: var(--notchSizeR);
 border-top-left-radius: var(--notchSizeR);*/
-}
-
 .aArrowRight {
 clip-path: polygon( 0% 0%, calc(100% - var(--notchSizeX)) 0%, 100% calc(50% - var(--notchSizeY)), 100% calc(50% + var(--notchSizeY)), calc(100% - var(--notchSizeX)) 100%, 0% 100% );
-padding: .5em .3em .5em .1em;
-/*border-bottom-right-radius: var(--notchSizeR);
-border-top-right-radius: var(--notchSizeR);*/
 }
 
+/* padding: .5em .3em .5em .1em; */
+/*border-bottom-right-radius: var(--notchSizeR);
+border-top-right-radius: var(--notchSizeR);*/
 .pageList p { overflow:hidden;background: #ccc; } /*line-height:2em*/
 .imageList p { background: #ddd} /*; line-height:3em*/
 
@@ -299,6 +301,10 @@ border-top-right-radius: var(--notchSizeR);*/
 .pageList span[name=tMod] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
 .pageList span[name=tCreated] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
 .imageList span[name=tCreated] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
+.pageList span[name=tLastAccess] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
+.imageList span[name=tLastAccess] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
+.pageList span[name=nAccess] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
+.imageList span[name=nAccess] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
 .pageList span[name=size], .imageList span[name=size] { min-width:2em; text-align:right}  /*float: right;*/
 .pageList span[name=execute] > button, .imageList span[name=execute] > button { width:1.2em;padding:0em;}
 

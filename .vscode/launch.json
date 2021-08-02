@@ -4,6 +4,18 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+        {
+            "address": "178.62.226.193",
+            "localRoot": "${workspaceFolder}",
+            "name": "Attach to Remote",
+            "port": 9229,
+            "remoteRoot": "~/mmmWikiMongo/",
+            "request": "attach",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "type": "pwa-node"
+        },
         
         {
             "type": "node",
@@ -12,17 +24,117 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/script.js"
+            "program": "${workspaceFolder}/script.js",
+            "console": "integratedTerminal",
+            //"runtimeArgs": ["--trace-deprecation"]
         },
         {
             "type": "node",
             "request": "launch",
-            "name": "sql",
+            "name": "scriptSetup",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/scriptSetup.js",
+            "args": [""],
+            //"console": "integratedTerminal",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "drop",
             "skipFiles": [
                 "<node_internals>/**"
             ],
             "program": "${workspaceFolder}/script.js",
-            "args": ["--sql", "createView"]
+            "args": ["--mongodb=drop"],
+            //"console": "integratedTerminal",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "create",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/script.js",
+            "args": ["--mongodb=create"],
+            //"console": "integratedTerminal",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "truncate",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/script.js",
+            "args": ["--mongodb=truncate"],
+            //"console": "integratedTerminal",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "truncateAllExceptSetting",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/script.js",
+            "args": ["--mongodb=truncateAllExceptSetting"],
+            //"console": "integratedTerminal",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "populateSetting",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/script.js",
+            "args": ["--mongodb=populateSetting"],
+            //"console": "integratedTerminal",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "countRows",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/script.js",
+            "args": ["--mongodb=countRows"],
+            //"console": "integratedTerminal",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "load few",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/script.js",
+            "args": ["--load=few"],
+            //"console": "integratedTerminal",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "load many",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/script.js",
+            "args": ["--load=many"],
+            //"console": "integratedTerminal",
+            "outputCapture": "std"
         },
         {
             "type": "node",
@@ -32,7 +144,21 @@
                 "<node_internals>/**"
             ],
             "program": "${workspaceFolder}/script.js",
-            "args": ["--load", "meta.zip"]
+            "args": ["--load"],
+            //"console": "integratedTerminal",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "load site.csv only",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/script.js",
+            "args": ["--load=meta/site.csv"],
+            //"console": "integratedTerminal",
+            "outputCapture": "std"
         }
     ]
 }

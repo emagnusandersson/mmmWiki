@@ -52,8 +52,8 @@ app.Parser=function(text, boTrustEditors){
 
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Parser.prototype.preParse = function(callback) {
-  if(typeof callback=='undefined') callback=function(){};
+Parser.prototype.preParse = function() {
+  //if(typeof callback=='undefined') callback=function(){};
   var text=this.text;
   text = text.replace(RegExp(STARTCHARSTR,'g'),''); //Remove any possible STARTCHAR's
   text = text.replace(RegExp(ENDCHARSTR,'g'),'');  //Remove any possible ENDCHAR's
@@ -61,7 +61,7 @@ Parser.prototype.preParse = function(callback) {
   text = text.replace(RegExp("<!--[\\s\\S]*?-->",'g'),thisChanged(this.replaceCommentCB,this)); //in javascript there is no modifier to make "." mathch '\n', but one can use "[\s\S]" instead
   text = text.replace(RegExp("<style>([\\s\\S]*?)<\/style>",'ig'),thisChanged(this.replaceStyleCB,this)); //Replace style with temporary markups and sanitize content
   text = text.replace(RegExp("\{\{(.*?)\}\}",'g'),thisChanged(this.replaceTemplateCB,this));
-  this.text=text;  callback(null,0);
+  this.text=text;  //callback(null,0);
 }
 
 Parser.prototype.renameILinkOrImage = function(text, strILink='', strILinkN='', strImage='', strImageN='') {
@@ -142,8 +142,9 @@ Parser.prototype.putBackImageRenameCB=function(m,i,o){
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Parser.prototype.parse = function(callback) {
-  if(typeof callback=='undefined') callback=function(){};
+Parser.prototype.parse = function(objTemplate) {
+  this.objTemplate=objTemplate;
+  //if(typeof callback=='undefined') callback=function(){};
   var text=this.text;
 
 
@@ -218,12 +219,12 @@ Parser.prototype.parse = function(callback) {
   //text = this.translateSpacePre(text); // "SpacePre":  a space in the beginning of a line means that the line should be within a <pre></pre>. Notice that if one don't use a space, but instead writes <pre></pre> directly in the wiki-text, then mediawiki handles the text a little bit different (so those cases aren't handled here)
 
 
- this.text=text;  callback(null,0);
+ this.text=text;  //callback(null,0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Parser.prototype.endParse = function(callback) {
-  if(typeof callback=='undefined') callback=function(){};
+Parser.prototype.endParse = function() {
+  //if(typeof callback=='undefined') callback=function(){};
   var text=this.text;
 
   var TaPa=new ParserTable(1);
@@ -334,7 +335,7 @@ Parser.prototype.endParse = function(callback) {
   text = text.replace(RegExp(STARTCHARSTR+"br(\\d+)"+ENDCHARSTR,'g'), thisChanged(this.putBackBRCB,this));
  
   this.text=text;
-  callback(null,0);
+  //callback(null,0);
 }
 
 
@@ -752,37 +753,43 @@ Parser.prototype.putBackImgRawCB=function(m,n){
 
 
 
-Parser.prototype.setArrSub=function(){ // Uses objExistingSub and StrSub to calculate (assign) this.arrSub = [[name,boExist], [name,boExist] ....] 
-  this.arrSub=[], this.arrExistingSub=[], this.arrExistingSubLower=[]; 
-  for(var name in this.objExistingSub) { this.arrExistingSub.push(name);  this.arrExistingSubLower.push(name.toLowerCase()); }
-  for(var i=0;i<this.StrSub.length;i++){ var name=this.StrSub[i], boExist=this.arrExistingSubLower.indexOf(name.toLowerCase())!=-1; this.arrSub.push([name,boExist]);  }
+
+Parser.prototype.setArrExistingSub=function( StrChild){  
+  this.arrExistingSub=[], this.arrExistingSubLower=[]; 
+  for(var name of StrChild) { this.arrExistingSub.push(name);  this.arrExistingSubLower.push(name.toLowerCase()); } 
 }
 
 
 Parser.prototype.getStrTemplate=function(){ // Returns [name, name ....] 
+    // Removing duplicates
   var obj={};
   for(var i=0;i<this.bagTemplate.length;i++) {
-    var strName='template:'+this.bagTemplate[i][0], key=strName.toLowerCase();
-    obj[key]=strName;
+    var strName='template:'+this.bagTemplate[i][0], key=strName.toLowerCase(); obj[key]=strName;
   }
-  this.StrTemplate=[]; for(var name in obj){ this.StrTemplate.push(obj[name]);  }
-  return this.StrTemplate;
+
+  var StrTemplate=[]; for(var name in obj){ StrTemplate.push(obj[name]);  }
+  return StrTemplate;
 }
 
-Parser.prototype.getStrSub=function(){ // Returns [name, name ....] 
+
+Parser.prototype.getStrChildAll=function(){ // Returns [name, name ....] 
+    // Removing duplicates
   var obj={};
-  for(var i=0;i<this.bagTemplate.length;i++) {
-    var strName='template:'+this.bagTemplate[i][0], key=strName.toLowerCase();
-    obj[key]=strName;
-  }
+  // for(var i=0;i<this.bagTemplate.length;i++) {
+  //   var strName='template:'+this.bagTemplate[i][0], key=strName.toLowerCase();
+  //   obj[key]=strName;
+  // }
   for(var i=0; i<this.arrILink.length;i++) { var v=this.arrILink[i], strName=v[1], key=strName.toLowerCase();    obj[key]=strName;     }
 
-  this.StrSub=[]; for(var name in obj){ this.StrSub.push(obj[name]);  }
-  return this.StrSub;
+  var StrChildAll=[]; for(var name in obj){ StrChildAll.push(obj[name]);  }
+  return StrChildAll;
 }
 
 
-Parser.prototype.getStrSubImage=function(){ // Returns [name, name ....] 
+
+
+Parser.prototype.getStrImage=function(){ // Returns [name, name ....] 
+    // Removing duplicates
   var obj={};
   for(var i=0;i<this.arrImageLink.length;i++) {   var strName=this.arrImageLink[i], key=strName.toLowerCase(); obj[key]=strName;  }
   for(var i=0; i<this.arrGalleryImageLink.length;i++) { 
@@ -790,9 +797,8 @@ Parser.prototype.getStrSubImage=function(){ // Returns [name, name ....]
     for(var j=0; j<arrLoc.length;j++) {  var strName=arrLoc[j], key=strName.toLowerCase(); obj[key]=strName;        }
   }
 
-  var StrSub=[]; for(var name in obj){ StrSub.push(obj[name]);  }
-  return StrSub;
+  var StrImageLC=Object.keys(obj);
+  var StrImage=[]; for(var name in obj){ StrImage.push(obj[name]);  }
+  return {StrImage,StrImageLC};
 }
-
-
 

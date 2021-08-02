@@ -66,124 +66,63 @@ app.makeMatVersion=function(Version){
   for(var i=0;i<nVersion;i++){    t[i]=[Version[i].tMod, Version[i].summary, Version[i].signature];   }  return t;
 }
 
-app.parse=function*(flow, arg) {
-  var mPa=new Parser(arg.strEditText, arg.boOW==0);
-  mPa.text=arg.strEditText;
+app.parse=async function(sessionMongo, arg) {
+  var {idSite, strEditText, boOW}=arg;
+  var mPa=new Parser(strEditText, boOW==0);
   mPa.preParse();
-  var StrTemplate=mPa.getStrTemplate();
+  var StrTemplate=mPa.getStrTemplate();  // [name, name ....]
 
-    // Site specifiaction may come in two ways:
-  var sqlSiteQuery="www=?", siteArg=arg.wwwSite; if(!siteArg) { sqlSiteQuery="siteName=?"; siteArg=arg.siteName;}
     
     // get objTemplate from DB
-  var len=StrTemplate.length, objTemplate={};   
+  var len=StrTemplate.length, objTemplate={}, objTemplateE={};
+  var IdTemplate=Array(len); for(var i=0;i<len;i++){IdTemplate[i]=idSite+":"+StrTemplate[i].toLowerCase(); } 
   if(len) {
-    var strQ=array_fill(len,'?').join(', ');
-    var sql="SELECT pageName, data FROM "+pageLastSiteView+" p JOIN "+fileTab+" f WHERE f.idFile=p.idFile AND "+sqlSiteQuery+" AND pageName IN ("+strQ+")";
-    var Val=[siteArg].concat(StrTemplate);
-    var [err, results]=yield* arg.myMySql.query(flow, sql, Val);  if(err) return [err, []]; 
-     
-    for(var i=0;i<results.length;i++){ var tmpR=results[i]; objTemplate[tmpR.pageName]=tmpR.data; }
+    var Arg=[ {_id:{$in:IdTemplate}}, {projection:{_id:1, pageName:1, idFileWiki:1}, session:sessionMongo}];
+    var cursor=collectionPage.find(...Arg);
+    var [err, PageTemplate]=await cursor.toArray().toNBP();   if(err) return [err, []];
+    var lenM=PageTemplate.length, IdTemplateData=Array(lenM); for(var i=0;i<lenM;i++){ IdTemplateData[i]=PageTemplate[i].idFileWiki; }
+
+    var Arg=[ {_id:{$in:IdTemplateData}}, {session:sessionMongo}];
+    var cursor=collectionFileWiki.find(...Arg);
+    var [err, results]=await cursor.toArray().toNBP();   if(err) return [err, []];
+    var lenD=results.length; if(lenM!==lenD) return [new Error('lenM!==lenD'), []];
+    for(var i=0;i<lenD;i++){ objTemplate[PageTemplate[i].pageName]=results[i].data; }
+
+      // calculate objTemplateE
+    for(var i=0;i<len;i++) { var key=StrTemplate[i]; objTemplateE[key]=key in objTemplate; }  // objTemplateE= {name:true, name:false ....}
   }
 
 
-  var len=StrTemplate.length;
-  var objTemplateE={}; for(var i=0;i<len;i++) { var key=StrTemplate[i]; objTemplateE[key]=key in objTemplate; }
-  mPa.objTemplate=objTemplate;    mPa.parse();
-  var StrSub=mPa.getStrSub(), StrSubImage=mPa.getStrSubImage();
+  mPa.parse(objTemplate);
+  var StrChildAll=mPa.getStrChildAll(), {StrImage, StrImageLC}=mPa.getStrImage();
+  var IdChildAll=StrChildAll.map(str=>idSite+":"+str.toLowerCase());
 
-
-    // get objExistingSub from DB
-  var len=StrSub.length, objExistingSub={};
+    // Get IdChild  from DB
+  var len=IdChildAll.length; //objExistingSub={};
   if(len) {
-    var strQ=array_fill(len,'?').join(', ');
-    var sql="SELECT pageName FROM "+pageLastSiteView+" WHERE pageName IN ("+strQ+") AND "+sqlSiteQuery+"";
-    var Val=StrSub.concat(siteArg);
-    var [err, results]=yield* arg.myMySql.query(flow, sql, Val);  if(err) return [err, []]; 
-    
-    for(var i=0;i<results.length;i++){ var tmpR=results[i]; objExistingSub[tmpR.pageName]=1; }
-  }
+    var Arg=[ {_id:{$in:IdChildAll}}, {projection:{_id:1, pageName:1}, collation:{locale:"en", strength:2}, session:sessionMongo}];
+    var cursor=collectionPage.find(...Arg);
+    var [err, results]=await cursor.toArray().toNBP();   if(err) return [err, {}];
+
+    //for(var i=0;i<results.length;i++){ var tmpR=results[i]; objExistingSub[tmpR.pageName]=1; }
+    var lExist=results.length, IdChild=Array(lExist), StrChild=Array(lExist);
+    for(var i=0;i<lExist;i++){   var {_id, pageName}=results[i]; IdChild[i]=_id; StrChild[i]=pageName;}  
+
+    //var IdChildLC=IdChild.map(str=>str.toLowerCase());
+  } else {var IdChild=[], StrChild=[];}  
 
 
-  mPa.objExistingSub=objExistingSub; mPa.setArrSub();      mPa.endParse();
-  var strHtmlText=mPa.text, arrSub=mPa.arrSub;
+
+  mPa.setArrExistingSub(StrChild);      mPa.endParse();
+  var strHtmlText=mPa.text;
   
-  //var strHash=md5(strHtmlText +JSON.stringify(objTemplateE) +arg.tMod +arg.boOR +arg.boOW +arg.boSiteMap +arg.boTalkExist +JSON.stringify(arg.arrVersionCompared) +JSON.stringify(arg.matVersion));
-
-  //var Ou={StrTemplate, objTemplateE, StrSub, StrSubImage, strHtmlText, arrSub, strHash};
-  var Ou=[objTemplateE, StrSubImage, strHtmlText, arrSub];
-  return [null, Ou];
-}
-
-  // createObjTemplateE: compacting things:
-  // Ex: input:  arrOrg=[{pageName:"template:bla", boOnWhenCached:true}, {pageName:"template:blo", boOnWhenCached:false}]
-  //     output: objOut={"bla":true, "blo":false}
-app.createObjTemplateE=function(arrOrg){  
-  var c=arrOrg.length;
-  var objOut={}; 
-  for(var i=0;i<c;i++){ 
-    var tmpR=arrOrg[i];
-    var tmpname=tmpR.pageName.replace(RegExp('^template:'),''); objOut[tmpname]=tmpR.boOnWhenCached; 
-  }
-  return objOut;
+  return [null, {strHtmlText, IdChildAll, IdChild, objTemplateE, StrImage, StrImageLC}];
 }
 
 
 
-app.createSubStr=function(arrSub){ // arrSub = [[name,boExist], [name,boExist] ....]   (assigned by setArrSub (in parser.js)) 
-  var arrSubQ=[],  arrSubV=[];
-  for(var i=0;i<arrSub.length;i++){ var v=arrSub[i]; arrSubQ.push('(?,?)'); [].push.apply(arrSubV,v); }  //arrSubV.push(v[0], v[1], v[2])
-  var strSubQ=''; if(arrSubQ.length) strSubQ="INSERT INTO tmpSubNew VALUES "+arrSubQ.join(', ')+';';
-  return [strSubQ,arrSubV];
-}
-app.createSubImageStr=function(StrT){
-  var len=StrT.length,  strSubQ=''; if(len) strSubQ="INSERT INTO tmpSubNewImage VALUES "+array_fill(len,'(?)').join(', ')+';';
-  return strSubQ;
-}
 
-//createSaveByReplaceSQL=function(siteName, wwwSite, strName, strEditText, strHtmlText, strHash, arrSub, StrSubImage){ 
-  //var [strSubQ,arrSubV]=createSubStr(arrSub);
-  //var strSubImageQ=createSubImageStr(StrSubImage);
-  //var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  //Sql.push("TRUNCATE tmpSubNew; "+strSubQ); // START TRANSACTION; 
-  //Sql.push("TRUNCATE tmpSubNewImage; "+strSubImageQ);
-  //Sql.push("CALL "+strDBPrefix+"saveByReplace(?,?,?,?,?,?,@Omess);");  //  COMMIT;
-  //Sql.push("SELECT @Omess AS mess");
-  //var sql=Sql.join('\n'); 
-  //var Val=array_merge(arrSubV, StrSubImage, [siteName, wwwSite, strName, strEditText, strHtmlText, strHash]);
-  ////return {sql,Val,nEndingResults:1};
-  //return {sql,Val};
-//}
 
-app.createSaveByAddSQL=function(wwwSite, strName, summary, signature, strEditText, strHtmlText, strHash, arrSub, StrSubImage){ 
-  var [strSubQ,arrSubV]=createSubStr(arrSub);
-  var strSubImageQ=createSubImageStr(StrSubImage);
-  //var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  //Sql.push("TRUNCATE tmpSubNew; "+strSubQ); // START TRANSACTION; 
-  //Sql.push("TRUNCATE tmpSubNewImage; "+strSubImageQ);
-  var Sql=[];
-  Sql.push("DROP TEMPORARY TABLE IF EXISTS tmpSubNew;", sqlTmpSubNewCreate+';', strSubQ);
-  Sql.push("DROP TEMPORARY TABLE IF EXISTS tmpSubNewImage;", sqlTmpSubNewImageCreate+';', strSubImageQ);
-  Sql.push("CALL "+strDBPrefix+"saveByAdd(?,?,?,?,?,?,?);"); //  COMMIT;
-  var sql=Sql.join('\n');
-  var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, summary, signature, strEditText, strHtmlText, strHash]);
-  return {sql,Val,nEndingResults:1};
-}
-
-app.createSetNewCacheSQL=function(wwwSite, strName, rev, strHtmlText, strHash, arrSub, StrSubImage){
-  var [strSubQ,arrSubV]=createSubStr(arrSub);
-  var strSubImageQ=createSubImageStr(StrSubImage);
-  //var Sql=[sqlTmpSubNewCreate+';', sqlTmpSubNewImageCreate+';'];
-  //Sql.push("TRUNCATE tmpSubNew; "+strSubQ); // START TRANSACTION; 
-  //Sql.push("TRUNCATE tmpSubNewImage; "+strSubImageQ);
-  var Sql=[];
-  Sql.push("DROP TEMPORARY TABLE IF EXISTS tmpSubNew;", sqlTmpSubNewCreate+';', strSubQ);
-  Sql.push("DROP TEMPORARY TABLE IF EXISTS tmpSubNewImage;", sqlTmpSubNewImageCreate+';', strSubImageQ);
-  Sql.push("CALL "+strDBPrefix+"setNewCache(?,?,?,?,?);"); //  COMMIT;
-  var sql=Sql.join('\n');
-  var Val=array_merge(arrSubV, StrSubImage, [wwwSite, strName, rev, strHtmlText, strHash]);
-  return {sql,Val,nEndingResults:1}; 
-}
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 app.is_crawler=function() {
@@ -194,9 +133,9 @@ app.is_crawler=function() {
    return RegExp(sites).test(ua);  
 }
 
-app.writeCacheDynamicJS=function*(flow) {
+app.writeCacheDynamicJS=async function() {
   var buf=createCommonJS();
-  var [err]=yield* CacheUri.set(flow, '/'+leafCommon, buf, 'js', true, true);   if(err) return [err];
+  var [err]=await CacheUri.set('/'+leafCommon, buf, 'js', true, true);   if(err) return [err];
   return [null];
 }
 
@@ -213,7 +152,9 @@ app.createCommonJS=function() {
 }
 
 
-app.regTalk=RegExp('^(talk|template_talk):','i');
+//app.regTalk=RegExp('^(talk|template_talk):','i');
+app.regTalk=RegExp('^(template_)?talk:','i');
+app.regTemplate=RegExp('^template(_talk)?:','i');
 app.regTalkNTemplateNSite=RegExp('^(talk:|template:|template_talk:|)(?:([^:]+):)?(.+)','i');
 
 app.calcTalkName=function(pageName){ // Examples: "abc"=>"talk:abc", "template:abc"=>"template_talk:abc", "talk:abc"=>"", "template_talk:abc"=>""
@@ -223,9 +164,19 @@ app.calcTalkName=function(pageName){ // Examples: "abc"=>"talk:abc", "template:a
   }
   return talkPage;
 }
+app.calcTalkNameNoTest=function(pageName){ // Examples: "abc"=>"talk:abc", "template:abc"=>"template_talk:abc", "talk:abc"=>"", "template_talk:abc"=>""
+  var talkPage; if(pageName.substr(0,9)=='template:') talkPage='template_talk:'+pageName; else talkPage='talk:'+pageName;
+  return talkPage;
+}
+
+app.isTalk=function(pageName){ return regTalk.test(pageName); }
+app.isTemplate=function(pageName){ return regTemplate.test(pageName); }
 
 
-
+     
+  //
+  // createManifest
+  //
 
 app.createManifest=function(arg){
   var {siteName, www, srcIcon16}=arg;
@@ -250,21 +201,23 @@ app.createManifest=function(arg){
   return str;
 }
 
-
-app.createManifestNStoreToCache=function*(flow, arg){
+app.createManifestNStoreToCache=async function(arg){
   var {www}=arg;
   var strT=createManifest(arg);
   var buf=Buffer.from(strT, 'utf8');
-  var [err]=yield* CacheUri.set(flow, www+'/'+leafManifest, buf, 'json', true, false);   if(err) return [err];
+  var [err]=await CacheUri.set( www+'/'+leafManifest, buf, 'json', true, false);   if(err) return [err];
   return [null];
 }
-app.createManifestNStoreToCacheMult=function*(flow, results){
-  for(var i=0;i<results.length;i++){   var [err]=yield* createManifestNStoreToCache(flow, results[i]);   if(err) return [err];   }
+app.createManifestNStoreToCacheMult=async function(Site){
+  for(var i=0;i<Site.length;i++){   var [err]=await createManifestNStoreToCache(Site[i]);   if(err) return [err];   }
   return [null];
 }
-app.createManifestNStoreToCacheFrDB=function*(flow, myMySql){
-  var sql="SELECT boDefault, boTLS, idSite, siteName, www, googleAnalyticsTrackingID, srcIcon16, strLangSite, UNIX_TIMESTAMP(tCreated) AS tCreated FROM "+siteTab+" GROUP BY idSite;"
-  var [err, results]=yield* myMySql.query(flow, sql); if(err) return [err];
-  var [err]=yield* createManifestNStoreToCacheMult(flow, results);   if(err) return [err];
+
+app.createManifestNStoreToCacheFrDB=async function(){
+  var Arg=[ {}, {projection:{siteName:"$_id", www:1, srcIcon16:1}}];
+  var cursor= collectionSite.find(...Arg);
+  var [err, Site]=await cursor.toArray().toNBP();   if(err) return [err]; 
+
+  var [err]=await createManifestNStoreToCacheMult(Site);   if(err) return [err];
   return [null];
 }

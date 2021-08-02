@@ -1,5 +1,6 @@
-
 "use strict"
+
+
 app.parseCookies=function(req) {
   var list={}, rc=req.headers.cookie;
   if(typeof rc=='string'){
@@ -10,37 +11,6 @@ app.parseCookies=function(req) {
   }
   return list;
 }
-
-
-//
-// Mysql
-//
-
-app.MyMySql=function(pool){ this.pool=pool; this.connection=null;  }
-MyMySql.prototype.getConnection=function*(flow){
-  var err, connection;      this.pool.getConnection(function(errT, connectionT) { err=errT; connection=connectionT; flow.next(); }); yield;   this.connection=connection; return [err];
-}
-MyMySql.prototype.startTransaction=function*(flow){
-  if(!this.connection) {var [err]=yield* this.getConnection(flow); if(err) return [err];}
-  var err;     this.connection.beginTransaction(function(errT) { err=errT; flow.next(); }); yield;   if(err) return [err];
-  this.transactionState='started';
-  return [null];
-}
-MyMySql.prototype.query=function*(flow, sql, Val=[]){
-  if(!this.connection) {var [err]=yield* this.getConnection(flow); if(err) return [err];}
-  var err, results, fields;    this.connection.query(sql, Val, function (errT, resultsT, fieldsT) { err=errT; results=resultsT; fields=fieldsT; flow.next(); }); yield;   return [err, results, fields];
-}
-MyMySql.prototype.rollback=function*(flow){  this.connection.rollback(function() { flow.next(); }); yield;   }
-MyMySql.prototype.commit=function*(flow){
-  var err; this.connection.commit(function(errT){ err=errT; flow.next(); }); yield;   return [err];
-}
-MyMySql.prototype.rollbackNRelease=function*(flow){  this.connection.rollback(function() { flow.next(); }); yield;  this.connection.release(); }
-MyMySql.prototype.commitNRelease=function*(flow){
-  var err; this.connection.commit(function(errT){ err=errT; flow.next(); }); yield;  this.connection.release();  return [err];
-}
-MyMySql.prototype.fin=function(){   if(this.connection) { this.connection.destroy();this.connection=null;};  }
-
-
 
 
 //
@@ -83,12 +53,16 @@ tmp.out403=function(){ this.outCode(403, "403 Forbidden\n");  }
 tmp.out304=function(){  this.outCode(304);   }
 tmp.out404=function(str){ str=str||"404 Not Found\n"; this.outCode(404, str);    }
 tmp.out500=function(e){
+  debugger
   if(e instanceof Error) {var mess=e.name + ': ' + e.message; console.error(e);} else {var mess=e; console.error(mess);} 
   this.writeHead(500, {"Content-Type": MimeType.txt});  this.end(mess+ "\n");
 }
 tmp.out501=function(){ this.outCode(501, "Not implemented\n");   }
 
 
+tmp.setHeaderMy=function(o){
+  for(var k in o) {this.setHeader(k,o[k]);}
+}
 
 
 app.checkIfLangIsValid=function(langShort){
@@ -146,25 +120,29 @@ app.md5=function(str){return crypto.createHash('md5').update(str).digest('hex');
 
 
   // Redis
-app.cmdRedis=function*(flow, strCommand, arr){
+app.cmdRedis=async function(strCommand, arr){
   if(!(arr instanceof Array)) arr=[arr];
-  var err, value; redisClient.send_command(strCommand, arr, function(errT, valueT){  err=errT; value=valueT; flow.next();  }); yield;
-  return [err,value];
+  return await new Promise(resolve=>{
+    redisClient.send_command(strCommand, arr, (...arg)=>resolve(arg)  ); 
+  });
 }
-app.getRedis=function*(flow, strVar, boObj=false){
-  var [err,strTmp]=yield* cmdRedis(flow, 'GET', [strVar]);  if(boObj) return JSON.parse(strTmp); else return strTmp;
+app.getRedis=async function(strVar, boObj=false){
+  var [err,res]=await cmdRedis('GET', [strVar]);  if(boObj) res=JSON.parse(res);  return [err,res];
 }
-app.setRedis=function*(flow, strVar, val, tExpire=-1){
+app.setRedis=async function(strVar, val, tExpire=-1){
   if(typeof val!='string') var strA=JSON.stringify(val); else var strA=val;
-  var arr=[strVar,strA];  if(tExpire>0) arr.push('EX',tExpire);   var [err,strTmp]=yield* cmdRedis(flow, 'SET', arr);
+  var arr=[strVar,strA];  if(tExpire>0) arr.push('EX',tExpire);   var [err,strTmp]=await cmdRedis('SET', arr);
+  return [err,strTmp];
 }
-app.expireRedis=function*(flow, strVar, tExpire=-1){
-  if(tExpire==-1) var [err,strTmp]=yield* cmdRedis(flow, 'PERSIST', [strVar]);
-  else var [err,strTmp]=yield* cmdRedis(flow, 'EXPIRE', [strVar,tExpire]);
+app.expireRedis=async function(strVar, tExpire=-1){
+  if(tExpire==-1) var [err,strTmp]=await cmdRedis('PERSIST', [strVar]);
+  else var [err,strTmp]=await cmdRedis('EXPIRE', [strVar,tExpire]);
+  return [err,strTmp];
 }
-app.delRedis=function*(flow, arr){ 
+app.delRedis=async function(arr){ 
   if(!(arr instanceof Array)) arr=[arr];
-  var [err,strTmp]=yield* cmdRedis(flow, 'DEL', arr);
+  var [err,strTmp]=await cmdRedis('DEL', arr);
+  return [err,strTmp];
 }
 
 
@@ -196,42 +174,37 @@ app.getIP=function(req){
 }
 
 
-
 app.CacheUriT=function(){
-  this.set=function*(flow, key, buf, type, boZip, boUglify){
-    var strHash=crypto.createHash('md5').update(buf).digest('hex'); 
+  this.set=async function(key, buf, type, boZip, boUglify){
+    var strHash=crypto.createHash('md5').update(buf).digest('hex');
     //if(boUglify) { // UglifyJS does not handle ecma6 (when I tested it 2019-05-05).
       //var objU=UglifyJS.minify(buf.toString());
       //buf=new Buffer(objU.code,'utf8');
     //}
     if(boZip){
-      var bufI=buf;
-      var gzip = zlib.createGzip();
-      var err; zlib.gzip(bufI, function(errT, bufT) { err=errT; buf=bufT; flow.next(); });  yield; if(err) return [err];
-    }
+      var [err, buf]=await new Promise( resolve=>{  zlib.gzip(buf, (...arg)=>resolve(arg)  ); });
+    } else{  var err=null; }
     this[key]={buf,type,strHash,boZip,boUglify};
-    return [null];
+    return [err,buf];
   }
 }
 
 var regFileType=RegExp('\\.([a-z0-9]+)$','i'),    regZip=RegExp('^(css|js|txt|html)$'),   regUglify=RegExp('^js$');
-app.readFileToCache=function*(flow, strFileName) {
+app.readFileToCache=async function(strFileName) {
   var type, Match=regFileType.exec(strFileName);    if(Match && Match.length>1) type=Match[1]; else type='txt';
   var boZip=regZip.test(type),  boUglify=regUglify.test(type);
-  var err, buf;
-  fs.readFile(strFileName, function(errT, bufT) {  err=errT; buf=bufT;  flow.next();   });  yield;  if(err) return [err];
-  var [err]=yield* CacheUri.set(flow, '/'+strFileName, buf, type, boZip, boUglify);
+  var [err, buf]=await fsPromises.readFile(strFileName).toNBP();    if(err) return [err];
+  var [err]=await CacheUri.set('/'+strFileName, buf, type, boZip, boUglify);
   return [err];
 }
 
+
 app.makeWatchCB=function(strFolder, StrFile) {
-  return function(ev,filename){
+  return async function(ev,filename){
     if(StrFile.indexOf(filename)!=-1){
       var strFileName=path.normalize(strFolder+'/'+filename);
       console.log(filename+' changed: '+ev);
-      var flow=( function*(){ 
-        var [err]=yield* readFileToCache(flow, strFileName); if(err) console.error(err);
-      })(); flow.next();
+      var [err]=await readFileToCache(strFileName); if(err) console.error(err);
     }
   }
 }
@@ -273,3 +246,50 @@ app.setAccessControlAllowOrigin=function(req, res, RegAllowed){
 //RegAllowedOriginOfStaticFile=[RegExp("^https\:\/\/(control\.closeby\.market|controlclosebymarket\.herokuapp\.com|emagnusandersson\.github\.io)")];
 //if(boDbg) RegAllowedOriginOfStaticFile.push(RegExp("^http\:\/\/(localhost|192\.168\.0)"));
 //setAccessControlAllowOrigin(res, req, RegAllowedOriginOfStaticFile);
+
+
+  // Make Html table
+app.makeTHead=function(K){
+  if(!K) return "";
+  var strD=''; 
+  for(var i=0; i<K.length; i++){var d=K[i]; strD+="<th>"+d+"</th>";}
+  var strR="<tr>"+strD+"</tr>";
+  return "<thead>"+strR+"</thead>";
+}
+app.makeTBody=function(K,M){
+  var strR=''; 
+  for(var j=0;j<M.length;j++){
+    var r=M[j];
+    var strD='';
+    //for(var i in r){var d=r[i]; strD+="<td>"+d+"</td>";}
+    for(var i=0;i<K.length;i++){var d=r[K[i]]; strD+="<td>"+d+"</td>";}
+    strR+="<tr>"+strD+"</tr>";
+  }
+  return "<tbody>"+strR+"</tbody>";
+}
+app.makeTable=function(K,M){
+  return "<table>"+makeTHead(K)+makeTBody(K,M)+"</table>";
+}
+
+
+app.makeTHead=function(StrHead){
+  if(!StrHead) return "";
+  var strD=''; 
+  for(var i=0; i<StrHead.length; i++){var d=StrHead[i]; strD+="<th>"+d+"</th>";}
+  var strR="<tr>"+strD+"</tr>";
+  return "<thead>"+strR+"</thead>";
+}
+app.makeTBody=function(arrObj, StrHead){
+  var strR='', boUseStrHead=Boolean(StrHead), nHead=StrHead?StrHead.length:-1; 
+  for(var j=0;j<arrObj.length;j++){
+    var r=arrObj[j];
+    var strD='', nColOut=boUseStrHead?nHead:r.length;
+    for(var i=0;i<nColOut;i++){ var k=boUseStrHead?StrHead[i]:i; var d=r[k]; strD+="<td>"+d+"</td>";}
+    strR+="<tr>"+strD+"</tr>";
+  }
+  return "<tbody>"+strR+"</tbody>";
+}
+app.makeTable=function(arrObj, StrHead=null){
+  if(arrObj.length && !StrHead) StrHead=Object.keys(arrObj[0]);
+  return "<table>"+makeTHead(StrHead)+makeTBody(arrObj, StrHead)+"</table>";
+}

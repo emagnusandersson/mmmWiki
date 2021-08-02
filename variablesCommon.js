@@ -15,17 +15,14 @@ leafCommon='common.js';
 leafManifest='manifest.json'
 
 
-StrImageExt=['jpg','jpeg','png','gif','svg'];
 
 
 messPreventBecauseOfNewerVersions="Preventing overwrite since there are newer versions. Copy your edits temporary, then reload page.";
 
 version='100';
 maxGroupsInFeat=20;
-preDefault="p.";
 
 
-selTimeF=function(name){  return "UNIX_TIMESTAMP("+name+")";  };
 
     //    0        1
 bName=['block','help'];
@@ -49,91 +46,118 @@ var nChildFeat={kind:'S11',min:[0, 1, 2, 4, 8, 16, 32, 64, 128]};
 var nParentFeat={kind:'S11',min:[0, 1, 2, 3, 4, 5, 6, 8, 10]};
 var lastRevFeat={kind:'S11',min:[0, 1, 2, 3, 4, 5, 6, 8, 10]};
 
+
 /*******************************************************************
  * PropPage
  *******************************************************************/
 
 PropPage={
-siteName:            {b:'10',feat:{kind:'B'}},
-parent:              {b:'11',feat:{kind:'B'}},
-size:                {b:'11',feat:sizePageFeat},
-boOR:                {b:'01',feat:{kind:'BN',span:1}},
-boOW:                {b:'01',feat:{kind:'BN',span:1}},
-boSiteMap:           {b:'01',feat:{kind:'BN',span:1}},
-boTalk:              {b:'01',feat:{kind:'BN',span:1}},
-boTemplate:          {b:'01',feat:{kind:'BN',span:1}},
-boOther:             {b:'01',feat:{kind:'BN',span:1}},
-tCreated:            {b:'11',feat:tFeat},
-tMod:                {b:'11',feat:tFeat},
-tModCache:           {b:'11',feat:tFeat},
-nChild:              {b:'10',feat:nChildFeat},
-nImage:              {b:'10',feat:nChildFeat},
-intPriority:         {b:'10',feat:intPriorityFeat},
-strLang:             {b:'10',feat:{kind:'B'}},
-tLastAccess:         {b:'10',feat:tFeat},
-nAccess:             {b:'10',feat:nAccessFeat},
-nParent:             {b:'10',feat:nParentFeat},
-lastRev:             {b:'10',feat:lastRevFeat}
+  siteName:            {b:'10',feat:{kind:'B'}},
+  parent:              {b:'11',feat:{kind:'B'}},
+  //child:               {b:'11',feat:{kind:'B'}},
+  //image:               {b:'11',feat:{kind:'B'}},
+  size:                {b:'11',feat:sizePageFeat},
+  boOR:                {b:'01',feat:{kind:'BN',span:1}},
+  boOW:                {b:'01',feat:{kind:'BN',span:1}},
+  boSiteMap:           {b:'01',feat:{kind:'BN',span:1}},
+  boTalk:              {b:'01',feat:{kind:'BN',span:1}},
+  boTemplate:          {b:'01',feat:{kind:'BN',span:1}},
+  boOther:             {b:'01',feat:{kind:'BN',span:1}},
+  tCreated:            {b:'11',feat:tFeat},
+  tMod:                {b:'11',feat:tFeat},
+  tModCache:           {b:'11',feat:tFeat},
+  nChild:              {b:'10',feat:nChildFeat},
+  nImage:              {b:'10',feat:nChildFeat},
+  intPriority:         {b:'10',feat:intPriorityFeat},
+  strLang:             {b:'10',feat:{kind:'B'}},
+  tLastAccess:         {b:'10',feat:tFeat},
+  nAccess:             {b:'10',feat:nAccessFeat},
+  nParent:             {b:'10',feat:nParentFeat},
+  lastRev:             {b:'10',feat:lastRevFeat}
 };
 StrOrderFiltPage=Object.keys(PropPage);
 
 extend(PropPage,{
 pageName:            {b:'00'},
 idPage:              {b:'00'},
-idFile:              {b:'00'},
+idFileWiki:          {b:'00'},
 www:                 {b:'00'}});
+
+// "IdParent", "IdChild", "StrImage", "IdChildAll", "StrImageStub", "StrPagePrivate"
 
 
   // Note! all methods use column-name as the name-parameter (ex: name="tMod") except cond0F and cond1F that uses table-alias (pre) + column-name as the name-parameter (ex: name="p.tMod").
   // It would probably be best that the table-alias and column-name comes in two separate parameters.
 
+
+  // Methods for creating filter...
+  // ... for some S-features
+
   // cond0F
-tmpCond0F=function(name, val){  return "UNIX_TIMESTAMP("+name+")<=UNIX_TIMESTAMP(now())-"+val; };
+tmpCond0F=function(obj, name, val){  obj.$lte=new Date(Date.now() - val*1000); }; // Is this correct shouldn't it be: tmpCond0F=function(obj, name, val){  obj.$lte=new Date(Date.now() - val); };
+//tmpCond0F=function(obj, name, val){  var t=unixNow()-val; obj.$lte=t; };
 PropPage.tCreated.cond0F=PropPage.tMod.cond0F=PropPage.tModCache.cond0F=PropPage.tLastAccess.cond0F=tmpCond0F;
   // cond1F
-tmpCond1F=function(name, val){  return "UNIX_TIMESTAMP("+name+")>UNIX_TIMESTAMP(now())-"+val; };
+tmpCond1F=function(obj, name, val){  obj.$gt=new Date(Date.now() - val*1000); }; // Is this correct shouldn't it be: tmpCond1F=function(obj, name, val){  var t=unixNow()-val; obj.$gt=t; };
 PropPage.tCreated.cond1F=PropPage.tMod.cond1F=PropPage.tModCache.cond1F=PropPage.tLastAccess.cond1F=tmpCond1F;
+
+  // ...for some B-features
+
   // condBNameF
-PropPage.siteName.condBNameF=function(name, Val){ return "idSite";} // Becomes pre+".idSite"
-PropPage.parent.condBNameF=function(name, Val){ return "idPage";} // Becomes pre+".idPage"
-  // boIncludeNull
-PropPage.siteName.boIncludeNull=1;
-PropPage.parent.boIncludeNull=1;
+PropPage.siteName.condBNameF=function(){ return "idSite"; }
+PropPage.parent.condBNameF=function(){ return "IdParent"; }
 
-  // pre
-PropPage.parent.pre='s.';
-//PropPage.siteName.pre='p.';
- 
-  // relaxCountExp
-PropPage.siteName.relaxCountExp=function(name){ return "COUNT(DISTINCT p.idPage)"; }
-PropPage.parent.relaxCountExp=function(name){ return "COUNT(DISTINCT p.idPage)"; }
-PropPage.strLang.relaxCountExp=function(name){ return "COUNT(DISTINCT p.strLang)"; }
-var tmpRelaxCountExp=function(){ return null;}
-var StrTmp=['boOR','boOW','boSiteMap','boTalk','boTemplate','boOther']; // These will never need a trunk, so no need to do a separate count query.
-for(var i=0;i<StrTmp.length;i++){  var name=StrTmp[i]; PropPage[name].relaxCountExp=tmpRelaxCountExp; }
+PropPage.siteName.histBNameF=function(){ return "idSite"; }
+//PropPage.child.condBNameF=function(){ return "IdChild"; }
+//PropPage.image.condBNameF=function(){ return "StrImage"; }
+  // condBNullF
 
-  // histF
-PropPage.siteName.histF=function(name, strTableRef,strCond,strOrder){
-  return `SELECT p.idSite AS bin, COUNT(DISTINCT p.idPage) AS groupCount FROM 
-`+pageLastSiteView+` p LEFT JOIN `+subTab+` s ON s.idSite=p.idSite AND s.pageName=p.pageName 
-`+strCond+`
-GROUP BY bin ORDER BY `+strOrder+`;`;
-}
-PropPage.parent.histF=function(name, strTableRef,strCond,strOrder){
-  return `SELECT s.idPage AS bin, COUNT(DISTINCT p.idPage) AS groupCount FROM 
-`+pageLastSiteView+` p LEFT JOIN `+subTab+` s ON s.idSite=p.idSite AND s.pageName=p.pageName 
-`+strCond+`
-GROUP BY bin ORDER BY `+strOrder+`;`;
-}
+var condBNullFProt=function(name,boWhite){ var method=boWhite?"$eq":"$ne", o={}, oWrap={}; o[method]=[]; oWrap[name]=o; return oWrap;  }
+//var condBNullFProt=function(name,boWhite){ if(boWhite) return {"IdParent":{"$eq":[]}}; else return {"IdParent":{"$ne":[]}}; }
+PropPage.parent.condBNullF=condBNullFProt;
+//PropPage.child.condBNullF=condBNullFProt;
+//PropPage.image.condBNullF=condBNullFProt;
 
-  // binValueF
-var tmpBinValueF=function(name){ return "COUNT(DISTINCT p.idPage)";}
-var StrTmp=['siteName','parent', 'size','boOR','boOW','boSiteMap','boTalk','boTemplate','boOther','tCreated','tMod','tModCache', 'nChild', 'nImage', 'intPriority', 'strLang', 'tLastAccess', 'nAccess', 'nParent', 'lastRev'];
-for(var i=0;i<StrTmp.length;i++){  var name=StrTmp[i]; PropPage[name].binValueF=tmpBinValueF; }
 
-  // histCondF
-var tmpHistCondF=function(name){ return "-UNIX_TIMESTAMP(p."+name+")+UNIX_TIMESTAMP(now())";};
-PropPage.tCreated.histCondF=PropPage.tMod.histCondF=PropPage.tModCache.histCondF=PropPage.tLastAccess.histCondF=tmpHistCondF;
+  // Methods for creating histograms...
+  
+  // ...for some B-features
+
+  // histQueryF
+PropPage.parent.histQueryF=function(Where){  return [   
+  {$match: Where },
+  {$project: { _id: 0, IdParent:1 } },   
+  {$unwind:  { path: "$IdParent", "preserveNullAndEmptyArrays":true} },   
+  {$group: { _id:"$IdParent", n: { $sum: 1 } }}, 
+  {$sort: { n: -1, _id:1 } } 
+]}
+
+// PropPage.child.histQueryF=function(Where){  return [   
+//   {$match: Where },
+//   {$project: { _id: 0, IdChild:1 } },   
+//   {$unwind:  { path: "$IdChild", "preserveNullAndEmptyArrays":true} },   
+//   {$group: { _id:"$IdChild", n: { $sum: 1 } }}, 
+//   {$sort: { n: -1, _id:1 } } 
+// ]}
+
+// PropPage.image.histQueryF=function(Where){  return [   
+//   {$match: Where },
+//   {$project: { _id: 0, StrImage:1 } },   
+//   {$unwind:  { path: "$StrImage", "preserveNullAndEmptyArrays":true} },   
+//   {$group: { _id:"$StrImage", n: { $sum: 1 } }}, 
+//   {$sort: { n: -1, _id:1 } } 
+// ]}
+
+
+
+  // ...for some S-features
+
+  // histGroupByF
+//var tmpGroupByF=function(name){ return { $subtract: [ 	new Date(), "$"+name ] }; }
+//var tmpGroupByF=function(name){ return {$divide:[{$subtract:[new Date(),'$'+name]},1000]}; }
+var tmpGroupByF=function(name){ return {$divide:[   { $toLong:{$subtract: ["$$NOW",'$'+name ]} },     1000   ]}; }
+//var tmpGroupByF=function(name){ return { $subtract: [ 	unixNow(), "$"+name ] }; }
+PropPage.tCreated.histGroupByF=PropPage.tMod.histGroupByF=PropPage.tModCache.histGroupByF=PropPage.tLastAccess.histGroupByF=tmpGroupByF;
 
 
 
@@ -142,7 +166,7 @@ PropPage.tCreated.histCondF=PropPage.tMod.histCondF=PropPage.tModCache.histCondF
  *******************************************************************/
 
 PropImage={
-siteName:          {b:'11',feat:{kind:'B'}},
+siteName:            {b:'11',feat:{kind:'B'}},
 parent:              {b:'11',feat:{kind:'B'}},
 extension:           {b:'10',feat:{kind:'B'}},
 size:                {b:'11',feat:sizeImageFeat},
@@ -163,52 +187,141 @@ idImage:             {b:'00'},
 idFile:              {b:'00'}
 });
 
+
+
   // cond0F
-tmpCond0F=function(name, val){  return "UNIX_TIMESTAMP("+name+")<=UNIX_TIMESTAMP(now())-"+val; };
+tmpCond0F=function(obj, name, val){  obj.$lte=new Date(Date.now() - val*1000); };
 PropImage.tCreated.cond0F=PropImage.tMod.cond0F=PropImage.tLastAccess.cond0F=tmpCond0F;
   // cond1F
-tmpCond1F=function(name, val){  return "UNIX_TIMESTAMP("+name+")>UNIX_TIMESTAMP(now())-"+val; };
+tmpCond1F=function(obj, name, val){   obj.$gt=new Date(Date.now() - val*1000); };
 PropImage.tCreated.cond1F=PropImage.tMod.cond1F=PropImage.tLastAccess.cond1F=tmpCond1F;
+
+
   // condBNameF
-PropImage.siteName.condBNameF=function(name, Val){ return "idSite";} // Becomes pre+".idSite"
-PropImage.parent.condBNameF=function(name, Val){ return "idPage";}  // Becomes pre+".idPage"
-  // boIncludeNull
-PropImage.siteName.boIncludeNull=1;
-PropImage.parent.boIncludeNull=1;
+PropImage.parent.condBNameF=function(){ return "IdParent"; }
+  // condBF
+  // {$or:[{IdParent:{"$eq":[]}}, {IdParent:{"$in":["start"]}}]}
+  // {$and:[{IdParent:{"$ne":[]}}, {IdParent:{"$nin":["start"]}}]}
 
-  // pre
-PropImage.siteName.pre=PropImage.parent.pre='s.';
-var tmpPre = 'i.',  StrTmp=['extension', 'size', 'width', 'height', 'tCreated', 'tMod', 'tLastAccess', 'nAccess', 'boOther', 'nParent'];
-for(var i=0;i<StrTmp.length;i++){  var name=StrTmp[i]; PropImage[name].pre=tmpPre; }
+  // {$or:[{IdParent:{"$eq":[]}}, {IdParent:{"$regex":"(mag|gav)"}}]}
+  // {$and:[{IdParent:{"$ne":[]}}, {IdParent:{$not:{"$regex":"(mag|gav)"}}}]}
+//PropImage.siteName.condBF=function(name, boWhite, arrSpec){ var method=boWhite?"$eq":"$ne", o={}, oW={}; o[method]=[], oW[name]=o; return oW;  }
+PropImage.siteName.condBF=function(name, boWhite, arrSpec){ 
+  var ind=arrSpec.indexOf(null), Cond=[], objCondFeat=null;
+  if(ind!=-1) {  mySplice1(arrSpec,ind); Cond.push(condBNullFProt("IdParent",boWhite));   }
+  var len=arrSpec.length, arrSpecEscaped=Array(len);
+  for(var j=0;j<len;j++){    arrSpecEscaped[j]=mongoSanitize(arrSpec[j]);  }
 
-  // relaxCountExp
-PropImage.siteName.relaxCountExp=function(name){ return "COUNT(DISTINCT i.idImage)"; }
-PropImage.parent.relaxCountExp=function(name){ return "COUNT(DISTINCT i.idImage)"; }
-PropImage.extension.relaxCountExp=function(name){ return "COUNT(DISTINCT i.idImage)"; } 
-PropImage.boOther.relaxCountExp=function(name){ return null; }  
+  if(len) {
+    var str=arrSpecEscaped.join("|");
+    var objReg={$regex:str};
+    var objTmp=boWhite?objReg:{$not:objReg};
+    Cond.push({IdParent:objTmp});
+  }
+  if(Cond.length){
+    if(Cond.length==1) objCondFeat=Cond[0];
+    else if(Cond.length>1){
+      var strMethod=boWhite?'$or':'$and';
+      var objTmp={}; objTmp[strMethod]=Cond; objCondFeat=objTmp;
+    } 
+  }
+  return objCondFeat;
+}
+
+// condBNullF
+//PropImage.parent.condBNullF=function(name,boWhite){ if(boWhite) return {"IdParent":{"$eq":[]}}; else return {"IdParent":{"$ne":[]}}; }
+PropImage.parent.condBNullF=condBNullFProt;
+
+  // condBNameF
+//PropImage.siteName.condBNameF=function(name, Val){ return "idSite";}
+//PropImage.parent.condBNameF=function(name, Val){ return "idPage";}
+
+
+
+  // histQueryF
+PropImage.parent.histQueryF=function(Where){  return [   
+  {$match: Where },
+  {$project: { _id: 0, IdParent:1 } },   
+  {$unwind:  { path: "$IdParent", "preserveNullAndEmptyArrays":true} },   
+  {$group: { _id:"$IdParent", n: { $sum: 1 } }}, 
+  {$sort: { n: -1, _id:1 } } 
+]}
+
 
   // histF
-PropImage.siteName.histF=function(name, strTableRef,strCond,strOrder){
-  return `SELECT s.idSite AS bin, COUNT(DISTINCT i.idImage) AS groupCount FROM 
-`+imageTab+` i LEFT JOIN `+subImageTab+` s ON s.imageName=i.imageName 
-`+strCond+`
-GROUP BY bin ORDER BY `+strOrder+`;`;
-}
-PropImage.parent.histF=function(name, strTableRef,strCond,strOrder){
-  return `SELECT s.idPage AS bin, COUNT(DISTINCT i.idImage) AS groupCount FROM 
-`+imageTab+` i LEFT JOIN `+subImageTab+` s ON s.imageName=i.imageName 
-`+strCond+`
-GROUP BY bin ORDER BY `+strOrder+`;`;
+  //{$or:[{"$in":["$$idParent", ["clo:start"]]}, {"$eq":["$$idParent", []]}]}
+  //{$and:[{$not:[{"$in":["$$idParent", ["clo:start"]]}]}, {"$ne":["$$idParent", []]}]}
+var condBAggregateF=function(arrSpec,boWhite){ 
+  var ind=arrSpec.indexOf(null), Cond=[], objCondFeat={};
+  if(ind!=-1) {  
+    mySplice1(arrSpec,ind);   var oTmp={};   oTmp[boWhite?"$eq":"$ne"]=['$$idParent',[]];   Cond.push(oTmp);
+  }
+  var len=arrSpec.length, arrSpecEscaped=Array(len);
+  for(var j=0;j<len;j++){    arrSpecEscaped[j]=mongoSanitize(arrSpec[j]);  }
+
+  if(len) {
+    var objIn={$in:['$$idParent',arrSpecEscaped]};
+    var objTmp=boWhite?objIn:{$not:[objIn]};    Cond.push(objTmp);
+  }
+  if(Cond.length){
+    if(Cond.length==1) objCondFeat=Cond[0];
+    else if(Cond.length>1){
+      var strMethod=boWhite?'$or':'$and';
+      var objTmp={}; objTmp[strMethod]=Cond; objCondFeat=objTmp;
+    } 
+  }
+  return objCondFeat;
 }
 
-  // binValueF
-var tmpF=function(name){ return "COUNT(DISTINCT i.idImage)";}
-var StrTmp=['extension', 'size', 'width', 'height', 'tCreated', 'tMod', 'tLastAccess', 'nAccess', 'boOther', 'nParent'];
-for(var i=0;i<StrTmp.length;i++){  var name=StrTmp[i]; PropImage[name].binValueF=tmpF; }
+PropImage.siteName.histF=async function(collection,Where,Filt){
+  var filt=Filt.parent; //StrOrderFiltImageFlip
+  if(filt.length==0) return [new Error('filt.length==0')];
+  if(!is_array(filt[0])) return [new Error('filt[0] is not an array.')];
+  var [arrSpec, boWhite]=filt;
 
-  // histCondF
-var tmpHistCondF=function(name){ return "-UNIX_TIMESTAMP(i."+name+")+UNIX_TIMESTAMP(now())";};
-PropImage.tCreated.histCondF=PropImage.tMod.histCondF=PropImage.tLastAccess.histCondF=tmpHistCondF;
+  var WhereFilt=condBAggregateF(arrSpec, boWhite)
+  
+  var strProjectVar=collection===collectionPage?"pageName":"$IdParent";
+    //{$or:[{"IdParent":{$in:["clo:start"]}}, {IdParent:{"$eq":[]}}]}
+    //{$and:[{"IdParent":{$nin:["clo:start"]}}, {IdParent:{"$ne":[]}}]}
+
+    //{$or:[{"$in":["$$idParent", ["clo:start"]]}, {"$eq":["$$idParent", []]}]}
+    //{$and:[{$not:[{"$in":["$$idParent", ["clo:start"]]}]}, {"$ne":["$$idParent", []]}]}
+  var arrArg=[ 
+    {"$match":Where},
+    {"$project":{"_id":0,pageName:1,"IdParent":{$filter: {
+          input: '$IdParent', as: 'idParent', cond: WhereFilt
+      }}
+      }},
+    {"$unwind":{"path":"$IdParent","preserveNullAndEmptyArrays":true}},
+    {"$project":{"returnObject":{"$regexFind":{"input":"$IdParent","regex":/^(.*?):/}}}},
+    {"$group":{"_id":{"$first":"$returnObject.captures"},"n":{"$sum":1}}},
+    {"$sort":{"n":-1,"_id":1}}
+  ];
+
+
+  var cursor=collection.aggregate(arrArg);
+  var [err, results]=await cursor.toArray().toNBP();   if(err) return [err];
+
+  var nAll=0; for(var i=0;i<nRes;i++){   nAll+=results[i].n; }
+
+  var nRes=results.length,   boTruncate=nRes>maxGroupsInFeat,  nBinDisp=boTruncate?maxGroupsInFeat:nRes,  nDisp=0;
+  var hist=Array(nBinDisp+1+boTruncate); 
+  for(var i=0;i<nBinDisp;i++){ 
+    var {_id:bin, n}=results[i];
+    nDisp+=n;   hist[i]=[bin, n];
+  }
+
+  if(boTruncate){ var nTrunk=nAll-nDisp;  hist[nBinDisp]=['', nTrunk]; } 
+  hist[nBinDisp+boTruncate]=boTruncate;  // The last item marks if the second-last-item is a trunk (remainder)
+  return [null, hist];
+};
+
+
+
+  // histGroupByF
+var tmpGroupByF=function(name){ return {$divide:[{$subtract:[new Date(),'$tCreated']},1000]}; }
+PropImage.tCreated.histGroupByF=PropImage.tMod.histGroupByF=PropImage.tLastAccess.histGroupByF=tmpGroupByF;
 
 
 /*******************************************************************
@@ -240,6 +353,9 @@ featCalcValExtend=function(Prop){
         feat.bucketLabel=[].concat(feat.min);
         feat.bucketLabel[jlast]='≥'+feat.bucketLabel[jlast];
       }
+
+      feat.boundaries=feat.min.concat(feat.max[jlast]);
+      feat.boundariesIndFlip=array_flip(feat.min);
 
       Prop[name].feat=feat;
     }
@@ -274,68 +390,9 @@ objOthersActivity=null; boPageBUNeeded=null; boImageBUNeeded=null;
 objOthersActivityDefault={nEdit:0, pageName:'',  nImage:0, imageName:''};
 // tLastBackup=0; tLastEdit=0; tImageLastBackup=0; tImageLastChange=0;
 
-
-sqlTmpSubNewCreate="CREATE TEMPORARY TABLE tmpSubNew (pageName varchar(128) NOT NULL,  boOn TINYINT(1) NOT NULL)";  //,  UNIQUE KEY (pageName)
-sqlTmpSubNewImageCreate="CREATE TEMPORARY TABLE tmpSubNewImage (imageName varchar(128) NOT NULL)";  //,  UNIQUE KEY (imageName)
-
-
 strDBPrefix='mmmWiki';
-//StrTableKey=["sub", "subImage", "version", "page", "thumb", "image", "video", "file", "setting", "redirect", "redirectDomain", "site"]; //, "nParent", "nParentI"
-//StrViewsKey=["pageSite", "pageLast", "pageLastSite", "redirectSite", "parentInfo", "parentImInfo", "childInfo", "childImInfo", "subWChildID", "subWExtra"]; 
-//TableName={};for(var i=0;i<StrTableKey.length;i++) {var name=StrTableKey[i]; TableName[StrTableKey[i]+"Tab"]=strDBPrefix+'_'+name;}
-//ViewName={};for(var i=0;i<StrViewsKey.length;i++) {var name=StrViewsKey[i]; ViewName[StrViewsKey[i]+"View"]=strDBPrefix+'_'+name;}
 
 
-StrTableKey=["subTab", "subImageTab", "versionTab", "pageTab", "thumbTab", "imageTab", "videoTab", "fileTab", "settingTab", "redirectTab", "redirectDomainTab", "siteTab"];
-StrViewsKey=["pageSiteView", "pageLastView", "pageLastSiteView", "redirectSiteView", "parentInfoView", "parentImInfoView", "childInfoView", "childImInfoView", "subWChildIDView", "subWExtraView"]; 
-TableName={};for(var i=0;i<StrTableKey.length;i++) {var name=StrTableKey[i]; TableName[name]=strDBPrefix+'_'+name.slice(0,-3);}
-ViewName={};for(var i=0;i<StrViewsKey.length;i++) {var name=StrViewsKey[i]; ViewName[name]=strDBPrefix+'_'+name.slice(0,-4);}
-
-extract(TableName);
-extract(ViewName);
-
-
-//CREATE TEMPORARY TABLE IF NOT EXISTS pageRef AS SELECT p.*, s.idPage AS idParent FROM mmmWiki_pageLastSite p LEFT JOIN mmmWiki_sub s  ON s.idSite=p.idSite AND s.pageName=p.pageName;
-
-
-strTableRefPage=pageSiteView+" p \n\
-LEFT JOIN "+subTab+" s ON s.idSite=p.idSite AND s.pageName=p.pageName \n\
-LEFT JOIN "+pageTab+" pp ON pp.idPage=s.idPage";
-// Starting with the list of pages
-// The 1:st join: adds idPage of parent (The table is expanded if there are multiple parents)
-// The 2:nd join: adds pageName of parent(s)
-
-strTableRefImage=imageTab+" i \n\
-LEFT JOIN "+subImageTab+" s ON s.imageName=i.imageName \n\
-LEFT JOIN "+pageTab+" pp ON pp.idPage=s.idPage";
-
-strTableRefPageHist=pageSiteView+" p LEFT JOIN "+subTab+" s  ON s.idSite=p.idSite AND s.pageName=p.pageName";  // Should be used with a COUNT(DISTINCT p.idPage)  
-strTableRefImageHist=imageTab+" i LEFT JOIN "+subImageTab+" s ON s.imageName=i.imageName";  // Should be used with COUNT(DISTINCT i.idImage) 
-
-
-
-nDBConnectionLimit=10; nDBQueueLimit=100;
-nDBRetry=14;
-
-setUpMysqlPool=function(){
-  var uriObj=url.parse(uriDB);
-  var StrMatch=RegExp('^(.*):(.*)$').exec(uriObj.auth);
-  var nameDB=uriObj.pathname.substr(1);
-  var mysqlPool  = mysql.createPool({
-    connectionLimit : nDBConnectionLimit,
-    host            : uriObj.host,
-    user            : StrMatch[1],
-    password        : StrMatch[2],
-    database        : nameDB,
-    multipleStatements: true,
-    waitForConnections:true,
-    queueLimit:nDBQueueLimit,
-    //dateStrings:'date',
-    flags:'-FOUND_ROWS'
-  });
-  mysqlPool.on('error',function(e){debugger});
-  return mysqlPool;
-}
 
 TLSDataExtend=function(){
   this.getContext=function(domainName){
@@ -354,3 +411,139 @@ TLSDataExtend=function(){
     item.context=tls.createSecureContext({        key:  item.strKey,        cert: item.strCert      });//.context;
   }
 }
+
+
+
+
+// app.createDefaultDocumentAll=function(){
+//   for(var key in app.InitCollection){
+//     var objInitCollection=app.InitCollection[key];
+//     objInitCollection.objDefault=app.createDefaultDocument(objInitCollection)
+//   }
+//   return
+// }
+//   // How to use: var objDefault=createDefaultDocument(app.InitCollection[nameCollection]);
+// app.createDefaultDocument=function(objInitCollection){
+//   var date0=new Date(0), id0=ObjectId("123456789012345678901234"); //, int0=mongodb.Int32(0), long0=mongodb.Long(0);
+//   var {validator, ArrUnique, objDefault}=objInitCollection;
+//   var {$jsonSchema}=validator, {required, properties}=$jsonSchema, OOut={};
+//   for(var strProp of required){
+//     var prop=properties[strProp];  if(typeof prop=="undefined") {prop={bsonType:"bool"};}
+//     var {bsonType, defaultVal}=prop;
+//     bsonType=bsonType.toLowerCase();
+//     if(defaultVal) {val=defaultVal; delete prop.defaultVal;}
+//     else if(bsonType=="bool") val=false;
+//     else if(bsonType=="string") val="";
+//     else if(bsonType=="date") val=date0;
+//     else if(bsonType=="objectid") val=id0;
+//     else if(bsonType=="array") val=[];
+//     else if(bsonType=="object") val={};
+//     else if(bsonType=="float") val=0;
+//     else if(bsonType=="double") val=mongodb.Double(0);
+//     else if(bsonType=="int") val=mongodb.Int32(0);
+//     else if(bsonType=="long") val=mongodb.Long(0);
+//     else if(bsonType=="bindata") val="";
+//     else val="";
+//     OOut[strProp]=val;
+//   }
+//   return OOut;
+// }
+
+// app.convertToMongoObj=function(obj, strCollection){
+//   var objInitCollection=app.InitCollection[strCollection];
+//   var {validator, ArrUnique}=objInitCollection;
+//   var {$jsonSchema}=validator, {properties}=$jsonSchema, OOut={};
+//   var Key=Object.keys(properties);
+//   //var date0=new Date(0), id0=ObjectId("123456789012345678901234"), int0=mongodb.Int32(0), long0=mongodb.Long(0);
+//   for(var strProp of Key){
+//     var prop=properties[strProp];  if(typeof prop=="undefined") {prop={bsonType:"bool"};}
+//     var {bsonType}=prop;    bsonType=bsonType.toLowerCase();
+//     var val=obj[strProp];
+    
+//     if(bsonType=="bool" && typeof val!="boolean") {obj[strProp]=Boolean(val); continue; }
+//     //else if(bsonType=="string");
+//     //else if(bsonType=="date") ;
+//     //else if(bsonType=="objectid") ;
+//     //else if(bsonType=="array") ;
+//     else if(bsonType=="int" && !(val instanceof Int32)) {obj[strProp]=Int32(val); continue; }
+//     else if(bsonType=="long" && !(val instanceof Long)) {obj[strProp]=Long(val); continue; } 
+//     //else if(bsonType=="bindata");
+//     //else val="";
+    
+//   }
+//   return OOut;
+// }
+
+
+  //How to use: var objPageTmp=copyObjWMongoTypes(objPage); convertToMongoObj(objPageTmp, "Page");
+app.copyObjWMongoTypes=function(o){ // Also copies Date
+  if (o===undefined || o===null || ['string', 'number', 'boolean'].indexOf(typeof o)!==-1) return o;
+  if(o instanceof Date) return new Date(o.getTime());
+  if(o instanceof ObjectId) return ObjectId.createFromHexString(o.toHexString());
+  if(o instanceof Int32) return Int32(o);
+  if(o instanceof Long) return Long(o);
+  var n= o instanceof Array? [] :{};
+  for (var k in o)
+    n[k]= copyObjWMongoTypes(o[k]);
+  return n;
+}
+
+// How to use: obj=copyNCastMongoObj(obj, app.InitCollection[strCollection].validator.$jsonSchema);
+app.copyNCastMongoObj=function(obj, objInit){
+  if(typeof objInit=="undefined") return copyObjWMongoTypes(obj);
+
+  var {bsonType, items, properties}=objInit;    bsonType=bsonType.toLowerCase();
+  if(bsonType=="bool") { return (typeof obj=="boolean")?obj:Boolean(obj);}
+  if(bsonType=="string") {return (typeof obj=="string")?obj:String(obj);}
+  if(bsonType=="date") {return (obj instanceof Date)? (new Date(obj.getTime())) : (new Date(obj));}
+  if(bsonType=="objectid") {var str= (obj instanceof ObjectId)? (obj.toHexString()):obj; return ObjectId.createFromHexString(str);}
+  if(bsonType=="int") { return Int32(obj); }
+  if(bsonType=="long") { return Long(obj); }
+
+  if(bsonType=="array") { 
+    if(typeof items=="undefined") { return copyObjWMongoTypes(obj);}
+    var n=[];   for (var k in obj) n[k]= copyNCastMongoObj(obj[k], items);   return n;
+  }
+  if(bsonType=="object") { 
+    if(typeof properties=="undefined") { return copyObjWMongoTypes(obj);}
+    var n={};   for (var k in obj) n[k]= copyNCastMongoObj(obj[k], properties[k]);   return n;
+  }
+  //if(bsonType=="bindata") return obj;
+  //return obj;
+}
+
+// How to use: obj=copyNCastMongoObj(obj, app.InitCollection[strCollection].validator.$jsonSchema);
+app.copyNCastMongoObj=function(obj, objInit){
+  var boGotInit=typeof objInit!="undefined";
+  if(boGotInit) { var {bsonType, items, properties}=objInit;    bsonType=bsonType.toLowerCase(); } 
+  else {
+    var bsonType=typeof obj;
+    if(bsonType=="boolean") bsonType="bool";
+    else if(bsonType=="number") bsonType="int";
+    else if(bsonType=="object") {
+      if(obj instanceof Date) bsonType="date";
+      else if(obj instanceof ObjectId) bsonType="objectid";
+      else if(obj instanceof Int32) bsonType="int";
+      else if(obj instanceof Long) bsonType="long";
+      else if(obj instanceof Array) bsonType="array";
+    }
+  }
+  if(bsonType=="bool") { return (typeof obj=="boolean")?obj:Boolean(obj);}
+  if(bsonType=="string") {return (typeof obj=="string")?obj:String(obj);}
+  if(bsonType=="date") {return (obj instanceof Date)? (new Date(obj.getTime())) : (new Date(obj));}
+  if(bsonType=="objectid") {var str= (obj instanceof ObjectId)? (obj.toHexString()):obj; return ObjectId.createFromHexString(str);}
+  if(bsonType=="int") { return Int32(obj); }
+  if(bsonType=="long") { return Long(obj); }
+
+  if(bsonType=="array") { 
+    //if(typeof items=="undefined") { return copyObjWMongoTypes(obj);}
+    var n=[];   for(var k in obj) n[k]= copyNCastMongoObj(obj[k], boGotInit?items:undefined);   return n;
+  }
+  if(bsonType=="object") { 
+    //if(typeof properties=="undefined") { return copyObjWMongoTypes(obj);}
+    var n={};   for(var k in obj) n[k]= copyNCastMongoObj(obj[k], boGotInit?properties[k]:undefined);   return n;
+  }
+  //if(bsonType=="bindata") return obj;
+  //return obj;
+}
+
