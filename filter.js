@@ -470,8 +470,7 @@ filterDivICreator.tmpPrototype.interpretHistPHP=function(HistPHP){
 }
 
 filterDivICreator.tmpPrototype.gatherFiltData=function(){
-  var el=this;
-  var Filt=el.Filt;
+  var el=this, Filt=el.Filt;
   var FiltOut={};
   for(var i=0;i<Filt.length;i++){
     var strName=el.StrOrderFilt[i];
@@ -492,8 +491,7 @@ filterDivICreator.tmpPrototype.toStored=function(){
 }
 
 filterDivICreator.tmpPrototype.frStored=function(o){
-  var el=this;
-  var Filt=el.Filt, FiltS=o.Filt;
+  var el=this, Filt=el.Filt, FiltS=o.Filt;
   for(var i=0;i<Filt.length;i++){
     var strName=el.StrOrderFilt[i];
     if(el.Prop[strName].feat.kind[0]=='B'){ 

@@ -55,6 +55,9 @@ app.endsWith=function(str,end){return str.substr(-end.length)==end;}
 app.str_repeat=function(str,n){ return Array(n+1).join(str);}
 
 
+   // Ex: a="abcdef", b="abcghij" => returns 3
+app.strCountEqualFromStart=function(a,b){var l=Math.min(a.length,b.length); for(var i=0;i<l;i++){if(a[i]!=b[i]) return i;} return l; }
+
 //
 // Array
 //
@@ -87,7 +90,8 @@ app.array_merge=function(){  return Array.prototype.concat.apply([],arguments); 
 app.array_mergeM=function(){var t=[], a=arguments[0], b=t.slice.call(arguments, 1), c=t.concat.apply([],b); t.push.apply(a,c); return a; } // Modifies origin (first argument)
 
 app.array_flip=function(A){ var B={}; for(var i=0;i<A.length;i++){B[A[i]]=i;} return B;}
-app.array_fill=function(n, val){ return Array.apply(null, new Array(n)).map(String.prototype.valueOf,val); }
+//app.array_fill=function(n, val){ return Array.apply(null, new Array(n)).map(String.prototype.valueOf,val); }
+app.array_fill=function(n, val){ var a=new Array(n); for(var i=0;i<n;i++)a[i]=val; return a; }
 
 app.is_array=function(a){return a instanceof Array;}
 app.in_array=function(needle,haystack){ return haystack.indexOf(needle)!=-1;}

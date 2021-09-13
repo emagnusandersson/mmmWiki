@@ -221,3 +221,15 @@ app.createManifestNStoreToCacheFrDB=async function(){
   var [err]=await createManifestNStoreToCacheMult(Site);   if(err) return [err];
   return [null];
 }
+
+
+
+app.arrayifyCookiePropObj=function(obj){
+  var K=Object.keys(obj);
+  var O=K.map(k=>{
+    var v=obj[k];
+    if((k=="HttpOnly" || k=="Secure") && v) return k;
+    return k+"="+v;
+  });
+  return O;
+}

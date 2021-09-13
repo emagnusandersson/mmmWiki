@@ -4,7 +4,7 @@
 //🗝 👵👴👶🌳🌲
 
 "use strict"
-const funLoad=function(){
+const funLoad=async function(){
 console.log('load');
 var MmmWikiFiltExtention={
   setSingleParent:function(idParent){
@@ -156,24 +156,23 @@ var commentButtonExtend=function(el){
 }
 
 var aRLoginDivExtend=function(el){
-  var vPassF=function(){  
+  var vPassF=async function(){  
     //var tmp=SHA1(aRPass.value+strSalt);
     if(typeof SHA1 == 'undefined') { setMess(strSha1NotLoaded); return;}
     var data=aRPass.value+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data);
     //var data=aRPass.value+strSalt; for(var i=0;i<nHash;i++) data=Sha256.hash(data);
     if(data.substr(0,2)!=aRPasswordStart) {setMess('Wrong pw'); return;}
-    var vec=[['aRLogin',{pass:data},pageLoadF]];   myFetch('POST',vec);  
+    var vec=[['aRLogin',{pass:data}]];   await myFetch('POST',vec);  
     aRPass.value='';
-  }
-  var pageLoadF=function(){
+
     if(!boARLoggedIn) return;
     pageView.setVis();
-    var vec=[['pageLoad',{},getLoginBooleanF]];   myFetch('GET',vec);
+    var vec=[['pageLoad',{}]];   await myFetch('GET',vec);
+
+    //if(!boARLoggedIn) return;
+    //var vec=[['getLoginBoolean',{}]];  await myFetch('POST',vec);
   }
-  var getLoginBooleanF=function(){
-    if(!boARLoggedIn) return;
-    var vec=[['getLoginBoolean',{}]];   myFetch('POST',vec);
-  }
+
   var aRPass=createElement('input').prop('type', 'password').on('keypress',  function(e){ if(e.which==13) {vPassF();return false;} });     
   var vPassButt=createElement('button').myText('Login').on('click',vPassF);
   el.aRPass=aRPass;
@@ -696,9 +695,9 @@ var tabBUSumExtend=function(el){
     var divAction=createElement('div').css({'background':StrActionColor[i],'height':'20px', width:'25%', display:'inline-block'});
     tdOld.myAppend(divAction);
     tdNew.myAppend(divAction.cloneNode());
-    var divColor=createElement('span').css({'background':StrActionColor[i],'height':'1em', width:'1em', display:'inline-block', 'margin-right':'0.4em'});
+    var divColor=createElement('span').css({'background':StrActionColor[i],'height':'1em', width:'1em', display:'inline-block', 'margin-right':'0.1em'});
     var spanColor=createElement('span').myText(StrActionLabel[i]+": ");
-    var spanN=createElement('span').css({'margin-right':'0.4em', 'font-weight':'bold'});
+    var spanN=createElement('span').css({'margin-right':'0.6em', 'font-weight':'bold'});
     tdColor.myAppend(divColor, spanColor, spanN);
   }
 
@@ -1928,8 +1927,7 @@ DivRowParentT.tmpPrototype.getPageInfoByIdRet=function(data){
 
   // Method of buttonNParent
 var goToParentMethod=function(e){
-  var {strType}=this;
-  var r=this.parentNode.parentNode,  {idPage, idImage, nParent, idParent, boTLS, www, parent}=r;
+  var {strType}=this, r=this.parentNode.parentNode,  {idPage, idImage, nParent, idParent, boTLS, www, parent}=r;
   var FiltGoal=strType=='page'?pageFilterDiv.Filt:imageFilterDiv.Filt;
   var listGoal=strType=='page'?pageList:imageList;
   var boUseSelPop=nParent>1;
@@ -3773,10 +3771,9 @@ var beRet=function(data){
 
 var GRet=function(data){
   var tmp;
-  //copyIfExist(app, data, ['boARLoggedIn']);
-  //tmp=data.boAWLoggedIn;   if(tmp!=undefined) { app.boAWLoggedIn=tmp; adminDiv.setUpButtons(boAWLoggedIn); }
-  if(data.boARLoggedIn!=undefined){
-    copySome(app, data, ['boARLoggedIn', 'boAWLoggedIn']);
+  if(data.boARLoggedIn!=undefined){  copySome(app, data, ['boARLoggedIn']);  }
+  if(data.boAWLoggedIn!=undefined){
+    copySome(app, data, ['boAWLoggedIn']);
     adminDiv.setUpButtons(boAWLoggedIn);
   }
   //tmp=data.idPage;   if(typeof tmp!="undefined") { objPage.idPage=tmp;  }
@@ -3810,14 +3807,16 @@ var GRet=function(data){
   //tmp=data.CSRFCode;   if(typeof tmp!="undefined") CSRFCode=tmp;
   if('CSRFCode' in data) setItem('CSRFCode',data.CSRFCode);
   //if(!(boARLoggedIn || objPage.boOR)) aRLoginDiv.setVis();  
-  if(!objPage.boOR && (boARLoggedIn==undefined || boARLoggedIn==0)) aRLoginDiv.setVis();  
+  //if(!objPage.boOR && (boARLoggedIn==undefined || boARLoggedIn==0)) aRLoginDiv.setVis();  
+  if(!objPage.boOR && boARLoggedIn==0) aRLoginDiv.setVis();  
 
 
-  if(boARLoggedIn!=undefined ){
-    var boT=!objPage.boOR && boARLoggedIn; butARLogout.toggle(boT);
-  }
+  // if(boARLoggedIn!=undefined ){
+  //   var boT=!objPage.boOR && boARLoggedIn; butARLogout.toggle(boT);
+  // }
+  var boT=!objPage.boOR && boARLoggedIn;   butARLogout.toggle(boT);
 
-  if(boAWLoggedIn!=undefined && boAWLoggedIn){
+  if(boAWLoggedIn){ //boAWLoggedIn!=undefined && 
     if(timerALogout) { clearTimeout(timerALogout); }
     timerALogout=setTimeout(function(){
       boAWLoggedIn=0; //histGoTo('adminDiv');
@@ -3951,6 +3950,7 @@ indexAssign();
 setItem('CSRFCode',CSRFCode);
 
 assignCommonJS();
+//extend(window,{boARLoggedIn:0, boAWLoggedIn:0});
 
 matVersion=tabNStrCol2ArrObj(matVersion);  app.nVersion=matVersion.length;
 
@@ -4354,25 +4354,21 @@ editDiv.spanSave.toggle(Boolean(objPage.boOW));
 var boMakeFirstScroll=1;
 
 
-if(objPage.boOR==0) { // If private
-  adminDiv.setUpButtons(boAWLoggedIn);
-  butARLogout.toggle(boARLoggedIn); 
-  if(boARLoggedIn){
-    var vec=[['pageLoad',{}, function(data){pageView.setVis();}]];   myFetch('GET',vec); pageView.setVis();
-    if(boAWLoggedIn) {
-      var vec=[['getAWRestrictedStuff',{}]];   myFetch('POST',vec);
-    }
-  } else aRLoginDiv.setVis();  
-} else {
-  let getLoginBooleanRet=function(data){   if(boAWLoggedIn) {  var vec=[['getAWRestrictedStuff',{}]];   myFetch('POST',vec);  }   }
-  var vec=[['getLoginBoolean',{},getLoginBooleanRet]];   myFetch('POST',vec); pageView.setVis();
-} 
-// (async function bla(){
-//   let response = await fetch('coffee.jpg');
-//   console.log(response);
-// })()
 
 
+await (async function(){
+  if(objPage.boOR==0) { // If private
+    adminDiv.setUpButtons(boAWLoggedIn);
+    butARLogout.toggle(boARLoggedIn); 
+    if(boARLoggedIn){
+      pageView.setVis();
+      var vec=[['pageLoad',{}]];  await myFetch('GET',vec); 
+      pageView.setVis();
+    } else aRLoginDiv.setVis();  
+  }
+  else {   var vec=[['getLoginBoolean',{}]];  await myFetch('POST',vec); pageView.setVis();   } 
+  if(boAWLoggedIn) {  var vec=[['getAWRestrictedStuff',{}]];  await myFetch('POST',vec);  } 
+})();
 
 setTimeout(function(){
   var scriptZip=createElement("script").prop({src:uZip}).on('load',function(){ zip.workerScriptsPath = flFoundOnTheInternetFolder+'/'; });

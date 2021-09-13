@@ -15,7 +15,7 @@ app.ReqBE=function(objReqRes){
   // Method "mesO" and "mesEO" are only called from "go". Method "mes" can be called from any method.
 ReqBE.prototype.mes=function(str){ this.Str.push(str); }
 ReqBE.prototype.mesO=function(e){
-  var res=this.res;
+  var {res}=this;
     // Prepare an error-message for the browser.
   var strEBrowser, statusCode=200;
   if(typeof e=='string'){strEBrowser=e; }
@@ -42,22 +42,24 @@ ReqBE.prototype.mesO=function(e){
   }
 }
 ReqBE.prototype.mesEO=function(e, statusCode=500){
-  var res=this.res;
-    // Prepare an error-message for the browser and one for the error log.
-  var StrELog=[], strEBrowser;
-  if(typeof e=='string'){strEBrowser=e; StrELog.push(e);}
+  var {req,res}=this;
+
+    // Write error to error log
+  console.error(e);
+  var headersTmp=copySome({}, req.headers, ['user-agent', 'host', 'origin', 'referer', 'x-requested-with']);
+  console.error(headersTmp);
+
+    // Prepare an error-message for the browser.
+  var strEBrowser;
+  if(typeof e=='string'){strEBrowser=e; }
   else if(typeof e=='object'){
-    if('syscal' in e) StrELog.push('syscal: '+e.syscal);
+    //if('syscal' in e) StrELog.push('syscal: '+e.syscal);
     if(e instanceof Error) {strEBrowser='name: '+e.name+', code: '+e.code+', message: ' + e.message; }
-    else { strEBrowser=e.toString(); StrELog.push(strEBrowser); }
+    else { strEBrowser=e.toString();  }
   }
-    
-  var strELog=StrELog.join('\n'); console.error(strELog);  // Write message to the error log
-  if(e instanceof Error) { console.error(e);}   // Write stack to error log
-  
-    // Write message (and other data) to browser
-  this.Str.push(strEBrowser);
-  this.GRet.strMessageText=this.Str.join(', ');
+
+    // Write stuff to browser
+  this.Str.push(strEBrowser);    this.GRet.strMessageText=this.Str.join(', ');
   
     // mmmWiki specific
   var GRet=this.GRet;    //if('tMod' in GRet && GRet.tMod instanceof Date) GRet.tMod=GRet.tMod.toUnix();
@@ -73,25 +75,18 @@ ReqBE.prototype.mesEO=function(e, statusCode=500){
 ReqBE.prototype.go=async function(){ 
   var {req, res}=this;
   
-  var strT=req.headers['Sec-Fetch-Site'];
-  if(strT && strT!='same-origin') { this.mesEO(Error("Sec-Fetch-Site header is not 'same-origin' ("+strT+")"));  return;}
+  var strT=req.headers['sec-fetch-site'];
+  if(strT && strT!='same-origin') { this.mesEO(Error("sec-fetch-site header is not 'same-origin' ("+strT+")"));  return;}
   
 
   if('x-requested-with' in req.headers){
     var str=req.headers['x-requested-with'];   if(str!=="XMLHttpRequest") { this.mesEO(Error("x-requested-with: "+str));  return; }
-  } else {  this.mesEO(Error("x-requested-with not set"));  return;  }
+  } else { this.mesEO(Error("x-requested-with not set"));  return;  }
 
   if('referer' in req.headers) {
     var urlT=req.strSchemeLong+req.wwwSite, lTmp=urlT.length, referer=req.headers.referer, lMin=Math.min(lTmp, referer.length);
     if(referer.slice(0,lMin)!=urlT.slice(0,lMin)) { this.mesEO(Error('Referer does not match,  got: '+referer+', expected: '+urlT));  return;  }
-  } else { 
-    console.log("user-agent: "+req.headers['user-agent']);
-    console.log('host: '+req.headers.host);
-    console.log('origin: '+req.headers.origin);
-    console.log('referer: '+req.headers.referer);
-    console.log('x-requested-with: '+req.headers['x-requested-with']);
-    this.mesEO(Error("Referer not set"));  return;
-  }
+  } else {  this.mesEO(Error("Referer not set"));  return; }
 
 
     // Extract input data either 'POST' or 'GET'
@@ -129,8 +124,8 @@ ReqBE.prototype.go=async function(){
   
     // Get boARLoggedIn / boAWLoggedIn.  Conditionally push deadlines forward ("expire" returns 1 if timer was set or 0 if variable doesn't exist)
   var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, req.cookies.sessionID+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, req.cookies.sessionID+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
   
   
 
@@ -242,10 +237,9 @@ ReqBE.prototype.go=async function(){
 
 
 ReqBE.prototype.aRLogin=async function(inObj){ 
-  var {req, res, GRet}=this;
-  var aRPass=inObj.pass; 
+  var {req, res, GRet}=this, aRPass=inObj.pass; 
   var Ou={};  
-  if(this.boARLoggedIn==1 ){ this.mesO('Already logged in'); return [null, [Ou]]; }
+  if(this.boARLoggedIn==1 ){ this.mesO('Already have read access'); return [null, [Ou]]; }
   if(!aRPass) { this.mesO('Password needed');  return [null, [Ou]];  }
   if(aRPass!=aRPassword) { this.mesO('Wrong password');  return [null, [Ou]];  }
   
@@ -253,32 +247,17 @@ ReqBE.prototype.aRLogin=async function(inObj){
 
     // Delete old session-token
     // (Changing session-token at login (as recomended by security recomendations) (to prevent session fixation))
-  if('sessionID' in req.cookies) {
-    var sessionIDOld=req.cookies.sessionID;
-    var [err]=await cmdRedis('DEL', [sessionIDOld+'_adminRTimer', sessionIDOld+'_adminWTimer']);
-  }
-  var sessionID=randomHash();
-  var [err]=await cmdRedis('SET', [sessionID+'_adminRTimer', 1, 'EX', maxAdminRUnactivityTime]);
-  //var luaCountFunc=`local redis.call('DEL',KEYS[1]); redis.call('SET', ARGV[1], 1, 'EX', ARGV[2]);`;
-  var arrCookie=["sessionID="+sessionID+strCookiePropLax];
-  //var luaCountFunc=`local c=redis.call('GET',KEYS[1]); if(c>0) then redis.call('RENAME', KEYS[1], ARGV[1]); return c`;
-  //var [err,CSRFCode]=await cmdRedis('EVAL', [luaCountFunc, 1, req.cookies.sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
+  var {sessionIDR}=req.cookies;
+  if(sessionIDR) { var [err]=await cmdRedis('DEL', [sessionIDR+'_adminRTimer']); if(err) return [err]; }
+  var sessionIDR=randomHash();
+  var [err]=await cmdRedis('SET', [sessionIDR+'_adminRTimer', 1, 'EX', maxAdminRUnactivityTime]);
+
+  var oTmp=extend({},StrCookiePropProt); 
+  oTmp["Max-Age"]=maxAdminRUnactivityTime; var strProp=";"+arrayifyCookiePropObj(oTmp).join(';');
+  var arrCookie=["sessionIDR="+sessionIDR+strProp];
   
-  if('sessionIDCSRF' in req.cookies) {
-    var sessionIDOld=req.cookies.sessionIDCSRF, sessionID=randomHash();
-    var strSuffix='_CSRF', redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
-    var [err,value]=await cmdRedis('rename', [redisVarO, redisVarN]); if(err) return [err];
-    var boKeyExist=1;
-    if(err){
-      if(err.message!="ERR no such key") return [err];
-      boKeyExist=false;
-    }
-    if(boKeyExist) arrCookie.push("sessionIDCSRF="+sessionID+strCookiePropLax);
-    
-  }
   res.setHeader("Set-Cookie", arrCookie);
   
-  //GRet.boARLoggedIn=this.boARLoggedIn;
   copySome(GRet,this,['boARLoggedIn','boAWLoggedIn']); 
     // Returning both (to make it a bit simpler on the client side) 
     //   Both are returned in aWLogin, getLoginBoolean and in index-request.
@@ -287,11 +266,9 @@ ReqBE.prototype.aRLogin=async function(inObj){
 }
 
 ReqBE.prototype.aWLogin=async function(inObj){ 
-  var {req, res, GRet}=this;
-
-  var aWPass=inObj.pass; 
+  var {req, res, GRet}=this, aWPass=inObj.pass; 
   var Ou={};  
-  if(this.boAWLoggedIn==1 ){ this.mesO('Already logged in'); return [null, [Ou]]; }
+  if(this.boAWLoggedIn==1 ){ this.mesO('Already have write access'); return [null, [Ou]]; }
   if(!aWPass) { this.mesO('Password needed');  return [null, [Ou]];  }
   if(aWPass!=aWPassword) { this.mesO('Wrong password');  return [null, [Ou]];  }
 
@@ -299,29 +276,15 @@ ReqBE.prototype.aWLogin=async function(inObj){
   
     // Delete old session-token
     // (Changing session-token at login (as recomended by security recomendations) (to prevent session fixation))
-  if('sessionID' in req.cookies) {
-    var sessionIDOld=req.cookies.sessionID;
-    var [err]=await cmdRedis('DEL', [sessionIDOld+'_adminRTimer', sessionIDOld+'_adminWTimer']);
-  }
-  var sessionID=randomHash();
-  var [err]=await cmdRedis('SET', [sessionID+'_adminRTimer', 1, 'EX', maxAdminRUnactivityTime]);
-  var [err]=await cmdRedis('SET', [sessionID+'_adminWTimer', 1, 'EX', maxAdminWUnactivityTime]);
-  //var luaCountFunc=`local redis.call('DEL',KEYS[1]); redis.call('SET', ARGV[1], 1, 'EX', ARGV[2]);`;
-  var arrCookie=["sessionID="+sessionID+strCookiePropLax];
-  //var luaCountFunc=`local c=redis.call('GET',KEYS[1]); if(c>0) then redis.call('RENAME', KEYS[1], ARGV[1]); return c`;
-  //var [err,CSRFCode]=await cmdRedis('EVAL', [luaCountFunc, 1, req.cookies.sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
-  
-  if('sessionIDCSRF' in req.cookies) {
-    var sessionIDOld=req.cookies.sessionIDCSRF, sessionID=randomHash();
-    var strSuffix='_CSRF', redisVarO=sessionIDOld+strSuffix, redisVarN=sessionID+strSuffix; 
-    var [err,value]=await cmdRedis('rename', [redisVarO, redisVarN]); if(err) return [err];
-    var boKeyExist=1;
-    if(err){
-      if(err.message!="ERR no such key") return [err];
-      boKeyExist=false;
-    }
-    if(boKeyExist) arrCookie.push("sessionIDCSRF="+sessionID+strCookiePropLax);
-  }
+  var {sessionIDW}=req.cookies;
+  if(sessionIDW) {  var [err]=await cmdRedis('DEL', [sessionIDW+'_adminWTimer']); if(err) return [err];  }
+  var sessionIDW=randomHash();
+  var [err]=await cmdRedis('SET', [sessionIDW+'_adminWTimer', 1, 'EX', maxAdminWUnactivityTime]);
+
+  var oTmp=extend({},StrCookiePropProt); 
+  oTmp["Max-Age"]=maxAdminWUnactivityTime; var strProp=";"+arrayifyCookiePropObj(oTmp).join(';');
+  var arrCookie=["sessionIDW="+sessionIDW+strProp];
+
   res.setHeader("Set-Cookie", arrCookie);
   
   
@@ -332,9 +295,8 @@ ReqBE.prototype.aWLogin=async function(inObj){
 }
 
 ReqBE.prototype.aRLogout=async function(inObj){ 
-  var {req, res, GRet}=this;
-  var Ou={};
-  var redisVar=req.cookies.sessionID+'_adminRTimer';
+  var {req, res, GRet}=this, Ou={};
+  var redisVar=req.cookies.sessionIDR+'_adminRTimer';
   var [err,tmp]=await cmdRedis('DEL', [redisVar]);
 
   if(this.boARLoggedIn) {this.mes('Logged out (read access)'); GRet.strDiffText=''; } 
@@ -344,9 +306,8 @@ ReqBE.prototype.aRLogout=async function(inObj){
 }
 
 ReqBE.prototype.aWLogout=async function(inObj){ 
-  var {req, res, GRet}=this;
-  var Ou={};
-  var redisVar=req.cookies.sessionID+'_adminWTimer';
+  var {req, res, GRet}=this, Ou={};
+  var redisVar=req.cookies.sessionIDW+'_adminWTimer';
   var [err,tmp]=await cmdRedis('DEL', [redisVar]);
 
   if(this.boAWLoggedIn) {this.mes('Logged out (write access)'); GRet.strDiffText=''; } 
@@ -357,8 +318,7 @@ ReqBE.prototype.aWLogout=async function(inObj){
 
 
 ReqBE.prototype.myChMod=async function(inObj){    
-  var {req, res, GRet}=this;
-  var Ou={};
+  var {req, res, GRet}=this, Ou={};
   if(!this.boAWLoggedIn) return [new ErrorClient('not logged in (as Administrator)', 401)]; 
   var {Id=[]}=inObj;
   if(!(Id instanceof Array) || Id.length==0 || typeof Id[0]!='string') { return [new ErrorClient('no files')]; } 
@@ -386,8 +346,7 @@ ReqBE.prototype.myChMod=async function(inObj){
   return [null, [Ou]];
 }
 ReqBE.prototype.myChModImage=async function(inObj){ 
-  var {req, res, GRet}=this;
-  var Ou={};
+  var {req, res, GRet}=this, Ou={};
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)];}
   
   if('Id' in inObj && inObj.Id instanceof Array && inObj.Id.length) var Id=inObj.Id; else {  return [new ErrorClient('chmodImage: no files')]; }
@@ -413,8 +372,7 @@ ReqBE.prototype.myChModImage=async function(inObj){
 
   
 ReqBE.prototype.deletePage=async function(inObj){
-  var {req, res, GRet}=this;
-  var Ou={};
+  var {req, res, GRet}=this, Ou={};
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)];}
   
   if('Id' in inObj && inObj.Id instanceof Array && inObj.Id.length) var Id=inObj.Id; else { return [new ErrorClient('deletePage: no files')]; }
@@ -431,8 +389,7 @@ ReqBE.prototype.deletePage=async function(inObj){
 }
 
 ReqBE.prototype.deleteImage=async function(inObj){ 
-  var {req, res, GRet}=this;
-  var Ou={};
+  var {req, res, GRet}=this, Ou={};
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
 
   if('Id' in inObj && inObj.Id instanceof Array && inObj.Id.length) var Id=inObj.Id; else { return [new ErrorClient('deleteImage: no files')]; }
@@ -451,8 +408,7 @@ ReqBE.prototype.deleteImage=async function(inObj){
 }
 
 ReqBE.prototype.setStrLang=async function(inObj){   
-  var {req, res, GRet}=this;
-  var Ou={};
+  var {req, res, GRet}=this, Ou={};
   if(!this.boAWLoggedIn) return [new ErrorClient('not logged in (as Administrator)', 401)]; 
   var {strLang='',Id=[]}=inObj;
   //if('Id' in inObj && inObj.Id instanceof Array && inObj.Id.length) var Id=inObj.Id; else { return [new ErrorClient('setStrLang: no files')]; }
@@ -468,8 +424,7 @@ ReqBE.prototype.setStrLang=async function(inObj){
 }
 
 ReqBE.prototype.collisionTestForSetSiteOfPage=async function(inObj){   
-  var {req, res, GRet}=this;
-  var Ou={};
+  var {req, res, GRet}=this, Ou={};
   if(!this.boAWLoggedIn) return [new ErrorClient('not logged in (as Administrator)', 401)]; 
   var {idSite,Id=[]}=inObj;
   if(!(Id instanceof Array) || Id.length==0 || typeof Id[0]!='string') { return [new ErrorClient('no files')]; }
@@ -486,8 +441,7 @@ ReqBE.prototype.collisionTestForSetSiteOfPage=async function(inObj){
 }
 
 ReqBE.prototype.setSiteOfPage=async function(inObj){   
-  var {req, res, GRet}=this;
-  var Ou={};
+  var {req, res, GRet}=this, Ou={};
   if(!this.boAWLoggedIn) return [new ErrorClient('not logged in (as Administrator)', 401)]; 
   var {idSite,Id=[]}=inObj;
   if(!(Id instanceof Array) || Id.length==0 || typeof Id[0]!='string') { return [new ErrorClient('no files')]; }
@@ -577,7 +531,7 @@ ReqBE.prototype.pageLoad=async function(inObj) {
 
 
       // Bail if not public and not logged in
-    if(!boOR && !self.boARLoggedIn) {  arrRet=[new ErrorClient('Unauthorized?!?', 401)]; break stuff;}  
+    if(!boOR && !self.boARLoggedIn) {  arrRet=[new ErrorClient('boARLoggedIn not set', 401)]; break stuff;}  
 
 
       // Calc boTalkExist
@@ -713,8 +667,7 @@ ReqBE.prototype.pageLoad=async function(inObj) {
 
 
 ReqBE.prototype.pageCompare=async function(inObj){ 
-  var {req, res, GRet, pageName}=this;
-  var {wwwSite}=req;
+  var {req, res, GRet, pageName}=this, {wwwSite}=req;
   var Ou={};
   var versionOld=arr_min(inObj.arrVersionCompared),  version=arr_max(inObj.arrVersionCompared); 
   versionOld=Math.max(1,versionOld);  version=Math.max(1,version);
@@ -766,8 +719,7 @@ ReqBE.prototype.pageCompare=async function(inObj){
 
 
 ReqBE.prototype.getPreview=async function(inObj){ 
-  var {req, res, GRet}=this;
-  var Ou={}, {wwwSite}=req;
+  var {req, res, GRet}=this, Ou={}, {wwwSite}=req;
   var strEditText=inObj.strEditText;
   
   var boOW=1;
@@ -796,8 +748,7 @@ ReqBE.prototype.getPreview=async function(inObj){
 
 
 ReqBE.prototype.saveByReplace=async function(inObj){ 
-  var {req, res, GRet}=this, self=this;
-  var Ou={}, {wwwSite}=req;
+  var {req, res, GRet}=this, self=this, Ou={}, {wwwSite}=req;
   
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; } 
 
@@ -963,8 +914,7 @@ ReqBE.prototype.saveByReplace=async function(inObj){
 
 
 ReqBE.prototype.saveByAdd=async function(inObj){ 
-  var {req, res, GRet}=this, self=this;
-  var Ou={};
+  var {req, res, GRet}=this, self=this, Ou={};
 
     // Check reCaptcha with google
   var strCaptchaIn=inObj['g-recaptcha-response'];
@@ -1127,8 +1077,7 @@ ReqBE.prototype.saveByAdd=async function(inObj){
 
 
 ReqBE.prototype.renamePage=async function(inObj){ 
-  var {req, res, GRet}=this;
-  var Ou={};
+  var {req, res, GRet}=this, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
 
   const sessionMongo = mongoClient.startSession();
@@ -1232,8 +1181,7 @@ ReqBE.prototype.renamePage=async function(inObj){
 }
   
 ReqBE.prototype.renameImage=async function(inObj){
-  var {req, res, GRet}=this;
-  var Ou={};
+  var {req, res, GRet}=this, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   
   const sessionMongo = mongoClient.startSession();
@@ -1677,8 +1625,7 @@ ReqBE.prototype.redirectTabGet=async function(inObj){
 }
 
 ReqBE.prototype.redirectTabSet=async function(inObj){ 
-  var {req, res, GRet}=this;
-  var Ou={};
+  var {req, res, GRet}=this, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
   //var boUpd=inObj.boUpd||false;
   var tNow=nowSFloored();
@@ -1720,8 +1667,7 @@ ReqBE.prototype.redirectTabSet=async function(inObj){
 }
 
 ReqBE.prototype.redirectTabDelete=async function(inObj){  
-  var {req, res, GRet}=this;
-  var Ou={};
+  var {req, res, GRet}=this, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
 
   var {idSite, pageName}=inObj;
@@ -1736,8 +1682,7 @@ ReqBE.prototype.redirectTabDelete=async function(inObj){
 }
 
 ReqBE.prototype.redirectTabResetNAccess=async function(inObj){ 
-  var {req, res, GRet}=this;
-  var Ou={};
+  var {req, res, GRet}=this, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
 
   var Arg=[{}, {$set:{nAccess:0}}]; //, {upsert:true, new:true}
@@ -1753,8 +1698,7 @@ ReqBE.prototype.redirectTabResetNAccess=async function(inObj){
 ////////////////////////////////////////////////////////////////////////
 
 ReqBE.prototype.siteTabGet=async function(inObj){  // Used by siteTab
-  var {req, res, GRet}=this;
-  var Ou={boOK:0};
+  var {req, res, GRet}=this, Ou={boOK:0};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401), [Ou]];  }
 
     // Get sites
@@ -1786,8 +1730,7 @@ ReqBE.prototype.siteTabGet=async function(inObj){  // Used by siteTab
 
 //ReqBE.prototype.siteTabSet=async function(inObj){
 ReqBE.prototype.siteTabInsert=async function(inObj){
-  var {req, res, GRet}=this, self=this;
-  var Ou={};
+  var {req, res, GRet}=this, self=this, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   
   var { boTLS, idSite, www, googleAnalyticsTrackingID, srcIcon16, strLangSite}=inObj;
@@ -1819,8 +1762,7 @@ ReqBE.prototype.siteTabInsert=async function(inObj){
 }
 
 ReqBE.prototype.siteTabUpd=async function(inObj){
-  var {req, res, GRet}=this, self=this;
-  var Ou={};
+  var {req, res, GRet}=this, self=this, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   
   const sessionMongo = mongoClient.startSession();
@@ -1980,8 +1922,7 @@ ReqBE.prototype.siteTabDelete=async function(inObj){
   return [null, [Ou]];
 }
 ReqBE.prototype.siteTabSetDefault=async function(inObj){ 
-  var {req, res, GRet}=this;
-  var Ou={};
+  var {req, res, GRet}=this, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
 
   const sessionMongo = mongoClient.startSession();
@@ -2042,8 +1983,7 @@ var regImg=RegExp("^("+strImageExtWBar+")$"), regVid=RegExp('^(mp4|ogg|webm)$');
 
 
 ReqBE.prototype.uploadUser=async function(inObj){ 
-  var {req, res, GRet}=this, self=this;
-  var Ou={};
+  var {req, res, GRet}=this, self=this, Ou={};
 
     // Check reCaptcha with google
   var strCaptchaIn=this.captchaIn;
@@ -2108,8 +2048,7 @@ ReqBE.prototype.uploadUser=async function(inObj){
 
 
 ReqBE.prototype.uploadAdmin=async function(inObj){ 
-  var {req, res, GRet}=this;
-  var Ou={};
+  var {req, res, GRet}=this, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
   this.mes("Working... (check server console for progress) ");
 

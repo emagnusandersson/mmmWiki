@@ -4,7 +4,8 @@
 // Todo (possible improvements)
 
 // loginA resets objOthersActivity, but perhaps one should do it even at reload of a logged in session.
-// Comman after link should not be included in link
+// Commas after link should not be included in link
+// OneLine dl syntax: " ; Volvo : Car brand"
 
 // When two tabs are open, and one has edited one, then edits the other, one gets "Already logged in"
 
@@ -20,15 +21,14 @@
  * reqBU
  ******************************************************************************/
 app.reqBU=async function(strArg) {
-  var {req, res}=this;
-  var tNow=nowSFloored();
+  var {req, res}=this, tNow=nowSFloored();
   
   //if(!req.boCookieStrictOK) { res.outCode(401, "Strict cookie not set");  return;   }
   
       // Conditionally push deadlines forward
   var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
   
 
   if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
@@ -182,8 +182,8 @@ app.reqBUMeta=async function(strArg) {
   
         // Conditionally push deadlines forward
   var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
   
   if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
 
@@ -316,8 +316,7 @@ app.reqBUMeta=async function(strArg) {
  ******************************************************************************/
 
 var makeOutput=function(objOut, strHtmlText){
-  var {req}=this;
-  var {wwwSite, strSchemeLong}=req;
+  var {req}=this, {wwwSite, strSchemeLong}=req;
   var {objSiteDefault, objSite, objPage}=objOut, {pageName}=objPage; //, {www:wwwSite}=objSite;
 
   var ua=req.headers['user-agent']||''; ua=ua.toLowerCase();
@@ -418,8 +417,8 @@ app.reqIndex=async function() {
   var {boTLS, wwwSite, pathName}=req;
   var tNow=nowSFloored();
   
-  var strT=req.headers['Sec-Fetch-Mode'];
-  if(strT && strT!='navigate') { res.outCode(400, "Sec-Fetch-Mode header is not 'navigate' ("+strT+")"); return;}
+  var strT=req.headers['sec-fetch-mode'];
+  if(strT && !(strT=='navigate' || strT=='same-origin')) { res.outCode(400, "sec-fetch-mode header is not 'navigate' ("+strT+")"); return;}
   
   var qs=req.objUrl.query||'', objQS=querystring.parse(qs);
   var pathName=decodeURIComponent(pathName);
@@ -432,11 +431,15 @@ app.reqIndex=async function() {
     var queredPage='start';
   }
   
+    // Set strict cookie
+  // var sessionID=randomHash(),  redisVar=sessionID; 
+  // var [err, tmp]=await setRedis(redisVar, 1, 3600*24*30); if(err) {res.out500(err); return; };
+  // res.setHeader("Set-Cookie", "sessionIDStrict="+sessionID+strCookiePropStrict);
 
     // Conditionally push deadlines forward
   var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
 
   // Private:
   //                                                                 index.html  first ajax (pageLoad)
@@ -530,16 +533,14 @@ app.reqIndex=async function() {
     //
     
   if(!boOR){
-    
       // Setup sessionIDCSRF-cookie
       // Check if incoming cookie is valid, and what CSRFCode is stored under it.
-    var sessionIDCSRF=null, CSRFCode=null;
     if('sessionIDCSRF' in req.cookies) { 
-      sessionIDCSRF=req.cookies.sessionIDCSRF;
+      var sessionIDCSRF=req.cookies.sessionIDCSRF;
       var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
       var [err,CSRFCode]=await cmdRedis('EVAL', [luaCountFunc, 1, sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
       if(!CSRFCode) sessionIDCSRF=randomHash(); // To avoid session fixation
-    } else sessionIDCSRF=randomHash();
+    } else var sessionIDCSRF=randomHash();
 
     var CSRFCode=randomHash();
     var [err,tmp]=await cmdRedis('SET', [sessionIDCSRF+'_CSRF', CSRFCode, 'EX', maxAdminRUnactivityTime]);
@@ -603,7 +604,7 @@ app.reqIndex=async function() {
     var {data:strEditText}=objFile;
                         
       // Entering some data into objOut
-    var objOut={CSRFCode:'',   boTalkExist, strEditText, arrVersionCompared, objSiteDefault, objSite, objPage};
+    var objOut={CSRFCode:'',   boTalkExist, strEditText, arrVersionCompared, objSiteDefault, objSite, objPage, boARLoggedIn:0, boAWLoggedIn:0};
 
     var strHashOld=strHash;
     var boLastRev=rev==iLastRev
@@ -680,8 +681,7 @@ app.reqIndex=async function() {
  * reqStatic
  ******************************************************************************/
 app.reqStatic=async function() {
-  var {req, res}=this;
-  var {wwwSite, pathName}=req;
+  var {req, res}=this, {wwwSite, pathName}=req;
 
   //var RegAllowedOriginOfStaticFile=[RegExp("^https\:\/\/(closeby\.market|gavott\.com)")];
   //var RegAllowedOriginOfStaticFile=[RegExp("^http\:\/\/(localhost|192\.168\.0)")];
@@ -722,8 +722,7 @@ app.reqStatic=async function() {
  * reqMediaImage
  ******************************************************************************/
 app.reqMediaImage=async function(){
-  var {req, res}=this;
-  var {pathName}=req;
+  var {req, res}=this, {pathName}=req;
   
   //res.removeHeader("X-Frame-Options"); // Allow to be shown in frame, iframe, embed, object
   res.removeHeader("Content-Security-Policy"); // Allow to be shown in frame, iframe, embed, object
@@ -940,8 +939,7 @@ app.reqMediaImageThumb=async function(){
  * reqMediaVideo
  ******************************************************************************/
 app.reqMediaVideo=async function(){
-  var {req, res}=this;
-  var {pathName}=req;
+  var {req, res}=this, {pathName}=req;
   
   var Match=RegExp('^/(.*?)$').exec(pathName);
   if(!Match) {res.out404('Not Found'); return;}
@@ -1012,8 +1010,7 @@ app.reqMediaVideo=async function(){
  * reqSiteMap
  ******************************************************************************/
 app.reqSiteMap=async function() {
-  var {req, res}=this;
-  var {wwwSite}=req;
+  var {req, res}=this, {wwwSite}=req;
 
   //xmlns:image="http://www.google.com/schemas/sitemap-image/1.1
 
@@ -1049,8 +1046,7 @@ app.reqSiteMap=async function() {
  * reqRobots
  ******************************************************************************/
 app.reqRobots=async function() {
-  var {req, res}=this;
-  var {wwwSite}=req;
+  var {req, res}=this, {wwwSite}=req;
 
   if(1) {
     var Str=[];
@@ -1092,7 +1088,7 @@ app.reqMonitor=async function(){
   
         // Conditionally push deadlines forward
   var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
   
   if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in as admin read'); return;}
 
@@ -1136,14 +1132,13 @@ app.reqMonitor=async function(){
  * reqStat
  ******************************************************************************/
 app.reqStat=async function(){
-  var {req, res}=this;
-  var {wwwSite}=req;
+  var {req, res}=this, {wwwSite}=req;
 
   //if(!req.boCookieLaxOK) {res.outCode(401, "Lax cookie not set");  return;  }
   
         // Conditionally push deadlines forward
   var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionID+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
   
   if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in as admin read'); return;}
   

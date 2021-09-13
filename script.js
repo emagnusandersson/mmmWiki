@@ -278,13 +278,22 @@ boUseSelfSignedCert=false;
     var [err, result]=await collectionPage.updateMany( ...Arg).toNBP();   if(err) {console.error(err); process.exit(1);}
   }
 
-  var StrCookiePropProt=["HttpOnly", "Path=/", "Max-Age="+3600*24*30];
-  //if(boDO) { StrCookiePropProt.push("Secure"); }
-  if(!boLocal || boUseSelfSignedCert) StrCookiePropProt.push("Secure");
-  var StrCookiePropStrict=StrCookiePropProt.concat("SameSite=Strict"),   StrCookiePropLax=StrCookiePropProt.concat("SameSite=Lax"),   StrCookiePropNormal=StrCookiePropProt.concat("SameSite=None");
-  app.strCookiePropStrict=";"+StrCookiePropStrict.join(';');  app.strCookiePropLax=";"+StrCookiePropLax.join(';');  app.strCookiePropNormal=";"+StrCookiePropNormal.join(';');
+  // var StrCookiePropProt=["HttpOnly", "Path=/", "Max-Age="+3600*24*30];
+  // if(!boLocal || boUseSelfSignedCert) StrCookiePropProt.push("Secure");
+  // app.strCookiePropNormal=";"+StrCookiePropProt.concat("SameSite=None").join(';');
+  // app.strCookiePropLax=";"+StrCookiePropProt.concat("SameSite=Lax").join(';');
+  // app.strCookiePropStrict=";"+StrCookiePropProt.concat("SameSite=Strict").join(';');
+  
   //'Expires='+new Date(new Date().getTime()+3600*24*365*1000).toUTCString()
   //'Max-Age='+3600*24*365
+
+  app.StrCookiePropProt={"HttpOnly":1, Path:"/", "Max-Age":3600*24*30, "SameSite":"Lax"};
+  if(!boLocal || boUseSelfSignedCert) StrCookiePropProt["Secure"]=1;
+  var oTmp=extend({},StrCookiePropProt); 
+  oTmp["SameSite"]="None"; app.strCookiePropNormal=";"+arrayifyCookiePropObj(oTmp).join(';');
+  oTmp["SameSite"]="Lax"; app.strCookiePropLax=";"+arrayifyCookiePropObj(oTmp).join(';');
+  oTmp["SameSite"]="Strict"; app.strCookiePropStrict=";"+arrayifyCookiePropObj(oTmp).join(';');
+
 
   const handler=async function(req, res){
     if(typeof isRedirAppropriate!='undefined'){ 
@@ -312,30 +321,32 @@ boUseSelfSignedCert=false;
     var cookies = parseCookies(req);
     req.cookies=cookies;
 
-    var boCookieDDOSOK=false; //req.boCookieLaxOK=req.boCookieStrictOK=
     
-      // Check if a valid sessionIDDDos-cookie came in
+      // Assign boCookieDDOSCameNExist
+    var boCookieDDOSCameNExist=false; //req.boCookieLaxOK=req.boCookieStrictOK=
     var sessionIDDDos=null, redisVarDDos;
     if('sessionIDDDos' in cookies) {
       sessionIDDDos=cookies.sessionIDDDos;  redisVarDDos=sessionIDDDos+'_DDOS';
-      var [err, tmp]=await cmdRedis('EXISTS', redisVarDDos); boCookieDDOSOK=tmp;
+      var [err, tmp]=await cmdRedis('EXISTS', redisVarDDos); boCookieDDOSCameNExist=tmp;
     }
-      // If non-valid sessionIDDDos, then create a new one.
-    if(!boCookieDDOSOK) { sessionIDDDos=randomHash();  redisVarDDos=sessionIDDDos+'_DDOS'; }
-    
-      // Increase redisVarDDos 
+    // If !boCookieDDOSCameNExist then create a new sessionIDDDos (and redisVarDDos).
+    if(!boCookieDDOSCameNExist) { sessionIDDDos=randomHash();  redisVarDDos=sessionIDDDos+'_DDOS'; }
+      // Update redisVarDDos counter
     var luaCountFunc=`local c=redis.call('INCR',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
     var [err, intCount]=await cmdRedis('EVAL',[luaCountFunc, 1, redisVarDDos, tDDOSBan]);
-    
-      // Increase redisVarDDosIP.
+      // Write to response
+    res.setHeader("Set-Cookie", "sessionIDDDos="+sessionIDDDos+strCookiePropNormal);
+
+      // Update redisVarDDosIP counter
     var ipClient=getIP(req), redisVarDDosIP=ipClient+'_DDOS';
     var luaCountFunc=`local c=redis.call('INCR',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
     var [err, intCountIP]=await cmdRedis('EVAL',[luaCountFunc, 1, redisVarDDosIP, tDDOSIPBan]);
       
-    res.setHeader("Set-Cookie", "sessionIDDDos="+sessionIDDDos+strCookiePropNormal);
-    
-      // If to many, then ban
-    if(boCookieDDOSOK) {  var intCountT=intCount, intDDOSMaxT=intDDOSMax, tDDOSBanT=tDDOSBan;   }   else   {    intCountT=intCountIP; intDDOSMaxT=intDDOSIPMax; tDDOSBanT=tDDOSIPBan;   }
+      // Determine which DDOS counter to use
+    if(boCookieDDOSCameNExist) {  var intCountT=intCount, intDDOSMaxT=intDDOSMax, tDDOSBanT=tDDOSBan;   }
+    else{  var intCountT=intCountIP, intDDOSMaxT=intDDOSIPMax, tDDOSBanT=tDDOSIPBan;   }
+
+      // If the counter is to high, then respond with 429
     if(intCountT>intDDOSMaxT) {
       var strMess="Too Many Requests ("+intCountT+"), wait "+tDDOSBanT+"s\n";
       if(pathName=='/'+leafBE){ var reqBE=new ReqBE({req, res}); reqBE.mesEO(strMess, 429); }
@@ -344,6 +355,11 @@ boUseSelfSignedCert=false;
     }
     
 
+    // if('sessionIDStrict' in cookies) {
+    //   var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+    //   var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, cookies.sessionIDStrict, maxAdminRUnactivityTime]);
+    //   req.boCookieStrictOK=Number(value);
+    // }
 
       // Set mimetype if the extention is recognized
     var regexpExt=RegExp('\.([a-zA-Z0-9]+)$');

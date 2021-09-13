@@ -265,6 +265,8 @@ Parser.prototype.endParse = function() {
         //tmptext=escapeHtml(tmptext);
         if(boLast) tmptext=this.translateSpacePre(tmptext);
         tmptext=this.translateNestedLists(tmptext);
+        tmptext=this.translateDescriptionList(tmptext);
+        
         tmptext = tmptext.replace(/^----/gm,'<hr/>'); //Translate horizontal rulers 
         tmptext = tmptext.replace(/\r?\n\s*\r?\n\s*\r?\n/g,"<p/><br/>\n"); //Translate tripple newlines to <p/><br/>
         tmptext = tmptext.replace(/\r?\n\s*\r?\n/g,"<p/>\n"); //Translate double newlines to <p/>
@@ -361,43 +363,109 @@ Parser.prototype.translateSpacePre=function(text){
     //  nestedLists
 Parser.prototype.translateNestedLists=function(text){ 
   var lines = text.split("\n");
-  var chars = ['\\*', '\\#', ';', ':'];
-  var indentInc=['<ul><li>','<ol><li>','<dl><dt>','<dl><dd>']; 
-  var indentSame=['</li><li>','</li><li>','</dt><dt>','</dd><dd>'];
-  var indentDec=['</li></ul>','</li></ol>','</dt></dl>','</dd></dl>'];
+  var chars = ['\\*', '\\#'];
+  var indentInc=['<ul><li>','<ol><li>']; //,'<dl><dt>','<dl><dd>'
+  var indentSame=['</li><li>','</li><li>']; //,'</dt><dt>','</dd><dd>'
+  var indentDec=['</li></ul>','</li></ol>']; //,'</dt></dl>','</dd></dl>'
+  var nType=chars.length;
   
-  for(var i=0;i<4;i++){
-    var indent_level_last=0;
+  for(var i=0;i<nType;i++){
+    var nLevelLast=0;
     var j=0;
     while(true) {
       if(j==lines.length ) { break;}
       //if ( preg_match( '/^('+preg_quote(chars[i])+'*)(.*?)$/' , lines[j] , matches ) ) {
       var tmpStr='^(' +chars[i] +'*)(.*?)$';
-      var tmp=RegExp(tmpStr), matches;
-      if ( matches=lines[j].match(tmp) ) {
-        var indent_level = matches[1].length;
-        if(indent_level==indent_level_last && indent_level>0)  lines[j] = indentSame[i] +matches[2];
-          //If the indenture level shall be the same
-        else if(indent_level>indent_level_last)   {
-          lines[j] = str_repeat( indentInc[i] , indent_level-indent_level_last ) +matches[2];
-            // If the indenture level shall increase
+      var regTmp=RegExp(tmpStr), matches=lines[j].match(regTmp);
+      if(matches) {
+        var nLevel = matches[1].length;
+        if(nLevel==nLevelLast && nLevel>0) {  //If the indenture level shall be the same
+          lines[j] = indentSame[i] +matches[2];
+        }else if(nLevel>nLevelLast) {  // If the indenture level shall increase
+          lines[j] = str_repeat( indentInc[i] , nLevel-nLevelLast ) +matches[2];
+        } else if(nLevel<nLevelLast)  { // If the indenture level shall decrease
+          lines[j]=str_repeat( indentDec[i] , nLevelLast-nLevel );
+          if(nLevel>0) lines[j]+=indentSame[i];
+          lines[j]+=matches[2];
         }
-        else if(indent_level<indent_level_last)   { // If the indenture level shall decrease
-          lines[j]=str_repeat( indentDec[i] , indent_level_last-indent_level );
-          if(indent_level>0) lines[j]+=(indentSame[i] +matches[2]);
-          //else array_splice(lines, j+1, 0, matches[2] );
-          else lines.splice(j+1, 0, matches[2] );
-        }
-        indent_level_last=indent_level;
+        nLevelLast=nLevel;
       }
       j++;
     }
-    if(indent_level_last>0) lines.push(str_repeat( indentDec[i] , indent_level_last ) +"\n"); 
+    if(nLevelLast>0) lines.push(str_repeat( indentDec[i] , nLevelLast ) +"\n"); 
       //If still indented on the last line (then decrease till zero indenture)
     
   }
   return lines.join("\n");
 }
+
+
+Parser.prototype.translateDescriptionList=function(text){ 
+  var lines = text.split("\n");
+  var indentInc={t:'<dl><dt>',d:'<dl><dd>'}; 
+  var indentSame={t:{t:'</dt><dt>', d:'</dt><dd>'}, d:{t:'</dd><dt>', d:'</dd><dd>'}};
+  var indentDec={t:'</dt></dl>',d:'</dd></dl>'};
+
+  var regTranslate=RegExp('.','g'), fTranslate=c=>c==':'?'d':'t'; 
+
+  var strStackL='';
+
+  var j=0;
+  while(true) {
+    if(j==lines.length ) { break;}
+    //if ( preg_match( '/^('+preg_quote(chars[i])+'*)(.*?)$/' , lines[j] , matches ) ) {
+    var tmpStr='^(([;:])*)(.*?)$';
+    var regTmp=RegExp(tmpStr), matches=lines[j].match(regTmp);
+    myLabel: if(matches) {
+      var [,strStack, charType, strRem]=matches;
+      strStack = strStack.replace(regTranslate,fTranslate);   
+      var charType=charType==';'?'t':'d';
+      var charType_alt=charType=='t'?'d':'t';
+      var lenStackL=strStackL.length, lenStack = strStack.length;
+      var charTypeL=lenStackL?strStackL[lenStackL-1]:false;
+      if(lenStackL==0 && lenStack==0) break myLabel;
+
+      var nSame=strCountEqualFromStart(strStackL,strStack), iDiff=nSame;
+
+      var strStackLRem=strStackL.substr(nSame), lenStackLRem=strStackLRem.length;
+      var strStackRem=strStack.substr(nSame), lenStackRem = strStackRem.length;
+      var lenShortest=Math.min(lenStackL,lenStack);
+
+      if(lenShortest){
+        var iSibling=lenShortest-1;
+        var tagSwitch=indentSame[strStackL[iSibling]][strStack[iSibling]]; // On the same level, change tag using "indentSame"
+        var iGoBwd=iSibling+1, iGoFwd=iSibling+1;
+      } else {var tagSwitch="", iGoBwd=0, iGoFwd=0;}
+
+      var lTmp=lenStackL-iGoBwd, StrTagL=Array(lTmp);
+      for(var i=0;i<lTmp;i++) {  // go towards the root, close tags
+        StrTagL[i]=indentDec[strStackL[lenStackL-1-i]];
+      }
+      
+      var lTmp=lenStack-iGoFwd, StrTag=Array(lTmp);
+      for(var i=0;i<lTmp;i++) {  // go towards the leaf again
+        StrTag[i]=indentInc[strStack[iGoFwd+i]];
+      }
+
+      var StrTagAll=StrTagL.concat(tagSwitch, StrTag, strRem);
+      var strTagAll=StrTagAll.join("");
+      lines[j] = strTagAll;
+
+      strStackL=strStack;
+    }
+    j++;
+  }
+    //If last line of the document then decrease the indenture to zero
+  var lenStackL=  strStackL.length;
+  if(lenStackL) {
+    var StrTag=Array(lenStackL);   for(var i=0;i<lenStackL;i++) { StrTag[i]=indentDec[strStackL[lenStackL-1-i]]; }
+    lines.push(StrTag.join("")); // +"\n"
+  }
+    
+  
+  return lines.join("\n");
+}
+
 
     // images
 Parser.prototype.replaceImageCB=function(m,n){ 
