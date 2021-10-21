@@ -1,65 +1,67 @@
-
-http = require("http");
-https = require('https');
-tls=require('tls');
-url = require("url");
-path = require("path");
-fs = require("fs");
-fsPromises = require("fs/promises");
-gm =  require('gm').subClass({ imageMagick: true });
-im = require('imagemagick');
-temporary = require('tmp');
-concat = require('concat-stream');
-//requestMod = require('request');
-fetch = require('node-fetch');
-querystring = require('querystring');
-formidable = require("formidable");
-crypto = require('crypto');
-zlib = require('zlib');
-imageSize = require('image-size');
-NodeZip=require('node-zip');
-redis = require("redis");
-var minimist = require('minimist');
-const { exit } = require("process");
-//UglifyJS = require("uglify-js");
-Streamify= require('streamify-string');
-validator = require('validator');
-serialize = require('serialize-javascript');
-ejs = require("ejs");
-mime = require("mime");
-mongodb=require('mongodb');
-({MongoClient, ObjectId, Long, Int32} = mongodb);
-mongoSanitize=require('mongo-sanitize');
-//mysql =  require('mysql');
-
-app=global;app.extend=Object.assign;
+global.app=global;
+import http from "http";
+import https from 'https';
+//import tls from 'tls';
+import url from "url";
+import path from "path";
+import fs, {promises as fsPromises} from "fs";
+import concat from 'concat-stream';
+//import requestMod from 'request';
+import fetch from 'node-fetch';
+import formidable from "formidable";
+import crypto from 'crypto';
+import zlib from 'zlib';
+//import imageSize from 'image-size';
+import NodeZip from 'node-zip';
+import redis from "redis";
+import Streamify from 'streamify-string';
+import serialize from 'serialize-javascript';
+import validator from 'validator';
+import mime from "mime";
+//import UglifyJS from "uglify-js";
+import gmTmp from 'gm';
+app.gm=gmTmp.subClass({ imageMagick: true });
+import im from 'imagemagick';
+import temporary from 'tmp';
+import ejs from "ejs";
+import mongodb from 'mongodb';
+import mongoSanitize from 'mongo-sanitize';
+import minimist from 'minimist';
+//import {URLPattern} from "urlpattern-polyfill"
+//import mysql from 'mysql';
 
 
-require('./lib.js');
-require('./libServerGeneral.js');
-require('./libServer.js');
-require('./lib/foundOnTheInternet/lcs.js');
-require('./lib/foundOnTheInternet/diff.js');
-require('./myDiff.js');
-//require('./store.js');
-
-strAppName='mmmWiki';
-
-strInfrastructure=process.env.strInfrastructure||'local';
-boHeroku=strInfrastructure=='heroku'; 
-boAF=strInfrastructure=='af'; 
-boLocal=strInfrastructure=='local'; 
-boDO=strInfrastructure=='do'; 
+app.extend=Object.assign;
+extend(app, {http, url, path, fsPromises, concat, fetch, formidable, crypto, zlib, NodeZip, redis, Streamify, serialize, validator, mime, gm, im, temporary, ejs, mongodb, mongoSanitize});
+var {MongoClient, ObjectId, Long, Int32} = mongodb;
+extend(app, {MongoClient, ObjectId, Long, Int32});
 
 
+await import('./lib.js');
+await import('./libServerGeneral.js');
+await import('./libServer.js');
+await import('./lib/foundOnTheInternet/lcs.js');
+await import('./lib/foundOnTheInternet/diff.js');
+await import('./myDiff.js');
+//await import('./store.js');
 
-StrValidLoadMeta=['site.csv', 'page.csv', 'image.csv', 'redirect.csv'];  // ValidLoadMeta calls
-StrValidLoadMetaBase=StrValidLoadMeta.map(el=>el.slice(0,-4));
-StrImageExt=['jpg','jpeg','png','gif','svg','ico'];
-strImageExtWComma=StrImageExt.join(', ');   strImageExtWBar=app.StrImageExt.join('|');
-StrValidMongoDBCalls=['create', 'drop', 'populateSetting', 'truncate', 'truncateAllExceptSetting', 'countRows'];
+app.strAppName='mmmWiki';
 
-helpTextExit=function(){
+var strInfrastructure=process.env.strInfrastructure||'local';
+app.boHeroku=strInfrastructure=='heroku'; 
+app.boAF=strInfrastructure=='af'; 
+app.boLocal=strInfrastructure=='local'; 
+app.boDO=strInfrastructure=='do'; 
+
+
+
+app.StrValidLoadMeta=['site.csv', 'page.csv', 'image.csv', 'redirect.csv'];  // ValidLoadMeta calls
+app.StrValidLoadMetaBase=StrValidLoadMeta.map(el=>el.slice(0,-4));
+app.StrImageExt=['jpg','jpeg','png','gif','svg','ico'];
+app.strImageExtWComma=StrImageExt.join(', ');   app.strImageExtWBar=app.StrImageExt.join('|');
+app.StrValidMongoDBCalls=['create', 'drop', 'populateSetting', 'truncate', 'truncateAllExceptSetting', 'countRows'];
+
+app.helpTextExit=function(){
   var arr=[];
   arr.push(`USAGE script [OPTION]...
   -h, --help          Display this text
@@ -92,7 +94,7 @@ var argv = minimist(process.argv.slice(2), {alias: {h:'help', p:'port'}} );  // 
 
 var StrUnknown=AMinusB(Object.keys(argv),['_', 'h', 'help', 'p', 'port', 'mongodb', 'load']);
 var StrUnknown=[].concat(StrUnknown, argv._);
-if(StrUnknown.length){ console.log('Unknown arguments: '+StrUnknown.join(', ')); helpTextExit(); return;}
+if(StrUnknown.length){ console.log('Unknown arguments: '+StrUnknown.join(', ')); helpTextExit();}
 
 
     // Set up redisClient
@@ -101,76 +103,91 @@ if(  (urlRedis=process.env.REDISTOGO_URL)  || (urlRedis=process.env.REDISCLOUD_U
   var objRedisUrl=url.parse(urlRedis),    password=objRedisUrl.auth.split(":")[1];
   var objConnect={host: objRedisUrl.hostname, port: objRedisUrl.port,  password: password};
   //redisClient=redis.createClient(objConnect); // , {no_ready_check: true}
-  redisClient=redis.createClient(urlRedis, {no_ready_check: true}); //
+  app.redisClient=redis.createClient(urlRedis, {no_ready_check: true}); //
 }else {
   //var objConnect={host: 'localhost', port: 6379,  password: 'password'};
-  redisClient=redis.createClient();
+  app.redisClient=redis.createClient();
 }
+//await redisClient.connect();
 
 
   // Default config variables (If you want to change them I suggest you create a file config.js and overwrite them there)
-boDbg=0; boAllowSql=1; port=5000; levelMaintenance=0; googleSiteVerification='googleXXX.html';
-domainPayPal='www.paypal.com';
-urlPayPal='https://www.paypal.com/cgi-bin/webscr';
-maxAdminRUnactivityTime=24*60*60;
-maxAdminWUnactivityTime=5*60;  
-intDDOSMax=100; tDDOSBan=5; 
-strBTC="";
-ppStoredButt="";
-boUseSelfSignedCert=false;
-//srcIcon16Default="Site/Icon/iconRed16.png"
+extend(app, {boDbg:0, boAllowSql:1, port:5000, levelMaintenance:0, googleSiteVerification:'googleXXX.html',
+  //domainPayPal:'www.paypal.com',
+  urlPayPal:'https://www.paypal.com/cgi-bin/webscr',
+  maxAdminRUnactivityTime:24*60*60,
+  maxAdminWUnactivityTime:5*60,  
+  intDDOSMax:100, tDDOSBan:5, 
+  strBTC:"",
+  ppStoredButt:"",
+  boUseSelfSignedCert:false,
+  //srcIcon16Default:"Site/Icon/iconRed16.png",
+  intDDOSIPMax:100, // intDDOSIPMax: How many requests before DDOSBlocking occurs. 
+  tDDOSIPBan:10, // tDDOSIPBan: How long in seconds til the blocking is lifted
+  strSalt:'abcdefghijklmnopqrstuvwxyz', // Random letters to prevent that the hashed passwords looks the same as on other sites.
+  uRecaptcha:'https://www.google.com/recaptcha/api.js?onload=cbRecaptcha&render=explicit',
+  uriDB:'mysql://USER:PASSWORD@localhost/DATABASENAME',
+  strReCaptchaSiteKey:"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",   strReCaptchaSecretKey:"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  aRPassword:"123", aWPassword:"123",
+  RegRedir:[],
+});
+
+
+
+
+
 
 
 
 (async function(){
   port=argv.p||argv.port||5000;
-  if(argv.h || argv.help) {helpTextExit(); return;}
+  if(argv.h || argv.help) {helpTextExit(); }
 
   var strConfig;
   if(boHeroku){ 
-    if(!process.env.jsConfig) { console.error(Error('jsConfig-environment-variable is not set')); return;}  //process.exit(1);
+    if(!process.env.jsConfig) { console.error(Error('jsConfig-environment-variable is not set')); process.exit(-1);}
     strConfig=process.env.jsConfig||'';
   }
   else{
-    var [err, buf]=await fsPromises.readFile('./config.js').toNBP();    if(err) {console.error(err); return;}
+    var [err, buf]=await fsPromises.readFile('./config.js').toNBP();    if(err) {console.error(err); process.exit(-1);}
     strConfig=buf.toString();
-    //require('./config.js');    //require('./config.example.js');
+    //await import('./config.js');    //await import('./config.example.js');
   } 
 
     // Detecting if the config-file has changed since last time (might be usefull to speed up things when the program is auto started)
   var strMd5Config=md5(strConfig);
   eval(strConfig);
-  if(typeof strSalt=='undefined') {console.error("typeof strSalt=='undefined'"); return; }
+  if(typeof strSalt=='undefined') {console.error("typeof strSalt=='undefined'"); process.exit(-1); }
 
   var redisVar='str'+ucfirst(strAppName)+'Md5Config';
-  var [err,tmp]=await cmdRedis('GET',[redisVar]); if(err) {console.error(err); process.exit(1);}
+  var [err,tmp]=await cmdRedis('GET',[redisVar]); if(err) {console.error(err); process.exit(-1);}
 
   //var [err,tmp]=await cmdRedis('GET',[redisVar]);
   var boNewConfig=strMd5Config!==tmp; 
-  if(boNewConfig) { var [err,tmp]=await cmdRedis('SET',[redisVar,strMd5Config]);   if(err) {console.error(err); process.exit(1);}      }
+  if(boNewConfig) { var [err,tmp]=await cmdRedis('SET',[redisVar,strMd5Config]);   if(err) {console.error(err); process.exit(-1);}      }
 
   if('levelMaintenance' in process.env) levelMaintenance=process.env.levelMaintenance;
 
-  tmp=require('./lib/foundOnTheInternet/sha1.js');
-  //tmp=require('./lib/foundOnTheInternet/sha256libNode.js'); Sha256=tmp.Sha256;
+  await import('./lib/foundOnTheInternet/sha1.js');
+  //tmp=await import('./lib/foundOnTheInternet/sha256libNode.js'); Sha256=tmp.Sha256;
   //import Sha256 from  './lib/foundOnTheInternet/sha256lib.js';
-  require('./filterServer.js'); 
-  require('./mongo_InitCollection.js');
-  require('./variablesCommon.js');
-  require('./libReqBE.js');
-  require('./libReq.js'); 
-  require('./parser.js'); 
-  require('./parserTable.js'); 
+  await import('./filterServer.js'); 
+  await import('./mongo_InitCollection.js');
+  await import('./variablesCommon.js');
+  await import('./libReqBE.js');
+  await import('./libReq.js'); 
+  await import('./parser.js'); 
+  await import('./parserTable.js'); 
 
   //mysqlPool=setUpMysqlPool();
-  myNeo4j=new MyNeo4j();
+  app.myNeo4j=new MyNeo4j();
   //createDefaultDocumentAll();//app.InitCollection.Page.objDefault
 
 
   var urlMongo = 'mongodb://localhost:27017';
   app.mongoClient=undefined;
   var err, Arg=[urlMongo, { useUnifiedTopology: true}];
-  var [err, result]=await MongoClient.connect(...Arg).toNBP();  if(err) {console.log(err); return;}
+  var [err, result]=await MongoClient.connect(...Arg).toNBP();  if(err) {console.log(err); process.exit(-1);}
   mongoClient=result;
   process.on('exit', function(){ console.log('Goodbye!'); mongoClient.close();});
 
@@ -178,8 +195,8 @@ boUseSelfSignedCert=false;
   app.NameCollection=Object.keys(app.InitCollection);
 
     // Check if Page collection exists, if so, assume that the other collections exists.
-  //var [err, result]=await dbo.command({ listCollections: 1, filter:{name:"Page"}}).toNBP();   if(err) {console.log(err);return; }
-  var [err, result]=await dbo.command({ listCollections: 1, filter:{name:"Page"}}).toNBP();   if(err) {console.log(err);return; }
+  //var [err, result]=await dbo.command({ listCollections: 1, filter:{name:"Page"}}).toNBP();   if(err) {console.log(err);process.exit(-1); }
+  var [err, result]=await dbo.command({ listCollections: 1, filter:{name:"Page"}}).toNBP();   if(err) {console.log(err);process.exit(-1); }
   if(result!=null){
     for(var nameCollection of NameCollection){ app["collection"+nameCollection]=dbo.collection(nameCollection); }
   }
@@ -188,20 +205,20 @@ boUseSelfSignedCert=false;
     
   }
 
-  SiteName=[strDBPrefix]; // To make the code analog to my other programs :-)
+  //var SiteName=[strDBPrefix]; // To make the code analog to my other programs :-)
 
       // Load fr BU-folder
   if(typeof argv.load!='undefined'){
     //var load=argv.load; if(load===true) load=
     var setupMongo=new SetupMongo();
     var [err]=await setupMongo.doQuery("create");
-    var [err]=await loadFrBUOnServInterior(argv.load); if(err) {console.error(err); process.exit(1);} 
-    process.exit(0); return;
+    var [err]=await loadFrBUOnServInterior(argv.load); if(err) {console.error(err); process.exit(-1);} 
+    process.exit(0);
   }
     // Do db-query if --mongodb XXXX was set in the argument
   if(typeof argv.mongodb!='undefined'){
     var strMongo=argv.mongodb;
-    if(typeof strMongo!='string') {console.log('mongodb argument is not a string'); process.exit(-1); return; }
+    if(typeof strMongo!='string') {console.log('mongodb argument is not a string'); process.exit(-1); }
     if(StrValidMongoDBCalls.indexOf(strMongo)==-1){
       var tmp=strMongo+' is not valid input, try any of these: '+StrValidMongoDBCalls.join(', ');
       console.error(tmp);  process.exit(0);
@@ -209,40 +226,40 @@ boUseSelfSignedCert=false;
 
     var tTmp=new Date().getTime();
     var setupMongo=new SetupMongo();
-    var [err]=await setupMongo.doQuery(strMongo); if(err) {console.error(err); process.exit(1);} 
+    var [err]=await setupMongo.doQuery(strMongo); if(err) {console.error(err); process.exit(-1);} 
     console.log('Time elapsed: '+(new Date().getTime()-tTmp)/1000+' s'); 
     process.exit(0);
   }
 
-  tIndexMod=nowSFloored();
+  //app.tIndexMod=nowSFloored();
 
 
 
-  regexpLib=RegExp('^/(stylesheets|lib|Site)/');
-  regexpLooseJS=RegExp('^/(lib|libClient|client|filter|common)\\.js'); //siteSpecific
-  regexpImage=RegExp('^/[^/]*\\.('+strImageExtWBar+')$','i');
-  regexpVideo=RegExp('^/[^/]*\\.(mp4|ogg|webm)$','i');
+  var regexpLib=RegExp('^/(stylesheets|lib|Site)/');
+  var regexpLooseJS=RegExp('^/(lib|libClient|client|filter|common)\\.js'); //siteSpecific
+  var regexpImage=RegExp('^/[^/]*\\.('+strImageExtWBar+')$','i');
+  var regexpVideo=RegExp('^/[^/]*\\.(mp4|ogg|webm)$','i');
 
-  regexpHerokuDomain=RegExp("\\.herokuapp\\.com$");
-  regexpAFDomain=RegExp("\\.af\\.cm$");  
+  var regexpHerokuDomain=RegExp("\\.herokuapp\\.com$");
+  var regexpAFDomain=RegExp("\\.af\\.cm$");  
 
 
-  StrPako=['pako', 'pako_deflate', 'pako_inflate'], strMin=1?'':'.min'; //boDbg
+  var StrPako=['pako', 'pako_deflate', 'pako_inflate'], strMin=1?'':'.min'; //boDbg
   for(var i=0;i<StrPako.length;i++){
     StrPako[i]='bower_components/pako/dist/'+StrPako[i]+strMin+'.js';
   }
-  regexpPakoJS=RegExp('^/bower_components/pako/dist/pako(|_deflate|_inflate)'); //siteSpecific
+  var regexpPakoJS=RegExp('^/bower_components/pako/dist/pako(|_deflate|_inflate)'); //siteSpecific
 
 
     // Write files to Cache
-  CacheUri=new CacheUriT();
-  StrFilePreCache=['filter.js', 'lib.js', 'libClient.js', 'client.js', 'stylesheets/style.css', 'lib/foundOnTheInternet/zip.js', 'lib/foundOnTheInternet/sha1.js'];
+  app.CacheUri=new CacheUriT();
+  var StrFilePreCache=['filter.js', 'lib.js', 'libClient.js', 'client.js', 'stylesheets/style.css', 'lib/foundOnTheInternet/zip.js', 'lib/foundOnTheInternet/sha1.js'];
   StrFilePreCache=StrFilePreCache.concat(StrPako);
   for(var i=0;i<StrFilePreCache.length;i++) {
     var filename=StrFilePreCache[i];
-    var [err]=await readFileToCache(filename); if(err) {  console.error(err.message);  return;}
+    var [err]=await readFileToCache(filename); if(err) {  console.error(err.message);  process.exit(-1);}
   }
-  var [err]=await writeCacheDynamicJS();   if(err) {  console.error(err.message);  return;}
+  var [err]=await writeCacheDynamicJS();   if(err) {  console.error(err.message);  process.exit(-1);}
 
   if(boDbg){
     fs.watch('.', makeWatchCB('.', ['filter.js', 'client.js', 'libClient.js', 'lib.js']) );
@@ -250,11 +267,11 @@ boUseSelfSignedCert=false;
   }
 
     // Write manifest to Cache
-  var [err]=await createManifestNStoreToCacheFrDB(); if(err) {console.error(err.message); process.exit(1);} 
+  var [err]=await createManifestNStoreToCacheFrDB(); if(err) {console.error(err.message); process.exit(-1);} 
 
 
     // Read index template and do some initial insertions of data, then calc its hash.
-  var [err, buf]=await fsPromises.readFile('views/index.html').toNBP();   if(err) {console.error(err); process.exit(1);}
+  var [err, buf]=await fsPromises.readFile('views/index.html').toNBP();   if(err) {console.error(err); process.exit(-1);}
   app.strIndexTemplate=buf.toString();
   app.strIndexTemplateIOSLoc=strIndexTemplate;
 
@@ -272,10 +289,10 @@ boUseSelfSignedCert=false;
 
   var redisVar=strAppName+'_IndexTemplateHash';
   var luaCountFunc=`local strHash=redis.call('GET',KEYS[1]);     if(strHash==ARGV[1]) then return 1; else redis.call('SET',KEYS[1],ARGV[1]); return 0; end;`;
-  var [err, boHashTemplateMatch]=await cmdRedis('EVAL',[luaCountFunc, 1, redisVar, strHashTemplate]); if(err){console.error(err); process.exit(1);}
+  var [err, boHashTemplateMatch]=await cmdRedis('EVAL',[luaCountFunc, 1, redisVar, strHashTemplate]); if(err){console.error(err); process.exit(-1);}
   if(!boHashTemplateMatch){
     var Arg=[{boOR:true }, [{ $set: { tModCache: new Date(0), strHash:'template changed' } }]];
-    var [err, result]=await collectionPage.updateMany( ...Arg).toNBP();   if(err) {console.error(err); process.exit(1);}
+    var [err, result]=await collectionPage.updateMany( ...Arg).toNBP();   if(err) {console.error(err); process.exit(-1);}
   }
 
   // var StrCookiePropProt=["HttpOnly", "Path=/", "Max-Age="+3600*24*30];
@@ -294,6 +311,13 @@ boUseSelfSignedCert=false;
   oTmp["SameSite"]="Lax"; app.strCookiePropLax=";"+arrayifyCookiePropObj(oTmp).join(';');
   oTmp["SameSite"]="Strict"; app.strCookiePropStrict=";"+arrayifyCookiePropObj(oTmp).join(';');
 
+  var oTmp=extend({},StrCookiePropProt); 
+  oTmp["Max-Age"]=maxAdminRUnactivityTime; var str1=";"+arrayifyCookiePropObj(oTmp).join(';');
+  oTmp["Max-Age"]=0; var str0=";"+arrayifyCookiePropObj(oTmp).join(';');
+  app.StrSessionIDRProp=[str0,str1];
+  oTmp["Max-Age"]=maxAdminWUnactivityTime; var str1=";"+arrayifyCookiePropObj(oTmp).join(';');
+  oTmp["Max-Age"]=0; var str0=";"+arrayifyCookiePropObj(oTmp).join(';');
+  app.StrSessionIDWProp=[str0,str1];
 
   const handler=async function(req, res){
     if(typeof isRedirAppropriate!='undefined'){ 
@@ -322,35 +346,39 @@ boUseSelfSignedCert=false;
     req.cookies=cookies;
 
     
+      //
+      // DDOS Checking
+      //
+
       // Assign boCookieDDOSCameNExist
-    var boCookieDDOSCameNExist=false; //req.boCookieLaxOK=req.boCookieStrictOK=
-    var sessionIDDDos=null, redisVarDDos;
-    if('sessionIDDDos' in cookies) {
-      sessionIDDDos=cookies.sessionIDDDos;  redisVarDDos=sessionIDDDos+'_DDOS';
+    var boCookieDDOSCameNExist=false;
+    var {sessionIDDDos=null}=cookies, redisVarDDos;
+    if(sessionIDDDos) {
+      redisVarDDos=sessionIDDDos+'_DDOS';
       var [err, tmp]=await cmdRedis('EXISTS', redisVarDDos); boCookieDDOSCameNExist=tmp;
     }
-    // If !boCookieDDOSCameNExist then create a new sessionIDDDos (and redisVarDDos).
+      // If !boCookieDDOSCameNExist then create a new sessionIDDDos (and redisVarDDos).
     if(!boCookieDDOSCameNExist) { sessionIDDDos=randomHash();  redisVarDDos=sessionIDDDos+'_DDOS'; }
       // Update redisVarDDos counter
     var luaCountFunc=`local c=redis.call('INCR',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
     var [err, intCount]=await cmdRedis('EVAL',[luaCountFunc, 1, redisVarDDos, tDDOSBan]);
       // Write to response
-    res.setHeader("Set-Cookie", "sessionIDDDos="+sessionIDDDos+strCookiePropNormal);
+    res.replaceCookie("sessionIDDDos="+sessionIDDDos+strCookiePropNormal);
 
       // Update redisVarDDosIP counter
     var ipClient=getIP(req), redisVarDDosIP=ipClient+'_DDOS';
     var luaCountFunc=`local c=redis.call('INCR',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
     var [err, intCountIP]=await cmdRedis('EVAL',[luaCountFunc, 1, redisVarDDosIP, tDDOSIPBan]);
-      
+    
       // Determine which DDOS counter to use
     if(boCookieDDOSCameNExist) {  var intCountT=intCount, intDDOSMaxT=intDDOSMax, tDDOSBanT=tDDOSBan;   }
     else{  var intCountT=intCountIP, intDDOSMaxT=intDDOSIPMax, tDDOSBanT=tDDOSIPBan;   }
-
+    
       // If the counter is to high, then respond with 429
     if(intCountT>intDDOSMaxT) {
       var strMess="Too Many Requests ("+intCountT+"), wait "+tDDOSBanT+"s\n";
       if(pathName=='/'+leafBE){ var reqBE=new ReqBE({req, res}); reqBE.mesEO(strMess, 429); }
-      else res.outCode(429,strMess);
+      else res.outCode(429, strMess);
       return;
     }
     
@@ -368,7 +396,6 @@ boUseSelfSignedCert=false;
 
     
 
-    if(pathName=='/index.php') { var qs=objUrl.query||'', objQS=querystring.parse(qs), tmp=objQS.page||''; res.out301('http://'+domainName+'/'+tmp); return; }
 
     if(boDbg) console.log(req.method+' '+pathName);
     
@@ -413,31 +440,23 @@ boUseSelfSignedCert=false;
     else if(pathName=='/debug'){    debugger;  res.end();}
     else if(pathName=='/mini'){
       var tserver=(new Date()).valueOf();  
-      res.end('<script>tserver='+tserver+";tclient=(new Date()).valueOf(); console.log('tserver: '+tserver/1000);console.log('tclient: '+tclient/1000);console.log('tdiff: '+(tclient-tserver)/1000);</script>");
+      res.end('<script>var tserver='+tserver+", tclient=(new Date()).valueOf(); console.log('tserver: '+tserver/1000);console.log('tclient: '+tclient/1000);console.log('tdiff: '+(tclient-tserver)/1000);</script>");
     }
     else if(pathName=='/timeZoneTest'){var dateTrash=new Date();  res.end(''+dateTrash.getTimezoneOffset());}
     else if(pathName=='/'+googleSiteVerification) res.end('google-site-verification: '+googleSiteVerification);
     else { await reqIndex.call(objReqRes);   }
     
-    
   }
 
 
   if(boUseSelfSignedCert){
-    //if(typeof TLSData=='undefined' || !(TLSData instanceof Array) || TLSData.length==0) {  console.error("typeof TLSData=='undefined' || !(TLSData instanceof Array) || TLSData.length==0");  return;}
-    //TLSDataExtend.call(TLSData);
-    //var options = {
-      //SNICallback: function(domain, cb) {
-        //console.log('SNI '+domain); 
-        ////return TLSData.getContext(domain);
-        //cb(null, TLSData.getContext(domain));
-      //},
-      //key: TLSData[0].strKey,
-      //cert: TLSData[0].strCert  
-    //};
-    
-    const options = { key: fs.readFileSync('0SelfSignedCert/server.key'), cert: fs.readFileSync('0SelfSignedCert/server.cert') };
+    //const options = { key: fs.readFileSync('0SelfSignedCert/server.key'), cert: fs.readFileSync('0SelfSignedCert/server.cert') };
 
+    var [err, buf]=await fsPromises.readFile('0SelfSignedCert/server.key').toNBP(); if(err) {console.error(err); process.exit(-1);}
+    var key=buf.toString();
+    var [err, buf]=await fsPromises.readFile('0SelfSignedCert/server.cert').toNBP(); if(err) {console.error(err); process.exit(-1);}
+    var cert=buf.toString();
+    const options= {key, cert};
     https.createServer(options, handler).listen(port);   console.log("Listening to HTTPS requests at port " + port);
   } else{
     http.createServer(handler).listen(port);   console.log("Listening to HTTP requests at port " + port);

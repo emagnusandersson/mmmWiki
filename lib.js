@@ -1,6 +1,7 @@
 "use strict"
 //var app;  if(typeof window!=='undefined') app=window; else if(typeof global!=='undefined') app=global; else app=self;  // if browser else if server else serviceworker
-var app=globalThis;
+//var app=globalThis;
+globalThis.app=globalThis;
 
 app.thisChanged=function(func,selfT){return function(){return func.apply(selfT,arguments);}}
 
@@ -456,6 +457,13 @@ app.convertKeyValueToObj=function(arr){
   var oOut={};
   arr.forEach(function(it){oOut[it.name]=it.value;});
   return oOut;
+}
+
+
+app.parseQS2=function(qs){
+  var objQS={}, objTmp=new URLSearchParams(qs);
+  for(const [name, value] of objTmp) {  objQS[name]=value;  }
+  return objQS;
 }
 
 

@@ -2715,8 +2715,9 @@ var templateListExtend=function(el){
   el.toString=function(){return 'templateList';}
   el.setUp=function(obj={}){
     div.empty(); 
-    for(var key in obj) {  
-      var str="template:"+key;   var a=createElement('a').prop({href:'/'+str}).myText(str).css({display:'block'}); div.append(a);
+    for(var key in obj) {
+      var str; if(key.substr(0,9)=='template:') str=key; else str="template:"+key; 
+      var a=createElement('a').prop({href:'/'+str}).myText(str).css({display:'block'}); div.append(a);
       if( obj[key]==0) a.addClass("stub");
     }
     //if(tab.length) el.prepend('<h3>Templates</h3>');

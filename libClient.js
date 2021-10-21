@@ -4,20 +4,20 @@
 // Checking browser functionalities
 //
 
-var isGeneratorSupported = function(){ try { eval("(function*(){})()"); return true; } catch(err){ return false;}}  // mmmWiki works a bit different than the other apps (allowing public pages to be seen even if javascript doesn't work etc.)
+app.isGeneratorSupported = function(){ try { eval("(function*(){})()"); return true; } catch(err){ return false;}}  // mmmWiki works a bit different than the other apps (allowing public pages to be seen even if javascript doesn't work etc.)
 
 
 //
 // Storage, DOM etc
 //
 
-var getItem=function(name){    var tmp=localStorage.getItem(name);   if(tmp!==null) tmp=JSON.parse(tmp);  return tmp;   }
-var setItem=function(name,value){  if(typeof value=='undefined') value=null; localStorage[name]=JSON.stringify(value); }
-var getItemS=function(name){    var tmp=sessionStorage.getItem(name);    if(tmp!==null) tmp=JSON.parse(tmp);   return tmp;   }
-var setItemS=function(name,value){  sessionStorage[name]=JSON.stringify(value); }
+app.getItem=function(name){    var tmp=localStorage.getItem(name);   if(tmp!==null) tmp=JSON.parse(tmp);  return tmp;   }
+app.setItem=function(name,value){  if(typeof value=='undefined') value=null; localStorage[name]=JSON.stringify(value); }
+app.getItemS=function(name){    var tmp=sessionStorage.getItem(name);    if(tmp!==null) tmp=JSON.parse(tmp);   return tmp;   }
+app.setItemS=function(name,value){  sessionStorage[name]=JSON.stringify(value); }
 
 
-var httpGetAsync=function(theUrl, callback){
+app.httpGetAsync=function(theUrl, callback){
   var xmlHttp = new XMLHttpRequest();
   xmlHttp.onreadystatechange = function() { 
     if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
@@ -28,7 +28,7 @@ var httpGetAsync=function(theUrl, callback){
 }
 
 
-var msort=function(compare){
+app.msort=function(compare){
   var length = this.length,  middle = Math.floor(length / 2);
   //if(length < 2) return this;
   if(length==0) return [];
@@ -38,7 +38,7 @@ var msort=function(compare){
   return merge(    msort.call(a,compare),    msort.call(b,compare),    compare    );
 }
 
-var merge=function(left, right, compare){
+app.merge=function(left, right, compare){
   var result = [];
   while (left.length > 0 || right.length > 0){
     if(left.length > 0 && right.length > 0){
@@ -52,7 +52,7 @@ var merge=function(left, right, compare){
 }
 
 
-var deepExtend=function(oA, oB) {
+app.deepExtend=function(oA, oB) {
     // Handle the 3 simple types, and null or undefined
   if(oB==null || typeof oB != "object" ) return oB;
   
@@ -81,7 +81,7 @@ var deepExtend=function(oA, oB) {
  * DOM handling
  *******************************************************************************************************************/
 
-var findPos=function(el) {
+app.findPos=function(el) {
   var rect = el.getBoundingClientRect();
   //return {top:rect.top+document.body.scrollTop, left:rect.left + document.body.scrollLeft};
   return {top:rect.top+window.scrollY, left:rect.left + window.scrollX};
@@ -96,14 +96,14 @@ var findPos=function(el) {
 //}
 
 
-var removeChildren=function(myNode){
+app.removeChildren=function(myNode){
   while (myNode.firstChild) {
       myNode.removeChild(myNode.firstChild);
   }
 }
 
-var scrollTop=function(){ return window.pageYOffset || (document.documentElement || document.body.parentNode || document.body).scrollTop; }
-var scrollLeft=function(){ return window.pageXOffset || (document.documentElement || document.body.parentNode || document.body).scrollLeft; }
+app.scrollTop=function(){ return window.pageYOffset || (document.documentElement || document.body.parentNode || document.body).scrollTop; }
+app.scrollLeft=function(){ return window.pageXOffset || (document.documentElement || document.body.parentNode || document.body).scrollLeft; }
 
 EventTarget.prototype.on=function(){ this.addEventListener.apply(this, [...arguments]); return this; }
 EventTarget.prototype.off=function(){ this.removeEventListener.apply(this, [...arguments]); return this; }
@@ -202,11 +202,11 @@ NodeList.prototype.toggle=function(b){
   this.forEach(function(ele){ ele.toggle(b); });
   return this;
 }
-var createTextNode=function(str){ return document.createTextNode(str); }
-var createElement=function(str){ return document.createElement(str); }
-var createFragment=function(){ var fr=document.createDocumentFragment(); if(arguments.length) fr.append(...arguments); return fr; }
+app.createTextNode=function(str){ return document.createTextNode(str); }
+app.createElement=function(str){ return document.createElement(str); }
+app.createFragment=function(){ var fr=document.createDocumentFragment(); if(arguments.length) fr.append(...arguments); return fr; }
 
-var getNodeIndex=function( elm ){ return [...elm.parentNode.childNodes].indexOf(elm); }
+app.getNodeIndex=function( elm ){ return [...elm.parentNode.childNodes].indexOf(elm); }
 Element.prototype.myIndex=function() {return [...this.parentNode.childNodes].indexOf(this);}
 
 Element.prototype.offset=function() {
@@ -224,7 +224,7 @@ Element.prototype.visibilityToggle=function(b){
 
 Node.prototype.detach=function(){ this.remove(); return this; }
 
-var isVisible=function(el) {
+app.isVisible=function(el) {
   return !!( el.offsetWidth || el.offsetHeight || el.getClientRects().length );
 }
 
@@ -235,7 +235,7 @@ var isVisible=function(el) {
 /*******************************************************************************************************************
  * popupHover: popup a elBubble when you hover over elArea
  *******************************************************************************************************************/
-var popupHover=function(elArea, elBubble, tClose=4){
+app.popupHover=function(elArea, elBubble, tClose=4){
   elBubble.css({position:'absolute', 'box-sizing':'border-box', margin:'0px', 'text-align':'left'}); //
   function setBubblePos(e){
     var xClear=6, yClear=6;
@@ -314,7 +314,7 @@ var popupHover=function(elArea, elBubble, tClose=4){
 /*******************************************************************************************************************
  * menuExtend (Display a menu under (or above) a button (when button is clicked))       (mousedown, drag, mouseup-on-option)
  *******************************************************************************************************************/
-var menuExtend=function(el, ElItem=[]){
+app.menuExtend=function(el, ElItem=[]){
   //  var objEdgeDist=$menu[0].getBoundingClientRect();
   el.openFunc=function(e,elButton,ElItemT){ 
     e.stopPropagation();
@@ -408,13 +408,13 @@ var menuExtend=function(el, ElItem=[]){
  * popupDragExtend  (Display a draggable bubble (div) (when button is clicked))
  *******************************************************************************************************************/
 
-var popupDragExtendM=function(elBubble,strTitle,elParent){ 
+app.popupDragExtendM=function(elBubble,strTitle,elParent){ 
   elBubble.css({position:'absolute','z-index':200,'background-color':'#ccc','text-align':'left',padding:'0em',border:'solid black 1px'}); 
   popupDragExtend(elBubble,strTitle,elParent);
   return elBubble;
 }
 
-var popupDragExtend=function(elBubble,strTitle,elParent){
+app.popupDragExtend=function(elBubble,strTitle,elParent){
   var xLoc, yLoc, xBubStart, xMouseStart, wBubStart, wWinStart;
   var mouseDownGrab= function(e){
     var e = e || window.event; if(e.which==3) return; 

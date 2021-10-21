@@ -1,6 +1,7 @@
 "use strict"
 
-const { Int32, Long, ObjectId } = require("mongodb"); //, ObjectID
+//const { Int32, Long, ObjectId } = require("mongodb"); //, ObjectID
+import { Int32, Long, ObjectId } from "mongodb"; //, ObjectID
 
 
 /******************************************************************************
@@ -123,11 +124,21 @@ ReqBE.prototype.go=async function(){
   //if(!req.boCookieStrictOK) {this.mesEO(Error('Strict cookie not set'));  return;   }
   
     // Get boARLoggedIn / boAWLoggedIn.  Conditionally push deadlines forward ("expire" returns 1 if timer was set or 0 if variable doesn't exist)
+  var {sessionIDR, sessionIDW}=req.cookies; //, arrCookieOut=[];
   var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
-  
-  
+  if(sessionIDR){
+    var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+    //arrCookieOut.push("sessionIDR="+sessionIDR+StrSessionIDRProp[this.boARLoggedIn]);
+    res.replaceCookie("sessionIDR="+sessionIDR+StrSessionIDRProp[this.boARLoggedIn]);
+  }else {this.boARLoggedIn=0;}
+  if(sessionIDW){
+    var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+    //arrCookieOut.push("sessionIDW="+sessionIDW+StrSessionIDWProp[this.boAWLoggedIn]);
+    res.replaceCookie("sessionIDW="+sessionIDW+StrSessionIDWProp[this.boAWLoggedIn]);
+  }else {this.boAWLoggedIn=0;}
+
+  //if(arrCookieOut.length) res.setHeader("Set-Cookie", arrCookieOut);
+
 
   //res.setHeader("Content-type", MimeType.json);
 
@@ -207,7 +218,8 @@ ReqBE.prototype.go=async function(){
     var [err,tmp]=await cmdRedis('SET', [sessionIDCSRF+'_CSRF', CSRFCode, 'EX', maxAdminRUnactivityTime]);
     this.GRet.CSRFCode=CSRFCode;
     
-    res.setHeader("Set-Cookie", "sessionIDCSRF="+sessionIDCSRF+strCookiePropLax); 
+    //res.setHeader("Set-Cookie", "sessionIDCSRF="+sessionIDCSRF+strCookiePropLax); 
+    res.replaceCookie("sessionIDCSRF="+sessionIDCSRF+strCookiePropLax); 
   }
   
 
@@ -251,12 +263,8 @@ ReqBE.prototype.aRLogin=async function(inObj){
   if(sessionIDR) { var [err]=await cmdRedis('DEL', [sessionIDR+'_adminRTimer']); if(err) return [err]; }
   var sessionIDR=randomHash();
   var [err]=await cmdRedis('SET', [sessionIDR+'_adminRTimer', 1, 'EX', maxAdminRUnactivityTime]);
-
-  var oTmp=extend({},StrCookiePropProt); 
-  oTmp["Max-Age"]=maxAdminRUnactivityTime; var strProp=";"+arrayifyCookiePropObj(oTmp).join(';');
-  var arrCookie=["sessionIDR="+sessionIDR+strProp];
-  
-  res.setHeader("Set-Cookie", arrCookie);
+  //res.setHeader("Set-Cookie", "sessionIDR="+sessionIDR+StrSessionIDRProp[1]);
+  res.replaceCookie("sessionIDR="+sessionIDR+StrSessionIDRProp[1]);
   
   copySome(GRet,this,['boARLoggedIn','boAWLoggedIn']); 
     // Returning both (to make it a bit simpler on the client side) 
@@ -280,13 +288,9 @@ ReqBE.prototype.aWLogin=async function(inObj){
   if(sessionIDW) {  var [err]=await cmdRedis('DEL', [sessionIDW+'_adminWTimer']); if(err) return [err];  }
   var sessionIDW=randomHash();
   var [err]=await cmdRedis('SET', [sessionIDW+'_adminWTimer', 1, 'EX', maxAdminWUnactivityTime]);
+  //res.setHeader("Set-Cookie", "sessionIDW="+sessionIDW+StrSessionIDWProp[1]);
+  res.replaceCookie("sessionIDW="+sessionIDW+StrSessionIDWProp[1]);
 
-  var oTmp=extend({},StrCookiePropProt); 
-  oTmp["Max-Age"]=maxAdminWUnactivityTime; var strProp=";"+arrayifyCookiePropObj(oTmp).join(';');
-  var arrCookie=["sessionIDW="+sessionIDW+strProp];
-
-  res.setHeader("Set-Cookie", arrCookie);
-  
   
   if(objOthersActivity) extend(objOthersActivity,objOthersActivityDefault);
 
@@ -295,9 +299,10 @@ ReqBE.prototype.aWLogin=async function(inObj){
 }
 
 ReqBE.prototype.aRLogout=async function(inObj){ 
-  var {req, res, GRet}=this, Ou={};
-  var redisVar=req.cookies.sessionIDR+'_adminRTimer';
-  var [err,tmp]=await cmdRedis('DEL', [redisVar]);
+  var {req, res, GRet}=this, Ou={}, {sessionIDR}=req.cookies;
+  var [err,tmp]=await cmdRedis('DEL', [sessionIDR+'_adminRTimer']);
+  //res.setHeader("Set-Cookie", "sessionIDR="+sessionIDR+StrSessionIDRProp[0]);
+  res.replaceCookie("sessionIDR="+sessionIDR+StrSessionIDRProp[0]);
 
   if(this.boARLoggedIn) {this.mes('Logged out (read access)'); GRet.strDiffText=''; } 
   this.boARLoggedIn=0;
@@ -306,9 +311,10 @@ ReqBE.prototype.aRLogout=async function(inObj){
 }
 
 ReqBE.prototype.aWLogout=async function(inObj){ 
-  var {req, res, GRet}=this, Ou={};
-  var redisVar=req.cookies.sessionIDW+'_adminWTimer';
-  var [err,tmp]=await cmdRedis('DEL', [redisVar]);
+  var {req, res, GRet}=this, Ou={}, {sessionIDW}=req.cookies;
+  var [err,tmp]=await cmdRedis('DEL', [sessionIDW+'_adminWTimer']);
+  //res.setHeader("Set-Cookie", "sessionIDW="+sessionIDW+StrSessionIDWProp[0]);
+  res.replaceCookie("sessionIDW="+sessionIDW+StrSessionIDWProp[0]);
 
   if(this.boAWLoggedIn) {this.mes('Logged out (write access)'); GRet.strDiffText=''; } 
   this.boAWLoggedIn=0; 
@@ -2075,7 +2081,7 @@ app.loadFrBUOnServInterior=async function(strLoadArg){
   else if(typeof strLoadArg=='undefined') StrLoadArg=['.'];
   else if(typeof strLoadArg=='string') StrLoadArg=strLoadArg.split('+');
 
-  var fsBUFolder=path.join(__dirname, '..', 'mmmWikiBackUp')
+  var fsBUFolder=path.join(process.cwd(), '..', 'mmmWikiBackUp')
     // If StrLoadArg is a single directory.
   if( StrLoadArg.length==1) { // If only one item, then check if it is a folder.
     var fsPathArg=path.join(fsBUFolder,StrLoadArg[0]);
@@ -2093,7 +2099,7 @@ app.loadFrBUOnServInterior=async function(strLoadArg){
   if(typeof FileOrg=="undefined"){
     var len=StrLoadArg.length, FileOrg=Array(len);
     for(var i=0;i<len;i++){
-      var strT=StrLoadArg[i], obj=path.parse(strT), fsPathArg=path.join(fsBUFolder,strT);; FileOrg[i]={name:obj.base, path:fsPathArg};
+      var strT=StrLoadArg[i], obj=path.parse(strT), fsPathArg=path.join(fsBUFolder,strT); FileOrg[i]={name:obj.base, path:fsPathArg};
     }
   }
   var [err, result]=await loadFrFiles(FileOrg); if(err) return [err];

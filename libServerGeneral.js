@@ -1,6 +1,8 @@
 "use strict"
 
 
+import http from "http";
+
 app.parseCookies=function(req) {
   var list={}, rc=req.headers.cookie;
   if(typeof rc=='string'){
@@ -60,8 +62,30 @@ tmp.out500=function(e){
 tmp.out501=function(){ this.outCode(501, "Not implemented\n");   }
 
 
+
 tmp.setHeaderMy=function(o){
   for(var k in o) {this.setHeader(k,o[k]);}
+}
+// tmp.addCookie=function(str){
+//   var arr=this.getHeader("Set-Cookie");
+//   if(!arr) {this.setHeader("Set-Cookie",str); return;}
+//   var boStr=typeof arr==='string'
+//   if(boStr) arr=[arr];
+//   arr.push(str);
+//   if(boStr) this.setHeader("Set-Cookie",arr);
+// }
+tmp.replaceCookie=function(strNew){
+  var arr=this.getHeader("Set-Cookie");
+  if(!arr) {this.setHeader("Set-Cookie",strNew); return;}
+  var boStr=typeof arr==='string'
+  if(boStr) arr=[arr];
+  var l=strNew.indexOf("="), strName=strNew.substr(0,l), boWritten=false;
+  for(var i=0;i<arr.length;i++){
+    var strNameCur=arr[i].substr(0,l);
+    if(strName===strNameCur) {arr[i]=strNew; boWritten=true; break;}
+  }
+  if(!boWritten) arr.push(strNew);
+  if(boStr) this.setHeader("Set-Cookie",arr);
 }
 
 
@@ -125,6 +149,7 @@ app.cmdRedis=async function(strCommand, arr){
   return await new Promise(resolve=>{
     redisClient.send_command(strCommand, arr, (...arg)=>resolve(arg)  ); 
   });
+  //return await redisClient.sendCommand([strCommand, ...arr] ).toNBP();
 }
 app.getRedis=async function(strVar, boObj=false){
   var [err,res]=await cmdRedis('GET', [strVar]);  if(boObj) res=JSON.parse(res);  return [err,res];
@@ -176,7 +201,7 @@ app.getIP=function(req){
 
 app.CacheUriT=function(){
   this.set=async function(key, buf, type, boZip, boUglify){
-    var strHash=crypto.createHash('md5').update(buf).digest('hex');
+    var strHash=md5(buf);
     //if(boUglify) { // UglifyJS does not handle ecma6 (when I tested it 2019-05-05).
       //var objU=UglifyJS.minify(buf.toString());
       //buf=new Buffer(objU.code,'utf8');

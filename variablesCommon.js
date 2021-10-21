@@ -1,32 +1,32 @@
 
 
-two31=Math.pow(2,31);  intMax=two31-1;  intMin=-two31; uintMax=Math.pow(2,32)-1;
-sPerDay=24*3600;  sPerMonth=sPerDay*30;
+app.two31=Math.pow(2,31);  app.intMax=two31-1;  app.intMin=-two31; app.uintMax=Math.pow(2,32)-1;
+app.sPerDay=24*3600;  app.sPerMonth=sPerDay*30;
 
-fsWebRootFolder=process.cwd();
-flLibFolder='lib';
+var fsWebRootFolder=process.cwd();
+var flLibFolder='lib';
 
-flFoundOnTheInternetFolder=flLibFolder+"/foundOnTheInternet";
-flLibImageFolder=flLibFolder+"/image";  
+app.flFoundOnTheInternetFolder=flLibFolder+"/foundOnTheInternet";
+app.flLibImageFolder=flLibFolder+"/image";  
 
   // Files: 
-leafBE='be.json';
-leafCommon='common.js';
-leafManifest='manifest.json'
+app.leafBE='be.json';
+app.leafCommon='common.js';
+app.leafManifest='manifest.json'
 
 
 
 
-messPreventBecauseOfNewerVersions="Preventing overwrite since there are newer versions. Copy your edits temporary, then reload page.";
+app.messPreventBecauseOfNewerVersions="Preventing overwrite since there are newer versions. Copy your edits temporary, then reload page.";
 
-version='100';
-maxGroupsInFeat=20;
+app.version='100';
+app.maxGroupsInFeat=20;
 
 
 
-    //    0        1
-bName=['block','help'];
-bFlip=array_flip(bName);
+       //     0       1
+app.bName=['block','help'];
+app.bFlip=array_flip(bName);
 
 var tFeat={kind:'S11',min:[0, 0.25, 1, 3, 8, 24, 72, 168, 3*168, 8760/4, 8760, 3*8760], bucketLabel:['0', '¼h', '1h', '3h', '8h', '1d', '3d', '1w', '3w', '¼y', '1y', '3y']};
 for(var i=0;i<tFeat.min.length;i++) tFeat.min[i]*=3600; // make hours to seconds
@@ -51,7 +51,7 @@ var lastRevFeat={kind:'S11',min:[0, 1, 2, 3, 4, 5, 6, 8, 10]};
  * PropPage
  *******************************************************************/
 
-PropPage={
+app.PropPage={
   siteName:            {b:'10',feat:{kind:'B'}},
   parent:              {b:'11',feat:{kind:'B'}},
   //child:               {b:'11',feat:{kind:'B'}},
@@ -75,7 +75,7 @@ PropPage={
   nParent:             {b:'10',feat:nParentFeat},
   lastRev:             {b:'10',feat:lastRevFeat}
 };
-StrOrderFiltPage=Object.keys(PropPage);
+app.StrOrderFiltPage=Object.keys(PropPage);
 
 extend(PropPage,{
 pageName:            {b:'00'},
@@ -94,11 +94,11 @@ www:                 {b:'00'}});
   // ... for some S-features
 
   // cond0F
-tmpCond0F=function(obj, name, val){  obj.$lte=new Date(Date.now() - val*1000); }; // Is this correct shouldn't it be: tmpCond0F=function(obj, name, val){  obj.$lte=new Date(Date.now() - val); };
+var tmpCond0F=function(obj, name, val){  obj.$lte=new Date(Date.now() - val*1000); }; // Is this correct shouldn't it be: tmpCond0F=function(obj, name, val){  obj.$lte=new Date(Date.now() - val); };
 //tmpCond0F=function(obj, name, val){  var t=unixNow()-val; obj.$lte=t; };
 PropPage.tCreated.cond0F=PropPage.tMod.cond0F=PropPage.tModCache.cond0F=PropPage.tLastAccess.cond0F=tmpCond0F;
   // cond1F
-tmpCond1F=function(obj, name, val){  obj.$gt=new Date(Date.now() - val*1000); }; // Is this correct shouldn't it be: tmpCond1F=function(obj, name, val){  var t=unixNow()-val; obj.$gt=t; };
+var tmpCond1F=function(obj, name, val){  obj.$gt=new Date(Date.now() - val*1000); }; // Is this correct shouldn't it be: tmpCond1F=function(obj, name, val){  var t=unixNow()-val; obj.$gt=t; };
 PropPage.tCreated.cond1F=PropPage.tMod.cond1F=PropPage.tModCache.cond1F=PropPage.tLastAccess.cond1F=tmpCond1F;
 
   // ...for some B-features
@@ -165,7 +165,7 @@ PropPage.tCreated.histGroupByF=PropPage.tMod.histGroupByF=PropPage.tModCache.his
  * PropImage
  *******************************************************************/
 
-PropImage={
+app.PropImage={
 siteName:            {b:'11',feat:{kind:'B'}},
 parent:              {b:'11',feat:{kind:'B'}},
 extension:           {b:'10',feat:{kind:'B'}},
@@ -179,7 +179,7 @@ nAccess:             {b:'10',feat:nAccessFeat},
 boOther:             {b:'01',feat:{kind:'BN',span:1}},
 nParent:             {b:'10',feat:nParentFeat}
 };
-StrOrderFiltImage=Object.keys(PropImage);
+app.StrOrderFiltImage=Object.keys(PropImage);
 
 extend(PropImage,{
 imageName:           {b:'00'},
@@ -190,10 +190,10 @@ idFile:              {b:'00'}
 
 
   // cond0F
-tmpCond0F=function(obj, name, val){  obj.$lte=new Date(Date.now() - val*1000); };
+var tmpCond0F=function(obj, name, val){  obj.$lte=new Date(Date.now() - val*1000); };
 PropImage.tCreated.cond0F=PropImage.tMod.cond0F=PropImage.tLastAccess.cond0F=tmpCond0F;
   // cond1F
-tmpCond1F=function(obj, name, val){   obj.$gt=new Date(Date.now() - val*1000); };
+var tmpCond1F=function(obj, name, val){   obj.$gt=new Date(Date.now() - val*1000); };
 PropImage.tCreated.cond1F=PropImage.tMod.cond1F=PropImage.tLastAccess.cond1F=tmpCond1F;
 
 
@@ -328,7 +328,7 @@ PropImage.tCreated.histGroupByF=PropImage.tMod.histGroupByF=PropImage.tLastAcces
  * featCalcValExtend
  *******************************************************************/
 
-featCalcValExtend=function(Prop){
+var featCalcValExtend=function(Prop){
   for(var name in Prop){
     var prop=Prop[name];
     if(!('feat' in prop)) continue;
@@ -364,16 +364,16 @@ featCalcValExtend=function(Prop){
 
 
 
-StrOrderFiltPageFlip=array_flip(StrOrderFiltPage);
-StrOrderFiltImageFlip=array_flip(StrOrderFiltImage);
+app.StrOrderFiltPageFlip=array_flip(StrOrderFiltPage);
+app.StrOrderFiltImageFlip=array_flip(StrOrderFiltImage);
 
 
 featCalcValExtend(PropPage);
 featCalcValExtend(PropImage);
 
 
-nHash=1000;
-lenGZ=100;
+app.nHash=1000;
+app.lenGZ=100;
 
 //aRPassword=SHA1(aRPassword+strSalt);
 //aWPassword=SHA1(aWPassword+strSalt);
@@ -386,31 +386,14 @@ var data=aWPassword+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data); aWPasswor
 //var data=aWPassword+strSalt; for(var i=0;i<nHash;i++) data=Sha256.hash(data); aWPassword=data;
 
 
-objOthersActivity=null; boPageBUNeeded=null; boImageBUNeeded=null;
-objOthersActivityDefault={nEdit:0, pageName:'',  nImage:0, imageName:''};
+app.objOthersActivity=null; app.boPageBUNeeded=null; app.boImageBUNeeded=null;
+app.objOthersActivityDefault={nEdit:0, pageName:'',  nImage:0, imageName:''};
 // tLastBackup=0; tLastEdit=0; tImageLastBackup=0; tImageLastChange=0;
 
-strDBPrefix='mmmWiki';
+//strDBPrefix='mmmWiki';
 
 
 
-TLSDataExtend=function(){
-  this.getContext=function(domainName){
-    for(var i=0;i<this.length;i++){
-      if(this[i].testDomain(domainName)) return this[i].context;
-    }
-    return undefined;
-    //return false;
-  }
-  
-  for(var i=0;i<this.length;i++){
-    var item=this[i];
-    if('domainReg' in item) {  item.regexp=RegExp(item.domainReg);       item.testDomain=function(domain){ return this.regexp.test(domain);};    } 
-    else item.testDomain=function(domain){ return this.domain===domain;};
-    //item.context=crypto.createCredentials({        key:  item.strKey,        cert: item.strCert      }).context;
-    item.context=tls.createSecureContext({        key:  item.strKey,        cert: item.strCert      });//.context;
-  }
-}
 
 
 

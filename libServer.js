@@ -68,36 +68,46 @@ app.makeMatVersion=function(Version){
 
 app.parse=async function(sessionMongo, arg) {
   var {idSite, strEditText, boOW}=arg;
-  var mPa=new Parser(strEditText, boOW==0);
-  mPa.preParse();
-  var StrTemplate=mPa.getStrTemplate();  // [name, name ....]
+  
+    // Parse ...
+  var mPa=new Parser(strEditText, boOW==0);    mPa.preParse();
 
-    
-    // get objTemplate from DB
+
+    // Create objTemplate and objTemplateE (E=template Exists)
+  var StrTemplate=mPa.getStrTemplate();  // [name, name ....]
   var len=StrTemplate.length, objTemplate={}, objTemplateE={};
   var IdTemplate=Array(len); for(var i=0;i<len;i++){IdTemplate[i]=idSite+":"+StrTemplate[i].toLowerCase(); } 
   if(len) {
     var Arg=[ {_id:{$in:IdTemplate}}, {projection:{_id:1, pageName:1, idFileWiki:1}, session:sessionMongo}];
     var cursor=collectionPage.find(...Arg);
     var [err, PageTemplate]=await cursor.toArray().toNBP();   if(err) return [err, []];
-    var lenM=PageTemplate.length, IdTemplateData=Array(lenM); for(var i=0;i<lenM;i++){ IdTemplateData[i]=PageTemplate[i].idFileWiki; }
+    var lenId=PageTemplate.length, IdTemplateData=Array(lenId), objId={};
+    for(var i=0;i<lenId;i++){ var {idFileWiki}=PageTemplate[i]; IdTemplateData[i]=idFileWiki; objId[idFileWiki.toString()]=PageTemplate[i]; } 
 
     var Arg=[ {_id:{$in:IdTemplateData}}, {session:sessionMongo}];
     var cursor=collectionFileWiki.find(...Arg);
     var [err, results]=await cursor.toArray().toNBP();   if(err) return [err, []];
-    var lenD=results.length; if(lenM!==lenD) return [new Error('lenM!==lenD'), []];
-    for(var i=0;i<lenD;i++){ objTemplate[PageTemplate[i].pageName]=results[i].data; }
+    var lenD=results.length; if(lenId!==lenD) return [new Error('lenId!==lenD'), []];
+    //for(var i=0;i<lenD;i++){ objTemplate[PageTemplate[i].pageName]=results[i].data; }
+    for(var i=0;i<lenD;i++){ var {data,_id}=results[i]; objTemplate[objId[_id.toString()].pageName ]=data; }
 
       // calculate objTemplateE
     for(var i=0;i<len;i++) { var key=StrTemplate[i]; objTemplateE[key]=key in objTemplate; }  // objTemplateE= {name:true, name:false ....}
   }
 
-
+    // Parse (cont.)
   mPa.parse(objTemplate);
-  var StrChildAll=mPa.getStrChildAll(), {StrImage, StrImageLC}=mPa.getStrImage();
+
+
+    // Extract Image arrays
+  var {StrImage, StrImageLC}=mPa.getStrImage();
+
+
+    // Create IdChildAll
+  var StrChildAll=mPa.getStrChildAll();
   var IdChildAll=StrChildAll.map(str=>idSite+":"+str.toLowerCase());
 
-    // Get IdChild  from DB
+    // Create IdChild, StrChild
   var len=IdChildAll.length; //objExistingSub={};
   if(len) {
     var Arg=[ {_id:{$in:IdChildAll}}, {projection:{_id:1, pageName:1}, collation:{locale:"en", strength:2}, session:sessionMongo}];
@@ -112,11 +122,11 @@ app.parse=async function(sessionMongo, arg) {
   } else {var IdChild=[], StrChild=[];}  
 
 
-
+    // Parse (cont.)
   mPa.setArrExistingSub(StrChild);      mPa.endParse();
-  var strHtmlText=mPa.text;
+
   
-  return [null, {strHtmlText, IdChildAll, IdChild, objTemplateE, StrImage, StrImageLC}];
+  return [null, {strHtmlText:mPa.text, IdChildAll, IdChild, objTemplateE, StrImage, StrImageLC}];
 }
 
 
@@ -144,9 +154,9 @@ app.createCommonJS=function() {
   var StrVar=['boDbg', 'urlPayPal', 'maxAdminWUnactivityTime', 'version', 'intMax', 'leafBE', 'strSalt', 'StrImageExt', 'flFoundOnTheInternetFolder', 'flLibImageFolder', 'maxGroupsInFeat', 'bFlip', 'PropPage', 'PropImage', 'StrOrderFiltPage', 'StrOrderFiltImage', 'nHash', 'strBTC', 'ppStoredButt'];
   var tmp=copySome({},app,StrVar);
   tmp.trash='trash';
-  Str.push(`assignCommonJS=function(){
+  Str.push(`app.assignCommonJS=function(){
   var tmp=`+JSON.stringify(tmp)+`;
-  extend(window,tmp);
+  Object.assign(window,tmp);
 }`);
   var str=Str.join('\n');    return str;
 }

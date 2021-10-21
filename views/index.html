@@ -13,14 +13,14 @@
   :root { --menuMaxWidth: 500px;}
   /*.mainDiv { margin: 0em auto; height: 100%; width:100%; display:flex; flex-direction:column; max-width:var(--maxWidth) }*/
 </style>
-<script>var app=window; app.extend=Object.assign;</script>
+<script>window.app=window; app.extend=Object.assign;</script>
 <link rel="canonical" href="<%=uCanonical%>"/>
 <link rel="stylesheet" href="<%=uStyle%>" type="text/css">
-<script src="<%=uFilter%>" async crossorigin="anonymous"></script>
-<script src="<%=uLib%>" async crossorigin="anonymous"></script>
-<script src="<%=uLibClient%>" async crossorigin="anonymous"></script>
-<script src="<%=uCommon%>" async crossorigin="anonymous"></script>
-<script src="<%=uClient%>" async crossorigin="anonymous"></script>
+<script type="module" src="<%=uFilter%>" async crossorigin="anonymous"></script>
+<script type="module" src="<%=uLib%>" async crossorigin="anonymous"></script>
+<script type="module" src="<%=uLibClient%>" async crossorigin="anonymous"></script>
+<script type="module" src="<%=uCommon%>" async crossorigin="anonymous"></script>
+<script type="module" src="<%=uClient%>" async crossorigin="anonymous"></script>
 <meta name="description" content="<%=strDescription%>"/>
 <%-strTracker%>
 <script>

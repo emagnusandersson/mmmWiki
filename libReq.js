@@ -1,6 +1,8 @@
 
 
 "use strict"
+
+
 // Todo (possible improvements)
 
 // loginA resets objOthersActivity, but perhaps one should do it even at reload of a logged in session.
@@ -8,6 +10,13 @@
 // OneLine dl syntax: " ; Volvo : Car brand"
 
 // When two tabs are open, and one has edited one, then edits the other, one gets "Already logged in"
+
+// Does uploadUser work? what is in "tmpname" in that function
+
+//sessionIDDDos, sessionIDCSRF, sessionIDR, sessionIDW
+// sessionIDR, sessionIDW: Set-Cookie should be called in reqBU, reqBUMeta, reqIndex, reqMonitor and reqStat
+
+// redis interface 4.0 does not work
 
 /******************************************************************************
  * BU (BackUp requests):
@@ -156,7 +165,7 @@ app.reqBU=async function(strArg) {
   
   if(boServ){
     var outFileName=type+'.zip';
-    var fsPage=path.join(__dirname, '..', 'mmmWikiBackUp', outFileName); 
+    var fsPage=path.join(process.cwd(), '..', 'mmmWikiBackUp', outFileName); 
     var [err]=await fsPromises.writeFile(fsPage, outdata, 'binary').toNBP();
     if(err) { console.log(err); res.out500(err); }
     res.out200(outFileName+' written');
@@ -284,7 +293,7 @@ app.reqBUMeta=async function(strArg) {
     // Output data 
   var boOutputZip=1;
   if(strArg=='Serv'){
-    var fsBU=path.join(__dirname, '..', 'mmmWikiBackUp'), strMess;
+    var fsBU=path.join(process.cwd(), '..', 'mmmWikiBackUp'), strMess;
     if(boOutputZip){
       var fsTmp=path.join(fsBU, 'meta.zip');
       var [err]=await fsPromises.writeFile(fsTmp, outdata, 'binary').toNBP();
@@ -418,9 +427,9 @@ app.reqIndex=async function() {
   var tNow=nowSFloored();
   
   var strT=req.headers['sec-fetch-mode'];
-  if(strT && !(strT=='navigate' || strT=='same-origin')) { res.outCode(400, "sec-fetch-mode header is not 'navigate' ("+strT+")"); return;}
+  if(strT && !(strT=='navigate' || strT=='same-origin')) { res.outCode(400, "sec-fetch-mode header not allowed ("+strT+")"); return;}
   
-  var qs=req.objUrl.query||'', objQS=querystring.parse(qs);
+  var qs=req.objUrl.query||'', objQS=parseQS2(qs);
   var pathName=decodeURIComponent(pathName);
 
   var Match=RegExp('^/([^\\/]+)$').exec(pathName);
@@ -551,7 +560,8 @@ app.reqIndex=async function() {
     var strHtmlText='';
     var {strOut}=makeOutput.call(this, objOut, strHtmlText), strHash=md5(strOut);
 
-    var objHead={"Content-Type": MimeType.html, "Cache-Control":"no-store, no-cache, must-revalidate, post-check=0, pre-check=0", "Content-Encoding":'gzip', "Set-Cookie":"sessionIDCSRF="+sessionIDCSRF+strCookiePropLax};  //, "Content-Length":strOut.length
+    var objHead={"Content-Type": MimeType.html, "Cache-Control":"no-store, no-cache, must-revalidate, post-check=0, pre-check=0", "Content-Encoding":'gzip'};  //, "Content-Length":strOut.length
+    res.replaceCookie("sessionIDCSRF="+sessionIDCSRF+strCookiePropLax);
     res.writeHead(403, objHead); 
     Streamify(strOut).pipe(zlib.createGzip()).pipe(res);
     return;
@@ -1203,15 +1213,15 @@ app.reqStat=async function(){
 
     // Include site specific JS-files
   //var uSite=req.strSchemeLong+wwwSite;
-  //var keyCache=req.strSite+'/'+leafSiteSpecific, vTmp=CacheUri[keyCache].strHash; if(boDbg) vTmp=0;  Str.push('<script src="'+uSite+'/'+leafSiteSpecific+'?v='+vTmp+'" async></script>');
+  //var keyCache=req.strSite+'/'+leafSiteSpecific, vTmp=CacheUri[keyCache].strHash; if(boDbg) vTmp=0;  Str.push('<script type="module" src="'+uSite+'/'+leafSiteSpecific+'?v='+vTmp+'" async></script>');
 
     // Include JS-files
   var StrTmp=['lib.js', 'libClient.js'];
   for(var i=0;i<StrTmp.length;i++){
-    var pathTmp='/'+StrTmp[i], vTmp=CacheUri[pathTmp].strHash; if(boDbg) vTmp=0;    Str.push('<script src="'+uSiteCommon+pathTmp+'?v='+vTmp+'" crossorigin="anonymous" async></script>');  // crossorigin : to make request cors (not needed really)
+    var pathTmp='/'+StrTmp[i], vTmp=CacheUri[pathTmp].strHash; if(boDbg) vTmp=0;    Str.push('<script type="module" src="'+uSiteCommon+pathTmp+'?v='+vTmp+'" crossorigin="anonymous" async></script>');  // crossorigin : to make request cors (not needed really)
   }
 
-  Str.push('<script src="'+uSiteCommon+'/lib/foundOnTheInternet/sortable.js" crossorigin="anonymous" async></script>');
+  Str.push('<script type="module" src="'+uSiteCommon+'/lib/foundOnTheInternet/sortable.js" crossorigin="anonymous" async></script>');
 
   Str.push(`</head>
 <body style="margin:0">
