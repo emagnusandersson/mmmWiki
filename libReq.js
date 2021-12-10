@@ -638,6 +638,9 @@ app.reqIndex=async function() {
       }
 
     } else { // strHtmlText is obsolete
+
+      var {IdChild:IdChildOld, StrImage:StrImageOld}=objPage;
+
         // parse
       var arg={strEditText, idSite, boOW};
       var [err, {strHtmlText, IdChildAll, IdChild, objTemplateE, StrImageLC}]=await parse(sessionMongo, arg); if(err) {arrRet=[err]; break stuff;}
@@ -648,24 +651,34 @@ app.reqIndex=async function() {
 
 
       if(strHash!=strHashOld){ 
-        tModCache=tNow;
-        if(boTemplate){
-          var Arg=[{_id:{$in:IdParent}}, [{ $set: {strHashParse:"stale", strHash:"stale", tModCache:new Date(0)} }], {session:sessionMongo}];
-          var [err, result]=await collectionPage.updateMany(...Arg).toNBP();   {arrRet=[err]; break stuff;}
-        }
-          // Set new cache
+
+          // Write File files
         var Arg=[{_id:idFileHtml }, [{ $set: { data: strHtmlText } }], {session:sessionMongo}];
         var [err, result]=await collectionFileHtml.updateOne(...Arg).toNBP();   if(err) {arrRet=[err]; break stuff;}
 
+        tModCache=tNow;
         extend(arrRevision[rev], {tModCache, strHashParse, strHash});
         if(boLastRev) extend(objPage, { tModCache, strHashParse, strHash });
 
-          // Change children
-        var [err]=await modifyIdParent(sessionMongo, objPage.IdChild, objPage.StrImage, idPage, IdChild, StrImageLC, idPage);  if(err) {arrRet=[err]; break stuff;}
-
+          // Make changes to current page
         delete objPage.idPage;
         var Arg=[ {_id:idPage }, { $set: objPage }, {session:sessionMongo}];
         var [err, result]=await collectionPage.updateOne(...Arg).toNBP();   if(err) {arrRet=[err]; break stuff;}
+        objPage.idPage=idPage;
+
+        if(boTemplate){  // Make parents stale
+          var Arg=[{_id:{$in:IdParent}}, [{ $set: {strHashParse:"stale", strHash:"stale", tModCache:new Date(0)} }], {session:sessionMongo}];
+          var [err, result]=await collectionPage.updateMany(...Arg).toNBP();   {arrRet=[err]; break stuff;}
+
+          // var objFilter={}; objFilter['objTemplateE.'+idPage]={$exists:true};
+          // var objSetI={strHashParse:"stale", strHash:"stale", tModCache:new Date(0)}; objSet['objTemplateE.'+idPage]=true;
+          // var Arg=[objFilter, [{ $set: objSetI }], {session:sessionMongo}];
+          // var [err, result]=await collectionPage.updateMany(...Arg).toNBP();   {arrRet=[err]; break stuff;}
+        }
+
+          // Make changes to children.
+        var [err]=await modifyIdParent(sessionMongo, IdChildOld, StrImageOld, idPage, IdChild, StrImageLC, idPage);  if(err) {arrRet=[err]; break stuff;}
+
       }
     
     }

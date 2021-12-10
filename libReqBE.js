@@ -589,7 +589,7 @@ ReqBE.prototype.pageLoad=async function(inObj) {
       // Entering some data into objOut
     var objOut={strReCaptchaSiteKey, uRecaptcha, CSRFCode:'',   boTalkExist, strEditText, arrVersionCompared, matVersion, objSiteDefault, objSite, objPage};
 
-    var StrFieldSkip=["arrRevision", "arrRevision", "strHash", "strHashParse", "tLastAccess", "tModCache", "nAccess"];
+    var StrFieldCacheSkip=["arrRevision", "arrRevision", "strHash", "strHashParse", "tLastAccess", "tModCache", "nAccess"];
     var boLastRev=rev==iLastRev
 
     if(tMod<=tModCache && strHashParse.length==32) {  // Meta data (but not strHtmlText) has changed
@@ -598,10 +598,10 @@ ReqBE.prototype.pageLoad=async function(inObj) {
       var {data:strHtmlText}=objFileHtml;
 
         // Remove some variables before calculating hash
-      var objFieldTmp=copySome({}, objPage, StrFieldSkip);   deleteFields(objPage, StrFieldSkip);
+      var objFieldTmp=copySome({}, objPage, StrFieldCacheSkip);   deleteFields(objPage, StrFieldCacheSkip);
       var strHashOld=strHash;
       strHash=md5(strHtmlText +JSON.stringify(objTemplateE) +JSON.stringify(objPage) +boTalkExist +JSON.stringify(matVersion));
-      copySome(objPage, objFieldTmp, StrFieldSkip); // copy back fields
+      copySome(objPage, objFieldTmp, StrFieldCacheSkip); // copy back fields
 
       extend(objOut, {objTemplateE});
     
@@ -614,39 +614,44 @@ ReqBE.prototype.pageLoad=async function(inObj) {
       }
 
     } else { // strHtmlText is obsolete
+
+      var {IdChild:IdChildOld, StrImage:StrImageOld}=objPage;
+
         // parse
       var arg={strEditText, idSite, boOW};
       var [err, {strHtmlText, IdChildAll, IdChild, objTemplateE, StrImageLC}]=await parse(sessionMongo, arg); if(err) {arrRet=[err]; break stuff;}
       strHashParse=md5(strHtmlText);
       
         // Remove some variables before calculating hash
-      var objFieldTmp=copySome({}, objPage, StrFieldSkip);   deleteFields(objPage, StrFieldSkip);
+      var objFieldTmp=copySome({}, objPage, StrFieldCacheSkip);   deleteFields(objPage, StrFieldCacheSkip);
       strHash=md5(strHtmlText +JSON.stringify(objTemplateE) +JSON.stringify(objPage) +boTalkExist +JSON.stringify(matVersion));
-      copySome(objPage, objFieldTmp, StrFieldSkip); // copy back fields
+      copySome(objPage, objFieldTmp, StrFieldCacheSkip); // copy back fields
       
       extend(objOut, {objTemplateE});
     
-      if(boTemplate){
+
+        // Write File files
+      var Arg=[{_id:idFileHtml }, [{ $set: { data: strHtmlText } }], {session:sessionMongo}];
+      var [err, result]=await collectionFileHtml.updateOne(...Arg).toNBP();   if(err) {arrRet=[err]; break stuff;}
+
+      tModCache=tNow;
+      extend(arrRevision[rev], {tModCache, strHashParse, strHash});
+      if(boLastRev) extend(objPage, { tModCache, strHashParse, strHash });
+
+        // Make changes to current page
+      delete objPage.idPage;
+      var Arg=[ {_id:idPage }, { $set: objPage }, {session:sessionMongo}];
+      var [err, result]=await collectionPage.updateOne(...Arg).toNBP();   if(err) {arrRet=[err]; break stuff;}
+      objPage.idPage=idPage;
+
+      if(boTemplate){  // Make parents stale
         var Arg=[{_id:{$in:IdParent}}, [{ $set: {strHashParse:"stale", strHash:"stale", tModCache:new Date(0)} }], {session:sessionMongo}];
         var [err, result]=await collectionPage.updateMany(...Arg).toNBP();   {arrRet=[err]; break stuff;}
       }
 
-        // Set new cache
-      var Arg=[{_id:idFileHtml }, [{ $set: { data: strHtmlText } }], {session:sessionMongo}];
-      var [err, result]=await collectionFileHtml.updateOne(...Arg).toNBP();   if(err) {arrRet=[err]; break stuff;}
-      
-      var tModCache=tNow;
-      if(boLastRev) extend(objPage, { tModCache, strHashParse, strHash});
-      
-        // Change children
-      var [err]=await modifyIdParent(sessionMongo, objPage.IdChild, objPage.StrImage, idPage, IdChild, StrImageLC, idPage);   if(err) {arrRet=[err]; break stuff;}
+        // Make changes to children.
+      var [err]=await modifyIdParent(sessionMongo, IdChildOld, StrImageOld, idPage, IdChild, StrImageLC, idPage);  if(err) {arrRet=[err]; break stuff;}
 
-      delete objPage.idPage;
-
-      extend(arrRevision[rev], {tModCache, strHashParse, strHash});
-      var Arg=[ {_id:idPage }, { $set: objPage }, {session:sessionMongo}];
-      var [err, result]=await collectionPage.updateOne(...Arg).toNBP();   if(err) {arrRet=[err]; break stuff;}
-      objPage.idPage=idPage;
     }
     
 
@@ -839,6 +844,7 @@ ReqBE.prototype.saveByReplace=async function(inObj){
     var arg={strEditText, idSite, boOW};
     var [err, {strHtmlText, IdChildAll, IdChild, objTemplateE, StrImageLC}]=await parse(sessionMongo, arg); if(err) {arrRet=[err]; break stuff;};
     var strHashParse=md5(strHtmlText);
+
     var nChild=IdChild.length, nImage=StrImageLC.length; 
     var StrImageStub=[], StrPagePrivate=[];
 
@@ -847,16 +853,16 @@ ReqBE.prototype.saveByReplace=async function(inObj){
     var lTmp=arrRevision.length, arrFile=Array(lTmp), arrFileHtml=Array(lTmp);
     for(var i=0;i<lTmp;i++){var {idFileWiki,idFileHtml}=arrRevision[i]; arrFile[i]=idFileWiki; arrFileHtml[i]=idFileHtml;}
     var Arg=[ {_id : {$in:arrFile}}, {session:sessionMongo}];
-    var [err, result]=await collectionFileWiki.deleteMany(...Arg).toNBP();   if(err) {arrRet=[err]; break stuff;};
+    var [err, result]=await collectionFileWiki.deleteMany(...Arg).toNBP();   if(err){arrRet=[err]; break stuff;}
     var Arg=[ {_id : {$in:arrFileHtml}}, {session:sessionMongo}];
-    var [err, result]=await collectionFileHtml.deleteMany(...Arg).toNBP();   if(err) {arrRet=[err]; break stuff;};
+    var [err, result]=await collectionFileHtml.deleteMany(...Arg).toNBP();   if(err){arrRet=[err]; break stuff;}
 
       // Write File data
     var Arg = [{idPage, data:strEditText }, {session:sessionMongo}];
-    var [err, result]=await collectionFileWiki.insertOne(...Arg).toNBP();   if(err) {arrRet=[err]; break stuff;};
+    var [err, result]=await collectionFileWiki.insertOne(...Arg).toNBP();   if(err){arrRet=[err]; break stuff;}
     var idFileWiki=Arg[0]._id;
     var Arg = [{ data:strHtmlText }, {session:sessionMongo}];
-    var [err, result]=await collectionFileHtml.insertOne(...Arg).toNBP();   if(err) {arrRet=[err]; break stuff;};
+    var [err, result]=await collectionFileHtml.insertOne(...Arg).toNBP();   if(err){arrRet=[err]; break stuff;}
     var idFileHtml=Arg[0]._id;
 
 
@@ -868,11 +874,10 @@ ReqBE.prototype.saveByReplace=async function(inObj){
 
 
       // Make changes to current page
-    //var objPageSet={arrRevision, nRevision, objTemplateE, boOther, tMod, tModCache, size, boTalkExist, nChild, nImage};
     extend(objPage, { boTalkExist, arrRevision, nRevision, lastRev, IdChild, IdChildAll, StrImage:StrImageLC, StrImageStub, nChild, nImage, objTemplateE, idFileWiki, idFileHtml, boOther, tMod, tModCache, strHashParse, strHash, size});
       // Assign unassigned properties
-    var Arg=[{_id:idPage}, {$set:objPage}, {upsert:true, new:true, session:sessionMongo}]
-    var [err, result]=await collectionPage.updateOne(...Arg).toNBP();   if(err) {arrRet=[err]; break stuff;};
+    var Arg=[{_id:idPage}, {$set:objPage}, {upsert:true, new:true, session:sessionMongo}];
+    var [err, result]=await collectionPage.updateOne(...Arg).toNBP();   if(err){arrRet=[err]; break stuff;}
 
 
       // Changes to parents
@@ -883,26 +888,26 @@ ReqBE.prototype.saveByReplace=async function(inObj){
     var objUpdate={};
     if(boInsert) extend(objUpdate, { $addToSet: {IdChild:idPage}, $inc:{nChild:1} });
     if(boInsert || boTemplate) {
-      extend(objUpdate, { $set: { strHashParse:"staleParent",strHash:"staleParent", tModCache:new Date(0)} });
+      extend(objUpdate, { $set: { strHashParse:"staleParent", strHash:"staleParent", tModCache:new Date(0)} });
       var Arg=[{_id:{$in:IdParent}}, objUpdate, {session:sessionMongo}];
-      var [err, result]=await collectionPage.updateMany(...Arg).toNBP();   if(err) {arrRet=[err]; break stuff;};
+      var [err, result]=await collectionPage.updateMany(...Arg).toNBP();   if(err){arrRet=[err]; break stuff;}
       //var Arg=[{IdChild:pageName}, objUpdate, {session:sessionMongo}];
-      //var [err, result]=await collectionPage.updateMany(...Arg).toNBP();   if(err) {arrRet=[err]; break stuff;};
+      //var [err, result]=await collectionPage.updateMany(...Arg).toNBP();   if(err){arrRet=[err]; break stuff;}
     }
 
       // Make changes to children.
-    var [err]=await modifyIdParent(sessionMongo, IdChildOld, StrImageOld, idPage, IdChild, StrImageLC, idPage);   if(err) {arrRet=[err]; break stuff;};
+    var [err]=await modifyIdParent(sessionMongo, IdChildOld, StrImageOld, idPage, IdChild, StrImageLC, idPage);   if(err){arrRet=[err]; break stuff;}
 
-    // Set tModLast and pageTModLast
+      // Set tModLast and pageTModLast
     var arg=[
       { updateOne: { "filter": { name:"tModLast" }, "update": { $set : {value:tNow} },  "upsert": true } },
       { updateOne: { "filter": { name:"pageTModLast" }, "update": { $set : {value:pageName} },  "upsert": true } }
-    ]
-    var [err, result]=await collectionSetting.bulkWrite(arg, {session:sessionMongo}).toNBP(); if(err) {arrRet=[err]; break stuff;};
+    ];
+    var [err, result]=await collectionSetting.bulkWrite(arg, {session:sessionMongo}).toNBP(); if(err){arrRet=[err]; break stuff;}
 
     var arrRevisionSlim=arrRevision.map(ele=>{ return copySome({},ele, ['tMod','summary','signature']); });
     var matVersion=arrObj2TabNStrCol(arrRevisionSlim);
-  
+
     extend(GRet,{strHtmlText, strEditText, strDiffText:'', arrVersionCompared:[null,matVersion.tab.length], objTemplateE, matVersion, objPage, objRev:objRevNew});
 
     arrRet=[null];
@@ -1008,6 +1013,7 @@ ReqBE.prototype.saveByAdd=async function(inObj){
     var arg={strEditText, idSite, boOW};
     var [err, {strHtmlText, IdChildAll, IdChild, objTemplateE, StrImage, StrImageLC}]=await parse(sessionMongo, arg); if(err){arrRet=[err]; break stuff;}
     var strHashParse=md5(strHtmlText);
+
     var nChild=IdChild.length, nImage=StrImageLC.length; 
     var StrImageStub=[], StrPagePrivate=[];
 
@@ -1023,7 +1029,7 @@ ReqBE.prototype.saveByAdd=async function(inObj){
 
     var strHash='trashSaveByAdd', tModCache=tNow, tMod=tNow;
     var boOther=true;
-    var objRevNew={ summary, signature, idFileWiki, idFileHtml, boOther, tMod, tModCache, strHashParse, strHash, size }
+    var objRevNew={ summary, signature, idFileWiki, idFileHtml, boOther, tMod, tModCache, strHashParse, strHash, size };
     arrRevision.push(objRevNew);
     var nRevision=arrRevision.length, lastRev=nRevision-1;
 
@@ -1031,7 +1037,7 @@ ReqBE.prototype.saveByAdd=async function(inObj){
       // Make changes to current page
     extend(objPage, { boTalkExist, arrRevision, nRevision, lastRev, IdChild, IdChildAll, StrImage:StrImageLC, StrImageStub, nChild, nImage, objTemplateE, idFileWiki, idFileHtml, boOther, tMod, tModCache, strHashParse, strHash, size});
       // Assign unassigned properties
-    var Arg=[{_id:idPage}, {$set:objPage}, {upsert:true, new:true, session:sessionMongo}]
+    var Arg=[{_id:idPage}, {$set:objPage}, {upsert:true, new:true, session:sessionMongo}];
     var [err, result]=await collectionPage.updateOne(...Arg).toNBP();   if(err){arrRet=[err]; break stuff;}
 
 
@@ -1053,19 +1059,19 @@ ReqBE.prototype.saveByAdd=async function(inObj){
       // Make changes to children.
     var [err]=await modifyIdParent(sessionMongo, IdChildOld, StrImageOld, idPage, IdChild, StrImageLC, idPage);   if(err){arrRet=[err]; break stuff;}
 
-    // Set tModLast and pageTModLast
+      // Set tModLast and pageTModLast
     var arg=[
       { updateOne: { "filter": { name:"tModLast" }, "update": { $set : {value:tNow} },  "upsert": true } },
       { updateOne: { "filter": { name:"pageTModLast" }, "update": { $set : {value:pageName} },  "upsert": true } }
-    ]
+    ];
     var [err, result]=await collectionSetting.bulkWrite(arg, {session:sessionMongo}).toNBP(); if(err){arrRet=[err]; break stuff;}
 
     var arrRevisionSlim=arrRevision.map(ele=>{ return copySome({},ele, ['tMod','summary','signature']); });
     var matVersion=arrObj2TabNStrCol(arrRevisionSlim);
 
-    if(objOthersActivity) { objOthersActivity.nEdit++; objOthersActivity.pageName=siteName+':'+pageName; }
+    extend(GRet,{strHtmlText, strEditText, strDiffText:'', arrVersionCompared:[null,matVersion.tab.length], objTemplateE, matVersion, objPage, objRev:objRevNew});
 
-    extend(GRet,{strHtmlText, strEditText, strDiffText:'', arrVersionCompared:[null,matVersion.tab.length], objTemplateE, matVersion, objPage, objRev:objRevNew});  //, objPage:{tCreated}, boTalkExist, , boOR, boOW, boSiteMap, idPage, :{tMod}
+    if(objOthersActivity) { objOthersActivity.nEdit++; objOthersActivity.pageName=siteName+':'+pageName; }
 
     arrRet=[null];
   }
@@ -2345,6 +2351,7 @@ app.storePageMultFrBU=async function(sessionMongo, FilePage, PageMeta){
     var arg={strEditText, idSite, boOW};
     var [err, {strHtmlText, IdChildAll, IdChild, objTemplateE, StrImageLC}]=await parse(sessionMongo, arg); if(err) return [err];
     var strHashParse=md5(strHtmlText);
+
     var nChild=IdChild.length, nImage=StrImageLC.length; 
     var StrImageStub=[], StrPagePrivate=[];
     
