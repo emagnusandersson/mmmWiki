@@ -17,6 +17,8 @@
 // sessionIDR, sessionIDW: Set-Cookie should be called in reqBU, reqBUMeta, reqIndex, reqMonitor and reqStat
 
 // redis interface 4.0 does not work
+// loadFrBUOnServInterior doesn't handle array input ?!?!? Shouldn't it? It is called with an array as input in loadFrBUOnServ.
+// loadMetaFrBUToRAM should be renamed parseMeta, and input should be strCSV. (reading of file should be outside of the function)
 
 /******************************************************************************
  * BU (BackUp requests):

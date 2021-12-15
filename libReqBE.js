@@ -2115,6 +2115,7 @@ app.loadFrBUOnServInterior=async function(strLoadArg){
 
 
 app.loadFrFiles=async function(FileOrg){
+  // FileOrg is an array where the elements are objects like: {path,name}
 
   // Loop through all files, parse any zip file, and separate all found files by extension.
   // The elements of FileImg and FilePage looks like:
@@ -2282,17 +2283,20 @@ app.storePageMultFrBU=async function(sessionMongo, FilePage, PageMeta){
   if(nPage!==0) {debugger; return [new Error('The page collection was expected to be empty when uploading pages.')]; }
 
 
-    // Sort Meta by idPage
-  var PageMetaByStrName={};
+    // Sort PageMeta by idPage
+  var PageMetaByIdPage={};
   for(var obj of PageMeta){ 
     var {siteName, pageName}=obj;
     obj.tCreated=new Date(obj.tCreated*1000); obj.tMod=new Date(obj.tMod*1000); obj.tLastAccess=new Date(obj.tLastAccess*1000);
     var idPageTmp=(siteName+":"+pageName).toLowerCase();
-    PageMetaByStrName[idPageTmp]=obj;
+    PageMetaByIdPage[idPageTmp]=obj;
   }
 
   var strKeyDefault=randomHash();
 
+    // Create two arrays: 
+    //   Data (data for the FileWiki collection)
+    //   Page (data for the Page collection)
   var Data=Array(FilePage.length), Page=Array(FilePage.length);
   for(var i=0;i<FilePage.length;i++){
     var {strName, fileInZip, path}=FilePage[i];
@@ -2309,12 +2313,12 @@ app.storePageMultFrBU=async function(sessionMongo, FilePage, PageMeta){
     }
     var data=buf;
 
-      // Data: data for the FileWiki collection
+      // Data
     var strEditText=data.toString();    Data[i]={idPage, data:strEditText};
 
-      // Page: data for the Page collection
+      // Page
     var objPage=copyObjWMongoTypes(app.InitCollection.Page.objDefault);
-    var {boOW, boOR, boSiteMap, tCreated, tMod, tLastAccess, nAccess}=PageMetaByStrName[idPage];
+    var {boOW, boOR, boSiteMap, tCreated, tMod, tLastAccess, nAccess}=PageMetaByIdPage[idPage];
     var idSite=siteName;
 
       // Some easy to calculate data
@@ -2326,7 +2330,7 @@ app.storePageMultFrBU=async function(sessionMongo, FilePage, PageMeta){
   }
 
   var [err, result]=await collectionFileWiki.insertMany(Data, {session:sessionMongo}).toNBP();   if(err) return [err];
-  for(var i=0;i<Data.length;i++){ Page[i].idFileWiki=Data[i]._id; }
+  for(var i=0;i<Data.length;i++){ Page[i].idFileWiki=Data[i]._id; }  // Note! "_id" was written to each element in the above operation.
   var [err, result]=await collectionPage.insertMany(Page, {session:sessionMongo}).toNBP();   if(err) return [err];
 
   
