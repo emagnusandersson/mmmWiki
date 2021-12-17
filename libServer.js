@@ -73,9 +73,9 @@ app.parse=async function(sessionMongo, arg) {
   var mPa=new Parser(strEditText, boOW==0);    mPa.preParse();
 
 
-    // Create objTemplate and objTemplateE (E=template Exists)
+    // Create objTemplate
   var StrTemplate=mPa.getStrTemplate();  // [name, name ....]
-  var len=StrTemplate.length, objTemplate={}, objTemplateE={};
+  var len=StrTemplate.length, objTemplate={};
   var IdTemplate=Array(len); for(var i=0;i<len;i++){IdTemplate[i]=idSite+":"+StrTemplate[i].toLowerCase(); } 
   if(len) {
     var Arg=[ {_id:{$in:IdTemplate}}, {projection:{_id:1, pageName:1, idFileWiki:1}, session:sessionMongo}];
@@ -91,8 +91,6 @@ app.parse=async function(sessionMongo, arg) {
     //for(var i=0;i<lenD;i++){ objTemplate[PageTemplate[i].pageName]=results[i].data; }
     for(var i=0;i<lenD;i++){ var {data,_id}=results[i]; objTemplate[objId[_id.toString()].pageName ]=data; }
 
-      // calculate objTemplateE
-    for(var i=0;i<len;i++) { var key=StrTemplate[i]; objTemplateE[key]=key in objTemplate; }  // objTemplateE= {name:true, name:false ....}
   }
 
     // Parse (cont.)
@@ -103,14 +101,15 @@ app.parse=async function(sessionMongo, arg) {
   var {StrImage, StrImageLC}=mPa.getStrImage();
 
 
-    // Create IdChildAll
-  var StrChildAll=mPa.getStrChildAll();
-  var IdChildAll=StrChildAll.map(str=>idSite+":"+str.toLowerCase());
+    // Create IdChildLax
+  var StrChildLink=mPa.getStrChildLink();
+  var StrChildLax=[...StrChildLink, ...StrTemplate];
+  var IdChildLax=StrChildLax.map(str=>idSite+":"+str.toLowerCase());
 
     // Create IdChild, StrChild
-  var len=IdChildAll.length; //objExistingSub={};
+  var len=IdChildLax.length; //objExistingSub={};
   if(len) {
-    var Arg=[ {_id:{$in:IdChildAll}}, {projection:{_id:1, pageName:1}, collation:{locale:"en", strength:2}, session:sessionMongo}];
+    var Arg=[ {_id:{$in:IdChildLax}}, {projection:{_id:1, pageName:1}, collation:{locale:"en", strength:2}, session:sessionMongo}];
     var cursor=collectionPage.find(...Arg);
     var [err, results]=await cursor.toArray().toNBP();   if(err) return [err, {}];
 
@@ -123,10 +122,10 @@ app.parse=async function(sessionMongo, arg) {
 
 
     // Parse (cont.)
-  mPa.setArrExistingSub(StrChild);      mPa.endParse();
+  mPa.endParse(StrChild);
 
   
-  return [null, {strHtmlText:mPa.text, IdChildAll, IdChild, objTemplateE, StrImage, StrImageLC}];
+  return [null, {strHtmlText:mPa.text, IdChildLax, IdChild, StrImage, StrImageLC}];
 }
 
 

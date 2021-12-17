@@ -563,9 +563,6 @@ var adminMoreDivExtend=function(el){
   var butBUMetaServ=createElement('button').myText('meta.zip').on('click',function(){      httpGetAsync('BUMetaServ',function(err, str) {setMess(str,3);});    });
   
   var strOverwrite='This will overwrite data in the db?';
-  var butLoadFromServerP=createElement('button').myText('page.zip').on('click',function(){  if(confirm(strOverwrite)==0) return; var vec=[['loadFrBUOnServ',{File:['page.zip']}]];   myFetch('POST',vec);    });
-  var butLoadFromServerI=createElement('button').myText('image.zip').on('click',function(){  if(confirm(strOverwrite)==0) return; var vec=[['loadFrBUOnServ',{File:['image.zip']}]];   myFetch('POST',vec);    });
-  var butLoadFromServerM=createElement('button').myText('meta.zip').on('click',function(){  if(confirm(strOverwrite)==0) return; var vec=[['loadFrBUOnServ',{File:['meta.zip']}]];   myFetch('POST',vec);    });
   
   var siteButton=createElement('button').myText('Site table').addClass('fixWidth').on('click',function(){    doHistPush({view:siteTab}); siteTab.setVis();   });
   var redirectButton=createElement('button').myText('Redirect table').addClass('fixWidth').on('click',function(){   doHistPush({view:redirectTab}); redirectTab.setVis();   });
@@ -591,7 +588,6 @@ var adminMoreDivExtend=function(el){
   var menuF=createElement('div').myHtml("Save to server-BU-Folder: ").myAppend(butBUPageServ,butBUImageServ,butBUMetaServ).css(objBottomLine);
   var menuG=createElement('div').myAppend(uploadAdminDiv).css(objBottomLine);
   var menuH=createElement('div').myAppend(siteButton,redirectButton).css(objBottomLine);
-  //var menuI=createElement('div').myHtml("<b>Load from server-BU-Folder: </b>").myAppend(butLoadFromServerP, butLoadFromServerI, butLoadFromServerM).css(objBottomLine);
   var menuJ=createElement('div').myAppend('DB: '+strDBType, ' | ', statLink);
   var Menu=[menuA0, menuA, menuB0, menuB,menuC,menuE,menuF,menuG, menuH, menuJ]; Menu.forEach(ele=>ele.css({margin:'0.5em 0'})); //,menuD , menuI
 
@@ -2711,6 +2707,13 @@ var spanSaveExtend=function(el){
 }
 
 
+app.calcObjTemplateE=function(IdChildLax,IdChild){
+  for(var i=0;i<IdChildLax.length;i++){
+    var str=IdChildLax[i];
+  }
+
+}
+
 var templateListExtend=function(el){
   el.toString=function(){return 'templateList';}
   el.setUp=function(obj={}){
@@ -2721,8 +2724,24 @@ var templateListExtend=function(el){
       if( obj[key]==0) a.addClass("stub");
     }
     //if(tab.length) el.prepend('<h3>Templates</h3>');
-    //editDiv.templateButton.toggle(!$.isEmptyObject(obj));
     editDiv.templateButton.toggle(Object.keys(obj).length);
+  }
+  el.setUp=function(IdChildLax=[],IdChild=[]){
+    div.empty();
+    var iStart=objSite.idSite.length+1;
+    var strTemlatePrefix='template:', iEnd=strTemlatePrefix.length+iStart;
+    var boAny=false;
+    for(var i=0;i<IdChildLax.length;i++) {
+      var id=IdChildLax[i]
+      if(id.slice(iStart,iEnd)==strTemlatePrefix) {
+        var boAny=true;
+        var str=id.slice(iStart);
+        var a=createElement('a').prop({href:'/'+str}).myText(str).css({display:'block'}); div.append(a);
+        if(IdChild.indexOf(id)==-1) a.addClass("stub");
+      }
+    }
+    //if(tab.length) el.prepend('<h3>Templates</h3>');
+    editDiv.templateButton.toggle(boAny);
   }
   var div=createElement('div');
       // menuA
@@ -3785,6 +3804,7 @@ var GRet=function(data){
     //objPage=tmp; 
     pageView.editButton.setImg(objPage.boOW);  editDiv.spanSave.toggle(Boolean(objPage.boOW));   //editDiv.spanCreated.myText(mySwedDate(objPage.tCreated));
     adminMoreDiv.setMod();
+    templateList.setUp(objPage.IdChildLax, objPage.IdChild);
   }
   tmp=data.objSetting;   if(typeof tmp!="undefined") { app.objSetting=tmp; adminMoreDiv.setBUNeededInfo();  }
 
@@ -3800,7 +3820,6 @@ var GRet=function(data){
   tmp=data.strHtmlText;   if(typeof tmp!="undefined") {pageText.myHtml(tmp); pageText.modStuff();}
   tmp=data.strEditText;   if(typeof tmp!="undefined") editText.value=tmp;
   //tmp=data.templateHtml;   if(typeof tmp!="undefined") templateList.empty().append(tmp);
-  tmp=data.objTemplateE;   if(typeof tmp!="undefined") templateList.setUp(tmp);
   //tmp=data.strMessageText;   if(typeof tmp!="undefined") setMess(tmp,15);
   tmp=data.strMessageText;   if(typeof tmp!="undefined") {setMess(tmp,15); if(/error/i.test(tmp)) navigator.vibrate(100);}
   tmp=data.boTalkExist;   if(typeof tmp!="undefined") commentButton.setUp(tmp);
@@ -3893,7 +3912,6 @@ window.boOpera=RegExp('OPR\\/').test(ua); if(boOpera) boChrome=false; //alert(ua
 var boSmallAndroid=0;
 
 
-
 var strMenuOpenEvent=boTouch?'click':'mousedown';
 
 
@@ -3903,7 +3921,7 @@ var charFlash='↯';//⚡↯
 var charPublicRead='<span style="font-family:courier">͡°</span>'; //☉͡°
 var charPublicRead='<span class=eye>(∘)</span>'; //☉͡° ·
 var charPublicRead='📖' //'👁'; //'📖'; //👀😶☉͡° · 🕮
-var charPublicWrite='🖉'; //✎ 🔏 🔒 🔓 🔐 🖉 🖊 ✏ 🖋 ✎ ✐
+var charPublicWrite='✏️'; // 🔏 🔒 🔓 🔐  🖊 🖋✏✎✐🖉
 var charPromote='📣'; //'🗣️';  //😗😱😮
 var charDelete='✖'; //x, ❌, X, ✕, ☓, ✖, ✗, ✘
 var charClose='✖';
@@ -4097,7 +4115,7 @@ var warningDiv=createElement('div').myText("The page has unconfirmed changes. Us
 var warningDivW=createElement('div').myAppend(warningDiv);
 
 //viewDiv=createElement('div');
-var pageText=document.querySelector('#pageText').detach();
+var pageText=document.querySelector('#pageText'); //.detach();
 var pageText=pageTextExtend(pageText).css({'overflow-y': 'hidden'});   pageText.modStuff();
 var imgBusy=createElement('img').prop({src:uBusy, alt:"busy"});
 //messageText=messExtend(createElement('span'));  window.setMess=messageText.setMess;  window.resetMess=messageText.resetMess;   elBody.append(messageText); 
@@ -4211,7 +4229,8 @@ var MainDiv=[aRLoginDiv, warningDivW, pageText, pageView, adminDiv, adminMoreDiv
 
 history.StateMy[history.state.ind]={view:pageView, tDate:new Date()};
 //console.log(history.StateMy);
-MainDiv.forEach(ele=>ele.hide());
+AMinusB(MainDiv, [pageText]).forEach(ele=>ele.hide());
+//MainDiv.forEach(ele=>ele.hide());
 elBody.append(...MainDiv);
 
 
@@ -4343,7 +4362,8 @@ pageView.setScroll=adminDiv.setScroll=editDiv.setScroll=paymentDiv.setScroll=set
 pageView.getScroll=adminDiv.getScroll=editDiv.getScroll=paymentDiv.getScroll=getScroll;
 
 
-editText.value=strEditText;  templateList.setUp(objTemplateE);  
+editText.value=strEditText;  
+templateList.setUp(objPage.IdChildLax, objPage.IdChild);
 
 
 pageView.editButton.setImg(objPage.boOW);

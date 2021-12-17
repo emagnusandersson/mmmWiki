@@ -223,7 +223,12 @@ Parser.prototype.parse = function(objTemplate) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Parser.prototype.endParse = function() {
+Parser.prototype.endParse = function(StrChild) {
+
+    // Set arrExistingSub and arrExistingSubLower
+  this.arrExistingSub=[], this.arrExistingSubLower=[]; 
+  for(var name of StrChild) { this.arrExistingSub.push(name);  this.arrExistingSubLower.push(name.toLowerCase()); } 
+  
   //if(typeof callback=='undefined') callback=function(){};
   var text=this.text;
 
@@ -821,15 +826,8 @@ Parser.prototype.putBackImgRawCB=function(m,n){
 
 
 
-
-Parser.prototype.setArrExistingSub=function( StrChild){  
-  this.arrExistingSub=[], this.arrExistingSubLower=[]; 
-  for(var name of StrChild) { this.arrExistingSub.push(name);  this.arrExistingSubLower.push(name.toLowerCase()); } 
-}
-
-
 Parser.prototype.getStrTemplate=function(){ // Returns [name, name ....] 
-    // Removing duplicates
+    // Removing duplicates from bagTemplate (A "bag" may contain duplicates)
   var obj={};
   for(var i=0;i<this.bagTemplate.length;i++) {
     var strName='template:'+this.bagTemplate[i][0], key=strName.toLowerCase(); obj[key]=strName;
@@ -840,23 +838,21 @@ Parser.prototype.getStrTemplate=function(){ // Returns [name, name ....]
 }
 
 
-Parser.prototype.getStrChildAll=function(){ // Returns [name, name ....] 
+Parser.prototype.getStrChildLink=function(){ // Returns [name, name ....] 
     // Removing duplicates
   var obj={};
   // for(var i=0;i<this.bagTemplate.length;i++) {
-  //   var strName='template:'+this.bagTemplate[i][0], key=strName.toLowerCase();
-  //   obj[key]=strName;
+  //   var strName='template:'+this.bagTemplate[i][0], key=strName.toLowerCase(); obj[key]=strName;
   // }
   for(var i=0; i<this.arrILink.length;i++) { var v=this.arrILink[i], strName=v[1], key=strName.toLowerCase();    obj[key]=strName;     }
 
-  var StrChildAll=[]; for(var name in obj){ StrChildAll.push(obj[name]);  }
-  return StrChildAll;
+    // Create StrChildLink
+  var StrChildLink=[]; for(var name in obj){ StrChildLink.push(obj[name]);  }
+  return StrChildLink;
 }
 
 
-
-
-Parser.prototype.getStrImage=function(){ // Returns [name, name ....] 
+Parser.prototype.getStrImage=function(){
     // Removing duplicates
   var obj={};
   for(var i=0;i<this.arrImageLink.length;i++) {   var strName=this.arrImageLink[i], key=strName.toLowerCase(); obj[key]=strName;  }
@@ -865,8 +861,8 @@ Parser.prototype.getStrImage=function(){ // Returns [name, name ....]
     for(var j=0; j<arrLoc.length;j++) {  var strName=arrLoc[j], key=strName.toLowerCase(); obj[key]=strName;        }
   }
 
-  var StrImageLC=Object.keys(obj);
-  var StrImage=[]; for(var name in obj){ StrImage.push(obj[name]);  }
+    // Create StrImage and StrImageLC
+  var StrImage=[], StrImageLC=[]; for(var name in obj){ StrImage.push(obj[name]); StrImageLC.push(name); }
   return {StrImage,StrImageLC};
 }
 

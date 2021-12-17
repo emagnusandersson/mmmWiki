@@ -11,14 +11,13 @@
 
 // When two tabs are open, and one has edited one, then edits the other, one gets "Already logged in"
 
+// Upload multiple files doesn't seem to work.
 // Does uploadUser work? what is in "tmpname" in that function
 
 //sessionIDDDos, sessionIDCSRF, sessionIDR, sessionIDW
 // sessionIDR, sessionIDW: Set-Cookie should be called in reqBU, reqBUMeta, reqIndex, reqMonitor and reqStat
 
 // redis interface 4.0 does not work
-// loadFrBUOnServInterior doesn't handle array input ?!?!? Shouldn't it? It is called with an array as input in loadFrBUOnServ.
-// loadMetaFrBUToRAM should be renamed parseMeta, and input should be strCSV. (reading of file should be outside of the function)
 
 /******************************************************************************
  * BU (BackUp requests):
@@ -150,20 +149,30 @@ app.reqBU=async function(strArg) {
   if(errTransaction) { var a=await sessionMongo.abortTransaction(); sessionMongo.endSession();  res.out500(errTransaction); return;  }
   var a=await sessionMongo.commitTransaction(); sessionMongo.endSession();
 
-  var zipfile = new NodeZip();
+
+  //var zipfile = new NodeZip();
+  var zip = new JSZip();
+
   for(var i=0;i<File.length;i++) { 
     var file=File[i], {idSite:siteName, boDefault, date, strHash, data}=file; //, fileData=FileData[i];
-    //var unixSkew= date +(new Date(date*1000)).getTimezoneOffset()*60;
-    var unixSkew= date.getTime() +date.getTimezoneOffset()*60*1000;
-    // The "NodeZip"-library assumes you want the local time written in the zip-file, I want UTC time (too be able to compare times even thought timezone and daylight-savings-time has changed).
-    var objArg={date:new Date(unixSkew), comment:strHash}; if(boCompress) objArg.compression='DEFLATE';
     var strNameTmp=file[strNameVar]+strExt; if(type=='page' && (boUsePrefixOnDefaultSitePages || !boDefault)) strNameTmp=siteName+':'+strNameTmp;
-    zipfile.file(strNameTmp, data, objArg);  //
+
+      // The "NodeZip"-library assumes you want the local time written in the zip-file, I want UTC time (too be able to compare times even thought timezone and daylight-savings-time has changed).
+    //var unixSkew= date.getTime() +date.getTimezoneOffset()*60*1000;
+    //var objArg={date:new Date(unixSkew), comment:strHash}; if(boCompress) objArg.compression='DEFLATE';
+    //zipfile.file(strNameTmp, data, objArg);
+
+    var compression=boCompress?'DEFLATE':'STORE';
+    var objArg={date, comment:strHash, compression};
+    zip.file(strNameTmp, data, objArg);
   } 
 
   
     // Output data
-  var objArg={type:'string'}, outdata = zipfile.generate(objArg);
+  //var objArg={type:'string'}, outdata = zipfile.generate(objArg);
+
+  var strType=(JSZip.support.uint8array)?"uint8array":"string";
+  var outdata = await zip.generateAsync({type : strType});
   
   if(boServ){
     var outFileName=type+'.zip';
@@ -244,22 +253,16 @@ app.reqBUMeta=async function(strArg) {
   var matTmp=matRedirect, StrTmp=['tCreated','tMod','tLastAccess'];
   for(var i=0;i<matTmp.length;i++){  for(var j of StrTmp){  matTmp[i][j]=matTmp[i][j].toUnix(); }   }
 
-  var myEscape=function(str){
-    //var reg=new RegExp('([\\\\\\\'])','g'); 
-    var reg=/([\\\'])/g; 
-    var strNew=str.replace(reg,'\\$1');
-    return strNew;
-  }
-  var zipfile = new NodeZip();
-  var myEscape=myNeo4j.escape; 
-  //var myEscapeB=function(str){ return '"'+myEscape(str)+'"'; }
-  var myEscapeB=function(str){ return '"'+myEscape.call(myNeo4j,str)+'"'; }
+
+  //var zipfile = new NodeZip();
+  var zip = new JSZip();
+  var myEscapeF=function(str){ return '"'+myEscaper.escape(str)+'"'; }
   var StrData=[], StrFileName=[];
   
     // Site
   var StrFile=['"boDefault","boTLS","srcIcon16","strLangSite","googleAnalyticsTrackingID","aWPassword","aRPassword","name","www"'];
   for(var k=0;k<Site.length;k++){
-    var r=Site[k], StrRow=[Boolean(r.boDefault), Boolean(r.boTLS), myEscapeB(r.srcIcon16), myEscapeB(r.strLangSite), myEscapeB(r.googleAnalyticsTrackingID), myEscapeB(r.aWPassword), myEscapeB(r.aRPassword), myEscapeB(r._id), myEscapeB(r.www)];
+    var r=Site[k], StrRow=[Boolean(r.boDefault), Boolean(r.boTLS), myEscapeF(r.srcIcon16), myEscapeF(r.strLangSite), myEscapeF(r.googleAnalyticsTrackingID), myEscapeF(r.aWPassword), myEscapeF(r.aRPassword), myEscapeF(r._id), myEscapeF(r.www)];
     StrFile.push(StrRow.join(','));
   } 
   StrData.push(StrFile.join("\n")); StrFileName.push('site.csv');
@@ -267,7 +270,7 @@ app.reqBUMeta=async function(strArg) {
     // Page
   var StrFile=['"boOR","boOW","boSiteMap","tCreated","tMod","tLastAccess","nAccess","siteName","pageName"'];
   for(var k=0;k<matPage.length;k++){
-    var r=matPage[k], StrRow=[Boolean(r.boOR), Boolean(r.boOW), Boolean(r.boSiteMap), r.tCreated, r.tMod, r.tMod, r.nAccess, myEscapeB(r.siteName), myEscapeB(r.pageName)];
+    var r=matPage[k], StrRow=[Boolean(r.boOR), Boolean(r.boOW), Boolean(r.boSiteMap), r.tCreated, r.tMod, r.tMod, r.nAccess, myEscapeF(r.siteName), myEscapeF(r.pageName)];
     StrFile.push(StrRow.join(','));
   } 
   StrData.push(StrFile.join("\n")); StrFileName.push('page.csv');
@@ -275,7 +278,7 @@ app.reqBUMeta=async function(strArg) {
     // Image
   var StrFile=['"boOther","tCreated","tMod","tLastAccess","nAccess","imageName"'];
   for(var k=0;k<matImage.length;k++){
-    var r=matImage[k], StrRow=[Boolean(r.boOther), r.tCreated, r.tCreated, r.tCreated, r.nAccess, myEscapeB(r.imageName)];
+    var r=matImage[k], StrRow=[Boolean(r.boOther), r.tCreated, r.tCreated, r.tCreated, r.nAccess, myEscapeF(r.imageName)];
     StrFile.push(StrRow.join(','));
   } 
   StrData.push(StrFile.join("\n")); StrFileName.push('image.csv');
@@ -283,14 +286,20 @@ app.reqBUMeta=async function(strArg) {
     // Redirect
   var StrFile=['"tCreated","tMod","tLastAccess","nAccess","siteName","pageNameLC","url"'];
   for(var k=0;k<matRedirect.length;k++){
-    var r=matRedirect[k], StrRow=[r.tCreated, r.tCreated, Number(r.tLastAccess), r.nAccess, myEscapeB(r.siteName), myEscapeB(r.pageName), myEscapeB(r.url)];
+    var r=matRedirect[k], StrRow=[r.tCreated, r.tCreated, Number(r.tLastAccess), r.nAccess, myEscapeF(r.siteName), myEscapeF(r.pageName), myEscapeF(r.url)];
     StrFile.push(StrRow.join(','));
   }
   StrData.push(StrFile.join("\n")); StrFileName.push('redirect.csv');
 
     // Create zip 
-  for(var i=0;i<StrData.length;i++){ zipfile.file(StrFileName[i], StrData[i], {compression:'DEFLATE'}); }
-  var objArg={type:'string'}, outdata = zipfile.generate(objArg);
+  // for(var i=0;i<StrData.length;i++){ zipfile.file(StrFileName[i], StrData[i], {compression:'DEFLATE'}); }
+  // var outdata = zip.generate({type:'string'});
+
+  for(var i=0;i<StrData.length;i++){ zip.file(StrFileName[i], StrData[i], {compression:'DEFLATE'}); }
+  var strType=(JSZip.support.uint8array)?"uint8array":"string";
+  var outdata = await zip.generateAsync({type : strType});
+
+
   
     // Output data 
   var boOutputZip=1;
@@ -366,10 +375,11 @@ var makeOutput=function(objOut, strHtmlText){
   (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
   m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
   })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
-  ga('create', '`+tmpID+`', 'auto');
+  ga('create', '`+tmpID+`', { 'storage': 'none' });
   ga('send', 'pageview');
 </script>`;
   }
+  //ga('create', '`+tmpID+`', 'auto');
   
   extend(objOut, {uZip, uSha1});
 
@@ -516,7 +526,7 @@ app.reqIndex=async function() {
     res.statusCode=404;
     var boOR=1, boOW=1, boSiteMap=1, idPage=null, tCreated=null, tMod=null, arrRevision=[];
     var objPage=extend({}, {pageName:queredPage, boOR, boOW, boSiteMap, idPage, tCreated, tMod, arrRevision});
-    var objOut={ CSRFCode:'',   boTalkExist:false, strEditText:"", arrVersionCompared:[null,1], matVersion:{}, objTemplateE:{}, objSiteDefault, objSite, objPage};
+    var objOut={ CSRFCode:'',   boTalkExist:false, strEditText:"", arrVersionCompared:[null,1], matVersion:{}, objSiteDefault, objSite, objPage};
     var strHtmlText='';
     var {strOut}=makeOutput.call(this, objOut, strHtmlText), strHash=md5(strOut);
 
@@ -531,7 +541,7 @@ app.reqIndex=async function() {
     // Page exist
     //
 
-  var {_id:idPage, pageName, boOR, boOW, boSiteMap, tMod, arrRevision, objTemplateE, strHashParse, strHash}=objPage;
+  var {_id:idPage, pageName, boOR, boOW, boSiteMap, tMod, arrRevision, strHashParse, strHash}=objPage;
   objPage.idPage=idPage; delete objPage._id;
   var lenRev=arrRevision.length, iLastRev=lenRev-1;
 
@@ -556,7 +566,7 @@ app.reqIndex=async function() {
     var CSRFCode=randomHash();
     var [err,tmp]=await cmdRedis('SET', [sessionIDCSRF+'_CSRF', CSRFCode, 'EX', maxAdminRUnactivityTime]);
     
-    var objOut={CSRFCode,   boTalkExist:0, strEditText:'', objTemplateE:{}, arrVersionCompared:[null,1], matVersion:{}, objSiteDefault, objSite, objPage};
+    var objOut={CSRFCode,   boTalkExist:0, strEditText:'', arrVersionCompared:[null,1], matVersion:{}, objSiteDefault, objSite, objPage};
     copySome(objOut, this, ['boARLoggedIn', 'boAWLoggedIn']);
     if(this.boAWLoggedIn) extend(objOut, {objSetting});
     var strHtmlText='';
@@ -626,8 +636,6 @@ app.reqIndex=async function() {
       if(!objFileHtml) {arrRet=[new Error("objFileHtml==null")]; break stuff;}
       var {data:strHtmlText}=objFileHtml;
 
-        
-      extend(objOut, {objTemplateE});
       var {strOut}=makeOutput.call({req}, objOut, strHtmlText); strHash=md5(strOut);
 
     
@@ -645,10 +653,9 @@ app.reqIndex=async function() {
 
         // parse
       var arg={strEditText, idSite, boOW};
-      var [err, {strHtmlText, IdChildAll, IdChild, objTemplateE, StrImageLC}]=await parse(sessionMongo, arg); if(err) {arrRet=[err]; break stuff;}
+      var [err, {strHtmlText, IdChildLax, IdChild, StrImageLC}]=await parse(sessionMongo, arg); if(err) {arrRet=[err]; break stuff;}
       strHashParse=md5(strHtmlText);
       
-      extend(objOut, {objTemplateE});
       var {strOut}=makeOutput.call({req}, objOut, strHtmlText); strHash=md5(strOut);
 
 
@@ -672,10 +679,6 @@ app.reqIndex=async function() {
           var Arg=[{_id:{$in:IdParent}}, [{ $set: {strHashParse:"stale", strHash:"stale", tModCache:new Date(0)} }], {session:sessionMongo}];
           var [err, result]=await collectionPage.updateMany(...Arg).toNBP();   {arrRet=[err]; break stuff;}
 
-          // var objFilter={}; objFilter['objTemplateE.'+idPage]={$exists:true};
-          // var objSetI={strHashParse:"stale", strHash:"stale", tModCache:new Date(0)}; objSet['objTemplateE.'+idPage]=true;
-          // var Arg=[objFilter, [{ $set: objSetI }], {session:sessionMongo}];
-          // var [err, result]=await collectionPage.updateMany(...Arg).toNBP();   {arrRet=[err]; break stuff;}
         }
 
           // Make changes to children.
@@ -706,7 +709,7 @@ app.reqIndex=async function() {
  * reqStatic
  ******************************************************************************/
 app.reqStatic=async function() {
-  var {req, res}=this, {wwwSite, pathName}=req;
+  var {req, res}=this, {wwwSite, pathName, boSiteDependant=false}=req;
 
   //var RegAllowedOriginOfStaticFile=[RegExp("^https\:\/\/(closeby\.market|gavott\.com)")];
   //var RegAllowedOriginOfStaticFile=[RegExp("^http\:\/\/(localhost|192\.168\.0)")];
@@ -715,7 +718,8 @@ app.reqStatic=async function() {
   if(req.method=='OPTIONS'){ res.end(); return ;}
 
   var strHashIn=getETag(req.headers);
-  var keyCache=pathName; if(pathName==='/'+leafManifest) keyCache=wwwSite+keyCache;    // pathName==='/'+leafSiteSpecific || 
+  //var keyCache=pathName; if(pathName==='/'+leafManifest) keyCache=wwwSite+keyCache;    // pathName==='/'+leafSiteSpecific || 
+  var keyCache=boSiteDependant?wwwSite+pathName:pathName; 
   if(!(keyCache in CacheUri)){
     var filename=pathName.substr(1);
     var [err]=await readFileToCache(filename);
@@ -1548,19 +1552,19 @@ app.modifyIdChild=async function(sessionMongo, IdParentOld, IdPageOld, IdParentN
   return [null];
 }
 
-  // Modify IdChildAll:
+  // Modify IdChildLax:
   // For pages in arrIdParent: 
-  //     remove IdPageOld from IdChildAll
-  //     add IdPageNew to IdChildAll
-app.modifyIdChildAll=async function(sessionMongo, arrIdParent, IdPageOld, IdPageNew){ // Used by BE-renamePage
+  //     remove IdPageOld from IdChildLax
+  //     add IdPageNew to IdChildLax
+app.modifyIdChildLax=async function(sessionMongo, arrIdParent, IdPageOld, IdPageNew){ // Used by BE-renamePage
   if(!(IdPageOld instanceof Array)) IdPageOld=[IdPageOld];
   if(!(IdPageNew instanceof Array)) IdPageNew=[IdPageNew];
 
-    // Add entries from IdChildAll.
-  var Arg=[{_id:{$in:arrIdParent}}, { $pull:{IdChildAll:{$in:IdPageOld}}}, {session:sessionMongo}];
+    // Add entries from IdChildLax.
+  var Arg=[{_id:{$in:arrIdParent}}, { $pull:{IdChildLax:{$in:IdPageOld}}}, {session:sessionMongo}];
   var [err, result]=await collectionPage.updateMany(...Arg).toNBP();   if(err) return [err];
-    // Add entries from IdChildAll.
-  var Arg=[{_id:{$in:arrIdParent}}, { $addToSet:{IdChildAll:{$each:IdPageNew}}}, {session:sessionMongo}];
+    // Add entries from IdChildLax.
+  var Arg=[{_id:{$in:arrIdParent}}, { $addToSet:{IdChildLax:{$each:IdPageNew}}}, {session:sessionMongo}];
   var [err, result]=await collectionPage.updateMany(...Arg).toNBP();   if(err) return [err];
   return [null];
 }
@@ -1630,14 +1634,15 @@ app.storeImage=async function(sessionMongo, oFile, arg={}){ //Used by BE-uploadU
 
   var {boDoCalculationOfIdParent=true, boOther=false, width=0, height=0}=arg;
 
-  var {strName:imageName, strExt:extension, fileInZip, path, buffer}=oFile;
-  if(typeof fileInZip!="undefined"){
-    var buf=Buffer.from(fileInZip._data,'binary');
+  var {strName:imageName, strExt:extension, bufFrZip, path, buffer}=oFile;
+  if(typeof bufFrZip!="undefined"){
+    //var buf=Buffer.from(fileInZip._data,'binary');
+    var buf=bufFrZip;
   }else if(typeof path!="undefined"){
     var [err, buf]=await fsPromises.readFile(path).toNBP();    if(err) return [err];
   }else if(typeof buffer!="undefined"){
     var buf=buffer;
-  }else{ return [new Error('neither "fileInZip", "path", nor "buffer" is set')]; }
+  }else{ return [new Error('neither "bufData", "path", nor "buffer" is set')]; }
 
   var data=buf;
 
@@ -1726,15 +1731,15 @@ app.changeSiteOne=async function(sessionMongo, idPageOld, idSiteNew){ // Used by
     // Get stuff from the page: IdParent IdChild, StrImage
   var [err, objPage]=await collectionPage.findOne({_id:idPageOld}, {session:sessionMongo}).toNBP();   if(err) return [err];
   if(!objPage) return [new Error('Page does not exist')]
-  var { IdParent:IdParentOld, IdChild:IdChildOld, IdChildAll:IdChildAllOld, StrImage}=objPage;
+  var { IdParent:IdParentOld, IdChild:IdChildOld, IdChildLax:IdChildLaxOld, StrImage}=objPage;
 
-    // Translate IdChildAll
-  var len=IdChildAllOld.length, IdChildAllTranslated=Array(len);
-  for(var i=0;i<len;i++) {   let {pageName}=parsePageNameHD(IdChildAllOld[i]);   IdChildAllTranslated[i]=idSiteNew+":"+pageName.toLowerCase();   }
+    // Translate IdChildLax
+  var len=IdChildLaxOld.length, IdChildLaxTranslated=Array(len);
+  for(var i=0;i<len;i++) {   let {pageName}=parsePageNameHD(IdChildLaxOld[i]);   IdChildLaxTranslated[i]=idSiteNew+":"+pageName.toLowerCase();   }
 
 
     // Get existing parents (those who already points to the new name)
-  var cursor=collectionPage.find({IdChildAll:idPageNew}, {session:sessionMongo});
+  var cursor=collectionPage.find({IdChildLax:idPageNew}, {session:sessionMongo});
   var [err, items]=await cursor.toArray().toNBP();   if(err) return [err];
   var len=items.length, IdParentWStubs=Array(len); for(var i=0;i<len;i++) {IdParentWStubs[i]=items[i]._id;}
   
@@ -1744,8 +1749,8 @@ app.changeSiteOne=async function(sessionMongo, idPageOld, idSiteNew){ // Used by
   var [err]=await modifyIdChild(sessionMongo, IdParentOld, idPageOld, IdParentNew, idPageNew);   if(err) return [err];
 
 
-    // Get IdChildNew (Check which of IdChildAllTranslated that exist)
-  var Arg=[ {_id: {$in:IdChildAllTranslated}}, { projection:{_id:1}, session:sessionMongo}];
+    // Get IdChildNew (Check which of IdChildLaxTranslated that exist)
+  var Arg=[ {_id: {$in:IdChildLaxTranslated}}, { projection:{_id:1}, session:sessionMongo}];
   var cursor=collectionPage.find(...Arg);
   var [err, items]=await cursor.toArray().toNBP();   if(err) return [err];
   var IdChildNew=Array(items.length); for(var i=0;i<items.length;i++) {IdChildNew[i]=items[i]._id}
@@ -1756,7 +1761,7 @@ app.changeSiteOne=async function(sessionMongo, idPageOld, idSiteNew){ // Used by
 
 
     // Update page
-  extend(objPage, {_id:idPageNew, idSite:idSiteNew, IdParent:IdParentNew, IdChild:IdChildNew, IdChildAll:IdChildAllTranslated, nParent:IdParentNew.length, nChild:IdChildNew.length});
+  extend(objPage, {_id:idPageNew, idSite:idSiteNew, IdParent:IdParentNew, IdChild:IdChildNew, IdChildLax:IdChildLaxTranslated, nParent:IdParentNew.length, nChild:IdChildNew.length});
   var [err, result]=await collectionPage.insertOne(objPage, {session:sessionMongo}).toNBP();   if(err) return [err];    // Write new Page
   var [err, result]=await collectionPage.deleteOne({_id:idPageOld}, {session:sessionMongo}).toNBP();   if(err) return [err];    // Delete old Page
     

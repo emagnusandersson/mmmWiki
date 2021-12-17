@@ -78,10 +78,10 @@ var idC=ObjectId("123456789012345678901236");
 
 
 var objRevision={idFileWiki:idA, idFileHtml:idB, summary:"abc", signature:"abc", size:0, tMod:new Date(), tModCache:new Date(), strHash:"abc", boOther:false}
-var pageA={idSite, pageName:"a", boTalk:false, boTemplate:false, boOR:true, boOW:true, boSiteMap:false, tCreated:new Date(), tLastAccess:new Date(), nAccess:0, intPriority:0, strLang:"en", boOther:false, tMod:new Date(), tModCache:new Date(), size:0, IdParent:[], IdChild:["b","c"], StrImage:[], IdChildAll:[], StrImageStub:[], StrPagePrivate:[], arrRevision:[], objTemplateE:{},  nRevision:1, lastRev:0, nParent:0, nChild:0, nImage:0, boTalkExist:false, bla:5}
+var pageA={idSite, pageName:"a", boTalk:false, boTemplate:false, boOR:true, boOW:true, boSiteMap:false, tCreated:new Date(), tLastAccess:new Date(), nAccess:0, intPriority:0, strLang:"en", boOther:false, tMod:new Date(), tModCache:new Date(), size:0, IdParent:[], IdChild:["b","c"], StrImage:[], IdChildLax:[], StrImageStub:[], StrPagePrivate:[], arrRevision:[], IdTemplateAll:[], IdTemplate:[],  nRevision:1, lastRev:0, nParent:0, nChild:0, nImage:0, boTalkExist:false, bla:5}
 var pageB=Object.assign({},pageA); extend(pageB, {pageName:"b", size:8, strLang:"no", IdParent:["a"], IdChild:["c", "d"]});
 var pageC=Object.assign({},pageA); extend(pageC, {pageName:"c", size:14, IdParent:["b", "a"], IdChild:["d"]});
-var pageD=Object.assign({},pageA); extend(pageD, {pageName:"d", size:16, strLang:"sv", IdParent:["c"], IdChild:[], IdChildAll:["a"], tCreate:new Date()});
+var pageD=Object.assign({},pageA); extend(pageD, {pageName:"d", size:16, strLang:"sv", IdParent:["c"], IdChild:[], IdChildLax:["a"], tCreate:new Date()});
 db.Page.remove({});
 db.Page.insertMany([pageA, pageB, pageC, pageD]);
 //db.Page.find()

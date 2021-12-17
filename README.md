@@ -4,7 +4,7 @@ Wiki engine/software with [file manager](https://emagnusandersson.com/mmmWiki_fi
 
 Using a syntax similar to mediaWiki.
 
-Using Node.js and MySQL.
+Using Node.js and mongodb.
 
 [ScreenShots](https://emagnusandersson.com/mmmWikiScreenShots)
 

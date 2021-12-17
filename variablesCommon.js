@@ -83,7 +83,7 @@ idPage:              {b:'00'},
 idFileWiki:          {b:'00'},
 www:                 {b:'00'}});
 
-// "IdParent", "IdChild", "StrImage", "IdChildAll", "StrImageStub", "StrPagePrivate"
+// "IdParent", "IdChild", "StrImage", "IdChildLax", "StrImageStub", "StrPagePrivate"
 
 
   // Note! all methods use column-name as the name-parameter (ex: name="tMod") except cond0F and cond1F that uses table-alias (pre) + column-name as the name-parameter (ex: name="p.tMod").
