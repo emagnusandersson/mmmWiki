@@ -39,11 +39,11 @@ app.InitCollection={
     ArrUnique:[ [{www:1}]]  //[{siteName:1}],
   },
   Page:{
-    objDefault:{ idSite:0, pageName:"", boTalk:false, boTemplate:false, boOR:false, boOW:false, boSiteMap:false, tCreated:new Date(0), tLastAccess:new Date(0), nAccess:0, intPriority:0, strLang:"en", IdParent:[], IdChildAll:[], IdChild:[], StrImage:[], StrImageStub:[], StrPagePrivate:[], arrRevision: [], objTemplateE: { }, nRevision:0, lastRev:0, nParent:0, nChild:0, nImage:0, boTalkExist:false, idFileWiki:0, idFileHtml:0, boOther:false, tMod:new Date(0), tModCache:new Date(0), strHashParse:"", strHash:"", size:0 },
+    objDefault:{ idSite:0, pageName:"", boTalk:false, boTemplate:false, boOR:false, boOW:false, boSiteMap:false, tCreated:new Date(0), tLastAccess:new Date(0), nAccess:0, intPriority:0, strLang:"en", IdParent:[], IdChildLax:[], IdChild:[], StrImage:[], StrImageStub:[], StrPagePrivate:[], arrRevision: [], nRevision:0, lastRev:0, nParent:0, nChild:0, nImage:0, boTalkExist:false, idFileWiki:0, idFileHtml:0, boOther:false, tMod:new Date(0), tModCache:new Date(0), strHashParse:"", strHash:"", size:0 },
     validator:{
       $jsonSchema:{
         bsonType:"object",
-        required:["idSite", "pageName", "boTalk", "boTemplate", "boOR", "boOW", "boSiteMap", "tCreated", "tLastAccess", "nAccess", "intPriority", "strLang", "IdParent", "IdChildAll", "IdChild", "StrImage", "StrImageStub", "StrPagePrivate", "arrRevision", "objTemplateE", "nRevision", "lastRev", "nParent", "nChild", "nImage", "boTalkExist", "idFileWiki", "idFileHtml", "boOther", "tMod", "tModCache", "strHashParse", "strHash", "size"], 
+        required:["idSite", "pageName", "boTalk", "boTemplate", "boOR", "boOW", "boSiteMap", "tCreated", "tLastAccess", "nAccess", "intPriority", "strLang", "IdParent", "IdChildLax", "IdChild", "StrImage", "StrImageStub", "StrPagePrivate", "arrRevision", "nRevision", "lastRev", "nParent", "nChild", "nImage", "boTalkExist", "idFileWiki", "idFileHtml", "boOther", "tMod", "tModCache", "strHashParse", "strHash", "size"], 
         properties:{
           //idSite:{  bsonType: "objectId"},
           tCreated:{ bsonType:"date" },

@@ -531,7 +531,7 @@ ReqBE.prototype.pageLoad=async function(inObj) {
       // Page exist
       //
 
-    var {_id:idPage, pageName, boOR, boOW, boSiteMap, tMod, arrRevision, objTemplateE, strHashParse, strHash}=objPage;
+    var {_id:idPage, pageName, boOR, boOW, boSiteMap, tMod, arrRevision, strHashParse, strHash}=objPage;
     objPage.idPage=idPage; delete objPage._id;
     var lenRev=arrRevision.length, iLastRev=lenRev-1;
 
@@ -600,10 +600,8 @@ ReqBE.prototype.pageLoad=async function(inObj) {
         // Remove some variables before calculating hash
       var objFieldTmp=copySome({}, objPage, StrFieldCacheSkip);   deleteFields(objPage, StrFieldCacheSkip);
       var strHashOld=strHash;
-      strHash=md5(strHtmlText +JSON.stringify(objTemplateE) +JSON.stringify(objPage) +boTalkExist +JSON.stringify(matVersion));
+      strHash=md5(strHtmlText +JSON.stringify(objPage) +boTalkExist +JSON.stringify(matVersion));
       copySome(objPage, objFieldTmp, StrFieldCacheSkip); // copy back fields
-
-      extend(objOut, {objTemplateE});
     
       if(strHash!=strHashOld){
         tModCache=tNow;   extend(arrRevision[rev], {tModCache,strHash});
@@ -619,15 +617,13 @@ ReqBE.prototype.pageLoad=async function(inObj) {
 
         // parse
       var arg={strEditText, idSite, boOW};
-      var [err, {strHtmlText, IdChildAll, IdChild, objTemplateE, StrImageLC}]=await parse(sessionMongo, arg); if(err) {arrRet=[err]; break stuff;}
+      var [err, {strHtmlText, IdChildLax, IdChild, StrImageLC}]=await parse(sessionMongo, arg); if(err) {arrRet=[err]; break stuff;}
       strHashParse=md5(strHtmlText);
       
         // Remove some variables before calculating hash
       var objFieldTmp=copySome({}, objPage, StrFieldCacheSkip);   deleteFields(objPage, StrFieldCacheSkip);
-      strHash=md5(strHtmlText +JSON.stringify(objTemplateE) +JSON.stringify(objPage) +boTalkExist +JSON.stringify(matVersion));
+      strHash=md5(strHtmlText +JSON.stringify(objPage) +boTalkExist +JSON.stringify(matVersion));
       copySome(objPage, objFieldTmp, StrFieldCacheSkip); // copy back fields
-      
-      extend(objOut, {objTemplateE});
     
 
         // Write File files
@@ -660,7 +656,7 @@ ReqBE.prototype.pageLoad=async function(inObj) {
     GRet.objRev=copySome({},objRev, ['tMod']);
     //GRet.objRev={tMod:objRev.tMod.toUnix()};
     
-    extend(GRet, {strDiffText:'', arrVersionCompared:[null, rev+1], strHtmlText, objTemplateE, strEditText, boTalkExist, matVersion});
+    extend(GRet, {strDiffText:'', arrVersionCompared:[null, rev+1], strHtmlText, strEditText, boTalkExist, matVersion});
     var tmp=objPage.boOR?'':', private';
     res.setHeaderMy({"Cache-Control":"must-revalidate"+tmp, 'Last-Modified':tModCache.toUTCString(), 'ETag':strHash});
     //res.setHeader("Cache-Control", "must-revalidate"+tmp);  res.setHeader('Last-Modified',tModCache.toUTCString());  res.setHeader('ETag',strHash);
@@ -712,7 +708,7 @@ ReqBE.prototype.pageCompare=async function(inObj){
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
-  var [err, {strHtmlText, IdChildAll, IdChild, objTemplateE, StrImage, StrImageLC}]=await parse(sessionMongo, arg);
+  var [err, {strHtmlText, IdChildLax, IdChild, StrImage, StrImageLC}]=await parse(sessionMongo, arg);
 
   if(err) { var a=await sessionMongo.abortTransaction(); sessionMongo.endSession();  return [err];  }
   var a=await sessionMongo.commitTransaction(); sessionMongo.endSession();
@@ -746,13 +742,13 @@ ReqBE.prototype.getPreview=async function(inObj){
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
-  var [err, {strHtmlText, IdChildAll, IdChild, objTemplateE, StrImage, StrImageLC}]=await parse(sessionMongo, arg);
+  var [err, {strHtmlText, IdChildLax, IdChild, StrImage, StrImageLC}]=await parse(sessionMongo, arg);
 
   if(err) { var a=await sessionMongo.abortTransaction(); sessionMongo.endSession();  return [err];  }
   var a=await sessionMongo.commitTransaction(); sessionMongo.endSession();
 
   this.mes('Preview');
-  extend(GRet,{strDiffText:'', strEditText, strHtmlText, objTemplateE});
+  extend(GRet,{strDiffText:'', strEditText, strHtmlText});
   
   return [null, [0]];
 } 
@@ -805,7 +801,7 @@ ReqBE.prototype.saveByReplace=async function(inObj){
 
       var matVersion=arrObj2TabNStrCol([]);
       var objPage={idPage:null, boOR:1, boOW:1, boSiteMap:1, tMod:0}, objRev={tMod:0}; 
-      extend(GRet,{strDiffText:'', arrVersionCompared:[null,1], strHtmlText:"", objTemplateE:{}, strEditText:"", matVersion, objPage, objRev});
+      extend(GRet,{strDiffText:'', arrVersionCompared:[null,1], strHtmlText:"", strEditText:"", matVersion, objPage, objRev});
       arrRet=[null, [0]]; break stuff;
     }
 
@@ -826,7 +822,7 @@ ReqBE.prototype.saveByReplace=async function(inObj){
       var objPage=copyObjWMongoTypes(app.InitCollection.Page.objDefault); 
 
         // Query to create IdParent and nParent
-      var Arg=[{IdChildAll:idPage}, {projection:{_id:1}, session:sessionMongo}];
+      var Arg=[{IdChildLax:idPage}, {projection:{_id:1}, session:sessionMongo}];
       var cursor=await collectionPage.find(...Arg);
       var [err, items]=await cursor.toArray().toNBP();   if(err) {arrRet=[err]; break stuff;};
       var IdParent=items.map(it=>{return it._id;}),    nParent=IdParent.length;
@@ -842,7 +838,7 @@ ReqBE.prototype.saveByReplace=async function(inObj){
       
       // parse
     var arg={strEditText, idSite, boOW};
-    var [err, {strHtmlText, IdChildAll, IdChild, objTemplateE, StrImageLC}]=await parse(sessionMongo, arg); if(err) {arrRet=[err]; break stuff;};
+    var [err, {strHtmlText, IdChildLax, IdChild, StrImageLC}]=await parse(sessionMongo, arg); if(err) {arrRet=[err]; break stuff;};
     var strHashParse=md5(strHtmlText);
 
     var nChild=IdChild.length, nImage=StrImageLC.length; 
@@ -874,7 +870,7 @@ ReqBE.prototype.saveByReplace=async function(inObj){
 
 
       // Make changes to current page
-    extend(objPage, { boTalkExist, arrRevision, nRevision, lastRev, IdChild, IdChildAll, StrImage:StrImageLC, StrImageStub, nChild, nImage, objTemplateE, idFileWiki, idFileHtml, boOther, tMod, tModCache, strHashParse, strHash, size});
+    extend(objPage, { boTalkExist, arrRevision, nRevision, lastRev, IdChild, IdChildLax, StrImage:StrImageLC, StrImageStub, nChild, nImage, idFileWiki, idFileHtml, boOther, tMod, tModCache, strHashParse, strHash, size});
       // Assign unassigned properties
     var Arg=[{_id:idPage}, {$set:objPage}, {upsert:true, new:true, session:sessionMongo}];
     var [err, result]=await collectionPage.updateOne(...Arg).toNBP();   if(err){arrRet=[err]; break stuff;}
@@ -908,7 +904,7 @@ ReqBE.prototype.saveByReplace=async function(inObj){
     var arrRevisionSlim=arrRevision.map(ele=>{ return copySome({},ele, ['tMod','summary','signature']); });
     var matVersion=arrObj2TabNStrCol(arrRevisionSlim);
 
-    extend(GRet,{strHtmlText, strEditText, strDiffText:'', arrVersionCompared:[null,matVersion.tab.length], objTemplateE, matVersion, objPage, objRev:objRevNew});
+    extend(GRet,{strHtmlText, strEditText, strDiffText:'', arrVersionCompared:[null,matVersion.tab.length], matVersion, objPage, objRev:objRevNew});
 
     arrRet=[null];
   }
@@ -995,7 +991,7 @@ ReqBE.prototype.saveByAdd=async function(inObj){
       var objPage=copyObjWMongoTypes(app.InitCollection.Page.objDefault); 
 
         // Query to create IdParent and nParent
-      var Arg=[{IdChildAll:idPage}, {projection:{_id:1}, session:sessionMongo}];
+      var Arg=[{IdChildLax:idPage}, {projection:{_id:1}, session:sessionMongo}];
       var cursor=collectionPage.find(...Arg);
       var [err, items]=await cursor.toArray().toNBP();   if(err){arrRet=[err]; break stuff;}
       var IdParent=items.map(it=>{return it._id;}),    nParent=IdParent.length;
@@ -1011,7 +1007,7 @@ ReqBE.prototype.saveByAdd=async function(inObj){
       
       // parse
     var arg={strEditText, idSite, boOW};
-    var [err, {strHtmlText, IdChildAll, IdChild, objTemplateE, StrImage, StrImageLC}]=await parse(sessionMongo, arg); if(err){arrRet=[err]; break stuff;}
+    var [err, {strHtmlText, IdChildLax, IdChild, StrImage, StrImageLC}]=await parse(sessionMongo, arg); if(err){arrRet=[err]; break stuff;}
     var strHashParse=md5(strHtmlText);
 
     var nChild=IdChild.length, nImage=StrImageLC.length; 
@@ -1035,7 +1031,7 @@ ReqBE.prototype.saveByAdd=async function(inObj){
 
 
       // Make changes to current page
-    extend(objPage, { boTalkExist, arrRevision, nRevision, lastRev, IdChild, IdChildAll, StrImage:StrImageLC, StrImageStub, nChild, nImage, objTemplateE, idFileWiki, idFileHtml, boOther, tMod, tModCache, strHashParse, strHash, size});
+    extend(objPage, { boTalkExist, arrRevision, nRevision, lastRev, IdChild, IdChildLax, StrImage:StrImageLC, StrImageStub, nChild, nImage, idFileWiki, idFileHtml, boOther, tMod, tModCache, strHashParse, strHash, size});
       // Assign unassigned properties
     var Arg=[{_id:idPage}, {$set:objPage}, {upsert:true, new:true, session:sessionMongo}];
     var [err, result]=await collectionPage.updateOne(...Arg).toNBP();   if(err){arrRet=[err]; break stuff;}
@@ -1069,7 +1065,7 @@ ReqBE.prototype.saveByAdd=async function(inObj){
     var arrRevisionSlim=arrRevision.map(ele=>{ return copySome({},ele, ['tMod','summary','signature']); });
     var matVersion=arrObj2TabNStrCol(arrRevisionSlim);
 
-    extend(GRet,{strHtmlText, strEditText, strDiffText:'', arrVersionCompared:[null,matVersion.tab.length], objTemplateE, matVersion, objPage, objRev:objRevNew});
+    extend(GRet,{strHtmlText, strEditText, strDiffText:'', arrVersionCompared:[null,matVersion.tab.length], matVersion, objPage, objRev:objRevNew});
 
     if(objOthersActivity) { objOthersActivity.nEdit++; objOthersActivity.pageName=siteName+':'+pageName; }
 
@@ -1113,7 +1109,7 @@ ReqBE.prototype.renamePage=async function(inObj){
 
       // Get stuff from the page: IdParent, IdChild, StrImage
     var [err, objPage]=await collectionPage.findOne({_id:idPageOld}, {session:sessionMongo}).toNBP();   if(err){arrRet=[err]; break stuff;}
-    var { pageName, IdParent:IdParentOld, IdChild, IdChildAll, StrImage}=objPage;
+    var { pageName, IdParent:IdParentOld, IdChild, IdChildLax, StrImage}=objPage;
     //var pageNameOldLC=pageName.toLowerCase();
 
 
@@ -1143,7 +1139,7 @@ ReqBE.prototype.renamePage=async function(inObj){
 
 
       // Get existing parents (those who already points to the new name)
-    var cursor=collectionPage.find({IdChildAll:idPageNew}, {session:sessionMongo});
+    var cursor=collectionPage.find({IdChildLax:idPageNew}, {session:sessionMongo});
     var [err, items]=await cursor.toArray().toNBP();   if(err){arrRet=[err]; break stuff;}
     var len=items.length, IdParentWStubs=Array(len); for(var i=0;i<len;i++) {IdParentWStubs[i]=items[i]._id;}
 
@@ -1152,7 +1148,7 @@ ReqBE.prototype.renamePage=async function(inObj){
 
       // Make changes to parents
     var [err]=await modifyIdChild(sessionMongo, IdParentOld, idPageOld, IdParentNew, idPageNew);   if(err){arrRet=[err]; break stuff;}
-    var [err]=await modifyIdChildAll(sessionMongo, IdParentOld, idPageOld, idPageNew);   if(err){arrRet=[err]; break stuff;}
+    var [err]=await modifyIdChildLax(sessionMongo, IdParentOld, idPageOld, idPageNew);   if(err){arrRet=[err]; break stuff;}
 
 
       // Change children
@@ -1815,9 +1811,9 @@ ReqBE.prototype.siteTabUpd=async function(inObj){
       var [err, Page]=await cursor.toArray().toNBP();   if(err){arrRet=[err]; break stuff;}
       var regA=RegExp("^"+idSite+":(.*)");
       for(var i=0;i<Page.length;i++){
-        var page=Page[i], {IdParent, IdChildAll, IdChild}=page;
+        var page=Page[i], {IdParent, IdChildLax, IdChild}=page;
         for(var j=0;j<IdParent.length;j++){   var Match=regA.exec(IdParent[j]); IdParent[j]=idSiteNew+":"+Match[1];   }
-        for(var j=0;j<IdChildAll.length;j++){   var Match=regA.exec(IdChildAll[j]); IdChildAll[j]=idSiteNew+":"+Match[1];    }
+        for(var j=0;j<IdChildLax.length;j++){   var Match=regA.exec(IdChildLax[j]); IdChildLax[j]=idSiteNew+":"+Match[1];    }
         for(var j=0;j<IdChild.length;j++){   var Match=regA.exec(IdChild[j]); IdChild[j]=idSiteNew+":"+Match[1];    }
         var Match=regA.exec(page._id); page._id=idSiteNew+":"+Match[1];
         page.idSite=idSiteNew;
@@ -1966,28 +1962,29 @@ ReqBE.prototype.siteTabSetDefault=async function(inObj){
 
 /*********************************************************************
  * Loading pages / images / meta data
- * * a.txt b.txt c.txt
- * * meta.zip page.zip image.zip
- * * site.csv page.csv image.csv redirect.csv page.zip image.zip
+ * * Files may look like (I think (I should probably go through the code and verify this)):
+ * * * a.txt b.txt c.txt
+ * * * meta.zip page.zip image.zip
+ * * * site.csv page.csv image.csv redirect.csv page.zip image.zip
  * 
  *********************************************************************/
 
 
 
-//                                     ReqBE.prototype.go
-//                                /             |               \
-//      ReqBE.prototype.uploadUser  ReqBE.prototype.uploadAdmin  ReqBE.prototype.loadFrBUOnServ   
+//                        ReqBE.prototype.go
+//                            /        \
+//      ReqBE.prototype.uploadUser  ReqBE.prototype.uploadAdmin     
 
 
 
 
-//              ReqBE.prototype.loadFrBUOnServ        script.js
-//                                            \      /
-//      ReqBE.prototype.uploadAdmin        loadFrBUOnServInterior
+//                                            script.js
+//                                               |
+//      ReqBE.prototype.uploadAdmin        loadFrBUFolderOnServ
 //                                 \      /
 //                                loadFrFiles
 //                           /         |         \
-//               parseZipFile  loadMetaFrBUToRAM  storePageMultFrBU
+//               parseZipFile  csvParseMyWType  storePageMultFrBU
 // 
 
 
@@ -2073,15 +2070,7 @@ ReqBE.prototype.uploadAdmin=async function(inObj){
 }
 
 
-ReqBE.prototype.loadFrBUOnServ=async function(inObj){ 
-  var {req, res, GRet}=this;
-  if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
-  this.mes("Working... (check server console for progress) ");
-  var StrFile=inObj.File;
-  var [err]=await loadFrBUOnServInterior(StrFile); if(err) return [err];
-  return [null, [0]];
-}
-app.loadFrBUOnServInterior=async function(strLoadArg){
+app.loadFrBUFolderOnServ=async function(strLoadArg){
   var StrLoadArg, FileOrg;
   if(strLoadArg===true) StrLoadArg=['.'];
   else if(typeof strLoadArg=='undefined') StrLoadArg=['.'];
@@ -2119,14 +2108,16 @@ app.loadFrFiles=async function(FileOrg){
 
   // Loop through all files, parse any zip file, and separate all found files by extension.
   // The elements of FileImg and FilePage looks like:
-  //     {strName, strExt, fileInZip}
+  //     {strName, strExt, bufFrZip}
   //     {strName, strExt, path}  
   // The properties of FileCsv looks like:
   //    {strName, strExt, strData} 
   //    {strName, strExt, path}
   var FileImg=[], FilePage=[], FileCsv={}, regExt=/^([^\.]+)\.([a-z]+)$/;
   for(var i=0;i<FileOrg.length;i++){
-    var {path:strPath, type, name:strName}=FileOrg[i];
+    var {path:strPath, type, name:strName, originalFilename, filepath}=FileOrg[i];
+    strName??=originalFilename;
+    strPath??=filepath;
     var Match=regExt.exec(strName), strBase=Match[1], strExt=Match[2].toLowerCase();
     if(strExt=='zip') {
       var [err, oZ]=await parseZipFile(strPath); if(err) return [err];
@@ -2148,7 +2139,7 @@ app.loadFrFiles=async function(FileOrg){
   var ObjCsvData={};
   var KeyCsv=Object.keys(FileCsv);
   for(var key of KeyCsv) { 
-    var [err, Result]=await loadMetaFrBUToRAM(FileCsv[key]); if(err) return [err];
+    var [err, Result]=await csvParseMyWType(FileCsv[key]); if(err) return [err];
     ObjCsvData[key]=Result;
   }
   
@@ -2169,7 +2160,9 @@ app.loadFrFiles=async function(FileOrg){
       var [err, result]=await collectionSite.insertMany(ObjCsvData.site, {session:sessionMongo}).toNBP();    if(err) return [err];
     }
 
-    if(ObjCsvData.page){ 
+    if(ObjCsvData.page){
+      ObjCsvData.page.forEach((obj,i)=>{   obj.pageName=myEscaper.unescape(obj.pageName);     });   // Unescape pageName
+
       if(ObjCsvData.page.length!=FilePage.length) return [new Error("ObjCsvData.page.length!=FilePage.length")];
       var [err]=await storePageMultFrBU(sessionMongo, FilePage, ObjCsvData.page);  if(err) return [err];   // Insert pages
     }
@@ -2183,6 +2176,8 @@ app.loadFrFiles=async function(FileOrg){
     var objCollation={ locale: "en", strength: 2 };
 
     if(ObjCsvData.image){ 
+      ObjCsvData.image.forEach((obj,i)=>{   obj.imageName=myEscaper.unescape(obj.imageName);     });   // Unescape imageName
+
       var Obj=ObjCsvData.image;
       var arg=Array(Obj.length);
       for(var i=0;i<Obj.length;i++){
@@ -2194,6 +2189,8 @@ app.loadFrFiles=async function(FileOrg){
     }
 
     if(ObjCsvData.redirect){ 
+      ObjCsvData.redirect.forEach((obj,i)=>{   obj.pageNameLC=myEscaper.unescape(obj.pageNameLC);     });   // Unescape pageNameLC
+
         // Get all siteNames
       var Arg=[{}, {projection:{ boDefault:1}, session:sessionMongo}];
       var cursor=collectionSite.find(...Arg);
@@ -2210,14 +2207,14 @@ app.loadFrFiles=async function(FileOrg){
       }
       var [err, result]=await collectionRedirect.insertMany(ObjCsvData.redirect, {session:sessionMongo}).toNBP();    if(err) return [err];  
     }
-    return [];
+    return [null,0];
   })();
 
   if(errTransaction) { var a=await sessionMongo.abortTransaction(); sessionMongo.endSession(); return [errTransaction]; }
   var a=await sessionMongo.commitTransaction(); sessionMongo.endSession();
 
 
-  return [null, [0]];
+  return [null, resTransaction];
 
 }
 
@@ -2226,7 +2223,9 @@ app.parseZipFile=async function(strPath){
   var [err, buf]=await fsPromises.readFile(strPath).toNBP();    if(err) return [err];
   var dataOrg=buf; 
   
-  var zip=new NodeZip(dataOrg, {base64: false, checkCRC32: true});
+  //var zip=new NodeZip(dataOrg, {base64: false, checkCRC32: true});
+  var [err, zip]=await JSZip.loadAsync(dataOrg).toNBP();   if(err) {console.error(err); process.exit(-1);}
+
   var FileImg=[], FilePage=[], FileCsv={}, regExt=/^(.+)\.([a-z]+)$/; //, regExt=/^([^\.]+)\.([a-z]+)$/;
   var FileInZip=zip.files, Key=Object.keys(FileInZip);  
   var Ou= {FilePage, FileImg, FileCsv};
@@ -2234,17 +2233,20 @@ app.parseZipFile=async function(strPath){
     var strFile=Key[j];
     var Match=regExt.exec(strFile), strBase=Match[1], strExt=Match[2].toLowerCase();
     var fileInZip=FileInZip[strFile];
+    if(fileInZip.dir) return [new Error("It is not supposed to be directories in the zip files")];
+    //var bufFrZip=Buffer.from(fileInZip._data, 'binary');
+    var [err, bufFrZip]=await fileInZip.async("uint8array").toNBP(); if(err) return [err];
     if(strExt=="csv") {
       if(StrValidLoadMetaBase.indexOf(strBase)==-1) return [new Error("CSV-file not valid: "+strFile+", (valid ones are: "+StrValidLoadMeta.join(", ")+")")];
-      var bufT=Buffer.from(fileInZip._data,'binary');
-      var strData=bufT.toString(); strData=strData.trim();
+      //var bufT=bufData;
+      var strData=bufFrZip.toString(); strData=strData.trim();
       var oFile={strName:strFile, strExt, strData};
       if(FileCsv[strBase]) return [new Error("Multiple "+strFile)]; else FileCsv[strBase]=oFile;
     }else if(strExt=="txt") {
-      var oFile={strName:strFile, strExt, fileInZip};
+      var oFile={strName:strFile, strExt, bufFrZip};
       FilePage.push(oFile);
     } else if(regImg.test(strExt)) {
-      var oFile={strName:strFile, strExt, fileInZip};
+      var oFile={strName:strFile, strExt, bufFrZip};
       FileImg.push(oFile);
     }
     //else if(regVid.test(strExt)) FileVid.push(oFile);
@@ -2254,15 +2256,15 @@ app.parseZipFile=async function(strPath){
 }
 
 
-app.loadMetaFrBUToRAM=async function(oFile){
+app.csvParseMyWType=async function(oFile){
   var {strName:strFile, strData:strCSV, path}=oFile;
   if(typeof strCSV=='undefined'){
     var [err, buf]=await fsPromises.readFile(path).toNBP();    if(err) return [err];
     strCSV=buf.toString().trim();
   }
 
-  var [arrHead,arrData]= csvParseMy(strCSV);
-  formatCSVAsHeadPrefix(arrHead,arrData);
+  var [arrHead,arrData]= csvParseMy(strCSV);  // arrData is an array of arrays of strings.
+  formatCSVAsHeadPrefix(arrHead,arrData);  // interprete columns starting like "bo-" to boolean, "int-" integer etc
 
   var nRow=arrData.length;
     // Create an array of objects
@@ -2299,25 +2301,30 @@ app.storePageMultFrBU=async function(sessionMongo, FilePage, PageMeta){
     //   Page (data for the Page collection)
   var Data=Array(FilePage.length), Page=Array(FilePage.length);
   for(var i=0;i<FilePage.length;i++){
-    var {strName, fileInZip, path}=FilePage[i];
+    var {strName, bufFrZip, path}=FilePage[i];
     var idPageProt=strName.replace(RegExp('.txt$','i'),''), {siteName, pageName}=parsePageNameHD(idPageProt);
 
     if(siteName.length==0) {siteName=strKeyDefault; idPageProt=siteName+":"+pageName;}
     var idPage=idPageProt.toLowerCase();
 
 
-    if(typeof fileInZip=="undefined"){
+    if(typeof bufFrZip=="undefined"){
       var [err, buf]=await fsPromises.readFile(path).toNBP();    if(err) return [err];
     }else{
-        var buf=Buffer.from(fileInZip._data,'binary');
+        //var buf=Buffer.from(fileInZip._data,'binary');
+        //var buf=Buffer.from(bufFrZip,'binary')
+        var buf=bufFrZip
     }
     var data=buf;
 
       // Data
-    var strEditText=data.toString();    Data[i]={idPage, data:strEditText};
+    //var strEditText=data.toString();
+    var strEditText=new TextDecoder().decode(data);
+    Data[i]={idPage, data:strEditText};
 
       // Page
     var objPage=copyObjWMongoTypes(app.InitCollection.Page.objDefault);
+    console.log(i+' '+idPage);
     var {boOW, boOR, boSiteMap, tCreated, tMod, tLastAccess, nAccess}=PageMetaByIdPage[idPage];
     var idSite=siteName;
 
@@ -2335,7 +2342,7 @@ app.storePageMultFrBU=async function(sessionMongo, FilePage, PageMeta){
 
   
     // Assign boTalkExist
-    // Parse data (Creating: strHtmlText, IdChildAll, IdChild, objTemplateE, StrImage)
+    // Parse data (Creating: strHtmlText, IdChildLax, IdChild, StrImage)
     // Create arrRevision
   for(var i=0;i<Data.length;i++){
     var {_id:idFileWiki, data:strEditText}=Data[i];
@@ -2353,7 +2360,7 @@ app.storePageMultFrBU=async function(sessionMongo, FilePage, PageMeta){
 
       // parse
     var arg={strEditText, idSite, boOW};
-    var [err, {strHtmlText, IdChildAll, IdChild, objTemplateE, StrImageLC}]=await parse(sessionMongo, arg); if(err) return [err];
+    var [err, {strHtmlText, IdChildLax, IdChild, StrImageLC}]=await parse(sessionMongo, arg); if(err) return [err];
     var strHashParse=md5(strHtmlText);
 
     var nChild=IdChild.length, nImage=StrImageLC.length; 
@@ -2373,7 +2380,7 @@ app.storePageMultFrBU=async function(sessionMongo, FilePage, PageMeta){
 
 
       // Make changes to current page
-    extend(objPage, {  arrRevision, nRevision, lastRev, IdChild, IdChildAll, StrImage:StrImageLC, StrImageStub, nChild, nImage, objTemplateE, boTalkExist, idFileWiki, idFileHtml, boOther, tMod, tModCache, strHashParse, strHash, size});
+    extend(objPage, {  arrRevision, nRevision, lastRev, IdChild, IdChildLax, StrImage:StrImageLC, StrImageStub, nChild, nImage, boTalkExist, idFileWiki, idFileHtml, boOther, tMod, tModCache, strHashParse, strHash, size});
     var Arg=[{_id:idPage}, {$set:objPage}, {session:sessionMongo}]; //, {upsert:true, new:true}
     var [err, result]=await collectionPage.updateOne(...Arg).toNBP();   if(err) return [err];
 
@@ -2385,7 +2392,7 @@ app.storePageMultFrBU=async function(sessionMongo, FilePage, PageMeta){
     var { pageName, _id:idPage}=objPage;
 
       // Query to get parents
-    var Arg=[{IdChildAll:idPage}, {projection:{_id:1}, session:sessionMongo}];
+    var Arg=[{IdChildLax:idPage}, {projection:{_id:1}, session:sessionMongo}];
     var cursor=collectionPage.find(...Arg);
     var [err, items]=await cursor.toArray().toNBP();   if(err) return [err];
     var IdParent=items.map(it=>{return it._id;}),    nParent=IdParent.length;

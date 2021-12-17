@@ -12,7 +12,8 @@ import formidable from "formidable";
 import crypto from 'crypto';
 import zlib from 'zlib';
 //import imageSize from 'image-size';
-import NodeZip from 'node-zip';
+//import NodeZip from 'node-zip';
+import JSZip from "jszip";
 import redis from "redis";
 import Streamify from 'streamify-string';
 import serialize from 'serialize-javascript';
@@ -32,7 +33,7 @@ import minimist from 'minimist';
 
 
 app.extend=Object.assign;
-extend(app, {http, url, path, fsPromises, concat, fetch, formidable, crypto, zlib, NodeZip, redis, Streamify, serialize, validator, mime, gm, im, temporary, ejs, mongodb, mongoSanitize});
+extend(app, {http, url, path, fsPromises, concat, fetch, formidable, crypto, zlib, JSZip, redis, Streamify, serialize, validator, mime, gm, im, temporary, ejs, mongodb, mongoSanitize});
 var {MongoClient, ObjectId, Long, Int32} = mongodb;
 extend(app, {MongoClient, ObjectId, Long, Int32});
 
@@ -103,12 +104,13 @@ if(  (urlRedis=process.env.REDISTOGO_URL)  || (urlRedis=process.env.REDISCLOUD_U
   var objRedisUrl=url.parse(urlRedis),    password=objRedisUrl.auth.split(":")[1];
   var objConnect={host: objRedisUrl.hostname, port: objRedisUrl.port,  password: password};
   //redisClient=redis.createClient(objConnect); // , {no_ready_check: true}
-  app.redisClient=redis.createClient(urlRedis, {no_ready_check: true}); //
+  //app.redisClient=redis.createClient(urlRedis, {no_ready_check: true}); //
+  app.redisClient=redis.createClient({no_ready_check: true, url: urlRedis, legacyMode: true}); // Since v4 this should be the way to use the interface with legacyMode: true
 }else {
   //var objConnect={host: 'localhost', port: 6379,  password: 'password'};
-  app.redisClient=redis.createClient();
+  app.redisClient=redis.createClient({ legacyMode: true});
 }
-//await redisClient.connect();
+await redisClient.connect();
 
 
   // Default config variables (If you want to change them I suggest you create a file config.js and overwrite them there)
@@ -180,11 +182,11 @@ extend(app, {boDbg:0, boAllowSql:1, port:5000, levelMaintenance:0, googleSiteVer
   await import('./parserTable.js'); 
 
   //mysqlPool=setUpMysqlPool();
-  app.myNeo4j=new MyNeo4j();
+  app.myEscaper=new MyEscaper();
   //createDefaultDocumentAll();//app.InitCollection.Page.objDefault
 
 
-  var urlMongo = 'mongodb://localhost:27017';
+  var urlMongo = 'mongodb://127.0.0.1:27017';
   app.mongoClient=undefined;
   var err, Arg=[urlMongo, { useUnifiedTopology: true}];
   var [err, result]=await MongoClient.connect(...Arg).toNBP();  if(err) {console.log(err); process.exit(-1);}
@@ -212,7 +214,8 @@ extend(app, {boDbg:0, boAllowSql:1, port:5000, levelMaintenance:0, googleSiteVer
     //var load=argv.load; if(load===true) load=
     var setupMongo=new SetupMongo();
     var [err]=await setupMongo.doQuery("create");
-    var [err]=await loadFrBUOnServInterior(argv.load); if(err) {console.error(err); process.exit(-1);} 
+    var [err]=await loadFrBUFolderOnServ(argv.load); if(err) {console.error(err); process.exit(-1);} 
+    console.log('done loading');
     process.exit(0);
   }
     // Do db-query if --mongodb XXXX was set in the argument

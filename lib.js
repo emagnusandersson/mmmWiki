@@ -393,8 +393,8 @@ app.csvParseMy=function(strCSV){ // My parser of csv, where the type of each col
   var putBackStr=function(m, str){ return arrStr[Number(str)];  }
 
   //strCSV="0, \"a\\\"b\", 1, \"a\"";
-  //var regString=/"(.*?)(?<!\\)"/g;
-  var regString=RegExp('"(.*?)(?<!\\\\)"', 'g');
+  var regString=/"(.*?)(?<!\\)"/g;
+  //var regString=RegExp('"(.*?)(?<!\\\\)"', 'g');
   //strCSV.match(regString)
   strCSV=strCSV.trim();
   strCSV = strCSV.replace(regString, replaceStr);

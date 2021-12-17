@@ -16,14 +16,17 @@ app.parseCookies=function(req) {
 
 
 //
-// Neo4j
+// MyEscaper
 //
 
-app.MyNeo4j=function(){
-  var chars = ['\\"', '\\\'', '\\\\'],   tmpStr='[' +chars.join("") +']';  this.regEscape=new RegExp(tmpStr, 'g');
+app.MyEscaper=function(){
+  this.regEscape=/[\"\'\\]/g;
   this.funEscape=function(m){ return "\\"+m;  }
+  this.regUnescape=/(\\\"|\\\'|\\\\)/g;
+  this.funUnescape=function(m){ return m[1];  }
 }
-MyNeo4j.prototype.escape=function(str){  if(typeof str=='string') str=str.replace(this.regEscape,this.funEscape);  return str;  }
+MyEscaper.prototype.escape=function(str){  if(typeof str=='string') str=str.replace(this.regEscape,this.funEscape);  return str;  }
+MyEscaper.prototype.unescape=function(str){  if(typeof str=='string') str=str.replace(this.regUnescape,this.funUnescape);  return str;  }
 
 
 //
@@ -143,7 +146,7 @@ app.MimeType={
 app.md5=function(str){return crypto.createHash('md5').update(str).digest('hex');}
 
 
-  // Redis
+  // Redis v3
 app.cmdRedis=async function(strCommand, arr){
   if(!(arr instanceof Array)) arr=[arr];
   return await new Promise(resolve=>{
@@ -170,6 +173,34 @@ app.delRedis=async function(arr){
   return [err,strTmp];
 }
 
+
+    // Redis v4 (with legacy mode)
+  app.cmdRedis=async function(strCommand, arr){
+    if(!(arr instanceof Array)) arr=[arr];
+    return await new Promise(resolve=>{
+      redisClient.sendCommand([strCommand, ...arr], (...arg)=>resolve(arg)  ); 
+    });
+    //return await redisClient.sendCommand([strCommand, ...arr] ).toNBP();
+  }
+  app.getRedis=async function(strVar, boObj=false){
+    var [err,res]=await cmdRedis('GET', [strVar]);  if(boObj) res=JSON.parse(res);  return [err,res];
+  }
+  app.setRedis=async function(strVar, val, tExpire=-1){
+    if(typeof val!='string') var strA=JSON.stringify(val); else var strA=val;
+    var arr=[strVar,strA];  if(tExpire>0) arr.push('EX',tExpire);   var [err,strTmp]=await cmdRedis('SET', arr);
+    return [err,strTmp];
+  }
+  app.expireRedis=async function(strVar, tExpire=-1){
+    if(tExpire==-1) var [err,strTmp]=await cmdRedis('PERSIST', [strVar]);
+    else var [err,strTmp]=await cmdRedis('EXPIRE', [strVar,tExpire]);
+    return [err,strTmp];
+  }
+  app.delRedis=async function(arr){ 
+    if(!(arr instanceof Array)) arr=[arr];
+    var [err,strTmp]=await cmdRedis('DEL', arr);
+    return [err,strTmp];
+  }
+  
 
 
 app.getIP=function(req){
