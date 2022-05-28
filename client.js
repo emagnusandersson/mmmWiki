@@ -671,6 +671,47 @@ var tabBUDivExtend=function(el){
 }
 
 
+// var tabBUSumExtend=function(el){
+//   el.setUp=function(nOld,nNew,arrN){
+//     var iToFetchNew=3, iToBeDeleted=0;
+//     for(var i=0;i<nAction;i++){
+//       var len=arrN[i];
+//       var lenT=len; if(i==iToFetchNew) lenT=0;   tdOld.children[i].css({width:lenT+'px'});
+//       var lenT=len; if(i==iToBeDeleted) lenT=0;   tdNew.children[i].css({width:lenT+'px'});
+//       tdColor.children[i*3+2].myText(len);
+//       tdOldNum.myText(nOld);
+//       tdNewNum.myText(nNew);
+//     }
+//   }
+//   var StrAction=['toBeDeleted','toBeReused','toFetchChanged','toFetchNew'], nAction=StrAction.length;
+//   var StrActionLabel=['To be deleted','To be reused','To fetch (changed)','To fetch (new)'];
+//   var StrActionColor=['orange','yellow','lightgreen','lightblue'];
+//   var tdOld=createElement('td'), tdNew=createElement('td'), tdColor=createElement('td').attr({colspan:"3"});
+//   for(var i=0;i<nAction;i++){
+//     var divAction=createElement('div').css({'background':StrActionColor[i],'height':'20px', width:'25%', display:'inline-block'});
+//     tdOld.myAppend(divAction);
+//     tdNew.myAppend(divAction.cloneNode());
+//     var divColor=createElement('span').css({'background':StrActionColor[i],'height':'1em', width:'1em', display:'inline-block', 'margin-right':'0.1em'});
+//     var spanColor=createElement('span').myText(StrActionLabel[i]+": ");
+//     var spanN=createElement('span').css({'margin-right':'0.6em', 'font-weight':'bold'});
+//     tdColor.myAppend(divColor, spanColor, spanN);
+//   }
+
+//   var tdOldNum=createElement('td'), tdNewNum=createElement('td');
+//   var trOld=createElement('tr').myHtml("<td>Old Zip</td>").myAppend(tdOldNum, tdOld);
+//   var trNew=createElement('tr').myHtml("<td>New Zip</td>").myAppend(tdNewNum, tdNew);
+//   var trColor=createElement('tr').myAppend(tdColor);
+
+//   //var DivPop=[]; //, Button=([]);
+//   var tHead=createElement('thead').myHtml("<tr><th></th><th>nFiles</th></tr>");
+//   var tBody=createElement('tbody');
+//   tBody.myAppend(trOld, trNew, trColor);
+//   el.myAppend(tHead, tBody);
+
+//   el.css({'border-collapse':'collapse'});
+//   return el;
+// }
+
 var tabBUSumExtend=function(el){
   el.setUp=function(nOld,nNew,arrN){
     var iToFetchNew=3, iToBeDeleted=0;
@@ -678,7 +719,7 @@ var tabBUSumExtend=function(el){
       var len=arrN[i];
       var lenT=len; if(i==iToFetchNew) lenT=0;   tdOld.children[i].css({width:lenT+'px'});
       var lenT=len; if(i==iToBeDeleted) lenT=0;   tdNew.children[i].css({width:lenT+'px'});
-      tdColor.children[i*3+2].myText(len);
+      divExplanation.children[i*3+2].myText(len);
       tdOldNum.myText(nOld);
       tdNewNum.myText(nNew);
     }
@@ -686,7 +727,7 @@ var tabBUSumExtend=function(el){
   var StrAction=['toBeDeleted','toBeReused','toFetchChanged','toFetchNew'], nAction=StrAction.length;
   var StrActionLabel=['To be deleted','To be reused','To fetch (changed)','To fetch (new)'];
   var StrActionColor=['orange','yellow','lightgreen','lightblue'];
-  var tdOld=createElement('td'), tdNew=createElement('td'), tdColor=createElement('td').attr({colspan:"3"});
+  var tdOld=createElement('td'), tdNew=createElement('td'), divExplanation=createElement('div').attr({colspan:"3"});
   for(var i=0;i<nAction;i++){
     var divAction=createElement('div').css({'background':StrActionColor[i],'height':'20px', width:'25%', display:'inline-block'});
     tdOld.myAppend(divAction);
@@ -694,21 +735,24 @@ var tabBUSumExtend=function(el){
     var divColor=createElement('span').css({'background':StrActionColor[i],'height':'1em', width:'1em', display:'inline-block', 'margin-right':'0.1em'});
     var spanColor=createElement('span').myText(StrActionLabel[i]+": ");
     var spanN=createElement('span').css({'margin-right':'0.6em', 'font-weight':'bold'});
-    tdColor.myAppend(divColor, spanColor, spanN);
+    divExplanation.myAppend(divColor, spanColor, spanN);
   }
 
   var tdOldNum=createElement('td'), tdNewNum=createElement('td');
+  [tdOldNum,tdNewNum].forEach(ele=>ele.css({'text-align':'center'}))
   var trOld=createElement('tr').myHtml("<td>Old Zip</td>").myAppend(tdOldNum, tdOld);
   var trNew=createElement('tr').myHtml("<td>New Zip</td>").myAppend(tdNewNum, tdNew);
-  var trColor=createElement('tr').myAppend(tdColor);
+  //var divExplanation=createElement('div').myAppend(tdColor);
 
   //var DivPop=[]; //, Button=([]);
   var tHead=createElement('thead').myHtml("<tr><th></th><th>nFiles</th></tr>");
   var tBody=createElement('tbody');
-  tBody.myAppend(trOld, trNew, trColor);
-  el.myAppend(tHead, tBody);
+  tBody.myAppend(trOld, trNew);
+  var table=createElement('table');
+  table.myAppend(tHead,tBody);
+  el.myAppend(table,divExplanation);
 
-  el.css({'border-collapse':'collapse'});
+  table.css({'border-collapse':'collapse'});
   return el;
 }
 
@@ -821,7 +865,7 @@ var diffBackUpDivExtend=function(el){
 
       // Display tab
     var ArrStr=[StrOld, StrDeleted, StrReuse, StrFetchChanged, StrFetchNew, StrNew];
-    var tabBUSum=tabBUSumExtend(createElement('table'));
+    var tabBUSum=tabBUSumExtend(createElement('div'));
     tabBUSum.setUp(StrOld.length, StrNew.length, [StrDeleted.length, StrReuse.length, StrFetchChanged.length, StrFetchNew.length]);
     tabBUDiv.setUp(ArrStr, objFetchChanged);
     var buttonDetail=createElement('button').myText('Details').on('click',function(){
@@ -865,7 +909,6 @@ var diffBackUpDivExtend=function(el){
       var [err]=await new Promise(resolve=>{   zipWriter.add(key, blobReader, ()=>resolve([null]), onprogress, {lastModDate:date}); }); if(err) return [err];
 
       iAdded++;  progress.attr({value:iAdded,max:StrReuse.length}); 
-      return [null];
     }
     imgDoneLast.show();
 
@@ -934,7 +977,7 @@ var diffBackUpDivExtend=function(el){
     //ul.hide();
     imgDoneLast.show();
     progress.hide();
-
+    return [null];
   }
 
   var getBlobURL=function(callback) {

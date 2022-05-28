@@ -230,6 +230,8 @@ app.getIP=function(req){
 }
 
 
+
+var regFileType=RegExp('\\.([a-z0-9]+)$','i'),    regZip=RegExp('^(css|js|txt|html)$'),   regUglify=RegExp('^js$');
 app.CacheUriT=function(){
   this.set=async function(key, buf, type, boZip, boUglify){
     var strHash=md5(buf);
@@ -243,15 +245,22 @@ app.CacheUriT=function(){
     this[key]={buf,type,strHash,boZip,boUglify};
     return [err,buf];
   }
-}
-
-var regFileType=RegExp('\\.([a-z0-9]+)$','i'),    regZip=RegExp('^(css|js|txt|html)$'),   regUglify=RegExp('^js$');
-app.readFileToCache=async function(strFileName) {
-  var type, Match=regFileType.exec(strFileName);    if(Match && Match.length>1) type=Match[1]; else type='txt';
-  var boZip=regZip.test(type),  boUglify=regUglify.test(type);
-  var [err, buf]=await fsPromises.readFile(strFileName).toNBP();    if(err) return [err];
-  var [err]=await CacheUri.set('/'+strFileName, buf, type, boZip, boUglify);
-  return [err];
+  this.getWAutoSet=async function(key){  // Only to be used when the "key" corresponds to a real file.
+    if(key in this){
+      return [null, this[key]];
+    }else{
+      var [err]=await this.readFileToCache(key);
+      return [err, this[key]];
+    }
+  }
+  this.readFileToCache=async function(strFileName) {
+    var type, Match=regFileType.exec(strFileName);    if(Match && Match.length>1) type=Match[1]; else type='txt';
+    var boZip=regZip.test(type),  boUglify=regUglify.test(type);
+    var [err, buf]=await fsPromises.readFile(strFileName).toNBP();    if(err) return [err];
+    //var [err]=await CacheUri.set('/'+strFileName, buf, type, boZip, boUglify);
+    var [err]=await this.set(strFileName, buf, type, boZip, boUglify);
+    return [err];
+  }
 }
 
 
@@ -260,7 +269,7 @@ app.makeWatchCB=function(strFolder, StrFile) {
     if(StrFile.indexOf(filename)!=-1){
       var strFileName=path.normalize(strFolder+'/'+filename);
       console.log(filename+' changed: '+ev);
-      var [err]=await readFileToCache(strFileName); if(err) console.error(err);
+      var [err]=await CacheUri.readFileToCache(strFileName); if(err) console.error(err);
     }
   }
 }

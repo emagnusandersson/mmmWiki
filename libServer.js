@@ -142,19 +142,15 @@ app.is_crawler=function() {
    return RegExp(sites).test(ua);  
 }
 
-app.writeCacheDynamicJS=async function() {
-  var buf=createCommonJS();
-  var [err]=await CacheUri.set('/'+leafCommon, buf, 'js', true, true);   if(err) return [err];
-  return [null];
-}
+
 
 app.createCommonJS=function() {
   var Str=[];
   var StrVar=['boDbg', 'urlPayPal', 'maxAdminWUnactivityTime', 'version', 'intMax', 'leafBE', 'strSalt', 'StrImageExt', 'flFoundOnTheInternetFolder', 'flLibImageFolder', 'maxGroupsInFeat', 'bFlip', 'PropPage', 'PropImage', 'StrOrderFiltPage', 'StrOrderFiltImage', 'nHash', 'strBTC', 'ppStoredButt'];
   var tmp=copySome({},app,StrVar);
-  tmp.trash='trash';
+  const strTmp=JSON.stringify(tmp)
   Str.push(`app.assignCommonJS=function(){
-  var tmp=`+JSON.stringify(tmp)+`;
+  var tmp=${strTmp};
   Object.assign(window,tmp);
 }`);
   var str=Str.join('\n');    return str;

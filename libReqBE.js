@@ -98,11 +98,18 @@ ReqBE.prototype.go=async function(){
     if('x-type' in req.headers ){ //&& req.headers['x-type']=='single'
       var form = new formidable.IncomingForm();
       form.multiples = true;  
+      var File=this.File=[];
 
+      form.on('file', function(field, file) {
+        //console.log(file.originalFilename);
+        //console.log(JSON.stringify(field));
+        //files.push([field, file]);
+        File.push(file);
+      });
 
-      var [err, fields, files]=await new Promise(resolve=>{  form.parse(req, function(...arg){resolve(arg);});  });    if(err){ this.mesEO(err); return; } 
+      var [err, fields, files]=await new Promise(resolve=>{  form.parse(req, function(...arg){ resolve(arg);});  });    if(err){ this.mesEO(err); return; } 
       
-      this.File=files['fileToUpload[]'];
+      //this.File=files['fileToUpload[]'];
       if('g-recaptcha-response' in fields) this.captchaIn=fields['g-recaptcha-response']; else this.captchaIn='';
       if('strName' in fields) this.strName=fields.strName; else this.strName='';
       if(!(this.File instanceof Array)) this.File=[this.File];

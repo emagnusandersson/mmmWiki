@@ -11,7 +11,6 @@
 
 // When two tabs are open, and one has edited one, then edits the other, one gets "Already logged in"
 
-// Upload multiple files doesn't seem to work.
 // Does uploadUser work? what is in "tmpname" in that function
 
 //sessionIDDDos, sessionIDCSRF, sessionIDR, sessionIDW
@@ -362,12 +361,14 @@ var makeOutput=function(objOut, strHtmlText){
   var uCanonical=uSite; if(pageName!='start') uCanonical=uCanonical+"/"+pageName;
 
     // Files to include    
-  var keyTmp=wwwSite+'/'+leafManifest, vTmp=boDbgT?0:CacheUri[keyTmp].strHash;     const uManifest=uSite+'/'+leafManifest+'?v='+vTmp;
-  var pathTmp='/lib/foundOnTheInternet/zip.js', vTmp=boDbgT?0:CacheUri[pathTmp].strHash;    const uZip=uSiteCommon+pathTmp+'?v='+vTmp;
-  var pathTmp='/lib/foundOnTheInternet/sha1.js', vTmp=boDbgT?0:CacheUri[pathTmp].strHash;   const uSha1=uSiteCommon+pathTmp+'?v='+vTmp;
+  //var keyTmp=wwwSite+'/'+leafManifest, vTmp=boDbgT?0:CacheUri[keyTmp].strHash;     const uManifest=uSite+'/'+leafManifest+'?v='+vTmp;
+  var keyTmp=wwwSite+'/'+leafManifest, vTmp=boDbgT?0:CacheUri[keyTmp].strHash;     const uManifest=`${strSchemeLong}${keyTmp}?v=${vTmp}`;
+  var pathTmp='lib/foundOnTheInternet/zip.js', vTmp=boDbgT?0:CacheUri[pathTmp].strHash;    const uZip=`${uSiteCommon}/${pathTmp}?v=${vTmp}`;
+  var pathTmp='lib/foundOnTheInternet/sha1.js', vTmp=boDbgT?0:CacheUri[pathTmp].strHash;   const uSha1=`${uSiteCommon}/${pathTmp}?v=${vTmp}`;
 
  
   var strTracker, tmpID=objSite.googleAnalyticsTrackingID||null;
+  tmpID=null;  // Disabling ga
   if(boDbg||!tmpID){strTracker="<script> ga=function(){};</script>";}else{ 
   strTracker=`
 <script type="text/javascript">
@@ -375,7 +376,7 @@ var makeOutput=function(objOut, strHtmlText){
   (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
   m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
   })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
-  ga('create', '`+tmpID+`', { 'storage': 'none' });
+  ga('create', '${tmpID}', { 'storage': 'none' });
   ga('send', 'pageview');
 </script>`;
   }
@@ -718,19 +719,16 @@ app.reqStatic=async function() {
   if(req.method=='OPTIONS'){ res.end(); return ;}
 
   var strHashIn=getETag(req.headers);
-  //var keyCache=pathName; if(pathName==='/'+leafManifest) keyCache=wwwSite+keyCache;    // pathName==='/'+leafSiteSpecific || 
-  var keyCache=boSiteDependant?wwwSite+pathName:pathName; 
-  if(!(keyCache in CacheUri)){
-    var filename=pathName.substr(1);
-    var [err]=await readFileToCache(filename);
-    if(err) {
-      if(err.code=='ENOENT') {res.out404(); return;}
-      if('host' in req.headers) console.error('Faulty request from'+req.headers.host);
-      if('Referer' in req.headers) console.error('Referer:'+req.headers.Referer);
-      res.out500(err); return;
-    }
+  var keyCache=boSiteDependant?wwwSite+pathName:pathName.substr(1); 
+  var [err, objT]=await CacheUri.getWAutoSet(keyCache);
+  if(err) {
+    if(err.code=='ENOENT') {res.out404(); return;}
+    if('host' in req.headers) console.error('Faulty request from'+req.headers.host);
+    if('Referer' in req.headers) console.error('Referer:'+req.headers.Referer);
+    res.out500(err); return;
   }
-  var {buf, type, strHash, boZip, boUglify}=CacheUri[keyCache];
+  //if(typeof objT.buf=='undefined') debugger;
+  var {buf, type, strHash, boZip, boUglify}=objT;
   if(strHash===strHashIn){ res.out304(); return; }
   var mimeType=MimeType[type];
   if(typeof mimeType!='string') console.log('type: '+type+', mimeType: ', mimeType);
@@ -1228,7 +1226,7 @@ app.reqStat=async function(){
     // If boDbg then set vTmp=0 so that the url is the same, this way the debugger can reopen the file between changes
 
     // Include stylesheets
-  var pathTmp='/stylesheets/style.css', vTmp=CacheUri[pathTmp].strHash; if(boDbg) vTmp=0;    Str.push('<link rel="stylesheet" href="'+uSiteCommon+pathTmp+'?v='+vTmp+'" type="text/css">');
+  var pathTmp='stylesheets/style.css', vTmp=CacheUri[pathTmp].strHash; if(boDbg) vTmp=0;    Str.push(`<link rel="stylesheet" href="${uSiteCommon}/${pathTmp}?v=${vTmp}" type="text/css">`);
 
     // Include site specific JS-files
   //var uSite=req.strSchemeLong+wwwSite;
@@ -1237,7 +1235,7 @@ app.reqStat=async function(){
     // Include JS-files
   var StrTmp=['lib.js', 'libClient.js'];
   for(var i=0;i<StrTmp.length;i++){
-    var pathTmp='/'+StrTmp[i], vTmp=CacheUri[pathTmp].strHash; if(boDbg) vTmp=0;    Str.push('<script type="module" src="'+uSiteCommon+pathTmp+'?v='+vTmp+'" crossorigin="anonymous" async></script>');  // crossorigin : to make request cors (not needed really)
+    var pathTmp=StrTmp[i], vTmp=CacheUri[pathTmp].strHash; if(boDbg) vTmp=0;    Str.push(`<script type="module" src="${uSiteCommon}/${pathTmp}?v=${vTmp}" crossorigin="anonymous" async></script>`);  // crossorigin : to make request cors (not needed really)
   }
 
   Str.push('<script type="module" src="'+uSiteCommon+'/lib/foundOnTheInternet/sortable.js" crossorigin="anonymous" async></script>');
