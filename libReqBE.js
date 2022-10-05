@@ -427,6 +427,7 @@ ReqBE.prototype.setStrLang=async function(inObj){
   //if('Id' in inObj && inObj.Id instanceof Array && inObj.Id.length) var Id=inObj.Id; else { return [new ErrorClient('setStrLang: no files')]; }
   if(!(Id instanceof Array) || Id.length==0 || typeof Id[0]!='string') { return [new ErrorClient('no files')]; }
   if(strLang.length==0) { return [new ErrorClient('strLang not set / empty')]; }
+  if(strLang.length!=2) { return [new ErrorClient('strLang should be two characters long')]; }
   strLang=myJSEscape(strLang);
 
   var Arg=[{_id:{$in:Id}}, {$set:{strLang}}];
@@ -2169,12 +2170,23 @@ app.loadFrFiles=async function(FileOrg){
       var [err, result]=await collectionSite.insertMany(ObjCsvData.site, {session:sessionMongo}).toNBP();    if(err) return [err];
     }
 
-    if(ObjCsvData.page){
-      ObjCsvData.page.forEach((obj,i)=>{   obj.pageName=myEscaper.unescape(obj.pageName);     });   // Unescape pageName
+      // Checking if there actually is a site with boDefault.
+    var Arg=[{boDefault:true}, {projection:{_id:0, boTLS:1, siteName:"$_id", www:1}, session:sessionMongo}];
+    var [err, objSiteDefault]=await collectionSite.findOne(...Arg).toNBP();   if(err) return [err];
+    if(!objSiteDefault) return [new Error('Default site not found')];
+    var siteNameDefault=objSiteDefault.siteName;
 
-      if(ObjCsvData.page.length!=FilePage.length) return [new Error("ObjCsvData.page.length!=FilePage.length")];
-      var [err]=await storePageMultFrBU(sessionMongo, FilePage, ObjCsvData.page);  if(err) return [err];   // Insert pages
+      // Check that page collection is empty
+    // var Arg=[{}, {session:sessionMongo}];
+    // var [err, nPage]=await collectionPage.countDocuments(...Arg).toNBP();   if(err) return [err];
+    // if(nPage!==0) {debugger; return [new Error('The page collection was expected to be empty when uploading pages.')]; }
+
+    var [err, Id, Data]=await storePageMult_NoMetaWork(sessionMongo, FilePage, siteNameDefault);   if(err) return [err];
+    if(ObjCsvData.page){
+      var [err]=await updatePageMetaMult(sessionMongo, ObjCsvData.page, siteNameDefault);   if(err) return [err];
     }
+    var [err]=await storePageMult_MetaWork(sessionMongo, FilePage, Id, Data);   if(err) return [err];
+
 
       // Insert images
     for(var i=0;i<FileImg.length;i++){
@@ -2289,6 +2301,8 @@ app.csvParseMyWType=async function(oFile){
 }
 
 
+
+
 app.storePageMultFrBU=async function(sessionMongo, FilePage, PageMeta){
   var tNow=nowSFloored(); //unixNow();
 
@@ -2339,14 +2353,14 @@ app.storePageMultFrBU=async function(sessionMongo, FilePage, PageMeta){
       // Page
     var objPage=copyObjWMongoTypes(app.InitCollection.Page.objDefault);
     console.log(i+' '+idPage);
-    var {boOW, boOR, boSiteMap, tCreated, tMod, tLastAccess, nAccess}=PageMetaByIdPage[idPage];
+    var {boOW, boOR, boSiteMap, strLang, tCreated, tMod, tLastAccess, nAccess}=PageMetaByIdPage[idPage];
     var idSite=siteName;
 
       // Some easy to calculate data
     var size=strEditText.length;
     var boTalk=isTalk(pageName),  boTemplate=isTemplate(pageName);
 
-    extend(objPage, {_id:idPage, boOW, boOR, boSiteMap, tCreated, tMod, tLastAccess, nAccess, idSite, pageName, size, boTalk, boTemplate});
+    extend(objPage, {_id:idPage, boOW, boOR, boSiteMap, strLang, tCreated, tMod, tLastAccess, nAccess, idSite, pageName, size, boTalk, boTemplate});
     Page[i]=objPage;
   }
 
@@ -2361,6 +2375,167 @@ app.storePageMultFrBU=async function(sessionMongo, FilePage, PageMeta){
   for(var i=0;i<Data.length;i++){
     var {_id:idFileWiki, data:strEditText}=Data[i];
     var objPage=Page[i];
+    var {idSite, pageName, boTalk, boTemplate, boOW, tMod, size, _id:idPage}=objPage;
+    if(idFileWiki==0)console.log("idFileWiki==0");
+  
+      // Assign boTalkExist
+    if(!boTalk){
+      var strPre=boTemplate?'template_talk:':'talk:', talkPage=strPre+pageName, idTalk=(idSite+":"+talkPage).toLowerCase();
+      var [err, objPageTalk]=await collectionPage.findOne({_id:idTalk.toLowerCase()}, {session:sessionMongo}).toNBP();   if(err) return [err];
+      var boTalkExist=Boolean(objPageTalk);
+    } else {var boTalkExist=false;}
+
+
+      // parse
+    var arg={strEditText, idSite, boOW};
+    var [err, {strHtmlText, IdChildLax, IdChild, StrImageLC}]=await parse(sessionMongo, arg); if(err) return [err];
+    var strHashParse=md5(strHtmlText);
+
+    var nChild=IdChild.length, nImage=StrImageLC.length; 
+    var StrImageStub=[], StrPagePrivate=[];
+    
+
+      // Write File data
+    var Arg = [{ data:strHtmlText }, {session:sessionMongo}];
+    var [err, result]=await collectionFileHtml.insertOne(...Arg).toNBP();   if(err) return [err];
+    var idFileHtml=Arg[0]._id;
+
+
+    var strHash='fromBU', tModCache=tNow, boOther=false;
+  
+    var objRevNew={ summary:"",signature:"",boOther,idFileWiki,tMod,idFileHtml,tModCache,strHashParse,strHash,size };
+    var arrRevision=[objRevNew], nRevision=1, lastRev=0;
+
+
+      // Make changes to current page
+    extend(objPage, {  arrRevision, nRevision, lastRev, IdChild, IdChildLax, StrImage:StrImageLC, StrImageStub, nChild, nImage, boTalkExist, idFileWiki, idFileHtml, boOther, tMod, tModCache, strHashParse, strHash, size});
+    var Arg=[{_id:idPage}, {$set:objPage}, {session:sessionMongo}]; //, {upsert:true, new:true}
+    var [err, result]=await collectionPage.updateOne(...Arg).toNBP();   if(err) return [err];
+
+  }
+
+    // Create data for statistics (IdParent)
+  for(var i=0;i<Data.length;i++){
+    var objPage=Page[i];
+    var { pageName, _id:idPage}=objPage;
+
+      // Query to get parents
+    var Arg=[{IdChildLax:idPage}, {projection:{_id:1}, session:sessionMongo}];
+    var cursor=collectionPage.find(...Arg);
+    var [err, items]=await cursor.toArray().toNBP();   if(err) return [err];
+    var IdParent=items.map(it=>{return it._id;}),    nParent=IdParent.length;
+      // Make changes to current page
+    var Arg=[{_id:idPage}, {$set:{ IdParent, nParent}}, {session:sessionMongo}]; //, {upsert:true, new:true}
+    var [err, result]=await collectionPage.updateOne(...Arg).toNBP();   if(err) return [err];
+  }
+
+  return [null];
+}
+
+
+
+
+app.storePageMult_NoMetaWork=async function(sessionMongo, FilePage, siteNameDefault){
+  var tNow=nowSFloored();
+
+    // Create three arrays: 
+    //   Data (data for the FileWiki collection)
+    //   Page (data for the Page collection)
+    //   Id (not really needed)
+  var Data=Array(FilePage.length), Page=Array(FilePage.length), Id=Array(FilePage.length)
+  for(var i=0;i<FilePage.length;i++){
+    var {strName, bufFrZip, path}=FilePage[i];
+    var idPageProt=strName.replace(RegExp('.txt$','i'),''), {siteName, pageName}=parsePageNameHD(idPageProt);
+
+    if(siteName.length==0) {siteName=siteNameDefault; idPageProt=siteName+":"+pageName;}
+    var idPage=idPageProt.toLowerCase();
+    Id[i]=idPage;
+
+
+    if(typeof bufFrZip=="undefined"){
+      var [err, buf]=await fsPromises.readFile(path).toNBP();    if(err) return [err];
+    }else{
+        //var buf=Buffer.from(fileInZip._data,'binary');
+        //var buf=Buffer.from(bufFrZip,'binary')
+        var buf=bufFrZip
+    }
+    var data=buf;
+
+      // Data
+    //var strEditText=data.toString();
+    var strEditText=new TextDecoder().decode(data);
+    Data[i]={idPage, data:strEditText};
+
+
+      // Page
+    var objPage=copyObjWMongoTypes(app.InitCollection.Page.objDefault);
+    console.log(i+' '+idPage);
+    var idSite=siteName;
+
+      // Some easy to calculate data
+    var size=strEditText.length;
+    var boTalk=isTalk(pageName),  boTemplate=isTemplate(pageName);
+
+    extend(objPage, {_id:idPage, idSite, pageName, size, boTalk, boTemplate, tCreated:tNow, tMod:tNow, tLastAccess:tNow});
+    Page[i]=objPage;
+  }
+  if(FilePage.length){
+    var [err, result]=await collectionFileWiki.insertMany(Data, {session:sessionMongo}).toNBP();   if(err) return [err];
+    for(var i=0;i<Data.length;i++){ Page[i].idFileWiki=Data[i]._id; }  // Note! "_id" was written to each element in the above operation.
+    var [err, result]=await collectionPage.insertMany(Page, {session:sessionMongo}).toNBP();   if(err) return [err];
+  }
+
+  return [null, Id, Data]
+}
+
+app.updatePageMetaMult=async function(sessionMongo, PageMeta, siteNameDefault){
+
+  PageMeta.forEach((obj,i)=>{   obj.pageName=myEscaper.unescape(obj.pageName);     });   // Unescape pageName
+
+  for(var obj of PageMeta){ 
+    obj.tCreated=new Date(obj.tCreated*1000); obj.tMod=new Date(obj.tMod*1000); obj.tLastAccess=new Date(obj.tLastAccess*1000);
+    if(obj.siteName.length==0) {obj.siteName=siteNameDefault;}
+    var idPage=(obj.siteName+":"+obj.pageName).toLowerCase();
+
+    //var {boOW, boOR, boSiteMap, strLang, tCreated, tMod, tLastAccess, nAccess}=obj;
+    var objPage=extend({}, obj);
+    var Arg=[{_id:idPage}, {$set:objPage}, {session:sessionMongo}]; //, {upsert:true, new:true}
+    var [err, result]=await collectionPage.updateOne(...Arg).toNBP();   if(err) return [err];
+    console.log(idPage+' meta updated')
+  }
+
+  return [null]
+}
+
+app.storePageMult_MetaWork=async function(sessionMongo, FilePage, Id, Data){
+  var tNow=nowSFloored(); //unixNow();
+
+  //var Id=Data.map(it=>{return it.idPage;});
+
+  var Arg=[{_id:{$in:Id}}, {projection:{idSite:1, pageName:1, boTalk:1, boTemplate:1, boOW:1, tMod:1, size:1, idPage:"$_id"}, session:sessionMongo}];
+  var cursor=collectionPage.find(...Arg);
+  var [err, Page]=await cursor.toArray().toNBP();   if(err) return [err];
+  //var Page=items.map(it=>{return it._id;});
+
+    // Sort Page by idPage
+  var PageByIdPage={};
+  for(var obj of Page){ 
+    var {idPage}=obj;
+    //obj.tCreated=new Date(obj.tCreated*1000); obj.tMod=new Date(obj.tMod*1000); obj.tLastAccess=new Date(obj.tLastAccess*1000);
+
+    //if(siteName.length==0) {siteName=siteNameDefault;}
+    //var idPageTmp=(siteName+":"+pageName).toLowerCase();
+    PageByIdPage[idPage]=obj;
+  }
+
+    // Assign boTalkExist
+    // Parse data (Creating: strHtmlText, IdChildLax, IdChild, StrImage)
+    // Create arrRevision
+  for(var i=0;i<Data.length;i++){
+    var {_id:idFileWiki, data:strEditText}=Data[i];
+    //var {strName, bufFrZip, path}=FilePage[i];
+    var idPage=Id[i]
+    var objPage=PageByIdPage[idPage];
     var {idSite, pageName, boTalk, boTemplate, boOW, tMod, size, _id:idPage}=objPage;
     if(idFileWiki==0)console.log("idFileWiki==0");
   

@@ -1,5 +1,21 @@
 
 
+* {box-sizing:border-box}
+
+html {height:auto}
+html, body { -webkit-overflow-scrolling: touch; }
+html, body { -webkit-appearance:none}
+/* -webkit-appearance:none is required to make disabled buttons have grey text on Safari. */
+html, body {overscroll-behavior: contain;}
+
+body { -webkit-text-size-adjust: 100%; }
+
+select, button, input  {color: inherit} /*Removing blue text in buttons ... on Safari*/
+:disabled {color:grey}
+input, button, textarea, select { font: inherit; }  /* Preventing zoom, especially on Safari. */
+  
+
+
 /* images */
 table.floatnone {
 	display: inline-block;
@@ -178,9 +194,7 @@ pre {
 
 
 /*body {font-size:100%}*/
-body {	font-family:verdana, arial, helvetica; overscroll-behavior: contain;}
-body { -webkit-text-size-adjust: 100%; }
-body { -webkit-overflow-scrolling: touch; }
+body {	font-family:verdana, arial, helvetica;}
 
 .fillScreen { height:100%;overflow:hidden}
 
@@ -209,7 +223,9 @@ background:#ddd;
 
 button::-moz-focus-inner {   padding: 0;    border: 0  } /*Making firefox buttons behave like other browsers*/
 
-input[type='text'],input[type='number'],textarea {font-size:16px;}
+
+
+input[type='text'], input[type='number'], input[type='password'], textarea {font-size:16px;}
 
 div.aRPassword{
   border:black 2px solid;
@@ -250,9 +266,9 @@ tbody,thead {border-width:inherit;border-style:inherit }
 
 .eye {font-family:courier; font-size:90%; letter-spacing:-.5em; transform:translate(0px, 0em) rotate(90deg); display:block;width:1.1em;text-align:start}
 
-button, button-toggle, select { box-sizing:border-box; height:2.5em; font-size:0.8em; margin:0.5 0.5; padding:0 0.2em; font-size: inherit;vertical-align:middle;background-color:#eee;border-radius:0.4em;user-select:none; display:inline-flex; align-items: center; justify-content: center;}
+button, button-toggle, select { height:2.5em; font-size:0.8em; margin:0.5 0.5; padding:0 0.2em; font-size: inherit;vertical-align:middle;background-color:#eee;border-radius:0.4em;user-select:none; display:inline-flex; align-items: center; justify-content: center;}
 .rowButtonFeat  span { vertical-align:bottom}
-.rowButtonFeat button, .rowButtonFeat select { box-sizing:border-box; min-height:1.5em; font-size:0.8em; margin:0.5 0.5; padding:0 0.2em; font-size: inherit;vertical-align:bottom;background-color:#eee;border-radius:0.4em; display:unset}
+.rowButtonFeat button, .rowButtonFeat select { min-height:1.5em; font-size:0.8em; margin:0.5 0.5; padding:0 0.2em; font-size: inherit;vertical-align:bottom;background-color:#eee;border-radius:0.4em; display:unset}
 .rowButtonFeat button > span:first-child { vertical-align:baseline;line-height:2.3em}
 .rowButtonFeat button > span:nth-child(2) { vertical-align:baseline;line-height:2.3em}
 
@@ -292,7 +308,7 @@ border-top-right-radius: var(--notchSizeR);*/
 .listHead span{  vertical-align:top}
 .listHead {margin:.5em 0 0; } /* position:sticky; position:-webkit-sticky; top:57px; z-index:1 */
 .listHead span {cursor:pointer}
-.listHead img {transform:scale(1.5,1.5);margin:0.3em auto;display:block}
+.listHead img {margin:0.3em auto;display:block}
 
 .pageList span, .imageList span { display:inline-block}
 
@@ -310,8 +326,10 @@ border-top-right-radius: var(--notchSizeR);*/
 
   /* parentRow, pageHead and pageList */
 .pageList span[name=nChild], .pageList span[name=nImage] { min-width:1.5em}  /*float: right;*/
-.pageList span[name=boOR], .pageList span[name=boOW], .pageList span[name=boSiteMap] { width:.7em;font-family:courier}
-.pageList span[name=siteName] { margin:0 0.2em; }
+.pageList span[name=boOR], .pageList span[name=boOW], .pageList span[name=boSiteMap] { width:1.2em;font-family:courier}
+.pageList span[name=siteName] { margin:0 0.2em; min-width: 1.7em; }
+.pageList span[name=strLang] { margin:0 0.2em; min-width: 1.2em; }
+.pageList span[name=link] {  min-width: 2em; }
 
 .pageList span[name=nChild] > button, .pageList span[name=nImage] > button { padding:0; min-width:1.4em}
 .pageList span[name=nChild] button {background: #eeeeee;}
@@ -329,7 +347,7 @@ border-top-right-radius: var(--notchSizeR);*/
 .imageList span[name=nParentI] button {background: lightblue;}
 .pageList span[name=cb], .imageList span[name=cb] { margin-left:0.5em; width:1.4em;}
 
-.pageList span[name=version] {  margin:0 0.2em;}  /*float: right;*/
+.pageList span[name=version] {  margin:0 0.2em; min-width:1.1em;}  /*float: right;*/
 .imageList span[name=boOther] {  margin-left:0.5em; margin-right:0.5em }  /*float: right;*/
   
   /* pageList and imageList */
@@ -341,9 +359,8 @@ border-top-right-radius: var(--notchSizeR);*/
 
 
 
-.listHead span[name=siteName] { margin-left:1em}
 .listHead span[name=link] { margin-left:2em}
-.listHead span[name=version], .listHead span[name=boOther] { min-width:1.5em;}
+/*.listHead span[name=version], .listHead span[name=boOther] { }*/
 .listHead span[name=execute] { visibility:hidden}
 .listHead span[name=image] { visibility:hidden}
 
@@ -411,7 +428,6 @@ border-top-right-radius: var(--notchSizeR);*/
   top: 50%;
   left: 50%;
   background-color: #eeeeee;
-  box-sizing: border-box;
   border:1px solid;
   z-index: 9002;
   transform: translate(-50%,-50%);

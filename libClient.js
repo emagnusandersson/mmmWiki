@@ -207,7 +207,7 @@ app.createElement=function(str){ return document.createElement(str); }
 app.createFragment=function(){ var fr=document.createDocumentFragment(); if(arguments.length) fr.append(...arguments); return fr; }
 
 app.getNodeIndex=function( elm ){ return [...elm.parentNode.childNodes].indexOf(elm); }
-Element.prototype.myIndex=function() {return [...this.parentNode.childNodes].indexOf(this);}
+Element.prototype.myIndex=function() {return [...this.parentNode.children].indexOf(this);}
 
 Element.prototype.offset=function() {
   var rect = this.getBoundingClientRect();

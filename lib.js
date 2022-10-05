@@ -371,31 +371,7 @@ app.parsePageNameHD=function(strPage){ // parsePageNameHD (PageNameHD = pageName
   return obj;
 }
 
-app.csvParseMy=function(strCSV){
-  var arrStr=[];
-  var replaceStr=function(m, str){
-    var i=arrStr.length;
-    arrStr.push(str);
-    return `"${i}"`;
-  }
-  var putBackStr=function(m, str){ return arrStr[Number(str)];  }
 
-  //strCSV="0, \"a\\\"b\", 1, \"a\"";  // for testing
-  var regString=/"(.*?)(?<!\\)"/g;
-  strCSV=strCSV.trim();
-  strCSV = strCSV.replace(regString, replaceStr);
-  
-  var arrRow=strCSV.split('\n');
-  arrRow=arrRow.map(function(strRow){
-    var row=strRow.trim().split(',');
-    row=row.map(function(it){
-      it = it.replace(/^"(.*)"$/, putBackStr); return it;
-    });
-    return row;
-  });
-  
-  return arrRow;
-}
 
 app.formatCSVAsHeadPrefix=function(arrHead,arrRow){
   var arrType=Array(arrHead.length);
