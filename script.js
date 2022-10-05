@@ -9,7 +9,7 @@ import concat from 'concat-stream';
 //import requestMod from 'request';
 import fetch from 'node-fetch';
 import formidable from "formidable";
-import crypto from 'crypto';
+import myCrypto from 'crypto';
 import zlib from 'zlib';
 //import imageSize from 'image-size';
 //import NodeZip from 'node-zip';
@@ -34,7 +34,7 @@ import v8 from 'v8'
 
 
 app.extend=Object.assign;
-extend(app, {http, url, path, fsPromises, concat, fetch, formidable, crypto, zlib, JSZip, redis, Streamify, serialize, validator, mime, gm, im, temporary, ejs, mongodb, mongoSanitize});
+extend(app, {http, url, path, fsPromises, concat, fetch, formidable, myCrypto, zlib, JSZip, redis, Streamify, serialize, validator, mime, gm, im, temporary, ejs, mongodb, mongoSanitize});
 var {MongoClient, ObjectId, Long, Int32} = mongodb;
 extend(app, {MongoClient, ObjectId, Long, Int32});
 

@@ -143,7 +143,7 @@ app.MimeType={
 };
 
 
-app.md5=function(str){return crypto.createHash('md5').update(str).digest('hex');}
+app.md5=function(str){return myCrypto.createHash('md5').update(str).digest('hex');} // One could use Node.js built-in crypto perhaps?!
 
 
   // Redis v3
@@ -340,4 +340,34 @@ app.makeTBody=function(arrObj, StrHead){
 app.makeTable=function(arrObj, StrHead=null){
   if(arrObj.length && !StrHead) StrHead=Object.keys(arrObj[0]);
   return "<table>"+makeTHead(StrHead)+makeTBody(arrObj, StrHead)+"</table>";
+}
+
+
+
+app.csvParseMy=function(strCSV){  // Should be in lib.js. Although as long as Safari doesn't compile if RegExp-lookbehindes are seen, I workaround the problem by placing this function here.  
+  var arrStr=[];
+  var replaceStr=function(m, str){
+    var i=arrStr.length;
+    arrStr.push(str);
+    return `"${i}"`;
+  }
+  var putBackStr=function(m, str){ return arrStr[Number(str)];  }
+
+  //strCSV="0, \"a\\\"b\", 1, \"a\"";  // Example of string for testing
+  var regString=/"(.*?)(?<!\\)"/g;  // My favorite solution. Beginning with a '"', ending with a '"' (wo '\' to the left of it).  // Doesn't work on Safari
+  //var regString=RegExp('"(.*?)(?<!\\\\)"', 'g');  // Compiles on Safari, but won't work when the program is run.
+  //var regString=/"(.*?[^\\])"/g; // Works on Safari, but doesn't match an empty string '""' (which is perhaps not needed in this perticular example since the strings are simply put back in.)
+  strCSV=strCSV.trim();
+  strCSV = strCSV.replace(regString, replaceStr);
+  
+  var arrRow=strCSV.split('\n');
+  arrRow=arrRow.map(function(strRow){
+    var row=strRow.trim().split(',');
+    row=row.map(function(it){
+      it = it.replace(/^"(.*)"$/, putBackStr); return it;
+    });
+    return row;
+  });
+  
+  return arrRow;
 }

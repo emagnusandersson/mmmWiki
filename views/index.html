@@ -9,18 +9,6 @@
 <meta name="theme-color" content="#fff"/>
 <link rel="manifest" href="<%=uManifest%>"/>
 <%-strMetaNoIndex%>
-<style>
-  :root { --menuMaxWidth: 500px;}
-  /*.mainDiv { margin: 0em auto; height: 100%; width:100%; display:flex; flex-direction:column; max-width:var(--maxWidth) }*/
-</style>
-<script>window.app=window; app.extend=Object.assign;</script>
-<link rel="canonical" href="<%=uCanonical%>"/>
-<link rel="stylesheet" href="<%=uStyle%>" type="text/css">
-<script type="module" src="<%=uFilter%>" async crossorigin="anonymous"></script>
-<script type="module" src="<%=uLib%>" async crossorigin="anonymous"></script>
-<script type="module" src="<%=uLibClient%>" async crossorigin="anonymous"></script>
-<script type="module" src="<%=uCommon%>" async crossorigin="anonymous"></script>
-<script type="module" src="<%=uClient%>" async crossorigin="anonymous"></script>
 <meta name="description" content="<%=strDescription%>"/>
 <%-strTracker%>
 <script>
@@ -29,6 +17,18 @@ function indexAssign(){
   extend(window, tmp);
 }
 </script>
+<style>
+  :root { --menuMaxWidth: 500px;}
+  /*.mainDiv { margin: 0em auto; height: 100%; width:100%; display:flex; flex-direction:column; max-width:var(--maxWidth) }*/
+</style>
+<script>window.app=window; app.extend=Object.assign;</script>
+<link rel="canonical" href="<%=uCanonical%>"/>
+<link rel="stylesheet" href="<%=uStyle%>" type="text/css">
+<script type="module" src="<%=uFilter%>" crossorigin="anonymous"></script>
+<script type="module" src="<%=uLib%>" crossorigin="anonymous"></script>
+<script type="module" src="<%=uLibClient%>" crossorigin="anonymous"></script>
+<script type="module" src="<%=uCommon%>" crossorigin="anonymous"></script>
+<script type="module" src="<%=uClient%>" crossorigin="anonymous"></script>
 </head>
 <body style="margin:0">
 <title><%=strTitle%></title>

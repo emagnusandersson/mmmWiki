@@ -18,16 +18,17 @@
 
 // redis interface 4.0 does not work
 // In loadFrFiles: FilePage are not loaded if ObjCsvData.page is not set (thus loading pages (not in zip) (like uploadAdmin of pages) will not work).
-// inert attribute
-// Reduce the need of user-agent-string
-// SanitizerAPI (only supported by chrome)
-// Element.isVisible (not yet supported by safari and firefox)
-// Use Navigation API instead of History API (only supported by chrome)
 // Values in Page that are cached from values in Revision (tMod etc) should be rename to tMod_cached
-// substr depricated ?!?!?
+
+// New functions: bulkWritePageMeta, bulkWriteImageMeta
+// storePageMultFrBU should be replaced with: storePageMult_NoMetaWork, bulkWritePageMeta, storePageMult_MetaWorkOnly
 
 // After googling "node.js connect debugger to running process" I found:
 //   kill -USR1 <node-pid>   // starts debugger
+
+// speechelo.com (Instantly Generate Voice from Text)
+// start every css file with *, *::before, *::after {box-sizing:border-box}
+// start every css file with table {collapsable:collapsable}
 
 /******************************************************************************
  * BU (BackUp requests):
@@ -236,7 +237,7 @@ app.reqBUMeta=async function(strArg) {
     if(strSiteDefault=="") {arrRet=[new Error('Default site not found')]; break stuff;}
 
       // Get data from collectionPage
-    var Arg=[ {}, {projection:{_id:0, siteName:"$idSite", pageName:1, boOR:1, boOW:1, boSiteMap:1, tCreated:1, tMod:1, tLastAccess:1, nAccess:1}, session:sessionMongo}];
+    var Arg=[ {}, {projection:{_id:0, siteName:"$idSite", pageName:1, boOR:1, boOW:1, boSiteMap:1, tCreated:1, tMod:1, tLastAccess:1, nAccess:1, strLang:1}, session:sessionMongo}];
     var cursor=collectionPage.find(...Arg);
     var [err, matPage]=await cursor.toArray().toNBP();   if(err) {arrRet=[err]; break stuff;};
 
@@ -278,9 +279,9 @@ app.reqBUMeta=async function(strArg) {
   StrData.push(StrFile.join("\n")); StrFileName.push('site.csv');
 
     // Page
-  var StrFile=['"boOR","boOW","boSiteMap","tCreated","tMod","tLastAccess","nAccess","siteName","pageName"'];
+  var StrFile=['"boOR","boOW","boSiteMap","strLang","tCreated","tMod","tLastAccess","nAccess","siteName","pageName"'];
   for(var k=0;k<matPage.length;k++){
-    var r=matPage[k], StrRow=[Boolean(r.boOR), Boolean(r.boOW), Boolean(r.boSiteMap), r.tCreated, r.tMod, r.tMod, r.nAccess, myEscapeF(r.siteName), myEscapeF(r.pageName)];
+    var r=matPage[k], StrRow=[Boolean(r.boOR), Boolean(r.boOW), Boolean(r.boSiteMap), myEscapeF(r.strLang), r.tCreated, r.tMod, r.tMod, r.nAccess, myEscapeF(r.siteName), myEscapeF(r.pageName)];
     StrFile.push(StrRow.join(','));
   } 
   StrData.push(StrFile.join("\n")); StrFileName.push('page.csv');
@@ -1237,15 +1238,15 @@ app.reqStat=async function(){
 
     // Include site specific JS-files
   //var uSite=req.strSchemeLong+wwwSite;
-  //var keyCache=req.strSite+'/'+leafSiteSpecific, vTmp=CacheUri[keyCache].strHash; if(boDbg) vTmp=0;  Str.push('<script type="module" src="'+uSite+'/'+leafSiteSpecific+'?v='+vTmp+'" async></script>');
+  //var keyCache=req.strSite+'/'+leafSiteSpecific, vTmp=CacheUri[keyCache].strHash; if(boDbg) vTmp=0;  Str.push('<script type="module" src="'+uSite+'/'+leafSiteSpecific+'?v='+vTmp+'"></script>');
 
     // Include JS-files
   var StrTmp=['lib.js', 'libClient.js'];
   for(var i=0;i<StrTmp.length;i++){
-    var pathTmp=StrTmp[i], vTmp=CacheUri[pathTmp].strHash; if(boDbg) vTmp=0;    Str.push(`<script type="module" src="${uSiteCommon}/${pathTmp}?v=${vTmp}" crossorigin="anonymous" async></script>`);  // crossorigin : to make request cors (not needed really)
+    var pathTmp=StrTmp[i], vTmp=CacheUri[pathTmp].strHash; if(boDbg) vTmp=0;    Str.push(`<script type="module" src="${uSiteCommon}/${pathTmp}?v=${vTmp}" crossorigin="anonymous"></script>`);  // crossorigin : to make request cors (not needed really)
   }
 
-  Str.push('<script type="module" src="'+uSiteCommon+'/lib/foundOnTheInternet/sortable.js" crossorigin="anonymous" async></script>');
+  Str.push('<script type="module" src="'+uSiteCommon+'/lib/foundOnTheInternet/sortable.js" crossorigin="anonymous"></script>');
 
   Str.push(`</head>
 <body style="margin:0">

@@ -292,7 +292,7 @@ border-top-right-radius: var(--notchSizeR);*/
 .listHead span{  vertical-align:top}
 .listHead {margin:.5em 0 0; } /* position:sticky; position:-webkit-sticky; top:57px; z-index:1 */
 .listHead span {cursor:pointer}
-.listHead img {transform:scale(1.5,1.5);margin:0.3em auto;display:block}
+.listHead img {margin:0.3em auto;display:block}
 
 .pageList span, .imageList span { display:inline-block}
 
@@ -310,8 +310,10 @@ border-top-right-radius: var(--notchSizeR);*/
 
   /* parentRow, pageHead and pageList */
 .pageList span[name=nChild], .pageList span[name=nImage] { min-width:1.5em}  /*float: right;*/
-.pageList span[name=boOR], .pageList span[name=boOW], .pageList span[name=boSiteMap] { width:.7em;font-family:courier}
-.pageList span[name=siteName] { margin:0 0.2em; }
+.pageList span[name=boOR], .pageList span[name=boOW], .pageList span[name=boSiteMap] { width:1.2em;font-family:courier}
+.pageList span[name=siteName] { margin:0 0.2em; min-width: 1.7em; }
+.pageList span[name=strLang] { margin:0 0.2em; min-width: 1.2em; }
+.pageList span[name=link] {  min-width: 2em; }
 
 .pageList span[name=nChild] > button, .pageList span[name=nImage] > button { padding:0; min-width:1.4em}
 .pageList span[name=nChild] button {background: #eeeeee;}
@@ -329,7 +331,7 @@ border-top-right-radius: var(--notchSizeR);*/
 .imageList span[name=nParentI] button {background: lightblue;}
 .pageList span[name=cb], .imageList span[name=cb] { margin-left:0.5em; width:1.4em;}
 
-.pageList span[name=version] {  margin:0 0.2em;}  /*float: right;*/
+.pageList span[name=version] {  margin:0 0.2em; min-width:1.1em;}  /*float: right;*/
 .imageList span[name=boOther] {  margin-left:0.5em; margin-right:0.5em }  /*float: right;*/
   
   /* pageList and imageList */
@@ -341,9 +343,8 @@ border-top-right-radius: var(--notchSizeR);*/
 
 
 
-.listHead span[name=siteName] { margin-left:1em}
 .listHead span[name=link] { margin-left:2em}
-.listHead span[name=version], .listHead span[name=boOther] { min-width:1.5em;}
+/*.listHead span[name=version], .listHead span[name=boOther] { }*/
 .listHead span[name=execute] { visibility:hidden}
 .listHead span[name=image] { visibility:hidden}
 

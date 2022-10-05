@@ -148,6 +148,18 @@
             "args": ["--load=meta/site.csv"],
             //"console": "integratedTerminal",
             "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "load hhh.txt",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/script.js",
+            "args": ["--load=hhh.txt"],
+            //"console": "integratedTerminal",
+            "outputCapture": "std"
         }
     ]
 }
