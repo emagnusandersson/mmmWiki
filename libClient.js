@@ -224,7 +224,7 @@ Element.prototype.visibilityToggle=function(b){
 
 Node.prototype.detach=function(){ this.remove(); return this; }
 
-app.isVisible=function(el) {
+app.isVisible=function(el) {  // Could be replaced with el.isVisible ?!?
   return !!( el.offsetWidth || el.offsetHeight || el.getClientRects().length );
 }
 
@@ -552,7 +552,7 @@ app.popupDragExtend=function(elBubble,strTitle,elParent){
   
   var arrDragBar=[elDragBarA, elDragBarB, elDragBarC]; arrDragBar.forEach(ele=>ele.css({ background:'darkgrey', flex:'1 1 33%'}));
   arrDragBar.push(elDeleteButton); arrDragBar.forEach(ele=>ele.css({ height:'100%', 'box-sizing':'border-box', 'text-align':'center'})); 
-  if(boIOS) {  arrDragBar.forEach(ele=>ele.css({width:'25%', 'box-sizing':'border-box', display:'inline-block', 'vertical-align':'top'}));  }
+  if(boIOS) {  arrDragBar.forEach(ele=>ele.css({width:'25%', display:'inline-block', 'vertical-align':'top'}));  }
   
   //var fragDragBar=createFragment();
   //fragDragBar.append(elDragBarA, elDragBarB, elDragBarC);

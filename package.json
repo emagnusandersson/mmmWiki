@@ -29,7 +29,8 @@
     "serialize-javascript": "6.0.0",
     "streamify-string": "1.0.1",
     "tmp": "0.2.1",
-    "validator": "13.7.0"
+    "validator": "13.7.0",
+    "v8":""
   },
   "private": true,
   "repository": {

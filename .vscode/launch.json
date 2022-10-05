@@ -31,18 +31,6 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "scriptSetup",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/scriptSetup.js",
-            "args": [""],
-            //"console": "integratedTerminal",
-            "outputCapture": "std"
-        },
-        {
-            "type": "node",
-            "request": "launch",
             "name": "drop",
             "skipFiles": [
                 "<node_internals>/**"
@@ -145,6 +133,7 @@
             ],
             "program": "${workspaceFolder}/script.js",
             "args": ["--load"],
+            //"args": ["--load", "emag_20220831_page"],
             //"console": "integratedTerminal",
             "outputCapture": "std"
         },

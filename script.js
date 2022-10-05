@@ -28,6 +28,7 @@ import ejs from "ejs";
 import mongodb from 'mongodb';
 import mongoSanitize from 'mongo-sanitize';
 import minimist from 'minimist';
+import v8 from 'v8'
 //import {URLPattern} from "urlpattern-polyfill"
 //import mysql from 'mysql';
 
@@ -260,6 +261,7 @@ var [err]=await CacheUri.set(leafCommon, buf, 'js', true, true);   if(err) {  co
 if(boDbg){
   fs.watch('.', makeWatchCB('.', ['filter.js', 'client.js', 'libClient.js', 'lib.js']) );
   fs.watch('stylesheets', makeWatchCB('stylesheets', ['style.css']) );
+
 }
 
   // Write manifest to Cache

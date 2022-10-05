@@ -17,6 +17,17 @@
 // sessionIDR, sessionIDW: Set-Cookie should be called in reqBU, reqBUMeta, reqIndex, reqMonitor and reqStat
 
 // redis interface 4.0 does not work
+// In loadFrFiles: FilePage are not loaded if ObjCsvData.page is not set (thus loading pages (not in zip) (like uploadAdmin of pages) will not work).
+// inert attribute
+// Reduce the need of user-agent-string
+// SanitizerAPI (only supported by chrome)
+// Element.isVisible (not yet supported by safari and firefox)
+// Use Navigation API instead of History API (only supported by chrome)
+// Values in Page that are cached from values in Revision (tMod etc) should be rename to tMod_cached
+// substr depricated ?!?!?
+
+// After googling "node.js connect debugger to running process" I found:
+//   kill -USR1 <node-pid>   // starts debugger
 
 /******************************************************************************
  * BU (BackUp requests):
@@ -339,10 +350,6 @@ var makeOutput=function(objOut, strHtmlText){
   var {objSiteDefault, objSite, objPage}=objOut, {pageName}=objPage; //, {www:wwwSite}=objSite;
 
   var ua=req.headers['user-agent']||''; ua=ua.toLowerCase();
-  var boMSIE=RegExp('msie').test(ua);
-  var boAndroid=RegExp('android').test(ua);
-  var boFireFox=RegExp('firefox').test(ua);
-  //var boIOS= RegExp('iPhone|iPad|iPod','i').test(ua);
   var boIOS= RegExp('iphone','i').test(ua);
 
   var strMetaNoIndex='', boTemplate=RegExp('^template:','i').test(pageName);
@@ -712,7 +719,7 @@ app.reqIndex=async function() {
 app.reqStatic=async function() {
   var {req, res}=this, {wwwSite, pathName, boSiteDependant=false}=req;
 
-  //var RegAllowedOriginOfStaticFile=[RegExp("^https\:\/\/(closeby\.market|gavott\.com)")];
+  //var RegAllowedOriginOfStaticFile=[RegExp("^https\:\/\/(locatabl\.com|gavott\.com)")];
   //var RegAllowedOriginOfStaticFile=[RegExp("^http\:\/\/(localhost|192\.168\.0)")];
   var RegAllowedOriginOfStaticFile=[];
   setAccessControlAllowOrigin(req, res, RegAllowedOriginOfStaticFile);

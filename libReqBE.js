@@ -107,7 +107,7 @@ ReqBE.prototype.go=async function(){
         File.push(file);
       });
 
-      var [err, fields, files]=await new Promise(resolve=>{  form.parse(req, function(...arg){ resolve(arg);});  });    if(err){ this.mesEO(err); return; } 
+      var [err, fields, files]=await new Promise(resolve=>{  form.parse(req, (...arg)=>resolve(arg));  });     if(err){ this.mesEO(err); return; } 
       
       //this.File=files['fileToUpload[]'];
       if('g-recaptcha-response' in fields) this.captchaIn=fields['g-recaptcha-response']; else this.captchaIn='';
@@ -1581,7 +1581,8 @@ ReqBE.prototype.getPageInfo=async function(inObj){  // Used by uploadAdminDiv, b
   if(!(IdPage instanceof Array)) return [new Error("!(IdPage instanceof Array)")];
   //if(IdPage.length==0) return [new Error("IdPage is empty")];
   if(IdPage.length==0) {Ou.FileInfo=[]; return [null, [Ou]];}
-  var objFilter={$or:IdPage};
+  //var objFilter={$or:IdPage};
+  var objFilter={_id:{$in:IdPage}};
   
     // Get All Pages
   var Arg=[objFilter];
@@ -2120,12 +2121,13 @@ app.loadFrFiles=async function(FileOrg){
   // The properties of FileCsv looks like:
   //    {strName, strExt, strData} 
   //    {strName, strExt, path}
-  var FileImg=[], FilePage=[], FileCsv={}, regExt=/^([^\.]+)\.([a-z]+)$/;
+  var FileImg=[], FilePage=[], FileCsv={}, regExt=/^(.+)\.([a-z]+)$/;
   for(var i=0;i<FileOrg.length;i++){
     var {path:strPath, type, name:strName, originalFilename, filepath}=FileOrg[i];
     strName??=originalFilename;
     strPath??=filepath;
-    var Match=regExt.exec(strName), strBase=Match[1], strExt=Match[2].toLowerCase();
+    var Match=regExt.exec(strName); if(Match===null) debugger
+    var strBase=Match[1], strExt=Match[2].toLowerCase();
     if(strExt=='zip') {
       var [err, oZ]=await parseZipFile(strPath); if(err) return [err];
       var KeyCsv=Object.keys(oZ.FileCsv);
@@ -2238,7 +2240,8 @@ app.parseZipFile=async function(strPath){
   var Ou= {FilePage, FileImg, FileCsv};
   for(var j=0;j<Key.length;j++){
     var strFile=Key[j];
-    var Match=regExt.exec(strFile), strBase=Match[1], strExt=Match[2].toLowerCase();
+    var Match=regExt.exec(strFile); if(Match===null) debugger
+    var strBase=Match[1], strExt=Match[2].toLowerCase();
     var fileInZip=FileInZip[strFile];
     if(fileInZip.dir) return [new Error("It is not supposed to be directories in the zip files")];
     //var bufFrZip=Buffer.from(fileInZip._data, 'binary');
@@ -2246,7 +2249,9 @@ app.parseZipFile=async function(strPath){
     if(strExt=="csv") {
       if(StrValidLoadMetaBase.indexOf(strBase)==-1) return [new Error("CSV-file not valid: "+strFile+", (valid ones are: "+StrValidLoadMeta.join(", ")+")")];
       //var bufT=bufData;
-      var strData=bufFrZip.toString(); strData=strData.trim();
+      var strData=new TextDecoder().decode(bufFrZip)
+      //var strData=bufFrZip.toString();
+      strData=strData.trim();
       var oFile={strName:strFile, strExt, strData};
       if(FileCsv[strBase]) return [new Error("Multiple "+strFile)]; else FileCsv[strBase]=oFile;
     }else if(strExt=="txt") {

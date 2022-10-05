@@ -1063,7 +1063,7 @@ var uploadAdminDivExtend=function(el){
   var sendConflictCheckReturnA=function(data){ 
     var FileInfo=data.FileInfo, len=FileInfo.length;
     StrConflict=Array(len);
-    for(var i=0;i<len;i++){ StrConflict[i]=FileInfo[i].pageName;  }     
+    for(var i=0;i<len;i++){ StrConflict[i]=FileInfo[i]._id;  }     
   }
   var sendConflictCheckReturnB=function(data){ 
     var FileInfo=data.FileInfo, len=FileInfo.length;
@@ -2297,7 +2297,6 @@ var imageListExtend=function(el){
       var r=createElement('p');
       var cb=createElement('input').prop('type', 'checkbox').on('click',cbClick);
       //cb.css({'margin-top':'0em','margin-bottom':'0em'}); //'vertical-align':'bottom'
-      //if(boAndroid) cb.css({'-webkit-transform':'scale(2,2)'}); else cb.css({width:'1.4em',height:'1.4em'});
       var buttonNParentI=createElement('button').addClass('aArrow', 'aArrowLeft').prop({strType:'image'}).on('click',goToParentMethod);
       var tdNParentI=createElement('span').myAppend(buttonNParentI).attr('name','nParentI').prop('title','Parents'); 
       var tdCB=createElement('span').prop('valSort',0).myAppend(cb).attr('name','cb');
@@ -3939,16 +3938,14 @@ window.boTouch = Boolean('ontouchstart' in document.documentElement);
 
 
 var ua=navigator.userAgent, uaLC = ua.toLowerCase(); //alert(ua);
-window.boAndroid = uaLC.indexOf("android") > -1;
-window.boFF = uaLC.indexOf("firefox") > -1; 
+app.boAndroid = uaLC.indexOf("android") > -1;
+app.boFF = uaLC.indexOf("firefox") > -1; 
 
 app.boChrome= /chrome/.test(uaLC);
 app.boIOS= /iphone|ipad|ipod/.test(uaLC);
-app.boEpiphany=/epiphany/.test(uaLC);    if(boEpiphany && !boAndroid) boTouch=false;  // Ugly workaround
-//app.boEdge= /\bedg\b/.test(uaLC);
+app.boEpiphany=/epiphany/.test(uaLC);    if(boEpiphany && !boAndroid) boTouch=false;  // Ugly workaround (epiphany=GNOME Web)
 
-
-window.boOpera=RegExp('OPR\\/').test(ua); if(boOpera) boChrome=false; //alert(ua);
+app.boOpera=RegExp('OPR\\/').test(ua); if(boOpera) boChrome=false; //alert(ua);
 
 
 
@@ -3958,20 +3955,20 @@ var boSmallAndroid=0;
 var strMenuOpenEvent=boTouch?'click':'mousedown';
 
 
-var charBackSymbol=boIOS?'◄':'◀';
+var charBackSymbol='◄';
 var strFastBackSymbol=charBackSymbol+charBackSymbol;
 var charFlash='↯';//⚡↯
 var charPublicRead='<span style="font-family:courier">͡°</span>'; //☉͡°
 var charPublicRead='<span class=eye>(∘)</span>'; //☉͡° ·
-var charPublicRead='📖' //'👁'; //'📖'; //👀😶☉͡° · 🕮
-var charPublicWrite='✏️'; // 🔏 🔒 🔓 🔐  🖊 🖋✏✎✐🖉
-var charPromote='📣'; //'🗣️';  //😗😱😮
+var charPublicRead='🕮' //'👁'; //'📖'; //👀😶☉͡° · 📖
+var charPublicWrite='🖉'; // 🔏 🔒 🔓 🔐  🖊 🖋✏✎✐🖉
+var charPromote='🗣️'; //'📣';  //😗😱😮
 var charDelete='✖'; //x, ❌, X, ✕, ☓, ✖, ✗, ✘
 var charClose='✖';
-var charLink='🔗'; //☞🔗
+var charLink='🌍'; //🔗☞🔗
 var charThumbsUp='👍'; //👍☝
 var charThumbsDown='👎'; //👎☟
-var charSpeechBaloon='💬';
+var charSpeechBaloon='🗪'; //💬🗨
 var charCamera='📷';
 var charHourGlass='⏳';
 // charPhone ✆☎☏📱🌍👨‍🔬💻💡👷🏢👨‍💼

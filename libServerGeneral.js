@@ -154,8 +154,16 @@ app.cmdRedis=async function(strCommand, arr){
   });
   //return await redisClient.sendCommand([strCommand, ...arr] ).toNBP();
 }
+  // Redis v4 (with legacy mode)
+app.cmdRedis=async function(strCommand, arr){
+  if(!(arr instanceof Array)) arr=[arr];
+  return await new Promise(resolve=>{
+    redisClient.sendCommand([strCommand, ...arr], (...arg)=>resolve(arg)  ); 
+  });
+  //return await redisClient.sendCommand([strCommand, ...arr] ).toNBP();
+}
 app.getRedis=async function(strVar, boObj=false){
-  var [err,res]=await cmdRedis('GET', [strVar]);  if(boObj) res=JSON.parse(res);  return [err,res];
+  var [err,data]=await cmdRedis('GET', [strVar]);  if(boObj) data=JSON.parse(data);  return [err,data];
 }
 app.setRedis=async function(strVar, val, tExpire=-1){
   if(typeof val!='string') var strA=JSON.stringify(val); else var strA=val;
@@ -174,32 +182,7 @@ app.delRedis=async function(arr){
 }
 
 
-    // Redis v4 (with legacy mode)
-  app.cmdRedis=async function(strCommand, arr){
-    if(!(arr instanceof Array)) arr=[arr];
-    return await new Promise(resolve=>{
-      redisClient.sendCommand([strCommand, ...arr], (...arg)=>resolve(arg)  ); 
-    });
-    //return await redisClient.sendCommand([strCommand, ...arr] ).toNBP();
-  }
-  app.getRedis=async function(strVar, boObj=false){
-    var [err,res]=await cmdRedis('GET', [strVar]);  if(boObj) res=JSON.parse(res);  return [err,res];
-  }
-  app.setRedis=async function(strVar, val, tExpire=-1){
-    if(typeof val!='string') var strA=JSON.stringify(val); else var strA=val;
-    var arr=[strVar,strA];  if(tExpire>0) arr.push('EX',tExpire);   var [err,strTmp]=await cmdRedis('SET', arr);
-    return [err,strTmp];
-  }
-  app.expireRedis=async function(strVar, tExpire=-1){
-    if(tExpire==-1) var [err,strTmp]=await cmdRedis('PERSIST', [strVar]);
-    else var [err,strTmp]=await cmdRedis('EXPIRE', [strVar,tExpire]);
-    return [err,strTmp];
-  }
-  app.delRedis=async function(arr){ 
-    if(!(arr instanceof Array)) arr=[arr];
-    var [err,strTmp]=await cmdRedis('DEL', arr);
-    return [err,strTmp];
-  }
+
   
 
 
@@ -301,14 +284,14 @@ app.setAccessControlAllowOrigin=function(req, res, RegAllowed){
     else {
       for(var i=0;i<RegAllowed.length;i++){ boAllowed=RegAllowed[i].test(http_origin); if(boAllowed) break; }
     }
-    //if(boAllowDbg || http_origin == "https://control.closeby.market" || http_origin == "https://controlclosebymarket.herokuapp.com" || http_origin == "https://emagnusandersson.github.io" ){
+    //if(boAllowDbg || http_origin == "https://control.locatabl.com" || http_origin == "https://controllocatablcom.herokuapp.com" || http_origin == "https://emagnusandersson.github.io" ){
     if(boAllowed){
       res.setHeader("Access-Control-Allow-Origin", http_origin);
       res.setHeader("Vary", "Origin"); 
     }
   }
 }
-//RegAllowedOriginOfStaticFile=[RegExp("^https\:\/\/(control\.closeby\.market|controlclosebymarket\.herokuapp\.com|emagnusandersson\.github\.io)")];
+//RegAllowedOriginOfStaticFile=[RegExp("^https\:\/\/(control\.locatabl\.com|controllocatablcom\.herokuapp\.com|emagnusandersson\.github\.io)")];
 //if(boDbg) RegAllowedOriginOfStaticFile.push(RegExp("^http\:\/\/(localhost|192\.168\.0)"));
 //setAccessControlAllowOrigin(res, req, RegAllowedOriginOfStaticFile);
 
