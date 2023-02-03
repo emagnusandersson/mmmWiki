@@ -363,145 +363,148 @@ Hist.tmpPrototype.histClear=function(){  var el=this;  for(var i=0;i<el.nFeat;i+
       
       // TODO  variables starting with v should have it removed (v is for 'vector'). (My new naming conversion uses a capital letter to denote arrays.)
 
-window.filterDivICreator=function(objArg, changeFunc){ 
-  var el=createElement('div'); extend(el, filterDivICreator.tmpPrototype);
-  el.changeFunc=changeFunc;
-  copySome(el, objArg, ['Prop', 'Label', 'helpBub',   'StrGroupFirst', 'StrGroup',   'StrOrderFilt', 'objSetting']); // ,   'StrProp'
-  //copySome(el, oRole, ['Prop', 'Label', 'helpBub']);
-  //copySome(el, oRole.filter, ['StrProp', 'StrGroupFirst', 'StrGroup']);
-  //el.StrOrderFilt=oRole.filter.StrProp;
-  return el;
-}
-
-filterDivICreator.tmpPrototype={};
-filterDivICreator.tmpPrototype.update=function(){  var el=this; for(var i=0;i<el.nFeat;i++){ el.arrFeat[i].update();}  } 
-filterDivICreator.tmpPrototype.createDivs=function(){
-  var el=this;
-  el.nFeat=el.StrOrderFilt.length;
-
-  el.arrFeat=Array(el.nFeat), el.BoHasRem=[]; 
-
-  el.Filt=new Filt(el.Prop, el.StrOrderFilt);  el.Filt.filtDefault();
-  el.Hist=new Hist(el.nFeat);
-
-  //el.helpBub=extend({},el.helpBub);
-  if(typeof el.Unit=='undefined') el.Unit={};
-      
-  var boRangeControlOK=0;
-  //if(typeof rangeExtend!='undefined') boRangeControlOK=boImgCreationOK;
-  boRangeControlOK=1;
-  var rangeExtender; if(boRangeControlOK) rangeExtender=rangeExtend; else rangeExtender=rangeExtendSel;
-
-
-  for(var i=0;i<el.nFeat;i++){
-    var p, h='', imgH='';
-    var strName=el.StrOrderFilt[i];
-    var divT=createElement('div').attr('name',strName);
-    
-    if(strName in el.helpBub){ var imgH=imgHelp.cloneNode(1).css({'vertical-align':'top'});  popupHover(imgH,el.helpBub[strName]);    }   
-    var strUnit=''; if(strName in el.Unit) strUnit=' ['+el.Unit[strName]+']';
-    if(el.Prop[strName].feat.kind[0]=='B') { 
-      h=createElement('div').myAppend(calcLabel(el.Label,strName),strUnit,': ',imgH); //.css({'margin':'0.3em 0em 0em'})
-      var p=createElement('p').css({'padding':'0.3em 0em 0em','font-size': '85%'}); 
-      rowButtExtend(p, el.Prop, el.Filt, el.Hist, el.BoHasRem, el.StrOrderFilt, el.objSetting, i, el.changeFunc);     p.createCont();
-    }  
-    else if(el.Prop[strName].feat.kind[0]=='S') { 
-      h=createElement('div').myAppend(calcLabel(el.Label,strName),strUnit,': ',imgH); 
-      var p=createElement('p');  p=rangeExtender(p, el.Prop, el.Filt, el.Hist, el.BoHasRem, el.StrOrderFilt, el.objSetting, i, el.changeFunc);
-      if(boRangeControlOK) {h.css({'margin':'0 1em 0 0'});   p.css({'line-height':'100%','padding':'0 0 1em 0','text-align':'center'}); } 
-      else { h.css({'margin':'0.3em 0em -0.4em'});  p.css({'margin':'0',display:'block'}); }
-    } 
-    h.css({height:'1.4em'});
-    p.css({margin:'0px'});
-    el.arrFeat[i]=p;
-    
-    divT.append(h,p); el.append(divT);
-
-    if('span' in el.Prop[strName].feat ){ 
-      divT.css({display:'inline-block', 'padding': '0 0.6em 0 0.6em','margin-right':'0.2em'});
-    }
-    divT.css({'background-color':'lightgrey','margin-bottom':'0.2em', overflow:'hidden'});
+class FilterDivI extends HTMLElement{
+  constructor(){ super(); }
+  connectStuff(objArg, changeFunc){
+    this.changeFunc=changeFunc;
+    copySome(this, objArg, ['Prop', 'Label', 'helpBub',   'StrGroupFirst', 'StrGroup',   'StrOrderFilt', 'objSetting']); // ,   'StrProp'
+    //copySome(this, oRole, ['Prop', 'Label', 'helpBub']);
+    //copySome(this, oRole.filter, ['StrProp', 'StrGroupFirst', 'StrGroup']);
+    //this.StrOrderFilt=oRole.filter.StrProp;
+    return this;
   }
-
+  update(){  for(var i=0;i<this.nFeat;i++){ this.arrFeat[i].update();}  }
+  createDivs(){
+    var el=this;
+    el.nFeat=el.StrOrderFilt.length;
   
-
-  for(var i=0;i<el.StrGroup.length;i++){
-    var h=createElement('div').css({'font-size':'130%','font-weight':'bold', 'margin-top':'1em'}).myText(langHtml[el.StrGroup[i]]+':');
-    el.querySelector('div[name='+el.StrGroupFirst[i]+']').before(h);
-  }
-}
-filterDivICreator.tmpPrototype.interpretHistPHP=function(HistPHP){
-  var el=this;
-  for(var i=0;i<el.nFeat;i++) { 
-    var strName=el.StrOrderFilt[i]; 
-    el.Hist[i][0].length=0;el.Hist[i][1].length=0;  
-    el.BoHasRem[i]=0;    
-    if(i in HistPHP) { // <-- maybe not needed
-      el.BoHasRem[i]=HistPHP[i].pop();
-      for(var j=0;j<HistPHP[i].length;j++) {  // Convert HistPHP to Hist
-        el.Hist[i][0][j]=HistPHP[i][j][0];  // HistPHP[iFeat][buttonNumber]=['name',value],  el.Hist[iFeat][0]=names,  el.Hist[iFeat][1]=values, 
-        el.Hist[i][1][j]=HistPHP[i][j][1];
+    el.arrFeat=Array(el.nFeat), el.BoHasRem=[]; 
+  
+    el.Filt=new Filt(el.Prop, el.StrOrderFilt);  el.Filt.filtDefault();
+    el.Hist=new Hist(el.nFeat);
+  
+    //el.helpBub=extend({},el.helpBub);
+    if(typeof el.Unit=='undefined') el.Unit={};
+        
+    var boRangeControlOK=0;
+    //if(typeof rangeExtend!='undefined') boRangeControlOK=boImgCreationOK;
+    boRangeControlOK=1;
+    var rangeExtender; if(boRangeControlOK) rangeExtender=rangeExtend; else rangeExtender=rangeExtendSel;
+  
+  
+    for(var i=0;i<el.nFeat;i++){
+      var p, h='', imgH='';
+      var strName=el.StrOrderFilt[i];
+      var divT=createElement('div').attr('name',strName);
+      
+      if(strName in el.helpBub){ var imgH=imgHelp.cloneNode(1).css({'vertical-align':'top'});  popupHover(imgH,el.helpBub[strName]);    }   
+      var strUnit=''; if(strName in el.Unit) strUnit=' ['+el.Unit[strName]+']';
+      if(el.Prop[strName].feat.kind[0]=='B') { 
+        h=createElement('div').myAppend(calcLabel(el.Label,strName),strUnit,': ',imgH); //.css({'margin':'0.3em 0em 0em'})
+        var p=createElement('p').css({'padding':'0.3em 0em 0em','font-size': '85%'}); 
+        rowButtExtend(p, el.Prop, el.Filt, el.Hist, el.BoHasRem, el.StrOrderFilt, el.objSetting, i, el.changeFunc);     p.createCont();
+      }  
+      else if(el.Prop[strName].feat.kind[0]=='S') { 
+        h=createElement('div').myAppend(calcLabel(el.Label,strName),strUnit,': ',imgH); 
+        var p=createElement('p');  p=rangeExtender(p, el.Prop, el.Filt, el.Hist, el.BoHasRem, el.StrOrderFilt, el.objSetting, i, el.changeFunc);
+        if(boRangeControlOK) {h.css({'margin':'0 1em 0 0'});   p.css({'line-height':'100%','padding':'0 0 1em 0','text-align':'center'}); } 
+        else { h.css({'margin':'0.3em 0em -0.4em'});  p.css({'margin':'0',display:'block'}); }
+      } 
+      h.css({height:'1.4em'});
+      p.css({margin:'0px'});
+      el.arrFeat[i]=p;
+      
+      divT.append(h,p); el.append(divT);
+  
+      if('span' in el.Prop[strName].feat ){ 
+        divT.css({display:'inline-block', 'padding': '0 0.6em 0 0.6em','margin-right':'0.2em'});
       }
-    } //else Hist[i]=[[],[]];
-
-    if(el.Prop[strName].feat.kind[0]=='B'){
-        // If button-feature: Change vOnNames/vOffNames so that they only contain buttons that are either "filtered" 
-        // (occurs in speclist (whitelist or blacklist)) or buttons whose name occur in 'Hist'
-        // Q: What does histogram of a feature mean? A: It means that the features filter is relaxed (removed),  (while all other features filters still are applied).
-      var listType=el.Filt[i][2],  listAlt=1-listType; // vKeepNames=boWhite?vOnNames:vOffNames 
-      el.Filt[i][listAlt]=[];
-      var nButt=el.Hist[i][0].length; if(el.BoHasRem[i]) nButt=nButt-1;  
-      for(var j=0;j<nButt;j++) {
-        var name=el.Hist[i][0][j]; // name=name or index of button
-        if(el.Filt[i][listType].indexOf(name)==-1) el.Filt[i][listAlt].push(name);  // Keep el.Filt[i][listType] as is and add any potential new "name"'s
-      }
+      divT.css({'background-color':'lightgrey','margin-bottom':'0.2em', overflow:'hidden'});
+    }
+  
+    
+  
+    for(var i=0;i<el.StrGroup.length;i++){
+      var h=createElement('div').css({'font-size':'130%','font-weight':'bold', 'margin-top':'1em'}).myText(langHtml[el.StrGroup[i]]+':');
+      el.querySelector('div[name='+el.StrGroupFirst[i]+']').before(h);
     }
   }
-  //var Sum=new Array(HistPHP.length).fill(0);
-  //for(var i=0;i<HistPHP.length;i++){
-    //var histPHP=HistPHP[i];
-    //var strName=el.StrOrderFilt[i];
-    //for(var j=0;j<histPHP.length;j++){
-      //Sum[i]=Sum[i]+histPHP[j][1];
+  interpretHistPHP(HistPHP){
+    var el=this;
+    for(var i=0;i<el.nFeat;i++) { 
+      var strName=el.StrOrderFilt[i]; 
+      el.Hist[i][0].length=0;el.Hist[i][1].length=0;  
+      el.BoHasRem[i]=0;    
+      if(i in HistPHP) { // <-- maybe not needed
+        el.BoHasRem[i]=HistPHP[i].pop();
+        for(var j=0;j<HistPHP[i].length;j++) {  // Convert HistPHP to Hist
+          el.Hist[i][0][j]=HistPHP[i][j][0];  // HistPHP[iFeat][buttonNumber]=['name',value],  el.Hist[iFeat][0]=names,  el.Hist[iFeat][1]=values, 
+          el.Hist[i][1][j]=HistPHP[i][j][1];
+        }
+      } //else Hist[i]=[[],[]];
+  
+      if(el.Prop[strName].feat.kind[0]=='B'){
+          // If button-feature: Change vOnNames/vOffNames so that they only contain buttons that are either "filtered" 
+          // (occurs in speclist (whitelist or blacklist)) or buttons whose name occur in 'Hist'
+          // Q: What does histogram of a feature mean? A: It means that the features filter is relaxed (removed),  (while all other features filters still are applied).
+        var listType=el.Filt[i][2],  listAlt=1-listType; // vKeepNames=boWhite?vOnNames:vOffNames 
+        el.Filt[i][listAlt]=[];
+        var nButt=el.Hist[i][0].length; if(el.BoHasRem[i]) nButt=nButt-1;  
+        for(var j=0;j<nButt;j++) {
+          var name=el.Hist[i][0][j]; // name=name or index of button
+          if(el.Filt[i][listType].indexOf(name)==-1) el.Filt[i][listAlt].push(name);  // Keep el.Filt[i][listType] as is and add any potential new "name"'s
+        }
+      }
+    }
+    //var Sum=new Array(HistPHP.length).fill(0);
+    //for(var i=0;i<HistPHP.length;i++){
+      //var histPHP=HistPHP[i];
+      //var strName=el.StrOrderFilt[i];
+      //for(var j=0;j<histPHP.length;j++){
+        //Sum[i]=Sum[i]+histPHP[j][1];
+      //}
+      //console.log(strName+': '+Sum[i]);
     //}
-    //console.log(strName+': '+Sum[i]);
-  //}
-  //console.log('------------');
-}
-
-filterDivICreator.tmpPrototype.gatherFiltData=function(){
-  var el=this, Filt=el.Filt;
-  var FiltOut={};
-  for(var i=0;i<Filt.length;i++){
-    var strName=el.StrOrderFilt[i];
-    var filtT; if(el.Prop[strName].feat.kind[0]=='B'){ var vSpec=Filt[i][Filt[i][2]];  filtT=[vSpec,Filt[i][2]];} else filtT=Filt[i];
-    FiltOut[strName]=filtT;
+    //console.log('------------');
   }
-  return FiltOut;
-}
-
-filterDivICreator.tmpPrototype.toStored=function(){
-  var el=this, Filt=el.Filt;
-  //var FiltS=[];
-  //for(var i=0;i<Filt.length;i++){
-  //  FiltS[i]=extend(true, [], Filt[i]);
-  //}
-  var FiltS = JSON.parse(JSON.stringify(Filt));
-  return FiltS;
-}
-
-filterDivICreator.tmpPrototype.frStored=function(o){
-  var el=this, Filt=el.Filt, FiltS=o.Filt;
-  for(var i=0;i<Filt.length;i++){
-    var strName=el.StrOrderFilt[i];
-    if(el.Prop[strName].feat.kind[0]=='B'){ 
-      //for(var j=0;j<FiltS[i][0].length;j++)     Filt[i][0][j]=FiltS[i][0][j];
-      //for(var j=0;j<FiltS[i][1].length;j++)     Filt[i][1][j]=FiltS[i][1][j];
-      myCopy(Filt[i][0],FiltS[i][0]);  myCopy(Filt[i][1],FiltS[i][1]);
-      Filt[i][2]=FiltS[i][2];
-    } else  { Filt[i][0]=FiltS[i][0]; Filt[i][1]=FiltS[i][1]; }
+  gatherFiltData(){
+    var el=this, Filt=el.Filt;
+    var FiltOut={};
+    for(var i=0;i<Filt.length;i++){
+      var strName=el.StrOrderFilt[i];
+      var filtT; if(el.Prop[strName].feat.kind[0]=='B'){ var vSpec=Filt[i][Filt[i][2]];  filtT=[vSpec,Filt[i][2]];} else filtT=Filt[i];
+      FiltOut[strName]=filtT;
+    }
+    return FiltOut;
+  }
+  toStored(){
+    var el=this, Filt=el.Filt;
+    //var FiltS=[];
+    //for(var i=0;i<Filt.length;i++){
+    //  FiltS[i]=extend(true, [], Filt[i]);
+    //}
+    var FiltS = JSON.parse(JSON.stringify(Filt));
+    return FiltS;
+  }
+  
+  frStored(stateMyPopped){
+    var el=this, Filt=el.Filt, FiltS=stateMyPopped.arg;
+    for(var i=0;i<Filt.length;i++){
+      var strName=el.StrOrderFilt[i];
+      if(el.Prop[strName].feat.kind[0]=='B'){ 
+        //for(var j=0;j<FiltS[i][0].length;j++)     Filt[i][0][j]=FiltS[i][0][j];
+        //for(var j=0;j<FiltS[i][1].length;j++)     Filt[i][1][j]=FiltS[i][1][j];
+        myCopy(Filt[i][0],FiltS[i][0]);  myCopy(Filt[i][1],FiltS[i][1]);
+        Filt[i][2]=FiltS[i][2];
+      } else  { Filt[i][0]=FiltS[i][0]; Filt[i][1]=FiltS[i][1]; }
+    }
   }
 }
+customElements.define('filter-div-i', FilterDivI);
+
+
+
+
 
 
 

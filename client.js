@@ -40,58 +40,6 @@ var MmmWikiFiltExtention={
 }
 
 
-  //
-  // History stuff
-  //
-
-app.histGoTo=function(view){}
-app.historyBack=function(){  history.back();}
-app.doHistPush=function(obj){
-    // Set "scroll" of stateNew  (If the scrollable div is already visible)
-  var view=obj.view;
-  var scrollT=window.scrollTop();
-  if(typeof view.setScroll=='function') view.setScroll(scrollT); else history.StateMy[history.state.ind].scroll=scrollT;  //view.intScroll=scrollT;
-
-  if((boChrome || boOpera) && !boTouch)  history.boFirstScroll=true;
-
-  var indNew=history.state.ind+1;
-  stateTrans={hash:history.state.hash, ind:indNew};  // Should be called stateLast perhaps
-  stateTrans={hash:history.state.hash, ind:indNew, f:(function(a){console.log('hello: '+a);}).toString()};  // Should be called stateLast perhaps
-  history.pushState(stateTrans, strHistTitle, uCanonical);
-  history.StateMy=history.StateMy.slice(0, indNew);
-  obj.tDate=new Date();
-  history.StateMy[indNew]=obj;
-}
-app.doHistReplace=function(obj, indDiff=0){
-  obj.tDate=new Date();
-  history.StateMy[history.state.ind+indDiff]=obj;
-}
-//app.changeHist=function(obj){
-  //obj.tDate=new Date();
-  //history.StateMy[history.state.ind]=obj;
-//}
-app.getHistStatName=function(){
-  return history.StateMy[history.state.ind].view.toString();
-}
-history.distToGoal=function(viewGoal){
-  var ind=history.state.ind;
-  var indGoal;
-  for(var i=ind; i>=0; i--){
-    var obj=history.StateMy[i];
-    var view; if(typeof obj=='object') view=obj.view; else continue;
-    if(view===viewGoal) {indGoal=i; break;}
-  }
-  var dist; if(typeof indGoal!='undefined') dist=indGoal-ind;
-  return dist;
-}
-history.fastBack=function(viewGoal, boRefreshHash){
-  var dist=history.distToGoal(viewGoal);
-  if(dist) {
-    if(typeof boRefreshHash!='undefined') history.boResetHashCurrent=boRefreshHash;
-    history.go(dist);
-  }
-}
-
 
   //
   // divReCaptchaExtend
@@ -157,6 +105,7 @@ var commentButtonExtend=function(el){
 }
 
 var aRLoginDivExtend=function(el){
+  el.toString=function(){return 'aRLoginDiv'}
   var vPassF=async function(){  
     //var tmp=SHA1(aRPass.value+strSalt);
     if(typeof SHA1 == 'undefined') { setMess(strSha1NotLoaded); return;}
@@ -167,7 +116,7 @@ var aRLoginDivExtend=function(el){
     aRPass.value='';
 
     if(!boARLoggedIn) return;
-    pageView.setVis();
+    pageView.setVis('page');
     var vec=[['pageLoad',{}]];   await myFetch('GET',vec);
 
     //if(!boARLoggedIn) return;
@@ -183,24 +132,9 @@ var aRLoginDivExtend=function(el){
 }
 
 
-
-var createChildInd=function(arrI){
-  var tmp=[]; for(var i=0;i<arrI.length;i++){  var itmp=arrI[i];  tmp[itmp]=i;  }  return tmp;
-}
-
-var createColJIndexNamesObj=function(arrName){
-  var o={};
-  for(var i=0;i<arrName.length;i++){ 
-    var tmp="j"+arrName[i][0].toUpperCase()+arrName[i].substr(1);       o[tmp]=i;
-  }
-  return o;
-}
-
-
-
 var divMessageTextCreate=function(){
   var spanInner=createElement('span');
-  var imgBusyLoc=imgBusy.cloneNode().css({zoom:'65%','margin-left':'0.4em'}).hide();
+  var imgBusyLoc=imgBusy.cloneNode().css({transform:'scale(0.65)','margin-left':'0.4em'}).hide();
   var el=createElement('div').myAppend(spanInner, imgBusyLoc);
   el.resetMess=function(time){
     clearTimeout(messTimer);
@@ -225,67 +159,144 @@ var divMessageTextCreate=function(){
   return el;
 }
 
+
+var areYouSurePopExtend=function(el){
+  el.toString=function(){return 'areYouSurePop';}
+  el.openFunc=function(strLab, continueClick, cancelClick){ // continueClick(finFun): called when the user clicks the continue button. It takes a callback-argument which closes the areYouSurePop.
+    labPageName.myText(strLab);
+    doHistPush({strView:'areYouSurePop'});
+    el.setVis();
+    continueClickLoc=continueClick;
+    cancelClickLoc=cancelClick;
+  }
+  el.setVis=function(){
+    el.show(); return 1;
+  }
+ 
+  var continueClickLoc, cancelClickLoc;
+  //el=popUpExtend(el);  
+  //el.css({'max-width':'20em', padding: '1.2em 0.5em 1.2em 1.2em'}); 
+
+  var labPageName=createElement('div');
+  var buttonCancel=createElement('button').myText('Cancel').on('click',function(){ cancelClickLoc(); }).css({'margin-top':'1em'});
+  var buttonContinue=createElement('button').myText('Yes').on('click',function(){  continueClickLoc();  }).css({'margin-top':'1em'});
+  var divBottom=createElement('div').myAppend(buttonCancel,buttonContinue);
+  //el.append(labPageName,divBottom);
+
+  var blanket=createElement('div').addClass("blanket");
+  var centerDiv=createElement('div').addClass("Center").myAppend(labPageName,divBottom).css({'max-width':'20em', padding: '1.2em 0.5em 1.2em 1.2em'});  // height:'8em', '
+  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
+  
+  return el;
+}
+
+
+var pageTextExtend=function(el){
+  var clickImgFun=function(e){
+    //var li=this.parentNode, iCur=li.myIndex(); //, StrImg=li.parentNode.StrImg, Caption=li.parentNode.Caption;
+    var a=this, iCur=a.iCur;
+    slideShow.setUp(el.StrImg,el.Caption,iCur);
+    doHistPush({strView:'slideShow'});
+    slideShow.setVis();
+    e.preventDefault();
+  }
+  var clickVideoFun=function(e){
+    var s=this.querySelector('source');
+    window.location.href=s.getAttribute('src');
+    e.preventDefault();
+  }
+  el.modStuff=function(){
+    var galleries=[...el.querySelectorAll('.gallery')];
+    galleries.forEach(function(ele,i){ 
+      var Li=[...ele.querySelectorAll('li')];
+      Li.forEach(function(l,j){
+        var a=l.querySelector('a:nth-of-type(1)'); a.on('click',clickImgFun).prop({iCur:el.StrImg.length});  el.StrImg.push(a.prop('href')); el.Caption.push(a.nextElementSibling);
+      });
+    });
+    //var imgThumbimage=el.find('.thumbimage');
+    var ImgThumbimage=[...el.querySelectorAll('.thumbimage')];
+    ImgThumbimage.forEach(function(ele,i){ 
+      var a=ele.parentNode;
+      a.on('click',clickImgFun).prop({iCur:el.StrImg.length});  el.StrImg.push(a.prop('href'));
+      var elTmp; if(a.nextElementSibling && a.nextElementSibling.hasClass('thumbcaption')) elTmp=a.nextElementSibling; else elTmp=createElement('div').myText('(no caption)');
+      el.Caption.push(elTmp);
+    });
+    //var video=el.find('video');
+    var Video=[...el.querySelectorAll('video')];
+    Video.forEach(function(ele,i){  ele.on('click',clickVideoFun);  });
+
+    var Table=[...document.querySelectorAll('.sortable')];
+    Table.forEach(function(ele,i){ 
+      var thead=ele.querySelector('thead');
+      var tBody=ele.querySelector('tBody');
+      if(tBody==null) return
+      if(thead==null) {
+        var tr=tBody.firstElementChild, thTmp=tr.firstElementChild;
+        if(thTmp==null || thTmp.tagName.toLocaleLowerCase()=='td') return
+        thead=createElement('thead').myAppend(tr);
+      }
+      var tr=thead.querySelector('tr');
+      ele.prepend(thead);
+      headExtend(tr, {tBody});  //, 'tr', tr.firstElementChild.tagName.toLocaleLowerCase()
+    });
+  }
+  el.StrImg=[];
+  el.Caption=[];
+  return el;
+}
+
+
 /*******************************************************************************
  * pageView
  ******************************************************************************/
 
 var editButtonExtend=function(el){
   el.setImg=function(boOW){ 
-    //imgOW.prop({src:boOW?uPen:uPenNot});
-    //imgOW.prop({srcset:boOW?srcsetPen:srcsetPenNot});
     spanOW.css({'text-decoration':boOW?'':'line-through'})
     var txt=boOW?'Edit the page.':'See wiki text.'
     el.prop({'aria-label':txt});
-    //if(!boIOS) el.css({'text-decoration':boOW?'none':'line-through'});
-    //spanOWStrike.toggle(!boOW);
     el.title=txt;
   }
-
-  // var spanOW=createElement('span').css({'user-select':'none', 'line-height':'2.4em', display:'inline-block', position:'relative'});
-  // var spanOWPen=createElement('span').myAppend('🖉').css({'user-select':'none', 'font-size':'135%'});
-  // var spanOWStrike=createElement('span').myAppend('\\').css({'user-select':'none', position:'absolute', display:'inline', left:'.14em', top:'0em', color:'red', 'font-size':'250%'});
-  // spanOW.myAppend(spanOWPen, spanOWStrike);
-
   var spanOW=createElement('span').css({'user-select':'none', position:'relative', 'bottom':'-0.0em', 'font-size':'1.3em', 'text-decoration':'line-through'}).myText('✎'); //🖉
-
-  //var imgOW=createElement('img').prop({srcset:srcsetPen, alt:"pen"}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable');
-  //var strPen="🖉"; //🖊✎
-  //if(boIOS) el.append(imgOW); else el.append(spanOW);
   el.append(spanOW);
-  //alert(document.fonts.check("12px verdana, arial, helvetica", "🖉"))
   return el;
 }
+
 var spanModExtend=function(el){
   el.setup=function(data){   el.myHtml((data.boOR?"<span>"+charPublicRead+"</span>":' ')
    + (data.boOW?"<span style=\"font-size:1em\">"+charPublicWrite+"</span>":' ')
     + (data.boSiteMap?charPromote:' '));  }
   return el;
 }
-var pageViewExtend=function(el){
-  el.toString=function(){return 'pageView';}
-  
+
+var pageDivFixedExtend=function(el){
   el.setUp=function(){
-    var {tMod, tCreated}=objPage; el.spanLastMod.myText(date2ToSuitableString(tMod)).prop('title','Last Modified:\n'+tMod);
-    el.spanCreated.myText(date2ToSuitableString(tCreated)).prop('title','Created:\n'+tCreated);
+    var {tMod, tCreated}=objPage; spanLastMod.myText(date2ToSuitableString(tMod)).prop('title','Last Modified:\n'+tMod);
+    spanCreated.myText(date2ToSuitableString(tCreated)).prop('title','Created:\n'+tCreated);
     divLastModW.toggle(Boolean(tMod));
     divCreatedW.toggle(tCreated>1000); // tCreated==1000 means that it is unknown (and should be hidden)
-    
+
+    spanMod.setup(objPage);
+    el.css({background:objPage.boOR?'#fff':'lightgreen'});
+    editButton.setImg(objPage.boOW);
+    return this
   }
-  el.setDetail=function(){
+  el.setVersioninfo=function(){
     var strNR='',  str='';
     if(matVersion.length){
       var ver=arrVersionCompared[1], rev=ver-1;
-      //var r=matVersion[rev];  strNR='v'+ver+'/'+nVersion;  str=r[1]+' <b><i>'+r[2]+'</i></b>';//+mySwedDate(r[0]);
       var {summary, signature}=matVersion[rev];
       strNR='v'+ver+'/'+nVersion;  str=summary+' <b><i>'+signature+'</i></b>';//+mySwedDate(r[0]);
     }
-    el.spanNR.myHtml(strNR);  spanDetail.myHtml(str);
-  }
-  el.setFixedDivColor=function(boOR){   el.fixedDiv.css({background:boOR?'#fff':'lightgreen'});  }
+    spanNR.myHtml(strNR);  spanDetail.myHtml(str);
 
-    // versionMenu
+    var boMult=matVersion.length>1; versionMenu.toggle(boMult);
+  }
+
+
+  // versionMenu
   var versionTableButton=createElement('button').myText('Version list').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
-    doHistPush({view:versionTable});
+    doHistPush({strView:'versionTable'});
     versionTable.setVis();
   });    
   var diffButton=createElement('button').myText('Diff').addClass('fixWidth').css({'margin-right':'1em'}).on('click',function(){
@@ -294,27 +305,26 @@ var pageViewExtend=function(el){
     arrVersionCompared[0]=arrVersionCompared[1]-1;
     if(arrVersionCompared[1]==1) arrVersionCompared=[2,1]; 
     var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec); 
-    doHistPush({view:diffDiv});
+    doHistPush({strView:'diffDiv'});
     diffDiv.setVis();
   });
-  el.spanNR=createElement('span').css({margin:'0em 0.1em'});
-  var nextButton=createElement('button').myText('⇧').addClass('fixWidth').on('click',function(){
+  var spanNR=createElement('span').css({margin:'0em 0.1em'});
+  var nextButton=createElement('button').myText(charNext).addClass('fixWidth').on('click',function(){
     var iVer=arrVersionCompared[1]+1; if(iVer>nVersion) iVer=1;
     var vec=[['pageLoad',{version:iVer}]];   myFetch('GET',vec); 
   });
-  var prevButton=createElement('button').myText('⇩').addClass('fixWidth').css({'margin-left':'0.8em'}).on('click',function(){
+  var prevButton=createElement('button').myText(charPrev).addClass('fixWidth').css({'margin-left':'0.8em'}).on('click',function(){
     var iVer=arrVersionCompared[1]-1; if(iVer<1) iVer=nVersion;
     var vec=[['pageLoad',{version:iVer}]];   myFetch('GET',vec); 
   });
   var spanDetail=createElement('span').myText('ggggggggggg').css({'margin-right':'0.5em', 'margin-left':'0.5em'});
-  var divUpper=createElement('div').myAppend(prevButton,el.spanNR,nextButton,spanDetail,diffButton).css({'line-height':'2em'});
+  var divUpper=createElement('div').myAppend(prevButton, spanNR, nextButton, spanDetail, diffButton).css({'line-height':'2em'});
 
-  
   var divLower=createElement('div').myAppend(versionTableButton).css({margin:'.5em auto auto'});
 
-  el.versionMenu=createElement('div').myAppend(divUpper,divLower).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.5em auto'});
+  var versionMenu=createElement('div').myAppend(divUpper,divLower).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.5em auto'});
 
- 
+
     // menuA
 
     // boShowAdminButton
@@ -328,64 +338,95 @@ var pageViewExtend=function(el){
     // paymentButton
   var tmpSpan=createElement('span').myText('Pay/Donate');//.css({display:'inline-block','vertical-align':'text-bottom',height:strSizeIcon});  display:'inline-block',
   var paymentButton=createElement('button').myAppend(tmpSpan).addClass('fixWidth').css({'vertical-align':'bottom','margin-right':'1em','line-height':strSizeIcon}).on('click',function(){
-    doHistPush({view:paymentDiv});
+    doHistPush({strView:'paymentDiv'});
     paymentDiv.setVis();
   }); if(ppStoredButt=='' && strBTC=='') paymentButton.hide();
-  
+
     // editButton
-  el.editButton=editButtonExtend(createElement('button')).addClass('fixWidth').prop({"aria-label":"edit"}).css({'margin-left':'0em','margin-right':'1em'}).on('click',function(){
-    doHistPush({view:editDiv});
-    editDiv.setVis();
+  var editButton=editButtonExtend(createElement('button')).addClass('fixWidth').prop({"aria-label":"edit"}).css({'margin-left':'0em','margin-right':'1em'}).on('click',function(){
+    doHistPush({strView:'pageView', arg:'edit'});
+    pageView.setVis('edit');
   });
-  el.editButton.on('click', adminButtonToggleEventF);
+  editButton.on('click', adminButtonToggleEventF);
   var tmpImg=createElement('img').prop({src:uAdmin, alt:"admin"}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable');    //var strAdmin='👤🔑';
   var adminButton=createElement('button').myAppend(tmpImg).addClass('fixWidth').prop({title:"Administrator entry."}).on('click',function(){
-    doHistPush({view:adminDiv});
-    adminDiv.setVis();
+    doHistPush({strView:'pageView', arg:'admin'});
+    pageView.setVis('admin');
   });
   //if(!boTouch) popupHover(adminButton,createElement('div').myText('Administrator entry.'));
-  
+
     // spanMod
-  el.spanMod=spanModExtend(createElement('span')).css({'margin-right':'0.5em'}); //,'font-family':'monospace'
-  var ElAdmin=[el.spanMod, adminButton];
-  //var spanAdmin=createElement('span').myAppend(el.spanMod, adminButton).css({'margin-left':'auto'});  // 'float':'right'
+  var spanMod=spanModExtend(createElement('span')).css({'margin-right':'0.5em'}); //,'font-family':'monospace'
+  var ElAdmin=[spanMod, adminButton];
+  //var spanAdmin=createElement('span').myAppend(spanMod, adminButton).css({'margin-left':'auto'});  // 'float':'right'
   //spanAdmin.toggle(boShowAdminButton);
   ElAdmin.forEach(ele=>ele.toggle(boShowAdminButton));
-  
-    // commentButton
-  //commentButton.css({'margin-top':'.3em'}); //,'float':'right'
-  
-    // spanTModNCreated
-  el.spanCreated=createElement('span');   el.spanLastMod=createElement('span');
-  var divCreatedW=createElement('div').myAppend('Created: ', el.spanCreated);
-  var divLastModW=createElement('div').myAppend('Last mod: ', el.spanLastMod);
-  var spanTModNCreated=createElement('span').myAppend(divCreatedW, divLastModW,commentButton)
-  //.css({display:'block', position:'absolute', bottom:'.0em', width:'100%', 'text-align':'center', 'font-size':'70%'});
-  .css({display:'block', 'font-size':'12px', 'margin-right':'auto'});
-  //.css({'float':'right',margin:'0.2em .5em 0 0', 'font-size':'70%'});
 
 
-  var menuA=createElement('div').myAppend(el.editButton,paymentButton,spanTModNCreated,butARLogout,...ElAdmin).css({padding:'0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'0em'});  //.css({margin:'1em 0','text-align':'center',position:'fixed',bottom:0,width:'100%'});
+    // divAA
+  var spanCreated=createElement('span'), spanLastMod=createElement('span');
+  var divCreatedW=createElement('div').myAppend('Created: ', spanCreated);
+  var divLastModW=createElement('div').myAppend('Last mod: ', spanLastMod);
+
+
+  el.commentButton=commentButtonExtend(createElement('div')).css({'margin-top':'.3em'});
+  el.commentButton.setUp(boTalkExist);
+
+  var divAA=createElement('div').myAppend(divCreatedW, divLastModW, el.commentButton).css({'font-size':'0.73em', 'margin-right':'auto'});
+
+  el.butARLogout=createElement('button').myText('Logout').prop({title:'Logout (write-access AND read-access)'}).on('click',function(){
+    var vec=[['aWLogout',{}], ['aRLogout',{}]];   myFetch('POST',vec); 
+  }).hide().css({'margin-left':'0.3em'});
+
+  var menuA=createElement('div').myAppend(editButton, paymentButton, divAA, el.butARLogout, ...ElAdmin).css({padding:'0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'0em'});  //.css({margin:'1em 0','text-align':'center',position:'fixed',bottom:0,width:'100%'});
   menuA.css({position:'relative', display:'flex', 'align-items':'center', 'justify-content':'space-between'});
-  
-  el.fixedDiv=createElement('div').myAppend(el.versionMenu,menuA).css(cssFixed);//.css({position:'static'});
-  el.fixedDiv.css({right:'1em',bottom:'1em',width:'','border-radius':'5px', border:'1px solid', padding:'.3em', margin:''})
-  
-  el.myAppend(el.fixedDiv);
+
+
+  //menuA.css({padding:'0 0.3em 0.6em 0', margin:'.2em auto 0em'});  // Bottom bar and Center versions
+
+  el.myAppend(versionMenu, menuA).css(cssFixed);//.css({position:'static'});
+  el.css({right:'1em',bottom:'1em',width:'','border-radius':'5px', border:'1px solid', padding:'.3em', margin:''})  // Corner version
+  //el.css({width:'','border-radius':'5px', border:'1px solid', padding:'.3em', margin:'', transform:'translate(-50%, 0%)', left:"50%"}) // Center version
 
   return el;
+
 }
+
+var pageViewExtend=function(el){
+  el.toString=function(){return 'pageView';}
+  el.funPopped=function(state){ 
+    var {arg}=state;
+    el.pageDivFixed.toggle(arg=='page')
+    el.editDivFixed.toggle(arg=='edit')
+    el.adminDivFixed.toggle(arg=='admin')
+    el.boDoScroll=true; el.intDoScroll=state.scroll
+  }
+  el.histPush=function(strType){
+    doHistPush({strView:'pageView', arg:strType});
+  }
+
+  el.pageDivFixed=pageDivFixedExtend(createElement('div'))
+  el.editDivFixed=editDivFixedExtend(createElement('div')); el.editDivFixed.css(cssFixedDrag)
+  el.editDivFixed.css({background:'rgb(255, 255, 255, 0.8)'});
+
+  el.adminDivFixed=adminDivFixedExtend(createElement('div')); el.adminDivFixed.css(cssFixedDrag)
+  el.adminDivFixed.css({background:'rgb(255, 255, 255, 0.8)'});
+
+  el.myAppend(el.pageDivFixed, el.editDivFixed, el.adminDivFixed);
+  return el;
+}
+
 
 /*******************************************************************************
  * adminDiv
  ******************************************************************************/
-var adminDivExtend=function(el){
-  el.toString=function(){return 'adminDiv';}
+var adminDivFixedExtend=function(el){
   el.setUp=function(){
-    if(editText.parentNode!==el.fixedDiv) {
-      el.fixedDiv.prepend(dragHR,editText);
+    if(editText.parentNode!==el) {
+      el.prepend(dragHR,editText);
     }
     //dragHR.after(editText);
+    return this
   }
   el.setUpButtons=function(boAWLoggedInT){
     var boT=Boolean(boAWLoggedInT);
@@ -394,39 +435,11 @@ var adminDivExtend=function(el){
   }
   var aPassF=function(){
     if(typeof SHA1 == 'undefined') { setMess(strSha1NotLoaded); return;}
-    //var tmp=SHA1(password.value);
-    //var tmp=Sha256.hash(password.value+strSalt);
     var data=password.value+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data);
-    //var data=password.value+strSalt; for(var i=0;i<nHash;i++) data=Sha256.hash(data);
-    
-    
-    //var txt=password.value+strSalt;
-    //function hexString(buffer) {
-      //const byteArray = new Uint8Array(buffer);
-
-      //const hexCodes = [...byteArray].map(value => {
-        //const hexCode = value.toString(16);
-        //const paddedHexCode = hexCode.padStart(2, '0');
-        //return paddedHexCode;
-      //});
-
-      //return hexCodes.join('');
-    //}
-    //var digestMessage=function(message) {
-      //const encoder = new TextEncoder();
-      //const data = encoder.encode(message);
-      //return window.crypto.subtle.digest('SHA-1', data);
-    //}
-
-    //digestMessage(txt).then(digestValue => {
-      ////console.log(digestValue.byteLength);
-      //console.log(hexString(digestValue));
-    //});
     if(data.substr(0,2)!=aWPasswordStart) {setMess('Wrong pw'); return;}
     var vec=[['aWLogin',{pass:data}], ['getAWRestrictedStuff',{}]];   myFetch('POST',vec); 
     password.value='';
   }
-  //var loginButt=createElement('button').myText('Login').on('click',aPassF).hide();
   var butAWLogout=createElement('button').myText('Logout (adm)').prop({title:'Logout (write-access only)'}).on('click',function(){
     var vec=[['aWLogout',{}]];   myFetch('POST',vec); 
   }); 
@@ -434,10 +447,7 @@ var adminDivExtend=function(el){
 
   var aPass2F=function(){  
     if(typeof SHA1 == 'undefined') { setMess(strSha1NotLoaded); return;}
-    //var tmp=SHA1(password2.value+strSalt); 
-    //var tmp=Sha256.hash(password2.value+strSalt);
     var data=password2.value+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data);
-    //var data=password2.value+strSalt; for(var i=0;i<nHash;i++) data=Sha256.hash(data);
     if(data.substr(0,2)!=aWPasswordStart) {setMess('Wrong pw'); return;}
     var vec=[['aWLogin',{pass:data}], ['saveByReplace',{strEditText:editText.value}], ['getAWRestrictedStuff',{}]];   myFetch('POST',vec); 
     password2.value='';
@@ -450,46 +460,28 @@ var adminDivExtend=function(el){
   }
   var handyButton=createElement('button').myText('Over­write').on('click',handyClickF); 
   var password2=createElement('input').prop({type:'password', placeholder:"Overwrite", title:'Login (write-access) and overwrite'}).on('keypress',  function(e){   if(e.which==13) {aPass2F(); return false;}   }); 
-  var imgH=imgHelp.cloneNode(1).css({margin:'0em 1em', flex:"0 0 auto"}); popupHover(imgH,createElement('div').myHtml('Write password for:<li>Login (adm): logging in with write-access<li>Overwrite: A brutal but handy quick route for saving plus deleting all old versions.'));
-  //var handySpan=createElement('span').myAppend();  
+  var imgH=imgHelp.cloneNode(1).css({margin:'0em 1em 0 auto', flex:"0 0 auto"}); popupHover(imgH,createElement('div').myHtml('Write password for:<li>Login (adm): logging in with write-access<li>Overwrite: A brutal but handy quick route for saving plus deleting all old versions.'));
 
 
   var moreButton=createElement('button').myText('Mo­re').addClass('fixWidth').on('click',function(){
-    doHistPush({view:adminMoreDiv});
+    doHistPush({strView:'adminMoreDiv'});
     adminMoreDiv.setVis();
   }); 
 
-  //var aWLoginDiv=createElement('span').myAppend(moreButton, imgH, butAWLogout, password, butLogin, handyButton, password2);
   [password, password2].forEach(ele=>ele.css({width:'6em'}));
-  //aWLoginDiv.css({"float":"right"});
 
-  
-    
-
-  //var infoDiv=createElement('span').myAppend(moreButton); 
-
-
-  //var menuB=createElement('div').myAppend(moreButton,pageListButton,imageListButton)
-  //var menuB=createElement('div').css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'1em auto'});
   var menuB=createElement('div').css({padding:'0 0.3em 0 0',display:'flex','max-width':menuMaxWidth, margin:'1em auto', "align-items":"center", "justify-content":"space-between"});
   menuB.myAppend(moreButton, imgH, butAWLogout, password, butLogin, handyButton, password2);
 
 
-
-    // menuA
-  //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
-  //var spanLabel=createElement('span').myText('Admin').css({'float':'right',margin:'0.2em 0 0 0'});  
-  //var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
-
-  el.spanClickOutside=createElement('span').myText(strClickOutside).hide();
-  el.fixedDiv=createElement('div').myAppend(dragHR,el.spanClickOutside,menuB).css(cssFixedDrag);  //,menuA
-  
-  el.fixedDiv.css({background:'rgb(255, 255, 255, 0.8)'});
-  //el.menus=menuA.add(menuB);
+  el.myAppend(dragHR,menuB).css(cssFixedDrag);
+  el.css({background:'rgb(255, 255, 255, 0.8)'});
   el.menus=menuB;
-  el.append(el.fixedDiv);
   return el;
 }
+
+
+
 class ButtonToggle extends HTMLElement{
   constructor(){ super(); }
   getState(){return this.hasClass('boxShadowOn');}
@@ -498,144 +490,142 @@ class ButtonToggle extends HTMLElement{
 }
 customElements.define('button-toggle', ButtonToggle);
 
-var adminMoreDivExtend=function(el){
-  el.toString=function(){return 'adminMoreDiv';}
-  el.setBUNeededInfo=function(){
+
+
+class AdminMoreDiv extends HTMLElement{
+  constructor(){ super(); }
+  toString(){return 'adminMoreDiv';}
+  setBUNeededInfo(){
     var {tModLast, pageTModLast, tLastBU}=objSetting;
     //if(!(tLastBU instanceof Date)) tLastBU=new Date(tLastBU);
     var boBUNeeded=tModLast>tLastBU,     strTmp='tLastBU: '+swedTime(tLastBU)+', tModLast: '+swedTime(tModLast)+' ('+pageTModLast+')';
-    aBUFilesToComp.prop('title', strTmp).css({'background':boBUNeeded?'red':''});
+    this.aBUFilesToComp.prop('title', strTmp).css({'background':boBUNeeded?'red':''});
   }
-  var strPublicRead='<span style="display:inline-block">'+charPublicRead+'</span>';
-  var imgH=imgHelp.cloneNode(1).css({'margin-left':'.5em','margin-right':'0.5em'}); popupHover(imgH,createElement('div').myHtml(strPublicRead+' = public read access<br>'+charPublicWrite+' = public write access<br>'+charPromote+' = promote = include the page in sitemap.xml etc. (encourage search engines to list the page)'));
-  el.setMod=function(){
-    butModRead.mySet(objPage.boOR);
-    butModWrite.mySet(objPage.boOW);
-    butModSiteMap.mySet(objPage.boSiteMap);
+  setMod(){
+    this.butModRead.mySet(objPage.boOR);
+    this.butModWrite.mySet(objPage.boOW);
+    this.butModSiteMap.mySet(objPage.boSiteMap);
   }
+  connectStuff(){
+    var strPublicRead='<span style="display:inline-block">'+charPublicRead+'</span>';
+    var imgH=imgHelp.cloneNode(1).css({'margin-left':'.5em','margin-right':'0.5em'}); popupHover(imgH,createElement('div').myHtml(strPublicRead+' = public read access<br>'+charPublicWrite+' = public write access<br>'+charPromote+' = promote = include the page in sitemap.xml etc. (encourage search engines to list the page)'));
 
     // Methods of the below buttons:
-  var clickModF=function(){
-    var strType=this.strType;
-    var b=this, boOn=b.myToggle();
-    var o={Id:[objPage.idPage]}; o[strType]=boOn;
-    //var vec=[['myChMod',o]]; myFetch('POST',vec).then(a=>{var [e,r]=a; if(e) setMess(e.message);}).catch(err=> {setMEss('ee');});
-    var vec=[['myChMod',o]]; myFetch('POST',vec);
-    //setButMod.call(b, boOn);
-  }
-  var butModRead=createElement('button-toggle').myHtml(strPublicRead).prop({title:'Public read access', strType:'boOR'}).on('click', clickModF );  
-  var butModWrite=createElement('button-toggle').myText(charPublicWrite).prop({title:'Public write access', strType:'boOW'}).on('click',clickModF);
-  var butModSiteMap=createElement('button-toggle').myText(charPromote).prop({title:'Promote (include page in sitemap.xml)',strType:'boSiteMap'}).on('click',clickModF);
-  var Tmp=[butModRead, butModWrite, butModSiteMap]; Tmp.forEach(ele=>ele.css({'margin-right':'0.4em', width:'1.5em', padding:0}));   
-     
-  el.setMod();
-  
-  var boIsGeneratorSupported=isGeneratorSupported();
-  var uploadAdminDiv='', buttonDiffBackUpDiv='';
-  if(boIsGeneratorSupported) {
+    var clickModF=function(){
+      var strType=this.strType;
+      var b=this, boOn=b.myToggle();
+      var o={Id:[objPage.idPage]}; o[strType]=boOn;
+      //var vec=[['myChMod',o]]; myFetch('POST',vec).then(a=>{var [e,r]=a; if(e) setMess(e.message);}).catch(err=> {setMEss('ee');});
+      var vec=[['myChMod',o]]; myFetch('POST',vec);
+      //setButMod.call(b, boOn);
+    }
+    this.butModRead=createElement('button-toggle').myHtml(strPublicRead).prop({title:'Public read access', strType:'boOR'}).on('click', clickModF );  
+    this.butModWrite=createElement('button-toggle').myText(charPublicWrite).prop({title:'Public write access', strType:'boOW'}).on('click',clickModF);
+    this.butModSiteMap=createElement('button-toggle').myText(charPromote).prop({title:'Promote (include page in sitemap.xml)',strType:'boSiteMap'}).on('click',clickModF);
+    var Tmp=[this.butModRead, this.butModWrite, this.butModSiteMap]; Tmp.forEach(ele=>ele.css({'margin-right':'0.4em', width:'1.5em', padding:0}));   
+      
+    this.setMod();
+
+    
+    var uploadAdminDiv='', buttonDiffBackUpDiv='';
     uploadAdminDiv=uploadAdminDivExtend(createElement('span')); 
     buttonDiffBackUpDiv=createElement('button').myText('Backup (diff)').on('click',function(){
-      doHistPush({view:diffBackUpDiv});
+      doHistPush({strView:'diffBackUpDiv'});
       diffBackUpDiv.setVis();
     });
+    
+
+    var statLink=createElement('a').prop({href:'stat.html'}).myText('stat');
+    var pageListButton=createElement('button').myText('pageList').addClass('fixWidth').on('click',function(){
+      //var idTmp=objPage.idPage; if(isNaN(idTmp)) idTmp=null;
+      var idTmp=objPage.idPage; if(typeof idTmp=='string' && idTmp.length==0) idTmp=null;
+      pageFilterDiv.Filt.setSingleParent(idTmp);  pageList.histPush(); pageList.loadTab();  pageList.setVis();
+    });    
+    var imageListButton=createElement('button').myText('imageList').addClass('fixWidth').css({'background':'lightblue'}).on('click',function(){
+      //var idTmp=objPage.idPage; if(isNaN(idTmp)) idTmp=null;
+      var idTmp=objPage.idPage; if(typeof idTmp=='string' && idTmp.length==0) idTmp=null;
+      imageFilterDiv.Filt.setSingleParent(idTmp);   imageList.histPush();  imageList.loadTab();  imageList.setVis();  // pageFilterDiv.Filt.filtAll();
+    });
+
+    var imgHPrefix=imgHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHPrefix,createElement('div').myHtml('<p>Use prefix on default-site-pages:<p>Note that non-default-site-pages always gets the prefix added (to the filename in the zip-file).<p>Click the "Site table"-button below if you want to see or change the prefixes, and if you want to change which site is the default.'));  
+    var boUsePrefix=getItem('boUsePrefixOnDefaultSitePages')||true;
+    var cb=createElement('input').prop({type:'checkbox', checked:boUsePrefix}).on('click',function(){
+      boUsePrefix=Number(cb.prop('checked')); 
+      setItem('boUsePrefixOnDefaultSitePages',boUsePrefix);  
+      this.aBUFilesToComp.setUp(boUsePrefix);
+    })
+
+    //var imgHDownload=imgHelp.cloneNode(1).css({'margin-left':'1em','margin-right':'1em'}); popupHover(imgHDownload,createElement('div').myText('Put all pages (or images or videos) in a zip-file and download.'));
+    this.aBUFilesToComp=createElement('a').prop({rel:'nofollow', download:''}).myText('(...)page.zip');
+    this.aBUFilesToComp.setUp=function(boUsePrefix){
+      var tmpUrl='BUPage'+(boUsePrefix?'':'?{"boUsePrefixOnDefaultSitePages":0}'); this.prop({href:tmpUrl});
+    };  this.aBUFilesToComp.setUp(boUsePrefix);
+    var aBUImageToComp=createElement('a').prop({href:'BUImage', rel:'nofollow', download:''}).myText('(...)image.zip');
+    var aBUVideoToComp=createElement('a').prop({href:'BUVideo', rel:'nofollow', download:''}).myText('(...)video.zip');
+    var aBUMeta=createElement('a').prop({href:'BUMeta', rel:'nofollow', download:''}).myText('(...)meta.zip');
+    var aBUMetaSQL=createElement('a').prop({href:'BUMetaSQL', rel:'nofollow', download:''}).myText('(...)meta.sql');
+    var imgHSql=imgHelp.cloneNode(1).css({'margin':'0 1em'}); popupHover(imgHSql,createElement('div').myHtml('<p>Download "meta-data":<br>-extra data for pages/images (modification dates, access rights ...). <br>-redirect table.<br>-site table.'));
+    
+    var butBUPageServ=createElement('button').myText('page.zip').on('click',  function(){    httpGetAsync('BUPageServ',function(err, str) {setMess(str,3);});    });
+    var butBUImageServ=createElement('button').myText('image.zip').on('click',function(){    httpGetAsync('BUImageServ',function(err, str) {setMess(str,3);});   });
+    var butBUMetaServ=createElement('button').myText('meta.zip').on('click',function(){      httpGetAsync('BUMetaServ',function(err, str) {setMess(str,3);});    });
+    
+    var strOverwrite='This will overwrite data in the db?';
+    
+    var siteButton=createElement('button').myText('Site table').addClass('fixWidth').on('click',function(){
+      doHistPush({strView:'siteTab'});
+      siteTab.setVis();
+    });
+    var redirectButton=createElement('button').myText('Redirect table').addClass('fixWidth').on('click',function(){
+      doHistPush({strView:'redirectTab'});
+      redirectTab.setVis();
+    });
+
+    var renameButton=createElement('button').myText('Rename').css({'margin-left':'0.5em'}).on('click',function(){
+      renamePop.openFunc('page', objPage);
+    });
+    var spanStrLang=createElement('span').myText(objPage.strLang);
+    var butSetStrLang=createElement('button').myAppend('Set lang code (', spanStrLang, ')').css({'margin-left':'0.5em'}).on('click',function(){
+      setStrLangPop.openFunc(objPage.strLang, [objPage.idPage], strT=>spanStrLang.myText(strT));
+    });
+    var butSetSiteOfPage=createElement('button').myAppend('Set site').css({'margin-left':'0.5em'}).on('click',function(){
+      setSiteOfPagePop.openFunc(objPage.idSite, [objPage.idPage]);
+    });
+    var objBottomLine={'border-bottom':'gray solid 1px'};
+    var menuA0=createElement('div').myAppend(pageListButton, imageListButton).css(objBottomLine);
+    var menuA=createElement('div').myAppend(this.butModRead, this.butModWrite, this.butModSiteMap, imgH, ' | ', renameButton, butSetStrLang, butSetSiteOfPage).css(objBottomLine);
+    var menuB0=createElement('div').myHtml("<b>BU download: </b>");
+    var menuB=createElement('div').myAppend(this.aBUFilesToComp, ', Use prefix on default-site-pages: ', cb, imgHPrefix);
+    var menuC=createElement('div').myAppend(aBUImageToComp, ' | ', buttonDiffBackUpDiv).css({'background':'lightblue'});
+    //var menuD=createElement('div').myAppend(aBUVideoToComp);
+    var menuE=createElement('div').myAppend(aBUMeta, imgHSql).css(objBottomLine);  // , ' | ', aBUMetaSQL
+    var menuF=createElement('div').myHtml("Save to server-BU-Folder: ").myAppend(butBUPageServ,butBUImageServ,butBUMetaServ).css(objBottomLine);
+    var menuG=createElement('div').myAppend(uploadAdminDiv).css(objBottomLine);
+    var menuH=createElement('div').myAppend(siteButton,redirectButton).css(objBottomLine);
+    var menuJ=createElement('div').myAppend('DB: '+strDBType, ' | ', statLink);
+    var Menu=[menuA0, menuA, menuB0, menuB,menuC,menuE,menuF,menuG, menuH, menuJ]; Menu.forEach(ele=>ele.css({margin:'0.5em 0'})); //,menuD , menuI
+
+      // menuBottom
+    //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
+
+    var divCont=createElement('div').myAppend(...Menu).css({margin:'1em auto','text-align':'left',display:'inline-block'});
+    var divContW=createElement('div').myAppend(divCont).addClass('contDiv');
+  
+    var spanLabel=createElement('span').myText('adminMore').css({ margin:"0 0 0 auto"});
+    var footDiv=createElement('div').myAppend(spanLabel).addClass('footDiv'); 
+    var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW');
+    this.append(divContW, footDivW);
+    return this;
   }
-
-  var statLink=createElement('a').prop({href:'stat.html'}).myText('stat');
-  var pageListButton=createElement('button').myText('pageList').addClass('fixWidth').on('click',function(){
-    //var idTmp=objPage.idPage; if(isNaN(idTmp)) idTmp=null;
-    var idTmp=objPage.idPage; if(typeof idTmp=='string' && idTmp.length==0) idTmp=null;
-    pageFilterDiv.Filt.setSingleParent(idTmp);  pageList.histPush(); pageList.loadTab();  pageList.setVis();
-  });    
-  var imageListButton=createElement('button').myText('imageList').addClass('fixWidth').css({'background':'lightblue'}).on('click',function(){
-    //var idTmp=objPage.idPage; if(isNaN(idTmp)) idTmp=null;
-    var idTmp=objPage.idPage; if(typeof idTmp=='string' && idTmp.length==0) idTmp=null;
-    imageFilterDiv.Filt.setSingleParent(idTmp);   imageList.histPush();  imageList.loadTab();  imageList.setVis();  // pageFilterDiv.Filt.filtAll();
-  });
-
-  var imgHPrefix=imgHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHPrefix,createElement('div').myHtml('<p>Use prefix on default-site-pages:<p>Note that non-default-site-pages always gets the prefix added (to the filename in the zip-file).<p>Click the "Site table"-button below if you want to see or change the prefixes, and if you want to change which site is the default.'));  
-  var boUsePrefix=getItem('boUsePrefixOnDefaultSitePages')||true;
-  var cb=createElement('input').prop({type:'checkbox', checked:boUsePrefix}).on('click',function(){
-    boUsePrefix=Number(cb.prop('checked')); 
-    setItem('boUsePrefixOnDefaultSitePages',boUsePrefix);  
-    aBUFilesToComp.setUp(boUsePrefix);
-  })
-
-  //var imgHDownload=imgHelp.cloneNode(1).css({'margin-left':'1em','margin-right':'1em'}); popupHover(imgHDownload,createElement('div').myText('Put all pages (or images or videos) in a zip-file and download.'));
-  var aBUFilesToComp=createElement('a').prop({rel:'nofollow', download:''}).myText('(...)page.zip');
-  aBUFilesToComp.setUp=function(boUsePrefix){
-    var tmpUrl='BUPage'+(boUsePrefix?'':'?{"boUsePrefixOnDefaultSitePages":0}'); this.prop({href:tmpUrl});
-  };  aBUFilesToComp.setUp(boUsePrefix);
-  var aBUImageToComp=createElement('a').prop({href:'BUImage', rel:'nofollow', download:''}).myText('(...)image.zip');
-  var aBUVideoToComp=createElement('a').prop({href:'BUVideo', rel:'nofollow', download:''}).myText('(...)video.zip');
-  var aBUMeta=createElement('a').prop({href:'BUMeta', rel:'nofollow', download:''}).myText('(...)meta.zip');
-  var aBUMetaSQL=createElement('a').prop({href:'BUMetaSQL', rel:'nofollow', download:''}).myText('(...)meta.sql');
-  var imgHSql=imgHelp.cloneNode(1).css({'margin':'0 1em'}); popupHover(imgHSql,createElement('div').myHtml('<p>Download "meta-data":<br>-extra data for pages/images (modification dates, access rights ...). <br>-redirect table.<br>-site table.'));
-  
-  var butBUPageServ=createElement('button').myText('page.zip').on('click',  function(){    httpGetAsync('BUPageServ',function(err, str) {setMess(str,3);});    });
-  var butBUImageServ=createElement('button').myText('image.zip').on('click',function(){    httpGetAsync('BUImageServ',function(err, str) {setMess(str,3);});   });
-  var butBUMetaServ=createElement('button').myText('meta.zip').on('click',function(){      httpGetAsync('BUMetaServ',function(err, str) {setMess(str,3);});    });
-  
-  var strOverwrite='This will overwrite data in the db?';
-  
-  var siteButton=createElement('button').myText('Site table').addClass('fixWidth').on('click',function(){    doHistPush({view:siteTab}); siteTab.setVis();   });
-  var redirectButton=createElement('button').myText('Redirect table').addClass('fixWidth').on('click',function(){   doHistPush({view:redirectTab}); redirectTab.setVis();   });
-
-  var renameButton=createElement('button').myText('Rename').css({'margin-left':'0.5em'}).on('click',function(){
-    renamePop.openFunc('page', objPage);
-  });
-  var spanStrLang=createElement('span').myText(objPage.strLang);
-  var butSetStrLang=createElement('button').myAppend('Set lang code (', spanStrLang, ')').css({'margin-left':'0.5em'}).on('click',function(){
-    setStrLangPop.openFunc(objPage.strLang, [objPage.idPage], strT=>spanStrLang.myText(strT));
-  });
-  var butSetSiteOfPage=createElement('button').myAppend('Set site').css({'margin-left':'0.5em'}).on('click',function(){
-    setSiteOfPagePop.openFunc(objPage.idSite, [objPage.idPage]);
-  });
-  var objBottomLine={'border-bottom':'gray solid 1px'};
-  var menuA0=createElement('div').myAppend(pageListButton, imageListButton).css(objBottomLine);
-  var menuA=createElement('div').myAppend(butModRead, butModWrite, butModSiteMap, imgH, ' | ', renameButton, butSetStrLang, butSetSiteOfPage).css(objBottomLine);
-  var menuB0=createElement('div').myHtml("<b>BU download: </b>");
-  var menuB=createElement('div').myAppend(aBUFilesToComp, ', Use prefix on default-site-pages: ', cb, imgHPrefix);
-  var menuC=createElement('div').myAppend(aBUImageToComp, ' | ', buttonDiffBackUpDiv).css({'background':'lightblue'});
-  //var menuD=createElement('div').myAppend(aBUVideoToComp);
-  var menuE=createElement('div').myAppend(aBUMeta, imgHSql).css(objBottomLine);  // , ' | ', aBUMetaSQL
-  var menuF=createElement('div').myHtml("Save to server-BU-Folder: ").myAppend(butBUPageServ,butBUImageServ,butBUMetaServ).css(objBottomLine);
-  var menuG=createElement('div').myAppend(uploadAdminDiv).css(objBottomLine);
-  var menuH=createElement('div').myAppend(siteButton,redirectButton).css(objBottomLine);
-  var menuJ=createElement('div').myAppend('DB: '+strDBType, ' | ', statLink);
-  var Menu=[menuA0, menuA, menuB0, menuB,menuC,menuE,menuF,menuG, menuH, menuJ]; Menu.forEach(ele=>ele.css({margin:'0.5em 0'})); //,menuD , menuI
-
-  el.divCont=createElement('div').myAppend(...Menu);
-  el.divCont.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'1em auto'});
-
-
-    // menuBottom
-  //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
-  var spanLabel=createElement('span').myText('adminMore').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var menuBottom=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
-
-
-  el.fixedDiv=createElement('div').myAppend(menuBottom).css(cssFixed);
-
-  el.myAppend(el.divCont,el.fixedDiv);
-  return el;
+ 
 }
-
-
-
-  
-
+customElements.define('admin-more', AdminMoreDiv);
 
 
 
 
-
-var dumpDivExtend=function(el){
-  el.toString=function(){return 'dumpDiv';}
-  return el;
-}
-
-var tabBUDivExtend=function(el){
-  el.toString=function(){return 'tabBUDiv';}
+var diffBackUpDetailDivExtend=function(el){  // Details of how differential backup will be performed (Really only used for images)
+  el.toString=function(){return 'diffBackUpDetailDiv';}
   el.setUp=function(arrStr,objFetchChanged){
     table.empty();
     var StrOld=arrStr[0], StrDeleted=arrStr[1], StrReuse=arrStr[2], StrFetchChanged=arrStr[3], StrFetchNew=arrStr[4], StrNew=arrStr[5];
@@ -684,46 +674,6 @@ var tabBUDivExtend=function(el){
 }
 
 
-// var tabBUSumExtend=function(el){
-//   el.setUp=function(nOld,nNew,arrN){
-//     var iToFetchNew=3, iToBeDeleted=0;
-//     for(var i=0;i<nAction;i++){
-//       var len=arrN[i];
-//       var lenT=len; if(i==iToFetchNew) lenT=0;   tdOld.children[i].css({width:lenT+'px'});
-//       var lenT=len; if(i==iToBeDeleted) lenT=0;   tdNew.children[i].css({width:lenT+'px'});
-//       tdColor.children[i*3+2].myText(len);
-//       tdOldNum.myText(nOld);
-//       tdNewNum.myText(nNew);
-//     }
-//   }
-//   var StrAction=['toBeDeleted','toBeReused','toFetchChanged','toFetchNew'], nAction=StrAction.length;
-//   var StrActionLabel=['To be deleted','To be reused','To fetch (changed)','To fetch (new)'];
-//   var StrActionColor=['orange','yellow','lightgreen','lightblue'];
-//   var tdOld=createElement('td'), tdNew=createElement('td'), tdColor=createElement('td').attr({colspan:"3"});
-//   for(var i=0;i<nAction;i++){
-//     var divAction=createElement('div').css({'background':StrActionColor[i],'height':'20px', width:'25%', display:'inline-block'});
-//     tdOld.myAppend(divAction);
-//     tdNew.myAppend(divAction.cloneNode());
-//     var divColor=createElement('span').css({'background':StrActionColor[i],'height':'1em', width:'1em', display:'inline-block', 'margin-right':'0.1em'});
-//     var spanColor=createElement('span').myText(StrActionLabel[i]+": ");
-//     var spanN=createElement('span').css({'margin-right':'0.6em', 'font-weight':'bold'});
-//     tdColor.myAppend(divColor, spanColor, spanN);
-//   }
-
-//   var tdOldNum=createElement('td'), tdNewNum=createElement('td');
-//   var trOld=createElement('tr').myHtml("<td>Old Zip</td>").myAppend(tdOldNum, tdOld);
-//   var trNew=createElement('tr').myHtml("<td>New Zip</td>").myAppend(tdNewNum, tdNew);
-//   var trColor=createElement('tr').myAppend(tdColor);
-
-//   //var DivPop=[]; //, Button=([]);
-//   var tHead=createElement('thead').myHtml("<tr><th></th><th>nFiles</th></tr>");
-//   var tBody=createElement('tbody');
-//   tBody.myAppend(trOld, trNew, trColor);
-//   el.myAppend(tHead, tBody);
-
-//   el.css({'border-collapse':'collapse'});
-//   return el;
-// }
 
 var tabBUSumExtend=function(el){
   el.setUp=function(nOld,nNew,arrN){
@@ -772,10 +722,8 @@ var tabBUSumExtend=function(el){
 
 
 
-//try{  var myString = (function () {   /*  //123412341234
 var diffBackUpDivExtend=function(el){
   el.toString=function(){return 'diffBackUpDiv';}
-
   var onerror=function(message) {
     debugger
     alert(message);
@@ -796,7 +744,6 @@ var diffBackUpDivExtend=function(el){
       }, create);
     });
   }
-
 
 
   var inpSelChange=async function(arrOrg){ 
@@ -880,10 +827,10 @@ var diffBackUpDivExtend=function(el){
     var ArrStr=[StrOld, StrDeleted, StrReuse, StrFetchChanged, StrFetchNew, StrNew];
     var tabBUSum=tabBUSumExtend(createElement('div'));
     tabBUSum.setUp(StrOld.length, StrNew.length, [StrDeleted.length, StrReuse.length, StrFetchChanged.length, StrFetchNew.length]);
-    tabBUDiv.setUp(ArrStr, objFetchChanged);
+    diffBackUpDetailDiv.setUp(ArrStr, objFetchChanged);
     var buttonDetail=createElement('button').myText('Details').on('click',function(){
-      doHistPush({view:tabBUDiv});
-      tabBUDiv.setVis();
+      doHistPush({strView:'diffBackUpDetailDiv'});
+      diffBackUpDetailDiv.setVis();
     });
     var li=createElement('li').myAppend('Summary: ( ',buttonDetail,' )',tabBUSum); ul.append(li);
 
@@ -1185,7 +1132,6 @@ var uploadAdminDivExtend=function(el){
 
   return el;
 }
-//  */}).toString().match(/[^]*\/\*([^]*)\*\/\}$/)[1];    eval(myString);    }catch(err){}  //123412341234
 
 
 var uploadUserDivExtend=function(el){
@@ -1220,7 +1166,8 @@ var uploadUserDivExtend=function(el){
     formData.append("strName", inpName.value+spanExtension.myText());
     formData.append("fileToUpload[]", objFile);
     
-    var strTmp=grecaptcha.getResponse(); if(!strTmp) {setMess("Captcha response is empty"); return; }   formData.append('g-recaptcha-response', strTmp);
+    var strTmp=grecaptcha.getResponse();
+    if(!strTmp) {setMess("Captcha response is empty"); return; }   formData.append('g-recaptcha-response', strTmp);
     
     
     
@@ -1331,18 +1278,24 @@ var PageFilterDiv=function(Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst=
   var objArg={Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst, StrGroup, helpBub, objSetting:objFilterSetting};
   //objArg.StrProp=oRole.filter.StrProp;
 
-  el.divCont=filterDivICreator(objArg, changeFunc).addClass('contDiv').css({'max-width':menuMaxWidth,margin:'0em auto','text-align':'left'});
+  el.divCont=createElement('filter-div-i').connectStuff(objArg, changeFunc);
+  el.divCont.css({display:'block', 'max-width':menuMaxWidth,margin:'0em auto','text-align':'left'});
 
       // menuA
   var buttClear=createElement('button').myText('C').on('click',function(){el.Filt.filtAll(); pageList.histReplace(-1); pageList.loadTab();}).css({'margin-left':'1em'});
-  var infoWrap=createElement('span'),     spanLabel=createElement('span').myAppend('Page filter',' (',infoWrap,')').css({'float':'right',margin:'0.2em 0 0 0.2em'});
-  var menuA=createElement('div').myAppend(buttClear,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});  // buttonBack,
+  var infoWrap=createElement('span'),     spanLabel=createElement('span').myAppend('Page filter',' (',infoWrap,')');
+  //var menuA=createElement('div').myAppend(buttClear,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});  // buttonBack,
   
   el.addClass('unselectable').prop({unselectable:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie
 
-  el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
   el.css({'text-align':'center'});
-  el.append(el.divCont, el.fixedDiv);
+
+
+  var divContW=createElement('div').myAppend(el.divCont).addClass('contDiv');
+
+  var footDiv=createElement('div').myAppend(buttClear,spanLabel).addClass('footDiv'); 
+  var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW');
+  el.append(divContW, footDivW);
   return el;
 }
 
@@ -1357,75 +1310,29 @@ var ImageFilterDiv=function(Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst
   var objArg={Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst, StrGroup, helpBub, objSetting:objFilterSetting};
   //objArg.StrProp=oRole.filter.StrProp;
   
-  el.divCont=filterDivICreator(objArg, changeFunc).addClass('contDiv').css({'max-width':menuMaxWidth,margin:'0em auto','text-align':'left'});
+  el.divCont=createElement('filter-div-i').connectStuff(objArg, changeFunc);
+  el.divCont.css({display:'block', 'max-width':menuMaxWidth,margin:'0em auto','text-align':'left'});
   
       // menuA
   var buttClear=createElement('button').myText('C').on('click',function(){el.Filt.filtAll(); imageList.histReplace(-1); imageList.loadTab()}).css({'margin-left':'1em'});
-  var infoWrap=createElement('span'),     spanLabel=createElement('span').myAppend('Image filter',' (',infoWrap,')').css({'float':'right',margin:'0.2em 0 0 0.2em'});
-  var menuA=createElement('div').myAppend(buttClear,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
+  var infoWrap=createElement('span'),     spanLabel=createElement('span').myAppend('Image filter',' (',infoWrap,')');
+  //var menuA=createElement('div').myAppend(buttClear,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
 
   el.addClass('unselectable').prop({unselectable:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie
 
-  el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed).css({background:'lightblue'});
   el.css({'text-align':'center'});
-  el.append(el.divCont, el.fixedDiv);
+
+  var divContW=createElement('div').myAppend(el.divCont).addClass('contDiv');
+
+  var footDiv=createElement('div').myAppend(buttClear,spanLabel).addClass('footDiv'); 
+  var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW').css({background:'lightblue'});
+  el.append(divContW, footDivW);
   return el;
 }
 
 
-var headExtendOld=function(el, tableDiv, StrName, BoAscDefault, Label, strTR='tr', strTD='td'){  // tableDiv must have a property table, tBody and nRowVisible (int)
-  el.setArrow=function(strName,dir){
-    boAsc=dir==1;
-    arrImgSort.forEach(function(ele){ele.prop({src:uUnsorted}) });
-    var tmp=boAsc?uIncreasing:uDecreasing;
-    el.querySelector(strTH+'[name='+strName+']').querySelector('img[data-type=sort]').prop({src:tmp});
-  }
-  el.clearArrow=function(){
-    thSorted=null, boAsc=false;
-    arrImgSort.forEach(function(ele){ele.prop({src:uUnsorted}) });
-  }
-  var thClick=function() {
-    var ele=this, strName=ele.attr('name'), boAscDefault=Boolean(ele.boAscDefault); //??0
-    boAsc=(thSorted===this)?!boAsc:boAscDefault;  thSorted=this;
-    arrImgSort.forEach(function(ele){ele.prop({src:uUnsorted}) });
-    var tmp=boAsc?uIncreasing:uDecreasing;  ele.querySelector('img[data-type=sort]').prop({src:tmp});
-    var tBody=tableDiv.tBody;
-    var arrT=[...tBody.querySelectorAll(strTR)];
-    var arrToSort=arrT.slice(0, tableDiv.nRowVisible);
-    var iChild=ele.myIndex();
-    var comparator=function(aT, bT){
-      var a = aT.children[iChild].valSort,  b = bT.children[iChild].valSort,   dire=boAsc?1:-1; 
-      var boAStr=0,boBStr=0;
-      var aN=Number(a); if(!isNaN(aN) && a!=='') {a=aN;} else {a=a.toLowerCase(); boAStr=1;}
-      var bN=Number(b); if(!isNaN(bN) && b!=='') {b=bN;} else {b=b.toLowerCase(); boBStr=1;}
-      if(boAStr!=boBStr) return ((boAStr<boBStr)?-1:1)*dire;
-      if(a==b) {return 0;} else return ((a<b)?-1:1)*dire;
-    }
-    var arrToSortN=msort.call(arrToSort,comparator);
-    tBody.prepend.apply(tBody,arrToSortN);
-  }
 
-  var strTH=strTD=='td'?'th':strTD;
-  var boAsc=false, thSorted=null;
-  var len=StrName.length;
-  var Th=Array(len), arrImgSort=Array(len);
-  for(var i=0;i<len;i++){
-    var strName=StrName[i];  
-    var imgSort=createElement('img').attr('data-type', 'sort').prop({src:uUnsorted, alt:"sort"});
-    var boAscDefault=(strName in BoAscDefault)?BoAscDefault[strName]:true;
-    var label=(strName in Label)?Label[strName]:ucfirst(strName);
-    var h=createElement(strTH).myAppend(imgSort).addClass('unselectable').prop({UNSELECTABLE:"on"}).attr('name',strName).prop('boAscDefault',boAscDefault).prop('title',label).on('click',thClick);
-    Th[i]=h;
-    arrImgSort[i]=imgSort;
-  }
-
-  el.append(...Th);
-  el.addClass('listHead');
-  return el;
-}
-
-
-var headExtend=function(el, objArg, strTR='tr', strTD='td'){ 
+var headExtend=function(el, objArg, strTR='tr', strTD='td'){  // headExtend is used inside headExtendDyn
   el.setArrow=function(strName,dir){
     boAsc=dir==1;
     arrImgSort.forEach(function(ele){ele.prop({src:uUnsorted}) });
@@ -1639,6 +1546,9 @@ var pageListExtend=function(el){
     File.length=0; if('tab' in data) File=tabNStrCol2ArrObj(data);
     el.nRowVisible=File.length;
     condAddRows(); fileArray2Div();
+    if(el.boDoScroll) {
+      el.setScroll(el.intDoScroll); delete el.boDoScroll; delete el.intDoScroll;
+    }
   }
   var histRet=function(data){
     var tmp, HistPHP=data.Hist||[];
@@ -1710,17 +1620,18 @@ var pageListExtend=function(el){
     resetExecuteButton();  myFetch('POST', vec);
   }
   
-  var funPopped=function(stateMyPopped){ 
-    pageFilterDiv.divCont.frStored(stateMyPopped);
+  el.funPopped=function(state){ 
+    pageFilterDiv.divCont.frStored(state);
+    el.boDoScroll=true; el.intDoScroll=state.scroll
     el.loadTab();
   }
   el.histPush=function(){
     var o=pageFilterDiv.divCont.toStored();
-    doHistPush({view:pageList, Filt:o, fun:funPopped}); //
+    doHistPush({strView:'pageList', arg:o});
   }
   el.histReplace=function(indDiff){
     var o=pageFilterDiv.divCont.toStored();
-    doHistReplace({view:pageList, Filt:o, fun:funPopped}, indDiff); // 
+    doHistReplace({strView:'pageList', arg:o}, indDiff); // 
   }
 
 
@@ -1752,14 +1663,11 @@ var pageListExtend=function(el){
   var tBody=el.tBody=createElement('div').addClass('pageList', 'listBody'); //.addClass('listBody')
   el.nRowVisible=0
   el.table=createElement('div').myAppend(tBody).css({width:'100%',position:'relative'});
-  el.divCont=createElement('div').myAppend(el.table).css({margin:'0em auto 1em','text-align':'left',display:'inline-block'});//
-  //el.divCont.on('mouseover','button[name=nChild]',function(){console.log('gg');});
 
   var StrCol=['nParent','cb','execute','tCreated','tMod','tLastAccess','nAccess','boOR','boOW','boSiteMap','size','nImage','nChild','version','strLang','siteName', 'link'];
   var BoAscDefault={cb:0,boOR:0,boOW:0,boSiteMap:0,nImage:0,nChild:0,nParent:0,version:0,nAccess:0,size:0}; // Default is 1
   //var spanFill=createElement('span').css({height:'calc(1.5*8px + 0.6em)'});
   //var headFill=createElement('p').append().css({background:'white',margin:'0px',height:'calc(12px + 1.2em)'});
-  //var head=headExtendOld(createElement('p'), el, StrCol, BoAscDefault, PageRowLabel, 'p', 'span').addClass('pageList');
   var head=headExtendDyn(createElement('p'), el, StrCol, BoAscDefault, PageRowLabel, 'p', 'span').addClass('pageList');
   head.css({background:'white', width:'inherit'});     // ,height:'calc(12px + 1.2em)' , position:'sticky', top:'57px', 'z-index':'1', margin:'0px'
   el.headW=createElement('div').myAppend(head).css({background:'white', width:'inherit', position:'sticky', top:'0px', 'z-index':'1', margin:'0px'});     
@@ -1813,7 +1721,7 @@ var pageListExtend=function(el){
   var menuMult=createElement('div').css({'text-align':'left', 'line-height':'1.3em'});  menuExtend(menuMult);
   var buttonExeMultClick=function(e){ 
     //var button=this;  //itemMulti[0].toggle(isOneOn());
-    //if(boTouch){ doHistPush({view:menuDiv});     menuDiv.setUp(itemMulti);   menuDiv.setVis();    }else{   }
+    //if(boTouch){ doHistPush({strView:'menuDiv'});     menuDiv.setUp(itemMulti);   menuDiv.setVis();    }else{   }
     //menuMult.openFunc(e,button,itemMulti); 
     //var fragItems=jQueryObjToFragment(itemMulti);
     menuMult.openFunc(e,this,itemMulti);
@@ -1825,22 +1733,30 @@ var pageListExtend=function(el){
 
   //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
   var spanTmp=createElement('span').myText(strFastBackSymbol).css({'font-size':'0.7em'});
-  var buttonFastBack=createElement('button').myAppend(spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){history.fastBack(adminMoreDiv);});
+  var buttonFastBack=createElement('button').myAppend(spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){history.fastBack('adminMoreDiv');});
   //var spanLabel=createElement('span').append('Pages').css({'float':'right',margin:'0.2em 0 0 0'});  
 
   var tmpImg=createElement('img').prop({src:uFilter, alt:"filter"}).css({height:'1em',width:'1em','vertical-align':'text-bottom'}).addClass('undraggable');
   el.filterInfoWrap=createElement('span');
-  var buttFilter=createElement('button').myAppend(tmpImg,' (',el.filterInfoWrap,')').addClass('flexWidth').css({'float':'right','margin-right':'0.2em'}).on('click',function(){ doHistPush({view:pageFilterDiv}); pageFilterDiv.setVis();});
-  var buttClear=createElement('button').myText('C').on('click',function(){pageFilterDiv.Filt.filtAll(); pageList.histPush(); pageList.loadTab()}).css({'float':'right','margin-right':'1em'});
+  var buttFilter=createElement('button').myAppend(tmpImg,' (',el.filterInfoWrap,')').addClass('flexWidth').css({'margin-right':'0.2em'}).on('click',function(){
+    doHistPush({strView:'pageFilterDiv'});
+    pageFilterDiv.setVis();
+  });
+  var buttClear=createElement('button').myText('C').on('click',function(){pageFilterDiv.Filt.filtAll(); pageList.histPush(); pageList.loadTab()}).css({'margin':'0 1em 0 auto'});
   var spanTmp=createElement('span').myText('orp­hans').css({'font-size':'0.8em'});
   var buttOrphan=createElement('button').myText('orp­hans').on('click',function(){pageFilterDiv.Filt.setSingleParent(null);  pageList.histPush(); pageList.loadTab()}).css({'float':'right','margin-right':'1em'});
 
-  var menuA=createElement('div').myAppend(buttonFastBack, allButton, buttonExecuteMult, buttFilter, buttClear, buttOrphan);  // buttonBack, 
-  menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});
+  //var menuA=createElement('div').myAppend(buttonFastBack, allButton, buttonExecuteMult, buttFilter, buttClear, buttOrphan);  // buttonBack, 
+  //menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});
 
-  el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
+
   el.css({'text-align':'center'});
-  el.append(el.divCont,el.fixedDiv);  //,el.fixedTop
+  var divCont=createElement('div').myAppend(el.table).css({margin:'0em auto 1em','text-align':'left',display:'inline-block'});//
+  var divContW=createElement('div').myAppend(divCont).addClass('contDiv');
+
+  var footDiv=createElement('div').myAppend(buttonFastBack, allButton, buttonExecuteMult, buttClear, buttOrphan, buttFilter).addClass('footDiv'); 
+  var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW');
+  el.append(divContW, footDivW);
   return el;
 }
 
@@ -1900,159 +1816,172 @@ var menuPageSingleExtend=function(menuSingle){ // The menu that appears when one
 
 
 
+
    //
-   // SpanGrandParent, DivRowParentT
+   // SpanGrandParent
    //
 
-var SpanGrandParent=function(){
-  var el=createElement('span'); extend(el,SpanGrandParent.tmpPrototype);
-  el.GrandParent=[];
-  el.objParent={};
-  //.css({'background-image':'url("stylesheets/buttonLeft1.png")'})
-  //.css({'background-image':'url("stylesheets/buttonLeft3.png")'})
-  el.buttPop=createElement('button').addClass('aArrow','aArrowLeft').on('click',function(){
-    //el[0].parentElement.parentElement.parentElement.parentElement.parentElement==imageList[0]
-    parentSelPop.setUp(el.GrandParent, el.objParent); parentSelPop.setVis(); doHistPush({view:parentSelPop}); 
-  }).hide();
-  el.buttOrphan=createElement('button').myText('(orphans)').addClass('aArrow','aArrowLeft').on('click',function(){ el.clickFunc(null); }).hide();
-  el.spanButt=createElement('span').on('click',function(e){
-    var ele=e.target;
-    if(ele.nodeName!='BUTTON') return;
-    var ind=ele.ind;
-    //parentSelPop.setUp([el.GrandParent[ind]]);
-    el.clickFunc(el.GrandParent[ind]);
-  });
+class SpanGrandParent extends HTMLElement{
+  constructor(){ super(); }
+  connectStuff(){
+    var self=this
+    this.GrandParent=[];
+    this.objParent={};
+    this.buttPop=createElement('button').addClass('aArrow','aArrowLeft').on('click',function(){
+      //this[0].parentElement.parentElement.parentElement.parentElement.parentElement==imageList[0]
+      parentSelPop.setUp(self.GrandParent, self.objParent); parentSelPop.setVis();
+      doHistPush({strView:'parentSelPop'});
+    }).hide();
+    this.buttOrphan=createElement('button').myText('(orphans)').addClass('aArrow','aArrowLeft').on('click',function(){ self.clickFunc(null); }).hide();
+    this.spanButt=createElement('span').on('click',function(e){
+      var ele=e.target;
+      if(ele.nodeName!='BUTTON') return;
+      var ind=ele.ind;
+      //parentSelPop.setUp([self.GrandParent[ind]]);
+      self.clickFunc(self.GrandParent[ind]);
+    });
 
-  el.myAppend(el.buttPop, el.buttOrphan, el.spanButt); //  'Up: ',    .on('click',function(){el.clickFunc();}); 
-  return el;
+    this.myAppend(this.buttPop, this.buttOrphan, this.spanButt); //  'Up: ',    .on('click',function(){this.clickFunc();}); 
+    return this;
+  }
+  setUpClear(){   this.spanButt.empty(); this.buttPop.hide();  this.buttOrphan.hide();  }
+  setUp(GrandParent){
+    var strTypeCurrent=imageList.style.display=='none'?'page':'image';
+    this.GrandParent=GrandParent; 
+    var nGrandParent=GrandParent.length, lenMax=10;;
+    var boPop=nGrandParent>2; this.buttPop.toggle(boPop).myText(nGrandParent);
+    //this.buttOrphan.toggle(!nGrandParent);
+    this.spanButt.empty();
+    if(!boPop){
+      for(var i=0;i<nGrandParent;i++){
+        var {pageName}=GrandParent[i], str=pageName;   if(str.length>lenMax) str=str.substr(0,lenMax-2)+'...';
+        var butt=createElement('button').myText(str).prop('title', pageName).prop({ind:i});       this.spanButt.append(butt);
+        //var intSize=1; if(str.length>6) intSize=3;  else if(str.length>3) intSize=2; // Determine size of background image
+        //butt.css({'background-image':'url("stylesheets/buttonLeft'+intSize+'.png")'}); //+this.strColor
+        butt.addClass('aArrow','aArrowLeft');
+      }
+    }
+    var filterDiv=strTypeCurrent=='page'?pageFilterDiv:imageFilterDiv;
+    var On=filterDiv.Filt.getParentsOn(), boOrphanFiltering=Boolean(On.length==1 && On[0]==null), boShow=!boOrphanFiltering && nGrandParent==0;  this.buttOrphan.toggle(boShow); // this.toggle(boShow);
+  }
+  clickFunc(parent){ 
+    var idPage=parent?parent.idPage:null;
+    //var {idPage=null}=parent;
+    pageFilterDiv.Filt.setSingleParent(idPage); 
+    pageList.histPush(); pageList.loadTab();    if(pageList.style.display=='none') { pageList.setVis(); }  
+  }
 }
-SpanGrandParent.tmpPrototype={};
-SpanGrandParent.tmpPrototype.setUpClear=function(){   this.spanButt.empty(); this.buttPop.hide();  this.buttOrphan.hide();  }
-SpanGrandParent.tmpPrototype.setUp=function(GrandParent){
-  var strTypeCurrent=imageList.style.display=='none'?'page':'image';
-  this.GrandParent=GrandParent; 
-  var nGrandParent=GrandParent.length, lenMax=10;;
-  var boPop=nGrandParent>2; this.buttPop.toggle(boPop).myText(nGrandParent);
-  //this.buttOrphan.toggle(!nGrandParent);
-  this.spanButt.empty();
-  if(!boPop){
-    for(var i=0;i<nGrandParent;i++){
-      var {pageName}=GrandParent[i], str=pageName;   if(str.length>lenMax) str=str.substr(0,lenMax-2)+'...';
-      var butt=createElement('button').myText(str).prop('title', pageName).prop({ind:i});       this.spanButt.append(butt);
-      //var intSize=1; if(str.length>6) intSize=3;  else if(str.length>3) intSize=2; // Determine size of background image
-      //butt.css({'background-image':'url("stylesheets/buttonLeft'+intSize+'.png")'}); //+this.strColor
-      butt.addClass('aArrow','aArrowLeft');
+customElements.define('span-grand-parent', SpanGrandParent);
+
+
+   //
+   // DivRowParentT
+   //
+
+class DivRowParentT extends HTMLElement{
+  constructor(){ super(); }
+  connectStuff(){
+    var self=this
+    var setParentFilter=function(){
+      var boImageCur=pageList.style.display=='none',  boImageGoal=this==self.buttonNImage;
+      var divCur=boImageCur?imageFilterDiv:pageFilterDiv;
+      var divGoal=boImageGoal?imageFilterDiv:pageFilterDiv;
+      var listGoal=boImageGoal?imageList:pageList;
+      
+      var idPage=divCur.Filt.getSingleParent();
+      divGoal.Filt.setSingleParent(idPage); listGoal.histPush(); listGoal.loadTab();
+      if(listGoal.style.display=='none') listGoal.setVis();
+    }
+    
+    //this.spanGrandParent=new SpanGrandParent();
+    this.spanGrandParent=createElement('span-grand-parent'); this.spanGrandParent.connectStuff();
+    this.spanGrandParent.css({'margin-right':'0.6em'}).attr('name','nParent');
+
+    var buttonExecute=createElement('button').myText(charFlash).on(strMenuOpenEvent, menuPageSingle.buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"}) 
+    this.tdExecute=createElement('span').prop('valSort',0).myAppend(buttonExecute).attr('name','execute'); 
+    this.tdR=createElement('span').attr('name','boOR').myText(charPublicRead).prop('title',PageRowLabel.boOR); this.tdW=createElement('span').attr('name','boOW').myText(charPublicWrite).prop('title',PageRowLabel.boOW); this.tdP=createElement('span').attr('name','boSiteMap').myText(charPromote).css({'margin-right':'0.15em'}).prop('title',PageRowLabel.boSiteMap);
+    this.tdVer=createElement('span').attr('name','version').css({'min-width':'1.5em', background:'red'}); //, 'float':'right'  .css({'margin-left':'0.15em'});
+    this.tdTCreated=createElement('span').attr('name','tCreated').prop('title',PageRowLabel.tCreated);
+    this.tdTMod=createElement('span').attr('name','tMod').prop('title',PageRowLabel.tMod);
+    this.tdTLastAccess=createElement('span').attr('name','tLastAccess').prop('title',PageRowLabel.tLastAccess);
+    this.tdNAccess=createElement('span').attr('name','nAccess').prop('title',PageRowLabel.nAccess);
+    this.tdSite=createElement('span').attr('name','siteName');
+    this.tdOrphan=createElement('span').css({color:'grey'});
+    this.aLink=createElement('a').prop({target:"_blank", rel:"noopener"});
+    this.tdStrLang=createElement('span').attr('name','strLang').prop('title','Language code');;  //.css({'float':'right'});
+    this.tdLink=createElement('span').attr('name','link').myAppend(this.aLink);
+    this.tdSize=createElement('span').attr('name','size');  //.css({'float':'right'});
+    this.buttonNChild=createElement('button').addClass('aArrow','aArrowRight').on('click',setParentFilter);
+    this.buttonNImage=createElement('button').addClass('aArrow','aArrowRight').on('click',setParentFilter).prop('title','Images');
+    this.tdNChild=createElement('span').myAppend(this.buttonNChild).attr('name','nChild');//.css({'float':'right'}); 
+    this.tdNImage=createElement('span').myAppend(this.buttonNImage).attr('name','nImage');//.css({'float':'right'});  
+    
+    this.append(this.spanGrandParent, this.tdExecute, this.tdTCreated, this.tdTMod, this.tdTLastAccess, this.tdNAccess, this.tdR, this.tdW, this.tdP, this.tdSize, this.tdNImage, this.tdNChild, this.tdVer, this.tdStrLang, this.tdSite, this.tdLink, this.tdOrphan);
+    
+    this.css({'line-height':'2.7em'});  // ,'max-width':menuMaxWidth
+    this.addClass('pageList');
+    return this;
+  }
+  setUpPreAJAX(idParent){  
+    var boWhite=pageFilterDiv.Filt.isWhite();
+    var nParentsOn=pageFilterDiv.Filt.getNParentsOn();
+    var nParentsOff=pageFilterDiv.Filt.getNParentsOff();
+    //if(typeof iParent!='undefined') this.idPage=idParent;
+    if(!boWhite || nParentsOn!=1){
+      this.spanGrandParent.setUpClear();
+      //this.children().hide();
+      [...this.childNodes].forEach(ele=>ele.hide());
+      this.tdOrphan.show();
+    
+      if(boWhite) { var strTmp='('+nParentsOn+' parents on)', StrTmp=pageFilterDiv.Filt.getParentsOn(); } 
+      else { 
+        if(nParentsOff){ var strTmp='('+nParentsOff+' parents off)', StrTmp=pageFilterDiv.Filt.getParentsOff(); }
+        else {var strTmp='(No parent filter)', StrTmp=[];}
+      }
+      var StrTmp=StrTmp.slice(0,5), indT=StrTmp.indexOf(null); if(indT!=-1) StrTmp[indT]='(orphans)';
+      var strTitle=StrTmp.join('\n');
+      this.tdOrphan.myText(strTmp).css({color:'grey'}).prop('title',strTitle);
+      return;
+    } 
+  }
+  getParentRet(data){
+    if('tab' in data) { var Parent=tabNStrCol2ArrObj(data); this.spanGrandParent.setUp(Parent);  } 
+  }
+  getPageInfoByIdRet(data){
+    var {nParent, idPage, parent, boOR, boOW, boSiteMap, boOther, lastRev, tCreated, tMod, tLastAccess, nAccess, size, nChild, nImage, strLang, boTLS, siteName, www, pageName}=data;
+    Object.assign(this.spanGrandParent.objParent, data);
+    var boImageList=imageList.style.display!='none', boPageList=!boImageList;
+    this.buttonNChild.myText(boPageList?"cur":nChild).prop("disabled",boPageList).visibilityToggle(nChild);
+    this.buttonNImage.myText(boImageList?"cur":nImage).prop("disabled",boImageList).visibilityToggle(nImage);
+    
+    if(idPage==null) {
+      //this.children().hide();
+      [...this.childNodes].forEach(ele=>ele.hide());  this.tdNChild.show(); this.tdNImage.show();
+      this.tdOrphan.show().myText('orphans'+(boPageList?' (roots)':'')); this.aLink.myText('');
+    } else {
+      //this.children().show();
+      [...this.childNodes].forEach(ele=>ele.show());
+      this.tdOrphan.myText('');
+      this.prop(data);  this.prop({iFlip:null}); 
+      
+      //var text=siteName+':'+pageName; //if(nSame>1) text=siteName+':'+text;
+
+      var sizeDisp=size, pre=''; if(size>=1024) {sizeDisp=Math.round(size/1024); pre='k';} if(size>=1048576) { sizeDisp=Math.round(size/1048576); pre='M';}
+        this.tdSize.myHtml(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; this.tdSize.prop('title',strTitle); 
+      var strVersion=Boolean(boOther)?'v'+(Number(lastRev)+1):'';  
+        this.tdVer.visibilityToggle(Boolean(boOther)).myText(strVersion);
+      this.tdR.visibilityToggle(Boolean(boOR)); this.tdW.visibilityToggle(Boolean(boOW)); this.tdP.visibilityToggle(Boolean(boSiteMap));
+      this.tdTCreated.myText(mySwedDate(tCreated)).prop('title','Created:\n'+tCreated);   
+      this.tdTMod.myText(mySwedDate(tMod)).prop('title','Last Mod:\n'+tMod);   
+      this.tdTLastAccess.myText(mySwedDate(tLastAccess)).prop('title','Last Access:\n'+tLastAccess);   
+      this.tdNAccess.myText(nAccess).prop('title','nAccess:\n'+nAccess);   
+      this.tdStrLang.myText(strLang); 
+      this.tdSite.myText(siteName).prop('title',www); 
+      var url=createUrlFrPageData({boTLS,www,pageName});  this.aLink.prop({href:url}).myText(pageName);   
     }
   }
-  var filterDiv=strTypeCurrent=='page'?pageFilterDiv:imageFilterDiv;
-  var On=filterDiv.Filt.getParentsOn(), boOrphanFiltering=Boolean(On.length==1 && On[0]==null), boShow=!boOrphanFiltering && nGrandParent==0;  this.buttOrphan.toggle(boShow); // this.toggle(boShow);
 }
-SpanGrandParent.tmpPrototype.clickFunc=function(parent){ 
-  var idPage=parent?parent.idPage:null;
-  //var {idPage=null}=parent;
-  pageFilterDiv.Filt.setSingleParent(idPage); 
-  pageList.histPush(); pageList.loadTab();    if(pageList.style.display=='none') { pageList.setVis(); }  
-}
-   
-var DivRowParentT=function(){
-  var el=createElement('div'); extend(el,DivRowParentT.tmpPrototype);
-  var setParentFilter=function(){
-    var boImageCur=pageList.style.display=='none',  boImageGoal=this==el.buttonNImage;
-    var divCur=boImageCur?imageFilterDiv:pageFilterDiv;
-    var divGoal=boImageGoal?imageFilterDiv:pageFilterDiv;
-    var listGoal=boImageGoal?imageList:pageList;
-    
-    var idPage=divCur.Filt.getSingleParent();
-    divGoal.Filt.setSingleParent(idPage); listGoal.histPush(); listGoal.loadTab();
-    if(listGoal.style.display=='none') listGoal.setVis();
-  }
-  
-  el.spanGrandParent=new SpanGrandParent().css({'margin-right':'0.6em'}).attr('name','nParent');
-
-  var buttonExecute=createElement('button').myText(charFlash).on(strMenuOpenEvent, menuPageSingle.buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"}) 
-  el.tdExecute=createElement('span').prop('valSort',0).myAppend(buttonExecute).attr('name','execute'); 
-  el.tdR=createElement('span').attr('name','boOR').myText(charPublicRead).prop('title',PageRowLabel.boOR); el.tdW=createElement('span').attr('name','boOW').myText(charPublicWrite).prop('title',PageRowLabel.boOW); el.tdP=createElement('span').attr('name','boSiteMap').myText(charPromote).css({'margin-right':'0.15em'}).prop('title',PageRowLabel.boSiteMap);
-  el.tdVer=createElement('span').attr('name','version').css({'min-width':'1.5em', background:'red'}); //, 'float':'right'  .css({'margin-left':'0.15em'});
-  el.tdTCreated=createElement('span').attr('name','tCreated').prop('title',PageRowLabel.tCreated);
-  el.tdTMod=createElement('span').attr('name','tMod').prop('title',PageRowLabel.tMod);
-  el.tdTLastAccess=createElement('span').attr('name','tLastAccess').prop('title',PageRowLabel.tLastAccess);
-  el.tdNAccess=createElement('span').attr('name','nAccess').prop('title',PageRowLabel.nAccess);
-  el.tdSite=createElement('span').attr('name','siteName');
-  el.tdOrphan=createElement('span').css({color:'grey'});
-  el.aLink=createElement('a').prop({target:"_blank", rel:"noopener"});
-  el.tdStrLang=createElement('span').attr('name','strLang').prop('title','Language code');;  //.css({'float':'right'});
-  el.tdLink=createElement('span').attr('name','link').myAppend(el.aLink);
-  el.tdSize=createElement('span').attr('name','size');  //.css({'float':'right'});
-  el.buttonNChild=createElement('button').addClass('aArrow','aArrowRight').on('click',setParentFilter);
-  el.buttonNImage=createElement('button').addClass('aArrow','aArrowRight').on('click',setParentFilter).prop('title','Images');
-  el.tdNChild=createElement('span').myAppend(el.buttonNChild).attr('name','nChild');//.css({'float':'right'}); 
-  el.tdNImage=createElement('span').myAppend(el.buttonNImage).attr('name','nImage');//.css({'float':'right'});  
-  
-  el.append(el.spanGrandParent, el.tdExecute, el.tdTCreated, el.tdTMod, el.tdTLastAccess, el.tdNAccess, el.tdR, el.tdW, el.tdP, el.tdSize, el.tdNImage, el.tdNChild, el.tdVer, el.tdStrLang, el.tdSite, el.tdLink, el.tdOrphan);
-  
-  el.css({'line-height':'2.7em'});  // ,'max-width':menuMaxWidth
-  el.addClass('pageList');
-  return el;
-}
-DivRowParentT.tmpPrototype={};
-DivRowParentT.tmpPrototype.setUpPreAJAX=function(idParent){  
-  var boWhite=pageFilterDiv.Filt.isWhite();
-  var nParentsOn=pageFilterDiv.Filt.getNParentsOn();
-  var nParentsOff=pageFilterDiv.Filt.getNParentsOff();
-  //if(typeof iParent!='undefined') this.idPage=idParent;
-  if(!boWhite || nParentsOn!=1){
-    this.spanGrandParent.setUpClear();
-    //this.children().hide();
-    [...this.childNodes].forEach(ele=>ele.hide());
-    this.tdOrphan.show();
-  
-    if(boWhite) { var strTmp='('+nParentsOn+' parents on)', StrTmp=pageFilterDiv.Filt.getParentsOn(); } 
-    else { 
-      if(nParentsOff){ var strTmp='('+nParentsOff+' parents off)', StrTmp=pageFilterDiv.Filt.getParentsOff(); }
-      else {var strTmp='(No parent filter)', StrTmp=[];}
-    }
-    var StrTmp=StrTmp.slice(0,5), indT=StrTmp.indexOf(null); if(indT!=-1) StrTmp[indT]='(orphans)';
-    var strTitle=StrTmp.join('\n');
-    this.tdOrphan.myText(strTmp).css({color:'grey'}).prop('title',strTitle);
-    return;
-  } 
-}
-DivRowParentT.tmpPrototype.getParentRet=function(data){
-  if('tab' in data) { var Parent=tabNStrCol2ArrObj(data); this.spanGrandParent.setUp(Parent);  } 
-}
-DivRowParentT.tmpPrototype.getPageInfoByIdRet=function(data){
-  var {nParent, idPage, parent, boOR, boOW, boSiteMap, boOther, lastRev, tCreated, tMod, tLastAccess, nAccess, size, nChild, nImage, strLang, boTLS, siteName, www, pageName}=data;
-  Object.assign(this.spanGrandParent.objParent, data);
-  var boImageList=imageList.style.display!='none', boPageList=!boImageList;
-  this.buttonNChild.myText(boPageList?"cur":nChild).prop("disabled",boPageList).visibilityToggle(nChild);
-  this.buttonNImage.myText(boImageList?"cur":nImage).prop("disabled",boImageList).visibilityToggle(nImage);
-  
-  if(idPage==null) {
-    //this.children().hide();
-    [...this.childNodes].forEach(ele=>ele.hide());  this.tdNChild.show(); this.tdNImage.show();
-    this.tdOrphan.show().myText('orphans'+(boPageList?' (roots)':'')); this.aLink.myText('');
-  } else {
-    //this.children().show();
-    [...this.childNodes].forEach(ele=>ele.show());
-    this.tdOrphan.myText('');
-    this.prop(data);  this.prop({iFlip:null}); 
-    
-    //var text=siteName+':'+pageName; //if(nSame>1) text=siteName+':'+text;
-
-    var sizeDisp=size, pre=''; if(size>=1024) {sizeDisp=Math.round(size/1024); pre='k';} if(size>=1048576) { sizeDisp=Math.round(size/1048576); pre='M';}
-      this.tdSize.myHtml(sizeDisp+'<b>'+pre+'</b>'); var strTitle=pre.length?'Size: '+size:''; this.tdSize.prop('title',strTitle); 
-    var strVersion=Boolean(boOther)?'v'+(Number(lastRev)+1):'';  
-      this.tdVer.visibilityToggle(Boolean(boOther)).myText(strVersion);
-    this.tdR.visibilityToggle(Boolean(boOR)); this.tdW.visibilityToggle(Boolean(boOW)); this.tdP.visibilityToggle(Boolean(boSiteMap));
-    this.tdTCreated.myText(mySwedDate(tCreated)).prop('title','Created:\n'+tCreated);   
-    this.tdTMod.myText(mySwedDate(tMod)).prop('title','Last Mod:\n'+tMod);   
-    this.tdTLastAccess.myText(mySwedDate(tLastAccess)).prop('title','Last Access:\n'+tLastAccess);   
-    this.tdNAccess.myText(nAccess).prop('title','nAccess:\n'+nAccess);   
-    this.tdStrLang.myText(strLang); 
-    this.tdSite.myText(siteName).prop('title',www); 
-    var url=createUrlFrPageData({boTLS,www,pageName});  this.aLink.prop({href:url}).myText(pageName);   
-  }
-}
+customElements.define('div-row-parent', DivRowParentT);
 
 
 
@@ -2065,7 +1994,8 @@ var goToParentMethod=function(e){
   if(adminMoreDiv.boUseSelPopForSinglParent && nParent==1) boUseSelPop=true;
   if(e.shiftKey && nParent==1) boUseSelPop=true;
   if(boUseSelPop){ 
-    parentSelPop.setUp({idPage, idImage}, strType); parentSelPop.setVis();  doHistPush({view:parentSelPop});
+    parentSelPop.setUp({idPage, idImage}, strType); parentSelPop.setVis();
+    doHistPush({strView:'parentSelPop'});
   }else{ // ... go directly to parent 
     //if(!e.shiftKey) {var url=createUrlFrPageData({boTLS, www, pageName:parent}); window.open(url); return false; }
     FiltGoal.setSingleParent(idParent);  listGoal.histPush(); listGoal.loadTab(); 
@@ -2079,7 +2009,6 @@ var parentSelPopExtend=function(el){
     var FiltT=strType=='page'?pageFilterDiv.Filt:imageFilterDiv.Filt;
     var listGoal=strType=='page'?pageList:imageList;
     FiltT.setSingleParent(idPage);
-    //changeHist({view:listGoal});
     listGoal.histReplace(); listGoal.loadTab(); listGoal.setVis();
   }
   var cbChange=function(){
@@ -2169,196 +2098,6 @@ var parentSelPopExtend=function(el){
 }
 
 
-var renamePopExtend=function(el){
-  el.toString=function(){return 'renamePop';}
-  var save=function(){ 
-    resetMess();  
-    var strNewName=inpName.value.trim(); inpName.value=strNewName; if(strNewName.length==0) {setMess('name can not be empty',5); return; }
-    strNewName.replace(RegExp(' ','g'),'_');
-    var id=row['id'+ucfirst(strType)], o1={strNewName,id};
-    var vec=[['rename'+ucfirst(strType),o1,saveRet]];   myFetch('POST',vec);
-
-    setMess('',null,true);  
-  }
-  var saveRet=function(data){
-    var boOK=false;
-    var tmp=data.boOK;   if(typeof tmp!="undefined")  boOK=tmp;
-    if(boCallFrList){
-      var par=strType=='page'?pageList:imageList;
-      if(boOK) { par.changeName(row, inpName.value); }  
-    }
-    historyBack();
-  }
-  el.openFunc=function(strTypeT, rowT, boCallFrListT=0){
-    strType=strTypeT; row=rowT; boCallFrList=boCallFrListT;
-    var strName=row[strType+'Name'];  
-    type.myText(strType); inpName.prop('value',strName);
-    doHistPush({view:renamePop});
-    el.setVis();
-    inpName.focus(); inpName.select();
-  }
-  var row, strType='', boCallFrList;
-
-  el.setVis=function(){  el.show();   return true; }
-
- 
-  var type=createElement('span'); 
-  var head=createElement('h3').myAppend('Rename ',type);
-  var nameLab=createElement('div').myText('New name: ');
-  var inpName=createElement('input').css({display:'block',width:'100%'}).on('keypress',  function(e){ if(e.which==13) {save();return false;}} );
-
-  var saveButton=createElement('button').myText('Save').on('click',save).css({'margin-top':'1em'});
-  var cancelButton=createElement('button').myText('Cancel').on('click',historyBack).css({'margin-top':'1em'});
-  //el.append(head,nameLab,inpName,cancelButton,saveButton); //.css({padding:'0.1em'}); 
-
-  var blanket=createElement('div').addClass("blanket");
-  var centerDiv=createElement('div').addClass("Center").myAppend(head,nameLab,inpName,cancelButton,saveButton).css({'min-width':'17em', 'max-width':'30em', padding: '0.3em 0.5em 1.2em 1.2em'}); // height:'12em', 
-  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
-  
-  return el;
-}
-
-var setStrLangPopExtend=function(el){
-  el.toString=function(){return 'setStrLangPop';}
-  var save=function(){ 
-    resetMess();  
-    strLang=inpStrLang.value.trim(); inpStrLang.value=strLang;
-    var o1={strLang,Id};
-    var vec=[['setStrLang',o1,saveRet]];   myFetch('POST',vec);
-    setMess('',null,true);  
-  }
-  var saveRet=function(data){
-    var boOK=false;
-    var tmp=data.boOK;   if(typeof tmp!="undefined")  boOK=tmp;
-    if(cbDone) cbDone(strLang)
-    historyBack();
-  }
-  el.openFunc=function(strLangStart, IdT, cbDoneT){
-    Id=IdT; cbDone=cbDoneT;
-    if(IdT.length==0) {setMess('IdT is empty'); return}
-    inpStrLang.prop('value', strLangStart);
-    doHistPush({view:setStrLangPop});
-    el.setVis();
-    inpStrLang.focus(); inpStrLang.select()
-  }
-  el.setVis=function(){ el.show();   return true; }
-
-  var Id, strLang, cbDone;
- 
-  var head=createElement('h3').myAppend('Set iso 639-1 language code');
-  var nameLab=createElement('div').myText('Language code:');
-  var intL=11, inpStrLang=createElement('input').css({display:'block'}).attr({maxlength:intL, title:'ISO 639-1 Language Code', size:intL}).on('keypress',  function(e){ if(e.which==13) {save();return false;}} );
-
-  var saveButton=createElement('button').myText('Save').on('click',save).css({'margin-top':'1em'});
-  var cancelButton=createElement('button').myText('Cancel').on('click',historyBack).css({'margin-top':'1em'});
-
-  var blanket=createElement('div').addClass("blanket");
-  var centerDiv=createElement('div').addClass("Center").myAppend(head,nameLab,inpStrLang,cancelButton,saveButton).css({'min-width':'17em', 'max-width':'30em', padding: '0.3em 0.5em 1.2em 1.2em'}); // height:'12em', 
-  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
-  
-  return el;
-}
-
-var setSiteOfPagePopExtend=function(el){
-  el.toString=function(){return 'setSiteOfPagePop';}
-  var save=function(){ 
-    resetMess();  
-    idSite=selSite.value;
-    var o1={idSite,Id}, vec=[['setSiteOfPage',o1,saveRet]];   myFetch('POST',vec);
-    setMess('',null,true);  
-  }
-  var saveRet=function(data){
-    var boOK=false;
-    var tmp=data.boOK;   if(typeof tmp!="undefined")  boOK=tmp;
-    if(cbDone) cbDone(idSite)
-    historyBack();
-  }
-  el.openFunc=function(idSiteStart, IdT, cbDoneT){
-    Id=IdT; cbDone=cbDoneT;
-    if(IdT.length==0) {setMess('IdT is empty'); return}
-    //selSite.value=idSiteStart;
-    doHistPush({view:setSiteOfPagePop});
-    el.setVis();
-    divCollision.empty();
-    el.setUpSelSite().then(result=>selSite.prop('value', idSiteStart));
-    selSite.focus();
-  }
-  var cbTestForCollision=function(){ 
-    resetMess();  
-    idSite=selSite.value;
-    var o1={idSite,Id}, vec=[['collisionTestForSetSiteOfPage',o1,cbTestForCollisionRet]];   myFetch('POST',vec);
-    setMess('',null,true);  
-  }
-  var cbTestForCollisionRet=function(data){
-    var tabCollision=tabNStrCol2ArrObj(data.tabCollision), len=tabCollision.length;
-    var StrT=Array(len); tabCollision.forEach((it,ind)=>{StrT[ind]=it.pageName;});
-    var strT=StrT.join(', '); if(len) strT='Page(s) that will collide: '+strT;
-    divCollision.myText(strT);
-  }
-  el.setVis=function(){ el.show();   return true; }
-  el.setUpSelSite=async function(){
-    if(!siteTab.boUpToDate) {await siteTab.setUp();}
-    var ObjSite=siteTab.ObjSite;
-    var Opt=[];
-    for(var i=0;i<ObjSite.length;i++) {
-      var strT=ObjSite[i].idSite+' ('+ObjSite[i].www+')';
-      var optT=createElement('option').myText(strT).prop('value',ObjSite[i].idSite); Opt.push(optT);
-    }
-    selSite.empty().myAppend(...Opt);
-  }
-
-  var Id, idSite, cbDone;
- 
-  var head=createElement('h3').myAppend('Set site of page(s)');
-  var nameLab=createElement('div').myText('Site:');
-  var selSite=createElement('select').css({display:'block'}).attr({title:'Set site of page(s)'}).on('change',  function(e){ cbTestForCollision();} );
-
-  var divCollision=createElement('div');
-  
-
-  var saveButton=createElement('button').myText('Save').on('click',save).css({'margin-top':'1em'});
-  var cancelButton=createElement('button').myText('Cancel').on('click',historyBack).css({'margin-top':'1em'});
-
-  var blanket=createElement('div').addClass("blanket");
-  var centerDiv=createElement('div').addClass("Center").myAppend(head,nameLab,selSite,cancelButton,saveButton, divCollision).css({'min-width':'17em', 'max-width':'30em', padding: '0.3em 0.5em 1.2em 1.2em'}); // height:'12em', 
-  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
-  
-  return el;
-}
-
-
-
-var areYouSurePopExtend=function(el){
-  el.toString=function(){return 'areYouSurePop';}
-  el.openFunc=function(strLab, continueClick, cancelClick){ // continueClick(finFun): called when the user clicks the continue button. It takes a callback-argument which closes the areYouSurePop.
-    labPageName.myText(strLab);
-    doHistPush({view:areYouSurePop});
-    el.setVis();
-    continueClickLoc=continueClick;
-    cancelClickLoc=cancelClick;
-  }
-  el.setVis=function(){
-    el.show(); return 1;
-  }
- 
-  var continueClickLoc, cancelClickLoc;
-  //el=popUpExtend(el);  
-  //el.css({'max-width':'20em', padding: '1.2em 0.5em 1.2em 1.2em'}); 
-
-  var labPageName=createElement('div');
-  var buttonCancel=createElement('button').myText('Cancel').on('click',function(){ cancelClickLoc(); }).css({'margin-top':'1em'});
-  var buttonContinue=createElement('button').myText('Yes').on('click',function(){  continueClickLoc();  }).css({'margin-top':'1em'});
-  var divBottom=createElement('div').myAppend(buttonCancel,buttonContinue);
-  //el.append(labPageName,divBottom);
-
-  var blanket=createElement('div').addClass("blanket");
-  var centerDiv=createElement('div').addClass("Center").myAppend(labPageName,divBottom).css({'max-width':'20em', padding: '1.2em 0.5em 1.2em 1.2em'});  // height:'8em', '
-  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
-  
-  return el;
-}
-
-
 var imageListExtend=function(el){ 
   el.toString=function(){return 'imageList';}
   var imageClick=function(){
@@ -2379,7 +2118,7 @@ var imageListExtend=function(el){
     });
     var iCur=this.parentNode.parentNode.myIndex();
     slideShow.setUp(StrImg,Caption,iCur);
-    doHistPush({view:slideShow});
+    doHistPush({strView:'slideShow'});
     slideShow.setVis(); 
   }
   var condAddRows=function(){
@@ -2494,6 +2233,9 @@ var imageListExtend=function(el){
     if('tab' in data) File=tabNStrCol2ArrObj(data);
     el.nRowVisible=File.length;
     condAddRows(); fileArray2Div();
+    if(el.boDoScroll) {
+      el.setScroll(el.intDoScroll); delete el.boDoScroll; delete el.intDoScroll;
+    }
   }
   var histRet=function(data){
     var tmp, HistPHP=data.Hist||[];
@@ -2562,17 +2304,18 @@ var imageListExtend=function(el){
   }
   
   
-  var funPopped=function(statePopped){ 
-    imageFilterDiv.divCont.frStored(statePopped);
+  el.funPopped=function(state){ 
+    imageFilterDiv.divCont.frStored(state);
+    el.boDoScroll=true; el.intDoScroll=state.scroll
     el.loadTab();
   }
   el.histPush=function(){
     var o=imageFilterDiv.divCont.toStored();
-    doHistPush({view:imageList, Filt:o, fun:funPopped});
+    doHistPush({strView:'imageList', arg:o});
   }
   el.histReplace=function(indDiff){
     var o=imageFilterDiv.divCont.toStored();
-    doHistReplace({view:imageList, Filt:o, fun:funPopped}, indDiff); //
+    doHistReplace({strView:'imageList', arg:o}, indDiff); //
   }
 
   //var IndSiteName,
@@ -2593,14 +2336,13 @@ var imageListExtend=function(el){
   var tBody=el.tBody=createElement('div').addClass('imageList', 'listBody');  //.addClass('listBody');
   el.nRowVisible=0
   el.table=createElement('div').myAppend(tBody).css({width:'100%',position:'relative'});
-  el.divCont=createElement('div').myAppend(el.table).css({margin:'0em auto 1em','text-align':'left',display:'inline-block'});//
+  var divCont=createElement('div').myAppend(el.table).css({margin:'0em auto 1em','text-align':'left',display:'inline-block'});//
   
   
   var strTmp='Parents / Alternatve parents';
   var StrCol=['nParentI','cb','execute','tCreated','tLastAccess','nAccess','image','size','boOther','link'];
   var BoAscDefault={cb:0,boOther:0,size:0,nAccess:0}, Label={nParent:strTmp, nParentI:strTmp, cb:'Select',tCreated:'Created',tLastAccess:'Last Access',nAccess:'nAccess',boOther:'Supplied by user'}; //'nParent',
   //var headFill=createElement('p').myAppend().css({background:'white',margin:'0px',height:'calc(12px + 1.2em)'});
-  //var head=headExtendOld(createElement('p'), el, StrCol, BoAscDefault, Label, 'p', 'span').addClass('imageList');
   var head=headExtendDyn(createElement('p'), el, StrCol, BoAscDefault, Label, 'p', 'span').addClass('imageList');
   head.css({background:'white', width:'inherit'});     // ,height:'calc(12px + 1.2em)', position:'sticky', top:'57px', 'z-index':'1', margin:'0px'
   el.headW=createElement('div').myAppend(head).css({background:'white', width:'inherit', position:'sticky', top:'0px', 'z-index':'1', margin:'0px'});     
@@ -2655,7 +2397,7 @@ var imageListExtend=function(el){
   var menuMult=createElement('div').css({'text-align':'left', 'line-height':'1.3em'});  menuExtend(menuMult);
   var buttonExeMultClick=function(e){ 
     //var button=this;  //itemMulti[0].toggle(isOneOn());
-    //if(boTouch){      doHistPush({view:menuDiv});     menuDiv.setUp(itemMulti);   menuDiv.setVis();    }else{    }
+    //if(boTouch){      doHistPush({strView:'menuDiv'});    menuDiv.setUp(itemMulti);   menuDiv.setVis();    }else{    }
     //var fragItems=jQueryObjToFragment(itemMulti);
     menuMult.openFunc(e,this,itemMulti);
   }
@@ -2671,22 +2413,188 @@ var imageListExtend=function(el){
 
   //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
   var spanTmp=createElement('span').myText(strFastBackSymbol).css({'font-size':'0.7em'});
-  var buttonFastBack=createElement('button').myAppend(spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){history.fastBack(adminMoreDiv);});
+  var buttonFastBack=createElement('button').myAppend(spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){history.fastBack('adminMoreDiv');});
   //var spanLabel=createElement('span').myText('Images').css({'float':'right',margin:'0.2em 0 0 0'}); 
   
   var tmpImg=createElement('img').prop({src:uFilter, alt:"filter"}).css({height:'1em',width:'1em','vertical-align':'text-bottom'}).addClass('undraggable');
   el.filterInfoWrap=createElement('span');
-  var buttFilter=createElement('button').myAppend(tmpImg,' (',el.filterInfoWrap,')').addClass('flexWidth').css({'float':'right','margin-right':'0.2em'}).on('click',function(){ doHistPush({view:imageFilterDiv}); imageFilterDiv.setVis();});
-  var buttClear=createElement('button').myText('C').on('click',function(){imageFilterDiv.Filt.filtAll(); imageList.histPush(); imageList.loadTab()}).css({'float':'right','margin-right':'1em'});
+  var buttFilter=createElement('button').myAppend(tmpImg,' (',el.filterInfoWrap,')').addClass('flexWidth').css({'margin-right':'0.2em'}).on('click',function(){ doHistPush({strView:'imageFilterDiv'}); imageFilterDiv.setVis();});
+  var buttClear=createElement('button').myText('C').on('click',function(){imageFilterDiv.Filt.filtAll(); imageList.histPush(); imageList.loadTab()}).css({'margin':'0 1em 0 auto'});
   var spanTmp=createElement('span').myText('(orphans)').css({'font-size':'0.8em'});
-  var buttOrphan=createElement('button').myAppend(spanTmp).on('click',function(){imageFilterDiv.Filt.setSingleParent(null);  imageList.histPush(); imageList.loadTab()}).css({'float':'right','margin-right':'1em'});
+  var buttOrphan=createElement('button').myAppend(spanTmp).on('click',function(){imageFilterDiv.Filt.setSingleParent(null);  imageList.histPush(); imageList.loadTab()}).css({'margin-right':'1em'});
 
-  var menuA=createElement('div').myAppend(buttonFastBack, allButton, buttonExecuteMult, buttFilter, buttClear, buttOrphan);  // buttonBack, 
-  menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});
+  //var menuA=createElement('div').myAppend(buttonFastBack, allButton, buttonExecuteMult, buttFilter, buttClear, buttOrphan);  // buttonBack, 
+  //menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});
 
-  el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed).css({'background':'lightblue'});
+
   el.css({'text-align':'center'});
-  el.append(el.divCont,el.fixedDiv);  //,el.fixedTop
+  var divCont=createElement('div').myAppend(el.table).css({margin:'0em auto 1em','text-align':'left',display:'inline-block'});//
+  var divContW=createElement('div').myAppend(divCont).addClass('contDiv');
+
+  var footDiv=createElement('div').myAppend(buttonFastBack, allButton, buttonExecuteMult, buttClear, buttOrphan, buttFilter).addClass('footDiv'); 
+  var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW').css({'background':'lightblue'});
+  el.append(divContW, footDivW);
+  return el;
+}
+
+
+
+
+
+var renamePopExtend=function(el){
+  el.toString=function(){return 'renamePop';}
+  var save=function(){ 
+    resetMess();  
+    var strNewName=inpName.value.trim(); inpName.value=strNewName; if(strNewName.length==0) {setMess('name can not be empty',5); return; }
+    strNewName.replace(RegExp(' ','g'),'_');
+    var id=row['id'+ucfirst(strType)], o1={strNewName,id};
+    var vec=[['rename'+ucfirst(strType),o1,saveRet]];   myFetch('POST',vec);
+
+    setMess('',null,true);  
+  }
+  var saveRet=function(data){
+    var boOK=false;
+    var tmp=data.boOK;   if(typeof tmp!="undefined")  boOK=tmp;
+    if(boCallFrList){
+      var par=strType=='page'?pageList:imageList;
+      if(boOK) { par.changeName(row, inpName.value); }  
+    }
+    historyBack();
+  }
+  el.openFunc=function(strTypeT, rowT, boCallFrListT=0){
+    strType=strTypeT; row=rowT; boCallFrList=boCallFrListT;
+    var strName=row[strType+'Name'];  
+    type.myText(strType); inpName.prop('value',strName);
+    doHistPush({strView:'renamePop'});
+    el.setVis();
+    inpName.focus(); inpName.select();
+  }
+  var row, strType='', boCallFrList;
+
+  el.setVis=function(){  el.show();   return true; }
+
+ 
+  var type=createElement('span'); 
+  var head=createElement('h3').myAppend('Rename ',type);
+  var nameLab=createElement('div').myText('New name: ');
+  var inpName=createElement('input').css({display:'block',width:'100%'}).on('keypress',  function(e){ if(e.which==13) {save();return false;}} );
+
+  var saveButton=createElement('button').myText('Save').on('click',save).css({'margin-top':'1em'});
+  var cancelButton=createElement('button').myText('Cancel').on('click',historyBack).css({'margin-top':'1em'});
+  //el.append(head,nameLab,inpName,cancelButton,saveButton); //.css({padding:'0.1em'}); 
+
+  var blanket=createElement('div').addClass("blanket");
+  var centerDiv=createElement('div').addClass("Center").myAppend(head,nameLab,inpName,cancelButton,saveButton).css({'min-width':'17em', 'max-width':'30em', padding: '0.3em 0.5em 1.2em 1.2em'}); // height:'12em', 
+  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
+  
+  return el;
+}
+
+var setStrLangPopExtend=function(el){
+  el.toString=function(){return 'setStrLangPop';}
+  var save=function(){ 
+    resetMess();  
+    strLang=inpStrLang.value.trim(); inpStrLang.value=strLang;
+    var o1={strLang,Id};
+    var vec=[['setStrLang',o1,saveRet]];   myFetch('POST',vec);
+    setMess('',null,true);  
+  }
+  var saveRet=function(data){
+    var boOK=false;
+    var tmp=data.boOK;   if(typeof tmp!="undefined")  boOK=tmp;
+    if(cbDone) cbDone(strLang)
+    historyBack();
+  }
+  el.openFunc=function(strLangStart, IdT, cbDoneT){
+    Id=IdT; cbDone=cbDoneT;
+    if(IdT.length==0) {setMess('IdT is empty'); return}
+    inpStrLang.prop('value', strLangStart);
+    doHistPush({strView:'setStrLangPop'});
+    el.setVis();
+    inpStrLang.focus(); inpStrLang.select()
+  }
+  el.setVis=function(){ el.show();   return true; }
+
+  var Id, strLang, cbDone;
+ 
+  var head=createElement('h3').myAppend('Set iso 639-1 language code');
+  var nameLab=createElement('div').myText('Language code:');
+  var intL=11, inpStrLang=createElement('input').css({display:'block'}).attr({maxlength:intL, title:'ISO 639-1 Language Code', size:intL}).on('keypress',  function(e){ if(e.which==13) {save();return false;}} );
+
+  var saveButton=createElement('button').myText('Save').on('click',save).css({'margin-top':'1em'});
+  var cancelButton=createElement('button').myText('Cancel').on('click',historyBack).css({'margin-top':'1em'});
+
+  var blanket=createElement('div').addClass("blanket");
+  var centerDiv=createElement('div').addClass("Center").myAppend(head,nameLab,inpStrLang,cancelButton,saveButton).css({'min-width':'17em', 'max-width':'30em', padding: '0.3em 0.5em 1.2em 1.2em'}); // height:'12em', 
+  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
+  
+  return el;
+}
+
+var setSiteOfPagePopExtend=function(el){
+  el.toString=function(){return 'setSiteOfPagePop';}
+  var save=function(){ 
+    resetMess();  
+    idSite=selSite.value;
+    var o1={idSite,Id}, vec=[['setSiteOfPage',o1,saveRet]];   myFetch('POST',vec);
+    setMess('',null,true);  
+  }
+  var saveRet=function(data){
+    var boOK=false;
+    var tmp=data.boOK;   if(typeof tmp!="undefined")  boOK=tmp;
+    if(cbDone) cbDone(idSite)
+    historyBack();
+  }
+  el.openFunc=function(idSiteStart, IdT, cbDoneT){
+    Id=IdT; cbDone=cbDoneT;
+    if(IdT.length==0) {setMess('IdT is empty'); return}
+    //selSite.value=idSiteStart;
+    doHistPush({strView:'setSiteOfPagePop'});
+    el.setVis();
+    divCollision.empty();
+    el.setUpSelSite().then(result=>selSite.prop('value', idSiteStart));
+    selSite.focus();
+  }
+  var cbTestForCollision=function(){ 
+    resetMess();  
+    idSite=selSite.value;
+    var o1={idSite,Id}, vec=[['collisionTestForSetSiteOfPage',o1,cbTestForCollisionRet]];   myFetch('POST',vec);
+    setMess('',null,true);  
+  }
+  var cbTestForCollisionRet=function(data){
+    var tabCollision=tabNStrCol2ArrObj(data.tabCollision), len=tabCollision.length;
+    var StrT=Array(len); tabCollision.forEach((it,ind)=>{StrT[ind]=it.pageName;});
+    var strT=StrT.join(', '); if(len) strT='Page(s) that will collide: '+strT;
+    divCollision.myText(strT);
+  }
+  el.setVis=function(){ el.show();   return true; }
+  el.setUpSelSite=async function(){
+    if(!siteTab.boUpToDate) {await siteTab.setUp();}
+    var ObjSite=siteTab.ObjSite;
+    var Opt=[];
+    for(var i=0;i<ObjSite.length;i++) {
+      var strT=ObjSite[i].idSite+' ('+ObjSite[i].www+')';
+      var optT=createElement('option').myText(strT).prop('value',ObjSite[i].idSite); Opt.push(optT);
+    }
+    selSite.empty().myAppend(...Opt);
+  }
+
+  var Id, idSite, cbDone;
+ 
+  var head=createElement('h3').myAppend('Set site of page(s)');
+  var nameLab=createElement('div').myText('Site:');
+  var selSite=createElement('select').css({display:'block'}).attr({title:'Set site of page(s)'}).on('change',  function(e){ cbTestForCollision();} );
+
+  var divCollision=createElement('div');
+  
+
+  var saveButton=createElement('button').myText('Save').on('click',save).css({'margin-top':'1em'});
+  var cancelButton=createElement('button').myText('Cancel').on('click',historyBack).css({'margin-top':'1em'});
+
+  var blanket=createElement('div').addClass("blanket");
+  var centerDiv=createElement('div').addClass("Center").myAppend(head,nameLab,selSite,cancelButton,saveButton, divCollision).css({'min-width':'17em', 'max-width':'30em', padding: '0.3em 0.5em 1.2em 1.2em'}); // height:'12em', 
+  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
+  
   return el;
 }
 
@@ -2696,41 +2604,30 @@ var imageListExtend=function(el){
  * editDiv
  ******************************************************************************/
 
-var editDivExtend=function(el){
-  el.toString=function(){return 'editDiv';}
+var editDivFixedExtend=function(el){
   el.setUp=function(){
-    if(editText.parentNode!==el.fixedDiv) {
-      el.fixedDiv.prepend(dragHR,editText);
+    if(editText.parentNode!==el) {
+      el.prepend(dragHR,editText);
     }
     
     if(divReCaptcha.isLoaded()) { console.log('Setting up recaptcha (divReCaptcha became visible)'); divReCaptcha.setUp(); } // Otherwise cbRecaptcha will fire later
+    return this
   }
   
     // menuB
   el.spanSave=spanSaveExtend(createElement('span'));
   var templateButton=createElement('button').myText('Template list').addClass('fixWidth').css({'margin-right':'1em'}).on('click',function(){
-    doHistPush({view:templateList});
+    doHistPush({strView:'templateList'});
     templateList.setVis();
   });
   el.templateButton=templateButton;
-  var upLoadButton=createElement('button').myAppend('Upload image').on('click',function(){  doHistPush({view:uploadUserDiv}); uploadUserDiv.setVis();}).css({'float':'right'});
+  var upLoadButton=createElement('button').myAppend('Upload image').on('click',function(){
+    doHistPush({strView:'uploadUserDiv'});
+    uploadUserDiv.setVis();
+  }).css({'float':'right'});
   
-  var menuB=createElement('div').myAppend(el.spanSave,templateButton).addClass('fixWidth').css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'1em auto 0'});
-  //,' ',upLoadButton
-    // menuA
-  //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
-  //var spanLabel=createElement('span').myText('Edit').css({'float':'right',margin:'0.2em 0 0 0'});  
-  
-  //el.spanCreated=createElement('span');   el.spanLastMod=createElement('span');  
-  //var spanTModNCreated=createElement('span').myAppend('Page created: ', el.spanCreated, '. Last mod: ', el.spanLastMod).css({'float':'right',margin:'0.2em .5em 0 0', 'font-size':'70%'});
-  //var menuA=createElement('div').myAppend(spanTModNCreated).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});  //buttonBack, ,spanLabel
-
-  el.spanClickOutside=createElement('span').myText('Click outside the textarea when ready.').hide();
-  el.fixedDiv=createElement('div').myAppend(el.spanClickOutside,menuB).css(cssFixedDrag);
-
-  el.fixedDiv.css({background:'rgb(255, 255, 255, 0.8)'});
-  el.menus=[menuB];
-  el.append(el.fixedDiv);
+  var menuB=createElement('div').myAppend(el.spanSave, templateButton).addClass('fixWidth').css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'1em auto 0'});
+  el.myAppend(menuB);
   return el;
 }
 
@@ -2782,11 +2679,11 @@ var editTextExtend=function(el){
   el.css({width:'calc(100% - 3em)',height:hEditText+'px',display:'block',resize:'none'}).prop({autocomplete:"off"});//,wrap:"virtual"//,'margin-left':'40px','margin-right':'10px's
   var clickBlurFunc=function(e){
     var boOn=e.type=='click';
+    //boOn=1
     //if(!boOn) return;
     if(boTouch){//boTouch
       var elParent=el.parentNode;
-      if(boOn) {        
-        //elParent.css({top:'0px',bottom:''});
+      if(boOn) {
         //elParent.css({position:'', height:hDefault+'px'});
         //elParent.parentNode.css({position:'', height:hDefault+'px'});
         //el.css({height:hDefault+'px', overflow:'hidden'});
@@ -2795,19 +2692,17 @@ var editTextExtend=function(el){
         //elHtml.css({overflow:'hidden'}); elBody.css({overflow:'hidden'});
         //elHtml.css({height:'100%', overflow:'hidden'}); elBody.css({height:'100%', overflow:'hidden'});
         //elHtml.css({height:hDefault+'px', overflow:'hidden'}); elBody.css({height:hDefault+'px', overflow:'hidden'});
-        if(boIOS) {window.scrollTo(0,document.body.scrollHeight); }
-        if(boChrome) {el.css({height:'calc(100vh - 5em)'}); } // Does not work on ios, not tested on others
+        //if(boIOS) {window.scrollTo(0,document.body.scrollHeight); }
+        if(boChrome) {elParent.css({top:'0px',bottom:''}); el.css({height:'calc(100vh - 8em)'}); } // Does not work on ios, not tested on others
       } else { 
-        //elParent.css({top:'',bottom:'0px'});
         //el.css({position:''});
         //el.css({top:'',bottom:''});
         //elHtml.css({height:''}); elBody.css({height:''});
-        if(boChrome) el.css({height:hDefault+'px'});
+        if(boChrome) { elParent.css({top:'',bottom:'0px'}); el.css({height:hDefault+'px'}); }
       }
-      var toHideAtTouch=[pageText, ...editDiv.menus, adminDiv.menus, dragHR];
-      toHideAtTouch.forEach(ele=>ele.toggle(!Boolean(boOn)));
-      //editDiv.spanClickOutside.toggle(Boolean(boOn));
-      //adminDiv.spanClickOutside.toggle(Boolean(boOn));
+      //var toHideAtTouch=[pageText, ...editDiv.menus, adminDiv.menus, dragHR];
+      var toHideAtTouch=[pageText, pageView.editDivFixed.menus, pageView.adminDivFixed.menus, dragHR];
+      toHideAtTouch.forEach(ele=>ele.toggle?.(!Boolean(boOn)));
     }
   }
   el.on('click',clickBlurFunc);  
@@ -2825,7 +2720,8 @@ var spanSaveExtend=function(el){
     
     if(boDbgSkipRecaptcha) var strTmp="recapcha disabled (boDbgSkipRecaptcha=true)";
     else{
-      var strTmp=grecaptcha.getResponse(); if(!strTmp) {setMess("Captcha response is empty"); return; }
+      var strTmp=grecaptcha.getResponse();
+      if(!strTmp) {setMess("Captcha response is empty"); return; }
     }
     var o={strEditText:editText.value, summary:summary.value, signature:signature.value,  'g-recaptcha-response': strTmp};
     
@@ -2842,27 +2738,11 @@ var spanSaveExtend=function(el){
 }
 
 
-app.calcObjTemplateE=function(IdChildLax,IdChild){
-  for(var i=0;i<IdChildLax.length;i++){
-    var str=IdChildLax[i];
-  }
-
-}
-
-var templateListExtend=function(el){
-  el.toString=function(){return 'templateList';}
-  el.setUp=function(obj={}){
-    div.empty(); 
-    for(var key in obj) {
-      var str; if(key.substr(0,9)=='template:') str=key; else str="template:"+key; 
-      var a=createElement('a').prop({href:'/'+str}).myText(str).css({display:'block'}); div.append(a);
-      if( obj[key]==0) a.addClass("stub");
-    }
-    //if(tab.length) el.prepend('<h3>Templates</h3>');
-    editDiv.templateButton.toggle(Object.keys(obj).length);
-  }
-  el.setUp=function(IdChildLax=[],IdChild=[]){
-    div.empty();
+class TemplateListDiv extends HTMLElement {
+  constructor() { super(); }
+  toString(){return 'templateList';}
+  setUp(IdChildLax=[],IdChild=[]){
+    this.div.empty();
     var iStart=objSite.idSite.length+1;
     var strTemlatePrefix='template:', iEnd=strTemlatePrefix.length+iStart;
     var boAny=false;
@@ -2871,25 +2751,27 @@ var templateListExtend=function(el){
       if(id.slice(iStart,iEnd)==strTemlatePrefix) {
         var boAny=true;
         var str=id.slice(iStart);
-        var a=createElement('a').prop({href:'/'+str}).myText(str).css({display:'block'}); div.append(a);
+        var a=createElement('a').prop({href:'/'+str}).myText(str).css({display:'block'}); this.div.append(a);
         if(IdChild.indexOf(id)==-1) a.addClass("stub");
       }
     }
     //if(tab.length) el.prepend('<h3>Templates</h3>');
-    editDiv.templateButton.toggle(boAny);
+    //editDiv.fixedDiv.templateButton.toggle(boAny);
+    pageView.editDivFixed.templateButton.toggle(boAny);
   }
-  var div=createElement('div');
-      // menuA
-  // var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
-  var spanLabel=createElement('span').myText('Template list').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); // buttonBack,
+  connectStuff(){
+    this.div=createElement('div');
+    var divContW=createElement('div').myAppend(this.div).addClass('contDiv');
+    // var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
 
-
-  var fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
-
-  el.append(div,fixedDiv);
-  return el;
+    var spanLabel=createElement('span').myText('Template list').css({ margin:"0 0 0 auto"});  
+    var footDiv=createElement('div').myAppend(spanLabel).addClass('footDiv');
+    var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW');  //.css(cssFixed)
+    this.append(divContW, footDivW);
+    return this;
+  }
 }
+customElements.define('template-list', TemplateListDiv);
 
 
 
@@ -2900,8 +2782,9 @@ var versionTableExtend=function(el){
   el.toString=function(){return 'versionTable';}
   function cbCompareWPrev(){ 
     var iVer=this.parentNode.parentNode.iMy;  arrVersionCompared=[bound(iVer-1,1),iVer];
-    var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec); 
-    doHistPush({view:diffDiv}); diffDiv.setVis();
+    var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec);
+    doHistPush({strView:'diffDiv'});
+    diffDiv.setVis();
     return false;
   }
   function cbVersionView(e){
@@ -2925,22 +2808,24 @@ var versionTableExtend=function(el){
   function redClick(){ 
     var verR=this.parentNode.parentNode.iMy, verGT=arrVersionCompared[1]; verGT=verGT<=verR?verR+1:verGT; verGT=Math.min(verGT,nVersion);
     arrVersionCompared=[verR, verGT]; 
-    var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec); 
-    doHistPush({view:diffDiv}); diffDiv.setVis();
+    var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec);
+    doHistPush({strView:'diffDiv'});
+    diffDiv.setVis();
     return false;
   }
   function greenClick(){ 
     var verG=this.parentNode.parentNode.iMy,  verRT=arrVersionCompared[0]; verRT=verRT>=verG?verG-1:verRT; verRT=Math.max(verRT,1);
     arrVersionCompared=[verRT, verG];
-    var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec); 
-    doHistPush({view:diffDiv}); diffDiv.setVis();
+    var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec);
+    doHistPush({strView:'diffDiv'});
+    diffDiv.setVis();
     return false;
   }  
   el.setTable=function(){
     el.condAddRows(); el.versionTable2TBody();
     //boMultVersion=Number(matVersion.length>1); 
+    el.table.toggle(matVersion.length>1)
     
-    [pageView.versionMenu, el.table, warningDiv].forEach(ele=>ele.toggle(matVersion.length>1));
     //if(matVersion.length==1) {tHead.children('th:gt(3)').hide();}  else {tHead.children('th:gt(3)').show();}
   }
   
@@ -3040,21 +2925,22 @@ var versionTableExtend=function(el){
   el.append(el.table); //'<h3>Versions</h3>',
   //tBody.find('td').css({border:'1px #000 soild'});
 
+  var divCont=createElement('div').myAppend(el.table).addClass('contDiv');
+
+
       // menuA
   // var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
-  var spanLabel=createElement('span').myText('Version list').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
-
-  el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
-
-  el.append(el.table,el.fixedDiv);
+  var spanLabel=createElement('span').myText('Version list').css({ margin:"0 0 0 auto"});  
+  var footDiv=createElement('div').myAppend(spanLabel).addClass('footDiv');
+  var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW');
+  el.append(divCont, footDivW);
   return el;
 }
 
 var diffDivExtend=function(el){  
   el.toString=function(){return 'diffDiv';}  
   el.setUp=function(strHtml){
-    el.divCont.myHtml(strHtml);
+    divCont.myHtml(strHtml);
     //el.divCont.find('td').css({border:'1px #fff'});
     //el.divCont.find('td:nth-child(2):not(:first)').css({background:'#ddd'});
     //el.divCont.find('td:nth-child(1)').css({background:'pink'});
@@ -3063,13 +2949,13 @@ var diffDivExtend=function(el){
     //[...el.divCont.querySelectorAll('td:nth-child(2):not(:first-of-type)')].forEach(ele=>ele.css({background:'#ddd'}));
     //[...el.divCont.querySelectorAll('td:nth-child(1)')].forEach(ele=>ele.css({background:'pink'}));
     //[...el.divCont.querySelectorAll('td:nth-child(3)')].forEach(ele=>ele.css({background:'lightgreen'}));
-    [...el.divCont.querySelectorAll('tr')].forEach((tr,i)=>{
+    [...divCont.querySelectorAll('tr')].forEach((tr,i)=>{
       [...tr.childNodes].forEach(td=>td.css({border:'1px #fff'}));
       tr.children[0].css({background:'pink'});
       if(i) tr.children[1].css({background:'#ddd'});
       tr.children[2].css({background:'lightgreen'});
     });
-    var elT=el.divCont.querySelector('table'); if(elT) elT.css({'margin':'1em auto'});
+    var elT=divCont.querySelector('table'); if(elT) elT.css({'margin':'1em auto'});
 
     var strNR='', str='';
     if(matVersion.length>0){
@@ -3090,14 +2976,13 @@ var diffDivExtend=function(el){
   }
 
 
-  el.divCont=createElement('div');
 
         // menuC
-  var nextButtonNew=createElement('button').myText('⇧').addClass('fixWidth').on('click',function(){
+  var nextButtonNew=createElement('button').myText(charNext).addClass('fixWidth').on('click',function(){
     arrVersionCompared[1]++;   if(arrVersionCompared[1]>nVersion) {arrVersionCompared[1]=nVersion;}
     var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec); 
   });
-  var prevButtonNew=createElement('button').myText('⇩').addClass('fixWidth').on('click',function(){
+  var prevButtonNew=createElement('button').myText(charPrev).addClass('fixWidth').on('click',function(){
     arrVersionCompared[1]--; if(arrVersionCompared[0]==arrVersionCompared[1]) arrVersionCompared[0]--;
     if(arrVersionCompared[0]==0) {arrVersionCompared=[nVersion-1,nVersion];}
     var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec);  
@@ -3106,12 +2991,12 @@ var diffDivExtend=function(el){
   
 
         // menuB
-  var nextButtonOld=createElement('button').myText('⇧').addClass('fixWidth').on('click',function(){
+  var nextButtonOld=createElement('button').myText(charNext).addClass('fixWidth').on('click',function(){
     arrVersionCompared[0]++; if(arrVersionCompared[0]==arrVersionCompared[1]) arrVersionCompared[1]++;
     if(arrVersionCompared[1]>nVersion) {arrVersionCompared=[1,2];}
     var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec);
   });
-  var prevButtonOld=createElement('button').myText('⇩').addClass('fixWidth').on('click',function(){
+  var prevButtonOld=createElement('button').myText(charPrev).addClass('fixWidth').on('click',function(){
     arrVersionCompared[0]--;   if(arrVersionCompared[0]==0) {arrVersionCompared[0]=1;}
     var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec); 
   });
@@ -3128,12 +3013,12 @@ var diffDivExtend=function(el){
 
 
         // menuA
-  var nextButton=createElement('button').myText('⇧').addClass('fixWidth').css({'margin':'0 1em'}).on('click',function(){
+  var nextButton=createElement('button').myText(charNext).addClass('fixWidth').css({'margin':'0 1em'}).on('click',function(){
     arrVersionCompared[0]++; arrVersionCompared[1]++;
     if(arrVersionCompared[1]>nVersion) {arrVersionCompared=[1,2];}
     var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec);
   });
-  var prevButton=createElement('button').myText('⇩').addClass('fixWidth').css({'margin':'0 1em'}).on('click',function(){
+  var prevButton=createElement('button').myText(charPrev).addClass('fixWidth').css({'margin':'0 1em'}).on('click',function(){
     arrVersionCompared[0]--; arrVersionCompared[1]--; 
     if(arrVersionCompared[0]==0) {arrVersionCompared=[nVersion-1,nVersion];}
     var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec);  
@@ -3142,11 +3027,18 @@ var diffDivExtend=function(el){
   var spanLabel=createElement('span').myText('Diff').css({'float':'right',margin:'0.2em 0 0 0'});  
   var menuA=createElement('div').myAppend(prevButton,nextButton,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
 
-  el.fixedDiv=createElement('div').myAppend(menuC,menuB,menuA).css(cssFixed);
 
-  el.append(el.divCont,el.fixedDiv);
+  var divCont=createElement('div');
+  var divContW=createElement('div').myAppend(divCont).addClass('contDiv');
+
+  var footDiv=createElement('div').myAppend(menuC,menuB,menuA).addClass('footDiv').css({display:"block"}); //.css(cssFixed);
+  var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW');  //.css(cssFixed)
+  el.append(divContW, footDivW);
   return el;
 }
+
+
+
 
 
 var formPPExtend=function(el){
@@ -3182,19 +3074,6 @@ var paymentDivExtend=function(el){
   return el;
 }
 
-
-
-var calcLimitingDim=function(wFrame,hFrame,wOld,hOld){
-  var scale,hNew,wNew;
-  if(wFrame==0) {hNew=hFrame; scale=hFrame/hOld; wNew=floor(scale*wOld);}
-  else if(hFrame==0) {wNew=wFrame; scale=wFrame/wOld; hNew=floor(scale*hOld);} 
-  else { // Watch out for rounding errors:   x!==floor((x/xOrg)*xOrg)    (Which might lead to that another size is cached)
-    var arrScale=[wFrame/wOld, hFrame/hOld]; var tmp=closest2Val(arrScale, 0); scale=tmp[0]; var k=tmp[1];
-    if(k==0) {wNew=wFrame; hNew=Math.floor(scale*hOld);   }
-    else {wNew=Math.floor(scale*wOld); hNew=hFrame;} 
-  }
-  return [k,scale];
-}
 
 
 var slideShowExtend=function(el){
@@ -3383,59 +3262,12 @@ var slideShowExtend=function(el){
 
 
 
-var pageTextExtend=function(el){
-  var clickImgFun=function(e){
-    //var li=this.parentNode, iCur=li.myIndex(); //, StrImg=li.parentNode.StrImg, Caption=li.parentNode.Caption;
-    var a=this, iCur=a.iCur;
-    slideShow.setUp(el.StrImg,el.Caption,iCur);
-    doHistPush({view:slideShow});
-    slideShow.setVis();
-    e.preventDefault();
-  }
-  var clickVideoFun=function(e){
-    var s=this.querySelector('source');
-    window.location.href=s.getAttribute('src');
-    e.preventDefault();
-  }
-  el.modStuff=function(){
-    var galleries=[...el.querySelectorAll('.gallery')];
-    galleries.forEach(function(ele,i){ 
-      var Li=[...ele.querySelectorAll('li')];
-      Li.forEach(function(l,j){
-        var a=l.querySelector('a:nth-of-type(1)'); a.on('click',clickImgFun).prop({iCur:el.StrImg.length});  el.StrImg.push(a.prop('href')); el.Caption.push(a.nextElementSibling);
-      });
-    });
-    //var imgThumbimage=el.find('.thumbimage');
-    var ImgThumbimage=[...el.querySelectorAll('.thumbimage')];
-    ImgThumbimage.forEach(function(ele,i){ 
-      var a=ele.parentNode;
-      a.on('click',clickImgFun).prop({iCur:el.StrImg.length});  el.StrImg.push(a.prop('href'));
-      var elTmp; if(a.nextElementSibling && a.nextElementSibling.hasClass('thumbcaption')) elTmp=a.nextElementSibling; else elTmp=createElement('div').myText('(no caption)');
-      el.Caption.push(elTmp);
-    });
-    //var video=el.find('video');
-    var Video=[...el.querySelectorAll('video')];
-    Video.forEach(function(ele,i){  ele.on('click',clickVideoFun);  });
+/******************************************************
+ * redirectTabExtend ...
+ ******************************************************/
 
-    var Table=[...document.querySelectorAll('.sortable')];
-    Table.forEach(function(ele,i){ 
-      var thead=ele.querySelector('thead');
-      var tBody=ele.querySelector('tBody');
-      if(tBody==null) return
-      if(thead==null) {
-        var tr=tBody.firstElementChild, thTmp=tr.firstElementChild;
-        if(thTmp==null || thTmp.tagName.toLocaleLowerCase()=='td') return
-        thead=createElement('thead').myAppend(tr);
-      }
-      var tr=thead.querySelector('tr');
-      ele.prepend(thead);
-      headExtend(tr, {tBody});  //, 'tr', tr.firstElementChild.tagName.toLocaleLowerCase()
-    });
-  }
-  el.StrImg=[];
-  el.Caption=[];
-  return el;
-}
+var createUrlFrPageData=function(r){var strS=Number(r.boTLS)?'s':'', url='http'+strS+'://'+r.www+'/'+r.pageName; return url; }
+var regHttp=/^https?:\/\//;
 
 var redirectSetPopExtend=function(el){
   el.toString=function(){return 'redirectSetPop';}
@@ -3478,7 +3310,7 @@ var redirectSetPopExtend=function(el){
     } else {rMat=rDefault;}
     //divInsOrUpd.toggle(boUpd); vippInsOrUpd.setStat(0);
     //selSite.push(inpPageName).prop('disabled',boUpd);
-    doHistPush({view:redirectSetPop});
+    doHistPush({strView:'redirectSetPop'});
     el.setVis();
     el.setUp();
   }
@@ -3526,7 +3358,7 @@ var redirectDeletePopExtend=function(el){
   }
   el.openFunc=function(){
     elR=this.parentNode.parentNode; spanPage.myText(elR.rMat.siteName+':'+elR.attr('pageName'));
-    doHistPush({view:redirectDeletePop});
+    doHistPush({strView:'redirectDeletePop'});
     el.setVis();
     ok.focus();
   }
@@ -3546,8 +3378,6 @@ var redirectDeletePopExtend=function(el){
   return el; 
 }
 
-var createUrlFrPageData=function(r){var strS=Number(r.boTLS)?'s':'', url='http'+strS+'://'+r.www+'/'+r.pageName; return url; }
-var regHttp=/^https?:\/\//;
 var redirectTabExtend=function(el){
   el.toString=function(){return 'redirectTab';}
   //var funcTTimeTmp=function(t){ var strT=getSuitableTimeUnitStr(unixNow()-t);  this.myText(strT);  }
@@ -3615,12 +3445,10 @@ var redirectTabExtend=function(el){
   var tBody=el.tBody=createElement('tbody');
   el.nRowVisible=0;
   el.table=createElement('table').myAppend(tBody).addClass('tableSticky'); //.css({width:'100%',position:'relative'});
-  el.divCont=createElement('div').myAppend(el.table).css({'margin':'1em auto','text-align':'left',display:'inline-block'});
 
   var StrCol=['siteName','pageName','url', 'tCreated', 'tMod', 'nAccess', 'tLastAccess'], BoAscDefault={tCreated:0};
   var Label={tCreated:'Age'};
   //var tHead=headExtend(createElement('thead'), el, StrCol, BoAscDefault, Label);
-  //var trTmp=headExtendOld(createElement('tr'), el, StrCol, BoAscDefault, Label);
   var trTmp=headExtendDyn(createElement('tr'), el, StrCol, BoAscDefault, Label);
   var tHead=createElement('thead').myAppend(trTmp);
   tHead.css({background:'white', width:'inherit'});  //,height:'calc(12px + 1.2em)'
@@ -3631,16 +3459,23 @@ var redirectTabExtend=function(el){
     redirectSetPop.openFunc.call({},0,0);
     //redirectSetPop.openFunc.call({boButtonIns:1});
   });
-  var buttonClearNAccess=createElement('button').myText('Clear nAccess').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
+  var buttonClearNAccess=createElement('button').myText('Clear nAccess').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'auto'}).on('click',function(){
     var vec=[['redirectTabResetNAccess', {}, function(){ el.setUp();}]];   myFetch('POST',vec);
   });
-  var spanLabel=createElement('span').myText('Redirect').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var menuA=createElement('div').myAppend(buttonAdd,buttonClearNAccess,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); 
+  var spanLabel=createElement('span').myText('Redirect');//.css({margin:'0.2em 0 0 0'});  
+  //var menuA=createElement('div').myAppend(buttonAdd,buttonClearNAccess,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); 
 
   el.addClass('redirectTab');
-  el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
+
+  
   el.css({'text-align':'center'});
-  el.append(el.divCont, el.fixedDiv);
+
+  var divCont=createElement('div').myAppend(el.table).css({margin:'1em auto','text-align':'left',display:'inline-block'});
+  var divContW=createElement('div').myAppend(divCont).addClass('contDiv');
+
+  var footDiv=createElement('div').myAppend(buttonAdd,buttonClearNAccess,spanLabel).addClass('footDiv'); 
+  var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW');
+  el.append(divContW, footDivW);
   return el;
 }
 
@@ -3680,7 +3515,7 @@ var siteSetPopExtend=function(el){
       var elR=this.parentNode.parentNode;  r=elR.rMat;
     } else {r=rDefault;}
     if(!boUpd) r.boDefault=0;
-    doHistPush({view:siteSetPop});
+    doHistPush({strView:'siteSetPop'});
     el.setVis();
     el.setUp();
   }
@@ -3735,7 +3570,7 @@ var siteDeletePopExtend=function(el){
   }
   el.openFunc=function(){
     elR=this.parentNode.parentNode; idSite=elR.rMat.idSite; spanSite.myText(idSite);
-    doHistPush({view:siteDeletePop});
+    doHistPush({strView:'siteDeletePop'});
     el.setVis();
     ok.focus();
   }
@@ -3856,7 +3691,6 @@ var siteTabExtend=function(el){
 
   var tBody=el.tBody=createElement('tbody');
   el.table=createElement('table').myAppend(tBody).addClass('tableSticky'); //.css({width:'100%',position:'relative'});
-  el.divCont=createElement('div').myAppend(el.table).css({'margin':'1em auto','text-align':'left',display:'inline-block'});
 
   var StrColOrder=['boDefault','boTLS', 'idSite','www','googleAnalyticsTrackingID','srcIcon16','strLangSite','tCreated','nPage'];
 
@@ -3864,7 +3698,6 @@ var siteTabExtend=function(el){
   var Label={boDefault:'Default',idSite:'name/key', gog:'gog...', tCreated:'Age', nPage:'#page', boTLS: 'secure (TLS)'};
   el.nRowVisible=0;
   //var tHead=headExtend(createElement('thead'), el, StrColHead, BoAscDefault, Label);
-  //var trTmp=headExtendOld(createElement('tr'), el, StrColOrder, BoAscDefault, Label);
   var trTmp=headExtendDyn(createElement('tr'), el, StrColOrder, BoAscDefault, Label);
   var tHead=createElement('thead').myAppend(trTmp);
   tHead.css({background:'white', width:'inherit'});  //,height:'calc(12px + 1.2em)'
@@ -3875,19 +3708,27 @@ var siteTabExtend=function(el){
   var buttonAdd=createElement('button').myText('Add').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
     siteSetPop.openFunc.call({},0,0);
   });
-  var spanLabel=createElement('span').myText('SiteTab').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var menuA=createElement('div').myAppend(buttonAdd,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
+  var spanLabel=createElement('span').myText('SiteTab'); //.css({'float':'right',margin:'0.2em 0 0 0'});  
+  //var menuA=createElement('div').myAppend(buttonAdd,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
 
   el.addClass('siteTab');
-  el.fixedDiv=createElement('div').myAppend(menuA).css(cssFixed);
+
   el.css({'text-align':'center'});
-  el.append(el.divCont, el.fixedDiv);
+
+  var divCont=createElement('div').myAppend(el.table).css({margin:'1em auto','text-align':'left',display:'inline-block'});
+  var divContW=createElement('div').myAppend(divCont).addClass('contDiv');
+
+  var footDiv=createElement('div').myAppend(buttonAdd,spanLabel).addClass('footDiv'); 
+  var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW');
+  el.append(divContW, footDivW);
   return el;
 }
 
 
 
-
+/***************************************************
+ * myFetch, beRet, GRet
+ ***************************************************/
 
 var myFetch=async function(strMethod, vecIn, boHandlesErr=0){  // Each argument of vecIn is an array: [serverSideFunc, serverSideFuncArg, returnFunc]
   var headers={'X-Requested-With':'XMLHttpRequest'};
@@ -3939,14 +3780,12 @@ var beRet=function(data){
   busyLarge.hide();
 }  
 
-
-
 var GRet=function(data){
   var tmp;
   if(data.boARLoggedIn!=undefined){  copySome(app, data, ['boARLoggedIn']);  }
   if(data.boAWLoggedIn!=undefined){
     copySome(app, data, ['boAWLoggedIn']);
-    adminDiv.setUpButtons(boAWLoggedIn);
+    pageView.adminDivFixed.setUpButtons(boAWLoggedIn);
   }
   //tmp=data.idPage;   if(typeof tmp!="undefined") { objPage.idPage=tmp;  }
   //tmp=data.objRev;   if(typeof tmp!="undefined") { objRev=tmp; }
@@ -3954,19 +3793,21 @@ var GRet=function(data){
     //objPage.idPage=objPage._id; delete objPage._id;
     overwriteProperties(objPage, tmp);
     //objPage=tmp; 
-    pageView.editButton.setImg(objPage.boOW);  editDiv.spanSave.toggle(Boolean(objPage.boOW));   //editDiv.spanCreated.myText(mySwedDate(objPage.tCreated));
+    //editDiv.fixedDiv.spanSave.toggle(Boolean(objPage.boOW));  
+    pageView.editDivFixed.spanSave.toggle(Boolean(objPage.boOW));
     adminMoreDiv.setMod();
     templateList.setUp(objPage.IdChildLax, objPage.IdChild);
   }
   tmp=data.objSetting;   if(typeof tmp!="undefined") { app.objSetting=tmp; adminMoreDiv.setBUNeededInfo();  }
 
-  pageView.spanMod.setup(objPage);
-  pageView.setFixedDivColor(objPage.boOR);
+  pageView.pageDivFixed.setUp();
 
   copyIfExist(app, data, ['arrVersionCompared']);
 
-  //tmp=data.matVersion;   if(typeof tmp!='undefined') {  nVersion=tmp.length;  matVersion=tmp.tab; versionTable.setTable(); pageView.setDetail(); }
-  tmp=data.matVersion;   if(typeof tmp!='undefined') {  matVersion=tabNStrCol2ArrObj(tmp); app.nVersion=matVersion.length; versionTable.setTable(); pageView.setDetail(); }
+  tmp=data.matVersion;   if(typeof tmp!='undefined') {  
+    matVersion=tabNStrCol2ArrObj(tmp); app.nVersion=matVersion.length; versionTable.setTable(); pageView.pageDivFixed.setVersioninfo();
+    warningDiv.toggle(matVersion.length>1);
+  }
   
   tmp=data.strDiffText;   if(typeof tmp!="undefined") {diffDiv.setUp(tmp);  }  
   tmp=data.strHtmlText;   if(typeof tmp!="undefined") {pageText.myHtml(tmp); pageText.modStuff();}
@@ -3974,7 +3815,7 @@ var GRet=function(data){
   //tmp=data.templateHtml;   if(typeof tmp!="undefined") templateList.empty().append(tmp);
   //tmp=data.strMessageText;   if(typeof tmp!="undefined") setMess(tmp,15);
   tmp=data.strMessageText;   if(typeof tmp!="undefined") {setMess(tmp,15); if(/error/i.test(tmp)) navigator.vibrate(100);}
-  tmp=data.boTalkExist;   if(typeof tmp!="undefined") commentButton.setUp(tmp);
+  tmp=data.boTalkExist;   if(typeof tmp!="undefined") pageView.pageDivFixed.commentButton.setUp(tmp);
   //tmp=data.strMessageText;   if(typeof tmp!="undefined") setMess(tmp,5);
   //tmp=data.CSRFCode;   if(typeof tmp!="undefined") CSRFCode=tmp;
   if('CSRFCode' in data) setItem('CSRFCode',data.CSRFCode);
@@ -3984,15 +3825,15 @@ var GRet=function(data){
 
 
   // if(boARLoggedIn!=undefined ){
-  //   var boT=!objPage.boOR && boARLoggedIn; butARLogout.toggle(boT);
+  //   var boT=!objPage.boOR && boARLoggedIn; pageView.pageDivFixed.butARLogout.toggle(boT);
   // }
-  var boT=!objPage.boOR && boARLoggedIn;   butARLogout.toggle(boT);
+  var boT=!objPage.boOR && boARLoggedIn;   pageView.pageDivFixed.butARLogout.toggle(boT);
 
   if(boAWLoggedIn){ //boAWLoggedIn!=undefined && 
     if(timerALogout) { clearTimeout(timerALogout); }
     timerALogout=setTimeout(function(){
       boAWLoggedIn=0; //histGoTo('adminDiv');
-      adminDiv.setUpButtons(boAWLoggedIn);
+      pageView.adminDivFixed.setUpButtons(boAWLoggedIn);
     },maxAdminWUnactivityTime*1000);
   }
   
@@ -4037,7 +3878,7 @@ var helpBub={}
 
 
 window.elHtml=document.documentElement; window.elBody=document.body;
-elBody.css({margin:'0px'}); //, position:'relative'
+//elBody.css({margin:'0px'}); //, position:'relative'
 //window.elViewport=document.querySelector('head>meta[name=viewport]');
 window.boTouch = Boolean('ontouchstart' in document.documentElement);
 //boTouch=1;
@@ -4070,7 +3911,7 @@ var strFastBackSymbol=charBackSymbol+charBackSymbol;
 var charFlash='↯';//⚡↯
 var charPublicRead='<span style="font-family:courier">͡°</span>'; //☉͡°
 var charPublicRead='<span class=eye>(∘)</span>'; //☉͡° ·
-var charPublicRead=boIOS?'📖':'👁' //🕮👁; //📖; //👀😶☉͡° · 📖📖
+var charPublicRead=boIOS?'📖':'🕮' //🕮👁; //📖; //👀😶☉͡° · 📖📖
 var charPublicWrite='✎'; // 🔏 🔒 🔓 🔐  🖊 🖋✏✎✐🖉
 var charPromote='🗣️'; //'📣';  //😗😱😮
 var charDelete='✖'; //x, ❌, X, ✕, ☓, ✖, ✗, ✘
@@ -4081,9 +3922,12 @@ var charThumbsDown='👎'; //👎☟
 var charSpeechBaloon='🗪'; //💬🗨
 var charCamera='📷';
 var charHourGlass='⏳';
+var charAdmin='♚'   // ♛♕♚♔
+var charPrev='⇦' //'⇩'
+var charNext='⇨' //'⇧'
 // charPhone ✆☎☏📱🌍👨‍🔬💻💡👷🏢👨‍💼
 
-// ♿⚠⌂💰💋♥
+// ♿⚠⌂💰💋♥ 👪
 
 //cssEye={'font-family':'courier', 'font-size':'90%', 'letter-spacing':'-.5em', transform:'rotate(90deg)', display:'inline-block','vertical-align':'.4em'}
 
@@ -4094,20 +3938,16 @@ var boStateInHistory='state' in history;
 if(!boStateInHistory) { console.log('This browser does not support history.state'); return;}
 
 
-var boIsGeneratorSupported=isGeneratorSupported();
 var boFormDataOK=1;  if(typeof FormData=='undefined') {  boFormDataOK=0;  }
 
 if(!(typeof sessionStorage=='object' && sessionStorage.getItem)) {console.log("This browser doesn't support sessionStorage"); return;}
 
 //var menuMaxWidth=500;
 var menuMaxWidth="var(--menuMaxWidth)";
-var boImgCreationOK=1;
 
 
 var urlPayPal='https://www.paypal.com/cgi-bin/webscr';
 
-var iEdit=0, iPay=1, iVersion=2;
-var colButtonOn='#aaa', colButtonOff='#eee'; 
 var cssFixed={margin:'0em 0','text-align':'center',position:'fixed',bottom:0,width:'100%','border-top':'3px #aaa solid',background:'#fff'}; //,'z-index':5
 var cssFixedDrag={margin:'0em 0','text-align':'center',position:'fixed',bottom:0,width:'100%',background:'#ddd'}; //,'z-index':5
 if(boTouch) { cssFixedDrag=extend({},cssFixed); cssFixedDrag['border-top']=''};
@@ -4194,62 +4034,126 @@ var imgProt=createElement('img').css({height:strSizeIcon,width:strSizeIcon,'vert
   //
   // History
   //
-  
-var strHistTitle=objPage.pageName;
 
-var histList=[];
-var stateLoaded=history.state;
-var tmpi=stateLoaded?stateLoaded.ind:0,    stateLoadedNew={hash:randomHash(), ind:tmpi};
-history.replaceState(stateLoadedNew, '', uCanonical);
-app.stateTrans=stateLoadedNew;
-history.StateMy=[];
+
+// strView is stored in two places:
+//   history.state: since I want to write scrollTop only when strView is strViewOrg.
+//   history.StateOpen: since one want to able to fast-backward, and thus one want to be able to search history.StateOpen for a certain value of strView.
+
+// When pageView is popped, scrollTop is not set (Even though it maybe should if things were to be consistent.) That is funPopped is called but the intDoScroll is not acted on.
+
+// Safari (private): prev > cur(scroll 7) > cur(scroll 35) > bwd(scroll 35) > bwd(to prev) > fwd(scroll 7)            (public works ok)
+// Chrome, Android+Desktop (public): prev > cur(scroll 7) > cur(scroll 35) > next > bwd(to cur (no rerun))            (private works ok)
+
+
+app.histGoTo=function(view){}
+app.historyBack=function(){  history.back();}
+app.doHistPush=function(obj){
+  var stateT=history.state
+  var {strView, arg=null}=obj;
+  var scroll=(strView==stateT.strView)?stateT.scroll:0;
+
+  var indNew=stateT.ind+1;
+  stateMem={hash:stateT.hash, ind:indNew, strView, scroll, arg, f:(function(a){console.log('hello: '+a);}).toString()};
+  history.pushState(stateMem, strHistTitle, uCanonical);
+  history.StateOpen=history.StateOpen.slice(0, indNew);
+  history.StateOpen[indNew]=obj;
+}
+app.doHistReplace=function(obj, indDiff=0){
+  if(indDiff==0){
+    copySome(stateMem, obj, ['strView']);
+    history.pushState(stateMem, strHistTitle, uCanonical);
+  }
+  history.StateOpen[history.state.ind+indDiff]=obj;
+}
+app.changeHist=function(obj){
+  doHistReplace(obj, 0)
+}
+app.getHistStatName=function(){
+  return history.StateOpen[history.state.ind].strView;
+}
+history.distToGoal=function(strViewGoal){
+  var ind=history.state.ind;
+  var indGoal;
+  for(var i=ind; i>=0; i--){
+    var obj=history.StateOpen[i];
+    var strView; if(typeof obj=='object') strView=obj.strView; else continue;
+    if(strView===strViewGoal) {indGoal=i; break;}
+  }
+  var dist; if(typeof indGoal!='undefined') dist=indGoal-ind;
+  return dist;
+}
+history.fastBack=function(strViewGoal, boRefreshHash){
+  var dist=history.distToGoal(strViewGoal);
+  if(dist) {
+    if(typeof boRefreshHash!='undefined') history.boResetHashCurrent=boRefreshHash;
+    history.go(dist);
+  }
+}
+
+
+var strViewOrg='pageView';
+var strHistTitle=objPage.pageName;
+//history.scrollRestoration = 'manual';
+//history.scrollRestoration = 'auto';
+var stateRun=history.state;
+var stateMem={hash:randomHash(), ind:0, strView:strViewOrg, scroll:0}
+if(stateRun){
+  let {strView, ind, scroll}=stateRun;
+  if(strView!=strViewOrg)  scroll=0;
+  extend(stateMem, {ind, scroll});
+}
+history.replaceState(stateMem, '', uCanonical);  // ind, hash, strView, scroll
+history.StateOpen=[];
+history.StateOpen[history.state.ind]=copySome({arg:"page"}, stateMem, ['strView','scroll']);    //  strView, scroll, arg
+
+
 
 window.on('popstate', function(event) {
-  var dir=history.state.ind-stateTrans.ind;
+  var stateT=history.state;
+  var dir=stateT.ind-stateMem.ind;
   //if(Math.abs(dir)>1) {debugger; alert('dir=',dir); }
-  //console.log(stateTrans);
-  //console.log(history.state);
-  var boSameHash=history.state.hash==stateTrans.hash;
+  var boSameHash=stateT.hash==stateMem.hash;
   if(boSameHash){
-    var tmpObj=history.state;
     if('boResetHashCurrent' in history && history.boResetHashCurrent) {
-      tmpObj.hash=randomHash();
-      history.replaceState(tmpObj, '', uCanonical);
+      stateT.hash=randomHash();
+      history.replaceState(stateT, '', uCanonical);
       history.boResetHashCurrent=false;
     }
 
-    var stateMy=history.StateMy[history.state.ind];
-    if(typeof stateMy!='object' ) {
-      var tmpStr=window.location.href +" Error: typeof stateMy: "+(typeof stateMy)+', history.state.ind:'+history.state.ind+', history.StateMy.length:'+history.StateMy.length+', Object.keys(history.StateMy):'+Object.keys(history.StateMy);
-      if(!boEpiphany) alert(tmpStr); else  console.log(tmpStr);
-      debugger;
-      return;
-    }
-    var view=stateMy.view;
-    view.setVis();
-    if(typeof view.getScroll=='function') {
-      var scrollT=view.getScroll();
-      setTimeout(function(){window.scrollTop(scrollT);}, 1);
-    } else {
-      //var scrollT=stateMy.scroll;  setTimeout(function(){  window.scrollTop(scrollT);}, 1);
-    }
-    
-    if('funOverRule' in history && history.funOverRule) {history.funOverRule(); history.funOverRule=null;}
-    else{
-      if('fun' in stateMy && stateMy.fun) {var fun=stateMy.fun(stateMy); }
-    }
-
-    stateTrans=extend({}, tmpObj);
+    var scroll=(stateMem.strView==stateT.strView && stateT.strView==strViewOrg)?stateMem.scroll:stateT.scroll;
+    stateT.scroll=scroll
+    stateMem=copyDeep(stateT);
+    history.replaceState(stateMem, '', uCanonical);
+    var stateOpen=history.StateOpen[stateT.ind]
+    stateOpen.scroll=scroll
+    setMyState(stateOpen);
   }else{
-    //history.StateMy[history.state.ind]=history.StateMy[stateTrans.ind];
-    history.StateMy[history.state.ind]={view:pageView, tDate:new Date()};
-    stateTrans=history.state; extend(stateTrans, {hash:randomHash()}); history.replaceState(stateTrans, '', uCanonical);
+    if(stateMem.strView!=strViewOrg) stateMem.scroll=0
+    extend(stateMem, {hash:randomHash(), strView:strViewOrg, arg:"page"});
+    copySome(stateMem, stateT, ["ind"]);
+    history.replaceState(stateMem, '', uCanonical);
+    history.StateOpen[stateT.ind]={strView:strViewOrg, scroll:stateMem.scroll};
     history.go(sign(dir));
   }
 });
-if(boFF){
-  window.on('beforeunload', function(){   });
+
+var setMyState=function(state){
+  var view=MainDiv[StrMainDivFlip[state.strView]];
+  view.setVis();
+  if(history.funOverRule) {history.funOverRule(); history.funOverRule=null;}
+  else{ view.funPopped?.(state); }
 }
+
+window.on('pagehide', function(){ 
+  var stateT=history.state, stateOpen=history.StateOpen[stateT.ind];
+  var {strView, scroll}=stateOpen;
+  if(strView!=strViewOrg) scroll=0;
+  extend(stateT, {strView:strViewOrg, scroll});
+  history.replaceState(stateT, '', uCanonical);
+});
+
+if(boFF){ window.on('beforeunload', function(){   }); }
 
 if(!boTouch){
   window.on('beforeunload',function(){
@@ -4258,18 +4162,16 @@ if(!boTouch){
   })
 }
 
+
 var errorFunc=function(jqXHR, textStatus, errorThrown){
   setMess('responseText: '+jqXHR.responseText+', textStatus: '+' '+textStatus+', errorThrown: '+errorThrown);     throw 'bla';
 }
 
-var strClickOutside='Click outside the textarea to get back the buttons';
-
 var warningDiv=createElement('div').myText("The page has unconfirmed changes. Use the buttons below to see older versions.").css({'background':'yellow','padding':'0.2em','text-align':'center','font-weight':'bold','font-size':'0.9em'}).hide();
-var warningDivW=createElement('div').myAppend(warningDiv);
+var warningDivW=createElement('div').myAppend(warningDiv); warningDivW.toString=function(){return 'warningDivW';}
 
-//viewDiv=createElement('div');
-var pageText=document.querySelector('#pageText'); //.detach();
-var pageText=pageTextExtend(pageText).css({'overflow-y': 'hidden'});   pageText.modStuff();
+
+var pageText=document.querySelector('#pageText'); pageTextExtend(pageText);   pageText.modStuff();
 var imgBusy=createElement('img').prop({src:uBusy, alt:"busy"});
 //messageText=messExtend(createElement('span'));  window.setMess=messageText.setMess;  window.resetMess=messageText.resetMess;   elBody.append(messageText); 
 //var spanMessageText=spanMessageTextCreate();  window.setMess=spanMessageText.setMess;  window.setMessHtml=spanMessageText.setHtml;  window.resetMess=spanMessageText.resetMess;  window.appendMess=spanMessageText.appendMess;  elBody.append(spanMessageText)
@@ -4284,41 +4186,32 @@ elBody.append(busyLarge);
 //loginInfo=loginInfoExtend(createElement('div')); elBody.prepend(loginInfo);
 
 
-//commentButton=commentButtonExtend(createElement('a')).css({'margin-left':'1em'});
-var commentButton=commentButtonExtend(createElement('div')).css({'margin-top':'.3em'});
 
-//paymentButton=createElement('button').myText('Pay/Donate');
 //versionButton=createElement('button').myText('Versions');
 
 
-commentButton.setUp(boTalkExist);
 
 var dragHR=dragHRExtend(createElement('hr')); dragHR.css({height:'0.3em',background:'grey',margin:0});
 if(boTouch) dragHR="";
-var editText=editTextExtend(createElement('textarea')).css({background:'rgb(255, 255, 255, 0)'});
-
-var butARLogout=createElement('button').myText('Logout').prop({title:'Logout (write-access AND read-access)'}).on('click',function(){
-  var vec=[['aWLogout',{}], ['aRLogout',{}]];   myFetch('POST',vec); 
-}).hide().css({'margin-left':'0.3em'}); 
-var pageView=pageViewExtend(createElement('div'));  //app.pageView=pageView;
-var editDiv=editDivExtend(createElement('div')).css({width:'100%'}); //editDiv.spanLastMod.myText(mySwedDate(objPage.tMod));
-var templateList=templateListExtend(createElement('div'));
+var editText=editTextExtend(createElement('textarea')).css({background:'rgb(255, 255, 255, 0)', 'font-family':'monospace'});
+ 
+//var pageView=pageViewExtend(createElement('div'));
+var pageView=document.querySelector('#pageView'); pageViewExtend(pageView); pageView.css({height:'100%', overflow:'auto'})
+//var editDiv=editDivExtend(createElement('div')).css({width:'100%'}); 
+var templateList=createElement('template-list').addClass('viewDiv').connectStuff()
 
 
+//var adminDiv=adminDivExtend(createElement('div')).css({width:'100%'});  
 
-
-
-
-var adminDiv=adminDivExtend(createElement('div')).css({width:'100%'});  
-
-var adminMoreDiv=adminMoreDivExtend(createElement('div'));
+var adminMoreDiv=createElement('admin-more').addClass('viewDiv').connectStuff()
 var uploadUserDiv=uploadUserDivExtend(createElement('div')); //elBody.append(uploadUserDiv);
 
 var menuPageSingle=menuPageSingleExtend(createElement('div'));
 var parentSelPop=parentSelPopExtend(createElement('div'));
-var divRowParent=new DivRowParentT();
-var pageList=pageListExtend(createElement('div'));
-var imageList=imageListExtend(createElement('div'));
+//var divRowParent=new DivRowParentT();
+var divRowParent=createElement('div-row-parent').connectStuff();
+var pageList=pageListExtend(createElement('div')).addClass('viewDiv');
+var imageList=imageListExtend(createElement('div')).addClass('viewDiv');
 var renamePop=renamePopExtend(createElement('div'));
 var setStrLangPop=setStrLangPopExtend(createElement('div'));
 var setSiteOfPagePop=setSiteOfPagePopExtend(createElement('div'));
@@ -4335,7 +4228,8 @@ var objFilterSetting={colButtAllOn:'#9f9', colButtOn:'#0f0', colButtOff:'#ddd', 
 extend(Filt.tmpPrototype,MmmWikiFiltExtention);
 var pageFilterDiv=PageFilterDiv(PropPage, langHtml.label, StrOrderFiltPage, function(){ pageList.histReplace(-1); pageList.loadTab();}); 
 var imageFilterDiv=ImageFilterDiv(PropImage, langHtml.label, StrOrderFiltImage, function(){ imageList.histReplace(-1); imageList.loadTab();});  
-
+pageFilterDiv.addClass('viewDiv');
+imageFilterDiv.addClass('viewDiv');
 
 
     // apply "plugin changes"
@@ -4357,63 +4251,58 @@ imageFilterDiv.divCont.createDivs();  imageFilterDiv.Filt=imageFilterDiv.divCont
 var aRLoginDiv=aRLoginDivExtend(createElement('div'));
 
 
-var versionTable=versionTableExtend(createElement('div')).css({'margin-top':'2em','text-align':'center'});   versionTable.setTable();  pageView.setDetail();
-var diffDiv=diffDivExtend(createElement('div')).css({'text-align':'center'});
-//versionDiv=createElement('div').append(versionTable,diffDiv).css({clear:'both'});
+var versionTable=versionTableExtend(createElement('div')).addClass('viewDiv');   versionTable.setTable();  pageView.pageDivFixed.setVersioninfo();
+warningDiv.toggle(matVersion.length>1);
+
+var diffDiv=diffDivExtend(createElement('div')).addClass('viewDiv');
 
 var slideShow=slideShowExtend(createElement('div'));
 
 var redirectSetPop=redirectSetPopExtend(createElement('div'));
 var redirectDeletePop=redirectDeletePopExtend(createElement('div'));
-var redirectTab=redirectTabExtend(createElement('div'));
+var redirectTab=redirectTabExtend(createElement('div')).addClass('viewDiv');
 var siteSetPop=siteSetPopExtend(createElement('div'));
 var siteDeletePop=siteDeletePopExtend(createElement('div'));
-var siteTab=siteTabExtend(createElement('div'));
+var siteTab=siteTabExtend(createElement('div')).addClass('viewDiv');
 
-var diffBackUpDiv=createElement('div');
-if(boIsGeneratorSupported) {
-  diffBackUpDiv=diffBackUpDivExtend(createElement('div'));
-}
-var dumpDiv=dumpDivExtend(createElement('div'));
-var tabBUDiv=tabBUDivExtend(createElement('div'));
+var diffBackUpDiv=diffBackUpDivExtend(createElement('div'));
+var diffBackUpDetailDiv=diffBackUpDetailDivExtend(createElement('div'));
 
 
-var MainDiv=[aRLoginDiv, warningDivW, pageText, pageView, adminDiv, adminMoreDiv, pageList, imageList, editDiv, templateList, versionTable, diffDiv, paymentDiv, slideShow, pageFilterDiv, imageFilterDiv, uploadUserDiv, renamePop, setStrLangPop, setSiteOfPagePop, parentSelPop, areYouSurePop, redirectTab, redirectSetPop, redirectDeletePop, siteTab, siteSetPop, siteDeletePop, diffBackUpDiv, dumpDiv, tabBUDiv]; 
+var MainDiv=[aRLoginDiv, warningDivW, pageView, adminMoreDiv, pageList, imageList, templateList, versionTable, diffDiv, paymentDiv, slideShow, pageFilterDiv, imageFilterDiv, uploadUserDiv, renamePop, setStrLangPop, setSiteOfPagePop, parentSelPop, areYouSurePop, redirectTab, redirectSetPop, redirectDeletePop, siteTab, siteSetPop, siteDeletePop, diffBackUpDiv, diffBackUpDetailDiv]; //, editDiv, adminDiv
+var StrMainDiv=MainDiv.map(obj=>obj.toString());
+var StrMainDivFlip=array_flip(StrMainDiv);
 
-history.StateMy[history.state.ind]={view:pageView, tDate:new Date()};
-//console.log(history.StateMy);
-AMinusB(MainDiv, [pageText]).forEach(ele=>ele.hide());
+
+var MainNonDefault=AMinusB(MainDiv, [pageView]); MainNonDefault.forEach(ele=>ele.hide());
 //MainDiv.forEach(ele=>ele.hide());
-elBody.append(...MainDiv);
+elBody.append(...MainNonDefault);
 
-
+var intMarginBottom=70;
 
 aRLoginDiv.setVis=function(){
   MainDiv.forEach(ele=>ele.hide()); this.show();
   this.aRPass.focus();
-  //pageText.css({'margin-bottom':285+'px'});
-  //fillScreenF(false);
   return true;
 }
-pageView.setVis=function(){
-  MainDiv.forEach(ele=>ele.hide()); [this, warningDivW, pageText].forEach(ele=>ele.show());
-  //pageText.css({'margin-bottom':285+'px'});
-  //fillScreenF(false);
-  this.setUp();
+pageView.setVis=function(arg){
+  MainDiv.forEach(ele=>ele.hide()); [this, warningDivW].forEach(ele=>ele.show());
+  [this.pageDivFixed, this.editDivFixed, this.adminDivFixed].forEach(ele=>ele.hide());
+  if(arg=='page') this.pageDivFixed.setUp().show();
+  else if(arg=='edit') this.editDivFixed.setUp().show();
+  else if(arg=='admin') this.adminDivFixed.setUp().show();
+  pageText.css({'margin-bottom':intMarginBottom+'px'});  
   return true;
 }
-adminDiv.setVis=function(){
-  MainDiv.forEach(ele=>ele.hide()); [this, pageText].forEach(ele=>ele.show());
-  this.setUp();
-  pageText.css({'margin-bottom':285+'px'});  
-  //fillScreenF(false);
-  return true;
-}
+// adminDiv.setVis=function(){
+//   MainDiv.forEach(ele=>ele.hide()); [this, pageText].forEach(ele=>ele.show());
+//   this.fixedDiv.setUp();
+//   pageText.css({'margin-bottom':intMarginBottom+'px'});  
+//   return true;
+// }
 adminMoreDiv.setVis=function(){
   MainDiv.forEach(ele=>ele.hide()); this.show();
   //this.setUp();
-  this.divCont.css({'margin-bottom':285+'px'});
-  //fillScreenF(false);
   //redirectTab.boStale=1; siteTab.boStale=1;
   return true; 
 }
@@ -4421,60 +4310,40 @@ pageList.setVis=function(){
   MainDiv.forEach(ele=>ele.hide()); this.show();
   this.setCBStat(0); 
   this.headW.prepend(divRowParent);
-  this.divCont.css({'margin-bottom':285+'px'});
-  //fillScreenF(false);
   return true;
 }
 imageList.setVis=function(){
   MainDiv.forEach(ele=>ele.hide()); this.show();
   //this.setCBStat(0);
   this.headW.prepend(divRowParent);
-  this.divCont.css({'margin-bottom':285+'px'});
-  //fillScreenF(false);
   return true;
 }
 
-editDiv.setVis=function(){
-  MainDiv.forEach(ele=>ele.hide()); [this, pageText].forEach(ele=>ele.show());
-  pageText.css({'margin-bottom':285+'px'});
-  //fillScreenF(false);
-  this.setUp();
-}
+// editDiv.setVis=function(){
+//   MainDiv.forEach(ele=>ele.hide()); [this, pageText].forEach(ele=>ele.show());
+//   pageText.css({'margin-bottom':intMarginBottom+'px'});
+//   this.fixedDiv.setUp();
+// }
 templateList.setVis=function(){
   MainDiv.forEach(ele=>ele.hide()); this.show();
-  pageText.css({'margin-bottom':285+'px'});
-  //fillScreenF(false);
   return true;
 }
 
 versionTable.setVis=function(){
   MainDiv.forEach(ele=>ele.hide()); this.show();
-  this.table.css({'margin-bottom':285+'px'});
-  //fillScreenF(false);
   return true;
 }
 diffDiv.setVis=function(){
   MainDiv.forEach(ele=>ele.hide()); this.show();
-  this.divCont.css({'margin-bottom':285+'px'});
-  //fillScreenF(false);
   return true;
 }
-paymentDiv.setVis=function(){
-  MainDiv.forEach(ele=>ele.hide()); [this, pageText].forEach(ele=>ele.show());
-  pageText.css({'margin-bottom':285+'px'});
-  //fillScreenF(false);
-}
+// paymentDiv.setVis=function(){
+//   MainDiv.forEach(ele=>ele.hide()); [this, pageText].forEach(ele=>ele.show());
+//   pageText.css({'margin-bottom':intMarginBottom+'px'});
+// }
 slideShow.setVis=function(){
   MainDiv.forEach(ele=>ele.hide()); this.show();
-  //fillScreenF(true);
 } 
-/*
-menuDiv.setVis=function(){
-  MainDiv.forEach(ele=>ele.hide()); this.show(); 
-  //fillScreenF(false);
-  return true;
-}
-*/
 pageFilterDiv.setVis=function(){
   MainDiv.forEach(ele=>ele.hide()); this.show();   return true;
 }
@@ -4484,63 +4353,67 @@ imageFilterDiv.setVis=function(){
 diffBackUpDiv.setVis=function(){
   MainDiv.forEach(ele=>ele.hide()); this.show();  return true;
 }
-dumpDiv.setVis=function(){
-  MainDiv.forEach(ele=>ele.hide()); this.show();   return true;
-}
-tabBUDiv.setVis=function(){
+diffBackUpDetailDiv.setVis=function(){
   MainDiv.forEach(ele=>ele.hide()); this.show();  return true;
 }
 redirectTab.setVis=function(){
   MainDiv.forEach(ele=>ele.hide()); this.show();
   this.setUp();
-  //fillScreenF(false);
   return true;
 }
 siteTab.setVis=function(){
   MainDiv.forEach(ele=>ele.hide()); this.show();
   this.setUp();
-  //fillScreenF(false);
   //redirectTab.boStale=1;
   return true;
 }
-//fillScreenF=function(boFill){    
-  //if(boIOS) bodyHtmlSlide.toggleClass('fillScreen',boFill);
-  //bodyNHtml.toggleClass('fillScreen',boFill);
-//}
 
 
-var setScroll=function(x){ pageText.intScroll=x;}
-var getScroll=function(){ return pageText.intScroll;}
-pageView.setScroll=adminDiv.setScroll=editDiv.setScroll=paymentDiv.setScroll=setScroll;
-pageView.getScroll=adminDiv.getScroll=editDiv.getScroll=paymentDiv.getScroll=getScroll;
+
+//pageView.getScroll=function(){ return this.scrollTop;}
+pageView.setScroll=function(x){ this.scrollTop=x;}
+//pageList.getScroll=function(){ return this.firstChild.scrollTop;}
+var tmpF=function(x){ this.firstChild.scrollTop=x;}
+pageList.setScroll=imageList.setScroll=tmpF
+// var getIntScroll=function(){ return pageText.intScroll;}
+// var setIntScroll=function(x){ pageText.intScroll=x;}
+// var getIntScroll=function(){ return pageText.intScroll;}
+// pageView.setIntScroll=adminDiv.setIntScroll=editDiv.setIntScroll=paymentDiv.setIntScroll=setIntScroll;
+// pageView.getIntScroll=adminDiv.getIntScroll=editDiv.getIntScroll=paymentDiv.getIntScroll=getIntScroll;
+//pageView.setIntScroll=setIntScroll;
+//pageView.getIntScroll=getIntScroll;
 
 
 editText.value=strEditText;  
 templateList.setUp(objPage.IdChildLax, objPage.IdChild);
 
 
-pageView.editButton.setImg(objPage.boOW);
-pageView.spanMod.setup(objPage);
-pageView.setFixedDivColor(objPage.boOR);
+//editDiv.fixedDiv.spanSave.toggle(Boolean(objPage.boOW));
+pageView.editDivFixed.spanSave.toggle(Boolean(objPage.boOW));
 
-editDiv.spanSave.toggle(Boolean(objPage.boOW));
-
-var boMakeFirstScroll=1;
-
+//var boMakeFirstScroll=1;
 
 
 
 await (async function(){
   if(objPage.boOR==0) { // If private
-    adminDiv.setUpButtons(boAWLoggedIn);
-    butARLogout.toggle(boARLoggedIn); 
+    pageView.adminDivFixed.setUpButtons(boAWLoggedIn);
+    pageView.pageDivFixed.butARLogout.toggle(boARLoggedIn); 
     if(boARLoggedIn){
-      pageView.setVis();
+      pageView.setVis('page');
+      //pageView.funPopped?.(history.state)
       var vec=[['pageLoad',{}]];  await myFetch('GET',vec); 
-      pageView.setVis();
-    } else aRLoginDiv.setVis();  
+      pageView.scrollTop=history.state.scroll??0
+      //pageView.setVis('page');
+    } else {
+      aRLoginDiv.setVis();
+    }
   }
-  else {   var vec=[['getLoginBoolean',{}]];  await myFetch('POST',vec); pageView.setVis();   } 
+  else {  // If public
+    pageView.setVis('page');
+    pageView.scrollTop=history.state.scroll
+    var vec=[['getLoginBoolean',{}]];  await myFetch('POST',vec);
+  } 
   if(boAWLoggedIn) {  var vec=[['getAWRestrictedStuff',{}]];  await myFetch('POST',vec);  } 
 })();
 
@@ -4556,64 +4429,47 @@ const strSha1NotLoaded='sha1.js is not loaded yet';
 
 
 
-window.divReCaptcha=divReCaptchaExtend(editDiv.spanSave.divReCaptcha);
+//window.divReCaptcha=divReCaptchaExtend(editDiv.fixedDiv.spanSave.divReCaptcha);
+window.divReCaptcha=divReCaptchaExtend(pageView.editDivFixed.spanSave.divReCaptcha);
 window.cbRecaptcha=function(){
-  if(editDiv.style.display!='none') { console.log('Setting up recaptcha (onload)'); divReCaptcha.setUp(); } // Otherwise "render" will occur when editDiv is opened.
+  if(pageView.editDivFixed.style.display!='none') { console.log('Setting up recaptcha (onload)'); divReCaptcha.setUp(); } // Otherwise "render" will occur when editDiv is opened.
 }
-window.boDbgSkipRecaptcha=0;
+window.boDbgSkipRecaptcha=boDbg; //=0;
 if(!boDbgSkipRecaptcha) divReCaptcha.loadScript();
 
 
 
-var fixedDivsCoveringPageText=[pageView.fixedDiv, editDiv.fixedDiv, adminDiv.fixedDiv, paymentDiv.fixedDiv];
+//var fixedDivsCoveringPageText=[pageView.fixedDiv, editDiv.fixedDiv, adminDiv.fixedDiv, paymentDiv.fixedDiv];
+var fixedDivsCoveringPageText=[pageView.pageDivFixed, pageView.editDivFixed, pageView.adminDivFixed];
 var setBottomMargin=function() { // This is not very beautiful. But how should one else make a fixed div at the bottom without hiding the bottom of the scrollable content behind??
   if(pageText.style.display!='none'){
     //var tmp=fixedDivsCoveringPageText.map(ele=>ele.style.display!='none'); pageText.css({'margin-bottom':tmp[0].offsetHeight+'px'});
     var hMax=0; for(var i=0;i<fixedDivsCoveringPageText.length;i++){
       var tmp=fixedDivsCoveringPageText[i], hTmp=tmp.offsetHeight;
       if(tmp.style.display!='none'){
-        if(tmp===pageView.fixedDiv) hTmp=window.innerHeight-tmp.offsetTop;
+        if(tmp===pageView.pageDivFixed) hTmp=window.innerHeight-tmp.offsetTop;
         if(hTmp>hMax) hMax=hTmp;
       }
     }
     pageText.css({'margin-bottom':hMax+'px'});
   }
-  else if(versionTable.style.display!='none'){versionTable.table.css({'margin-bottom':versionTable.fixedDiv.offsetHeight+'px'});}
-  else if(diffDiv.style.display!='none'){diffDiv.divCont.css({'margin-bottom':diffDiv.fixedDiv.offsetHeight+'px'});}
-  else if(pageList.style.display!='none'){ pageList.divCont.css({'margin-bottom':pageList.fixedDiv.offsetHeight+'px'}); }
-  else if(imageList.style.display!='none'){ imageList.divCont.css({'margin-bottom':imageList.fixedDiv.offsetHeight+'px'}); }
-  else if(redirectTab.style.display!='none'){redirectTab.divCont.css({'margin-bottom':redirectTab.fixedDiv.offsetHeight+'px'});}
-  else if(siteTab.style.display!='none'){siteTab.divCont.css({'margin-bottom':siteTab.fixedDiv.offsetHeight+'px'});}
-  //else if(menuDiv.divCont.style.display!='none'){menuDiv.divCont.css({'margin-bottom':menuDiv.fixedDiv.offsetHeight+'px'});}
-  else if(pageFilterDiv.style.display!='none'){pageFilterDiv.divCont.css({'margin-bottom':pageFilterDiv.fixedDiv.offsetHeight+'px'});}
-  else if(imageFilterDiv.style.display!='none'){imageFilterDiv.divCont.css({'margin-bottom':imageFilterDiv.fixedDiv.offsetHeight+'px'});}
-  else if(adminMoreDiv.style.display!='none'){adminMoreDiv.divCont.css({'margin-bottom':adminMoreDiv.fixedDiv.offsetHeight+'px'});}
 }
-if(boFF) window.on("DOMMouseScroll", setBottomMargin, false); else   window.on('mousewheel', setBottomMargin);
+
+window.on('wheel', setBottomMargin);
 if(boTouch) elBody.on('touchstart',setBottomMargin); else { elBody.on('click',setBottomMargin);  window.scroll(setBottomMargin); }
 
 
+var cbScrollEvent=function(){ 
+  var scrollT=this.scrollTop; 
+  var state=history.state;  state.scroll=scrollT;
+  stateMem.scroll=scrollT;
+  history.replaceState(state, '', uCanonical);
+  history.StateOpen[history.state.ind].scroll=scrollT;
+}
+pageView.on('scroll', cbScrollEvent);
+pageList.firstChild.on('scroll', cbScrollEvent);
 
-window.scroll(function(){ 
-  var stateMy=history.StateMy[history.state.ind];
-  var view=stateMy.view;
-  var scrollT=window.scrollTop(); 
-  if('boFirstScroll' in history && history.boFirstScroll){
-  //if(false){
-    history.boFirstScroll=false;
-    if(typeof view.getScroll=='function') {
-      var scrollT=view.getScroll();
-      setTimeout(function(){
-        window.scrollTop(scrollT);},1);
-    } else {
-      //var scrollT=stateMy.scroll;  setTimeout(function(){  window.scrollTop(scrollT);},1);
-    }      
-  } else {
-    if(typeof view.setScroll=='function') view.setScroll(scrollT); else stateMy.scroll=scrollT;  //view.intScroll=scrollT;
-  }    
-});
-
-};
+}
 
 //window.onload=funLoad;
 //window.on('DOMContentLoaded', funLoad);  // If one uses "import" in "DOMContentLoaded" then "load" will wait until the imported stuff is loaded.

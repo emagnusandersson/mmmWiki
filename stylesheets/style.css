@@ -3,10 +3,11 @@
 * {box-sizing:border-box}
 
 html {height:auto}
+/* html, body  {height:100%} */
 html, body { -webkit-overflow-scrolling: touch; }
 html, body { -webkit-appearance:none}
 /* -webkit-appearance:none is required to make disabled buttons have grey text on Safari. */
-html, body {overscroll-behavior: contain;}
+html, body {overscroll-behavior: contain; overflow:auto}
 
 body { -webkit-text-size-adjust: 100%; }
 
@@ -201,13 +202,13 @@ body {	font-family:verdana, arial, helvetica;}
 
 div.gallerytext{overflow:hidden;font-size:94%;padding:2px 4px}
 li.gallerybox{vertical-align:top;background-color:#f9f9f9;border:solid 1px white;display:-moz-inline-box}
-ul.gallery,li.gallerybox{display:inline-block;zoom:1} /*;*display:inline*/
+ul.gallery,li.gallerybox{display:inline-block} /*;*display:inline*/
 ul.gallery{margin:2px;padding:2px;background-color:white;display:block}
 li.gallerycaption{font-weight:bold;text-align:center;display:block;overflow-wrap:break-word}
 li.gallerybox div.thumb{text-align:center;border:1px solid #ccc;margin:2px}
 
 li.HLbox{vertical-align:top;background-color:#f9f9f9;border:solid 2px white;display:-moz-inline-box}
-ul.HL,li.HLbox{display:inline-block;zoom:1} /*;*display:inline*/
+ul.HL,li.HLbox{display:inline-block} /*;*display:inline*/
 ul.HL{margin:2px;padding:2px;background-color:white;display:block}
 li.HLbox div.thumb{text-align:center;border:1px solid #ccc;margin:2px}
 
@@ -481,4 +482,36 @@ border-top-right-radius: var(--notchSizeR);*/
   border: 0;
   font-weight: bold;
   font-size: 90%;
+}
+
+
+
+.viewDiv {
+  text-align:center;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center
+}
+.contDiv { /*Should be called contDivW, like: content-wrapper, or container or something*/
+  flex:1 1 0; 
+  overflow-y:scroll;
+  width:100%
+}
+.footDivW {
+  margin: 0em auto;
+  /* max-width: var(--maxWidth); */
+  width: 100%;
+  border-top: solid 1px;
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between
+}
+.footDiv {
+  min-width:min(100vw, var(--menuMaxWidth));
+  margin:.5em auto .5em;
+  display:flex;
+  align-items:center;
+  justify-content:space-between
 }

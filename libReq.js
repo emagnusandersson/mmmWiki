@@ -30,6 +30,9 @@
 // Fix cache problem when returning to edited page
 // Fix green monitor.html that should be white
 
+// links to private pages should be green
+// parse async
+
 /******************************************************************************
  * BU (BackUp requests):
  * (As shown in script.js) the requests:
@@ -1126,7 +1129,7 @@ app.reqMonitor=async function(){
   var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
   var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
   
-  if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in as admin read'); return;}
+  if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in with read access'); return;}
 
   if(!objOthersActivity){  //  && boPageBUNeeded===null && boImageBUNeeded===null
 
@@ -1176,7 +1179,7 @@ app.reqStat=async function(){
   var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
   var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
   
-  if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in as admin read'); return;}
+  if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in with read access'); return;}
   
 
     // Get the number of documents of each collection.
@@ -1247,7 +1250,7 @@ app.reqStat=async function(){
     var pathTmp=StrTmp[i], vTmp=CacheUri[pathTmp].strHash; if(boDbg) vTmp=0;    Str.push(`<script type="module" src="${uSiteCommon}/${pathTmp}?v=${vTmp}" crossorigin="anonymous"></script>`);  // crossorigin : to make request cors (not needed really)
   }
 
-  Str.push('<script type="module" src="'+uSiteCommon+'/lib/foundOnTheInternet/sortable.js" crossorigin="anonymous"></script>');
+  //Str.push('<script type="module" src="'+uSiteCommon+'/lib/foundOnTheInternet/sortable.js" crossorigin="anonymous"></script>');
 
   Str.push(`</head>
 <body style="margin:0">
