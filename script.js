@@ -14,7 +14,9 @@ import zlib from 'zlib';
 //import imageSize from 'image-size';
 //import NodeZip from 'node-zip';
 import JSZip from "jszip";
-import redis from "redis";
+//"redis": "^4.6.5",
+//import redis from "redis";
+import Redis from "ioredis";
 import Streamify from 'streamify-string';
 import serialize from 'serialize-javascript';
 import validator from 'validator';
@@ -34,7 +36,7 @@ import minimist from 'minimist';
 
 
 app.extend=Object.assign;
-extend(app, {http, url, path, fsPromises, concat, fetch, formidable, myCrypto, zlib, JSZip, redis, Streamify, serialize, validator, mime, gm, im, temporary, ejs, mongodb, mongoSanitize});
+extend(app, {http, url, path, fsPromises, concat, fetch, formidable, myCrypto, zlib, JSZip, Streamify, serialize, validator, mime, gm, im, temporary, ejs, mongodb, mongoSanitize});
 var {MongoClient, ObjectId, Long, Int32} = mongodb;
 extend(app, {MongoClient, ObjectId, Long, Int32});
 
@@ -100,15 +102,17 @@ if(StrUnknown.length){ console.log('Unknown arguments: '+StrUnknown.join(', '));
 
       
   // Set up redisClient
-var urlRedis=process.env.REDIS_URL;
-if(  urlRedis ) {
-  app.redisClient=redis.createClient({no_ready_check: true, url: urlRedis, legacyMode: true}); // Since v4 this should be the way to use the interface with legacyMode: true
-}else {
-  //var objConnect={host: 'localhost', port: 6379,  password: 'password'};
-  app.redisClient=redis.createClient({ legacyMode: true});
-}
-await redisClient.connect();
+// var urlRedis=process.env.REDIS_URL;
+// if(  urlRedis ) {
+//   app.redisClient=redis.createClient({no_ready_check: true, url: urlRedis, legacyMode: true}); // Since v4 this should be the way to use the interface with legacyMode: true
+// }else {
+//   //var objConnect={host: 'localhost', port: 6379,  password: 'password'};
+//   app.redisClient=redis.createClient({ legacyMode: true});
+// }
+// await redisClient.connect();
 
+var REDIS_URL="redis://localhost:6379"
+app.redis = new Redis(REDIS_URL);
 
   // Default config variables (If you want to change them I suggest you create a file config.js and overwrite them there)
 extend(app, {boDbg:0, boAllowSql:1, port:5000, levelMaintenance:0, googleSiteVerification:'googleXXX.html',
@@ -146,17 +150,19 @@ else{
   //await import('./config.js');    //await import('./config.example.js');
 } 
 
-  // Detecting if the config-file has changed since last time (might be usefull to speed up things when the program is auto started)
+  // Detecting if the config-file has changed since last time (might be useful to speed up things when the program is auto started)
 var strMd5Config=md5(strConfig);
 eval(strConfig);
 if(typeof strSalt=='undefined') {console.error("typeof strSalt=='undefined'"); process.exit(-1); }
 
 var redisVar='str'+ucfirst(strAppName)+'Md5Config';
-var [err,tmp]=await cmdRedis('GET',[redisVar]); if(err) {console.error(err); process.exit(-1);}
+//var [err,tmp]=await cmdRedis('GET',[redisVar]); if(err) {console.error(err); process.exit(-1);}
+var [err,tmp]=await getRedis(redisVar); if(err) {console.error(err); process.exit(-1);}
 
 //var [err,tmp]=await cmdRedis('GET',[redisVar]);
 var boNewConfig=strMd5Config!==tmp; 
-if(boNewConfig) { var [err,tmp]=await cmdRedis('SET',[redisVar,strMd5Config]);   if(err) {console.error(err); process.exit(-1);}      }
+//if(boNewConfig) { var [err,tmp]=await cmdRedis('SET',[redisVar,strMd5Config]);   if(err) {console.error(err); process.exit(-1);}      }
+if(boNewConfig) { var [err,tmp]=await setRedis(redisVar,strMd5Config);   if(err) {console.error(err); process.exit(-1);}      }
 
 if('levelMaintenance' in process.env) levelMaintenance=process.env.levelMaintenance;
 
@@ -286,8 +292,13 @@ app.strHashTemplate=md5(strIndexTemplate);
 //app.strHashTemplateIOSLoc=md5(strIndexTemplateIOSLoc);
 
 var redisVar=strAppName+'_IndexTemplateHash';
-var luaCountFunc=`local strHash=redis.call('GET',KEYS[1]);     if(strHash==ARGV[1]) then return 1; else redis.call('SET',KEYS[1],ARGV[1]); return 0; end;`;
-var [err, boHashTemplateMatch]=await cmdRedis('EVAL',[luaCountFunc, 1, redisVar, strHashTemplate]); if(err){console.error(err); process.exit(-1);}
+var luaIndexTemplateHashTestNSetFun=`local strHash=redis.call('GET',KEYS[1]);     if(strHash==ARGV[1]) then return 1; else redis.call('SET',KEYS[1],ARGV[1]); return 0; end;`;
+//var [err, boHashTemplateMatch]=await cmdRedis('EVAL',[luaIndexTemplateHashTestNSetFun, 1, redisVar, strHashTemplate]); if(err){console.error(err); process.exit(-1);}
+
+redis.defineCommand("myIndexTemplateHashTestNSetFun", { numberOfKeys: 1, lua: luaIndexTemplateHashTestNSetFun });
+var [err, boHashTemplateMatch]=await redis.myIndexTemplateHashTestNSetFun(redisVar, strHashTemplate).toNBP();
+if(err){console.error(err); process.exit(-1);}
+
 if(!boHashTemplateMatch){
   var Arg=[{boOR:true }, [{ $set: { tModCache: new Date(0), strHash:'template changed' } }]];
   var [err, result]=await collectionPage.updateMany( ...Arg).toNBP();   if(err) {console.error(err); process.exit(-1);}
@@ -316,6 +327,15 @@ app.StrSessionIDRProp=[str0,str1];
 oTmp["Max-Age"]=maxAdminWUnactivityTime; var str1=";"+arrayifyCookiePropObj(oTmp).join(';');
 oTmp["Max-Age"]=0; var str0=";"+arrayifyCookiePropObj(oTmp).join(';');
 app.StrSessionIDWProp=[str0,str1];
+
+
+
+var luaDDosCounterFun=`local c=redis.call('INCR',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`
+redis.defineCommand("myDDosCounterFun", { numberOfKeys: 1, lua: luaDDosCounterFun });
+
+var luaDogFeederFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+redis.defineCommand("myDogFeederFun", { numberOfKeys: 1, lua: luaDogFeederFunc });
+
 
 const handler=async function(req, res){
   if(typeof isRedirAppropriate!='undefined'){ 
@@ -353,20 +373,22 @@ const handler=async function(req, res){
   var {sessionIDDDos=null}=cookies, redisVarDDos;
   if(sessionIDDDos) {
     redisVarDDos=sessionIDDDos+'_DDOS';
-    var [err, tmp]=await cmdRedis('EXISTS', redisVarDDos); boCookieDDOSCameNExist=tmp;
+    //var [err, tmp]=await cmdRedis('EXISTS', redisVarDDos); boCookieDDOSCameNExist=tmp;
+    var [err, tmp]=await existsRedis(redisVarDDos); boCookieDDOSCameNExist=tmp;
   }
     // If !boCookieDDOSCameNExist then create a new sessionIDDDos (and redisVarDDos).
   if(!boCookieDDOSCameNExist) { sessionIDDDos=randomHash();  redisVarDDos=sessionIDDDos+'_DDOS'; }
     // Update redisVarDDos counter
-  var luaCountFunc=`local c=redis.call('INCR',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-  var [err, intCount]=await cmdRedis('EVAL',[luaCountFunc, 1, redisVarDDos, tDDOSBan]);
+  //var [err, intCount]=await cmdRedis('EVAL',[luaDDosCounterFun, 1, redisVarDDos, tDDOSBan]);
+  var [err, intCount]=await redis.myDDosCounterFun(redisVarDDos, tDDOSBan).toNBP();
     // Write to response
   res.replaceCookie("sessionIDDDos="+sessionIDDDos+strCookiePropNormal);
 
+
     // Update redisVarDDosIP counter
   var ipClient=getIP(req), redisVarDDosIP=ipClient+'_DDOS';
-  var luaCountFunc=`local c=redis.call('INCR',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-  var [err, intCountIP]=await cmdRedis('EVAL',[luaCountFunc, 1, redisVarDDosIP, tDDOSIPBan]);
+  // var [err, intCountIP]=await cmdRedis('EVAL',[luaDDosCounterFun, 1, redisVarDDosIP, tDDOSIPBan]);
+  var [err, intCountIP]=await redis.myDDosCounterFun(redisVarDDosIP, tDDOSIPBan).toNBP();
   
     // Determine which DDOS counter to use
   if(boCookieDDOSCameNExist) {  var intCountT=intCount, intDDOSMaxT=intDDOSMax, tDDOSBanT=tDDOSBan;   }

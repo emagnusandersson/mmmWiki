@@ -154,13 +154,13 @@ app.cmdRedis=async function(strCommand, arr){
   });
   //return await redisClient.sendCommand([strCommand, ...arr] ).toNBP();
 }
-  // Redis v4 (with legacy mode)
+// Redis v4 (with legacy mode)
 app.cmdRedis=async function(strCommand, arr){
-  if(!(arr instanceof Array)) arr=[arr];
-  return await new Promise(resolve=>{
-    redisClient.sendCommand([strCommand, ...arr], (...arg)=>resolve(arg)  ); 
-  });
-  //return await redisClient.sendCommand([strCommand, ...arr] ).toNBP();
+if(!(arr instanceof Array)) arr=[arr];
+return await new Promise(resolve=>{
+  redisClient.sendCommand([strCommand, ...arr], (...arg)=>resolve(arg)  ); 
+});
+//return await redisClient.sendCommand([strCommand, ...arr] ).toNBP();
 }
 app.getRedis=async function(strVar, boObj=false){
   var [err,data]=await cmdRedis('GET', [strVar]);  if(boObj) data=JSON.parse(data);  return [err,data];
@@ -180,6 +180,26 @@ app.delRedis=async function(arr){
   var [err,strTmp]=await cmdRedis('DEL', arr);
   return [err,strTmp];
 }
+  // ioredis 
+app.getRedis=async function(strVar, boObj=false){
+  var [err,data]=await redis.get(strVar).toNBP();  if(boObj) data=JSON.parse(data);  return [err,data];
+}
+app.setRedis=async function(strVar, val, tExpire=-1){
+  if(typeof val!='string') var strA=JSON.stringify(val); else var strA=val;
+  var arr=[strVar,strA];  if(tExpire>0) arr.push('EX',tExpire);   var [err,strTmp]=await redis.set(...arr).toNBP();
+  return [err,strTmp];
+}
+app.expireRedis=async function(strVar, tExpire=-1){
+  if(tExpire==-1) var [err,strTmp]=await redis.persist(strVar).toNBP();
+  else var [err,strTmp]=await redis.expire(strVar,tExpire).toNBP();
+  return [err,strTmp];
+}
+app.delRedis=async function(arr){ 
+  if(!(arr instanceof Array)) arr=[arr];
+  var [err,strTmp]=await redis.del(...arr).toNBP();
+  return [err,strTmp];
+}
+app.existsRedis=async function(strVar){  return await redis.exists(strVar).toNBP();  }
 
 
 

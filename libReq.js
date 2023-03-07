@@ -33,6 +33,8 @@
 // links to private pages should be green
 // parse async
 
+// (?<!cmd|del|set|get)redis
+
 /******************************************************************************
  * BU (BackUp requests):
  * (As shown in script.js) the requests:
@@ -50,9 +52,10 @@ app.reqBU=async function(strArg) {
   //if(!req.boCookieStrictOK) { res.outCode(401, "Strict cookie not set");  return;   }
   
       // Conditionally push deadlines forward
-  var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+  // var [err,value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  // var [err,value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
+  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime).toNBP(); this.boAWLoggedIn=Number(value);
   
 
   if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
@@ -200,7 +203,8 @@ app.reqBU=async function(strArg) {
     res.writeHead(200,objHead);
     res.end(outdata,'binary');
   }
-  var [err,tmp]=await cmdRedis('SET',['mmmWiki_tLastBU',unixNow()]);
+  //var [err,tmp]=await cmdRedis('SET',['mmmWiki_tLastBU',unixNow()]);
+  var [err,tmp]=await setRedis('mmmWiki_tLastBU',unixNow());
 }
 
 
@@ -215,9 +219,10 @@ app.reqBUMeta=async function(strArg) {
   //if(!req.boCookieStrictOK) {res.outCode(401, "Strict cookie not set");  return;  }
   
         // Conditionally push deadlines forward
-  var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+  // var [err,value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  // var [err,value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
+  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime).toNBP(); this.boAWLoggedIn=Number(value);
   
   if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
 
@@ -470,10 +475,11 @@ app.reqIndex=async function() {
   // res.setHeader("Set-Cookie", "sessionIDStrict="+sessionID+strCookiePropStrict);
 
     // Conditionally push deadlines forward
-  var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
-
+  // var [err,value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  // var [err,value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
+  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime).toNBP(); this.boAWLoggedIn=Number(value);
+  
   // Private:
   //                                                                 index.html  first ajax (pageLoad)
   //Shall look the same (be cacheable (not include boARLoggedIn etc))     no           yes
@@ -570,13 +576,15 @@ app.reqIndex=async function() {
       // Check if incoming cookie is valid, and what CSRFCode is stored under it.
     if('sessionIDCSRF' in req.cookies) { 
       var sessionIDCSRF=req.cookies.sessionIDCSRF;
-      var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-      var [err,CSRFCode]=await cmdRedis('EVAL', [luaCountFunc, 1, sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
+      //var [err, CSRFCode]=await cmdRedis('EVAL', [luaDogFeederFun, 1, sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]); 
+      var [err, CSRFCode]=await redis.myDogFeederFun(sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime).toNBP();
+      
       if(!CSRFCode) sessionIDCSRF=randomHash(); // To avoid session fixation
     } else var sessionIDCSRF=randomHash();
 
     var CSRFCode=randomHash();
-    var [err,tmp]=await cmdRedis('SET', [sessionIDCSRF+'_CSRF', CSRFCode, 'EX', maxAdminRUnactivityTime]);
+    //var [err,tmp]=await cmdRedis('SET', [sessionIDCSRF+'_CSRF', CSRFCode, 'EX', maxAdminRUnactivityTime]);
+    var [err,tmp]=await setRedis(sessionIDCSRF+'_CSRF', CSRFCode, maxAdminRUnactivityTime);
     
     var objOut={CSRFCode,   boTalkExist:0, strEditText:'', arrVersionCompared:[null,1], matVersion:{}, objSiteDefault, objSite, objPage};
     copySome(objOut, this, ['boARLoggedIn', 'boAWLoggedIn']);
@@ -1126,8 +1134,8 @@ app.reqMonitor=async function(){
   
   
         // Conditionally push deadlines forward
-  var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  // var [err, value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
   
   if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in with read access'); return;}
 
@@ -1176,8 +1184,8 @@ app.reqStat=async function(){
   //if(!req.boCookieLaxOK) {res.outCode(401, "Lax cookie not set");  return;  }
   
         // Conditionally push deadlines forward
-  var luaCountFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-  var [err,value]=await cmdRedis('EVAL',[luaCountFunc, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  //var [err,value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
   
   if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in with read access'); return;}
   
