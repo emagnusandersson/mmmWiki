@@ -398,6 +398,29 @@ app.parseQS2=function(qs){
 }
 
 
+app.mySplit=function(str, sep, n) {
+  var out = [];
+  while(n--) out.push(str.slice(sep.lastIndex, sep.exec(str).index));
+  out.push(str.slice(sep.lastIndex));
+  return out;
+}
+//console.log(mySplit("a=b=c=d", /=/g, 2)); // ['a', 'b', 'c=d']
+
+app.mySplit=function(str, sep, n=Infinity) {
+  var out = [];
+  while(n--) {
+    var iStart=sep.lastIndex, result=sep.exec(str)
+    if(result===null) {
+      out.push(str.slice(iStart)); return out;
+    }
+    out.push(str.slice(iStart, result.index));
+  }
+  out.push(str.slice(sep.lastIndex));
+  return out;
+}
+//console.log(mySplit("a=b=c=d", /=/g, 2)); // ['a', 'b', 'c=d']
+//console.log(mySplit("a  b  c  d", /\s+/g, 2)); // ['a', 'b', 'c=d']
+
 //
 // Escaping data
 //

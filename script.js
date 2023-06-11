@@ -30,6 +30,8 @@ import ejs from "ejs";
 import mongodb from 'mongodb';
 import mongoSanitize from 'mongo-sanitize';
 import minimist from 'minimist';
+import * as dotenv from 'dotenv'
+dotenv.config();
 //import v8 from 'v8'
 //import {URLPattern} from "urlpattern-polyfill"
 //import mysql from 'mysql';
@@ -133,6 +135,7 @@ extend(app, {boDbg:0, boAllowSql:1, port:5000, levelMaintenance:0, googleSiteVer
   strReCaptchaSiteKey:"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",   strReCaptchaSecretKey:"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
   aRPassword:"123", aWPassword:"123",
   RegRedir:[],
+  //strJSConsoleKey:'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX'
 });
 
 
@@ -279,6 +282,7 @@ var [err, buf]=await fsPromises.readFile('views/index.html').toNBP();   if(err) 
 app.strIndexTemplate=buf.toString();
 app.strIndexTemplateIOSLoc=strIndexTemplate;
 
+
 var FlJS=['filter.js', 'lib.js', 'libClient.js', 'client.js', leafCommon];
 for(var i=0;i<FlJS.length;i++) { 
   var pathTmp=FlJS[i], vTmp=CacheUri[pathTmp].strHash, varName='u'+ucfirst(pathTmp.slice(0,-3));
@@ -295,8 +299,7 @@ var redisVar=strAppName+'_IndexTemplateHash';
 var luaIndexTemplateHashTestNSetFun=`local strHash=redis.call('GET',KEYS[1]);     if(strHash==ARGV[1]) then return 1; else redis.call('SET',KEYS[1],ARGV[1]); return 0; end;`;
 //var [err, boHashTemplateMatch]=await cmdRedis('EVAL',[luaIndexTemplateHashTestNSetFun, 1, redisVar, strHashTemplate]); if(err){console.error(err); process.exit(-1);}
 
-redis.defineCommand("myIndexTemplateHashTestNSetFun", { numberOfKeys: 1, lua: luaIndexTemplateHashTestNSetFun });
-var [err, boHashTemplateMatch]=await redis.myIndexTemplateHashTestNSetFun(redisVar, strHashTemplate).toNBP();
+var [err, boHashTemplateMatch]=await redis.eval(luaIndexTemplateHashTestNSetFun, 1, redisVar, strHashTemplate).toNBP();
 if(err){console.error(err); process.exit(-1);}
 
 if(!boHashTemplateMatch){
@@ -333,8 +336,8 @@ app.StrSessionIDWProp=[str0,str1];
 var luaDDosCounterFun=`local c=redis.call('INCR',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`
 redis.defineCommand("myDDosCounterFun", { numberOfKeys: 1, lua: luaDDosCounterFun });
 
-var luaDogFeederFunc=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
-redis.defineCommand("myDogFeederFun", { numberOfKeys: 1, lua: luaDogFeederFunc });
+var luaGetNExpire=`local c=redis.call('GET',KEYS[1]); redis.call('EXPIRE',KEYS[1], ARGV[1]); return c`;
+redis.defineCommand("myGetNExpire", { numberOfKeys: 1, lua: luaGetNExpire });
 
 
 const handler=async function(req, res){

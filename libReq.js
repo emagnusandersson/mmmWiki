@@ -35,6 +35,12 @@
 
 // (?<!cmd|del|set|get)redis
 
+
+// nsVote and syncameeting should use StateOpen instead of StateMy
+// First visible MainDiv: mmmWiki:pageView, locatabl:viewFront, idPlace:mainDiv, nsVote:voterListDiv, syncAMeeting:schW
+// mSort and merge should be in lib.js instead of libClient.js. Right
+// Remove UNSELECTABLE property (already done on mmmWiki) (only supported by ie)
+
 /******************************************************************************
  * BU (BackUp requests):
  * (As shown in script.js) the requests:
@@ -52,10 +58,10 @@ app.reqBU=async function(strArg) {
   //if(!req.boCookieStrictOK) { res.outCode(401, "Strict cookie not set");  return;   }
   
       // Conditionally push deadlines forward
-  // var [err,value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  // var [err,value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
-  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
-  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime).toNBP(); this.boAWLoggedIn=Number(value);
+  // var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  // var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
+  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime).toNBP(); this.boAWLoggedIn=Number(value);
   
 
   if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
@@ -219,10 +225,10 @@ app.reqBUMeta=async function(strArg) {
   //if(!req.boCookieStrictOK) {res.outCode(401, "Strict cookie not set");  return;  }
   
         // Conditionally push deadlines forward
-  // var [err,value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  // var [err,value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
-  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
-  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime).toNBP(); this.boAWLoggedIn=Number(value);
+  // var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  // var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
+  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime).toNBP(); this.boAWLoggedIn=Number(value);
   
   if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
 
@@ -368,7 +374,11 @@ var makeOutput=function(objOut, strHtmlText){
     // If boDbg then set vTmp=0 so that the url is the same, this way the debugger can reopen the file between changes
     
     // Use normal vTmp on iOS (since I don't have any method of disabling cache on iOS devices (nor any debugging interface))
-  var boDbgT=boDbg; if(boIOS) boDbgT=0;
+  var boClientHasDebugger=!boIOS
+  var boDbgNClientHasDebugger=boDbg&&boClientHasDebugger;
+  var boDbgNClientHasNoDebugger=boDbg&&!boClientHasDebugger;
+
+
 
     // uSite, uSiteCommon, uCanonical    
   var uSite=strSchemeLong+objSite.www;
@@ -376,11 +386,13 @@ var makeOutput=function(objOut, strHtmlText){
   var uSiteCommon=strSchemeCommonLong+objSiteDefault.www;
   var uCanonical=uSite; if(pageName!='start') uCanonical=uCanonical+"/"+pageName;
 
-    // Files to include    
-  //var keyTmp=wwwSite+'/'+leafManifest, vTmp=boDbgT?0:CacheUri[keyTmp].strHash;     const uManifest=uSite+'/'+leafManifest+'?v='+vTmp;
-  var keyTmp=wwwSite+'/'+leafManifest, vTmp=boDbgT?0:CacheUri[keyTmp].strHash;     const uManifest=`${strSchemeLong}${keyTmp}?v=${vTmp}`;
-  var pathTmp='lib/foundOnTheInternet/zip.js', vTmp=boDbgT?0:CacheUri[pathTmp].strHash;    const uZip=`${uSiteCommon}/${pathTmp}?v=${vTmp}`;
-  var pathTmp='lib/foundOnTheInternet/sha1.js', vTmp=boDbgT?0:CacheUri[pathTmp].strHash;   const uSha1=`${uSiteCommon}/${pathTmp}?v=${vTmp}`;
+    // Files to include
+    // Note! If boDbgNClientHasDebugger=1 then url is made to look the same (v=0 (even if the file has changed)), this way the client debugger will keep breakpoints.
+    //  (In the client debugger one should disable cache so one still gets updated files)
+  //var keyTmp=wwwSite+'/'+leafManifest, vTmp=boDbgNClientHasDebugger?0:CacheUri[keyTmp].strHash;     const uManifest=uSite+'/'+leafManifest+'?v='+vTmp;
+  var keyTmp=wwwSite+'/'+leafManifest, vTmp=boDbgNClientHasDebugger?0:CacheUri[keyTmp].strHash;     const uManifest=`${strSchemeLong}${keyTmp}?v=${vTmp}`;
+  var pathTmp='lib/foundOnTheInternet/zip.js', vTmp=boDbgNClientHasDebugger?0:CacheUri[pathTmp].strHash;    const uZip=`${uSiteCommon}/${pathTmp}?v=${vTmp}`;
+  var pathTmp='lib/foundOnTheInternet/sha1.js', vTmp=boDbgNClientHasDebugger?0:CacheUri[pathTmp].strHash;   const uSha1=`${uSiteCommon}/${pathTmp}?v=${vTmp}`;
 
  
   var strTracker, tmpID=objSite.googleAnalyticsTrackingID||null;
@@ -442,7 +454,8 @@ var makeOutput=function(objOut, strHtmlText){
   var objData={uIcon16, uIcon114, strMetaNoIndex, uCanonical, uSiteCommon, uManifest, strTracker, strObjOut, strTitle, strHtmlText, strDescription:strTitle};
   //objPage.idPage=objPage._id; delete objPage._id;
   copySome(objData, objPage, ['strLang']);
-  var strTmp=boDbgT?strIndexTemplateIOSLoc:strIndexTemplate;   
+  //var strTmp=boDbgT?strIndexTemplateIOSLoc:strIndexTemplate; 
+  var strTmp=boDbgNClientHasNoDebugger?strIndexTemplateIOSLoc:strIndexTemplate;   
   var strOut=ejs.render(strTmp, objData, {});
   return {strOut};
 }
@@ -475,10 +488,10 @@ app.reqIndex=async function() {
   // res.setHeader("Set-Cookie", "sessionIDStrict="+sessionID+strCookiePropStrict);
 
     // Conditionally push deadlines forward
-  // var [err,value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  // var [err,value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
-  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
-  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime).toNBP(); this.boAWLoggedIn=Number(value);
+  // var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  // var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
+  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime).toNBP(); this.boAWLoggedIn=Number(value);
   
   // Private:
   //                                                                 index.html  first ajax (pageLoad)
@@ -576,8 +589,8 @@ app.reqIndex=async function() {
       // Check if incoming cookie is valid, and what CSRFCode is stored under it.
     if('sessionIDCSRF' in req.cookies) { 
       var sessionIDCSRF=req.cookies.sessionIDCSRF;
-      //var [err, CSRFCode]=await cmdRedis('EVAL', [luaDogFeederFun, 1, sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]); 
-      var [err, CSRFCode]=await redis.myDogFeederFun(sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime).toNBP();
+      //var [err, CSRFCode]=await cmdRedis('EVAL', [luaGetNExpire, 1, sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]); 
+      var [err, CSRFCode]=await redis.myGetNExpire(sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime).toNBP();
       
       if(!CSRFCode) sessionIDCSRF=randomHash(); // To avoid session fixation
     } else var sessionIDCSRF=randomHash();
@@ -1134,8 +1147,8 @@ app.reqMonitor=async function(){
   
   
         // Conditionally push deadlines forward
-  // var [err, value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
+  // var [err, value]=await cmdRedis('EVAL',[luaGetNExpire, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
   
   if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in with read access'); return;}
 
@@ -1184,8 +1197,8 @@ app.reqStat=async function(){
   //if(!req.boCookieLaxOK) {res.outCode(401, "Lax cookie not set");  return;  }
   
         // Conditionally push deadlines forward
-  //var [err,value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
+  //var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
   
   if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in with read access'); return;}
   

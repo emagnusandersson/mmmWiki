@@ -348,7 +348,7 @@ var pageDivFixedExtend=function(el){
     pageView.setVis('edit');
   });
   editButton.on('click', adminButtonToggleEventF);
-  var tmpImg=createElement('img').prop({src:uAdmin, alt:"admin"}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable');    //var strAdmin='👤🔑';
+  var tmpImg=createElement('img').prop({src:uAdmin, alt:"admin", draggable:false}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'});    //var strAdmin='👤🔑';
   var adminButton=createElement('button').myAppend(tmpImg).addClass('fixWidth').prop({title:"Administrator entry."}).on('click',function(){
     doHistPush({strView:'pageView', arg:'admin'});
     pageView.setVis('admin');
@@ -1397,7 +1397,7 @@ var headExtendDyn=function(el, objArg, StrName, BoAscDefault, Label, strTR='tr',
     var strName=StrName[i];  
     var boAscDefault=(strName in BoAscDefault)?BoAscDefault[strName]:true;
     var label=(strName in Label)?Label[strName]:ucfirst(strName);
-    var h=createElement(strTH).addClass('unselectable').prop({UNSELECTABLE:"on"}).prop('boAscDefault',boAscDefault).prop('title',label).attr('name',strName);
+    var h=createElement(strTH).addClass('unselectable').prop('boAscDefault',boAscDefault).prop('title',label).attr('name',strName);
     Th[i]=h;
   }
   el.addClass('listHead');
@@ -1438,7 +1438,7 @@ var pageListExtend=function(el){
       var tdNParent=createElement('span').myAppend(buttonNParent).attr('name','nParent').prop('title','Parents');
       var tdCB=createElement('span').prop('valSort',0).myAppend(cb).attr('name','cb'); //.css({'margin-left':'0.15em'});
       //var tmpImg=createElement('img').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
-      var buttonExecute=createElement('button').myAppend(charFlash).on(strMenuOpenEvent,menuPageSingle.buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"});
+      var buttonExecute=createElement('button').myAppend(charFlash).on(strMenuOpenEvent,menuPageSingle.buttonExeSingleClick).addClass('unselectable');
       var tdExecute=createElement('span').prop('valSort',0).myAppend(buttonExecute).attr('name','execute');
       var tdR=createElement('span').attr('name','boOR').myText(charPublicRead).prop('title',PageRowLabel.boOR), tdW=createElement('span').attr('name','boOW').myText(charPublicWrite).prop('title',PageRowLabel.boOW), tdP=createElement('span').attr('name','boSiteMap').myText(charPromote).prop('title',PageRowLabel.boSiteMap);
       var tdVer=createElement('span').attr('name','version'); //.css({'margin-left':'0.15em'});
@@ -1716,7 +1716,7 @@ var pageListExtend=function(el){
   });
   
   //var tmpImg=createElement('img').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});   
-  var buttonExecuteMult=createElement('button').myText(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
+  var buttonExecuteMult=createElement('button').myText(charFlash).addClass('fixWidth').addClass('unselectable');
   var itemMulti=[buttonROn, buttonROff, buttonWOn, buttonWOff, buttonPOn, buttonPOff, buttonDelete, buttonSetStrLang];
   var menuMult=createElement('div').css({'text-align':'left', 'line-height':'1.3em'});  menuExtend(menuMult);
   var buttonExeMultClick=function(e){ 
@@ -1736,7 +1736,7 @@ var pageListExtend=function(el){
   var buttonFastBack=createElement('button').myAppend(spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){history.fastBack('adminMoreDiv');});
   //var spanLabel=createElement('span').append('Pages').css({'float':'right',margin:'0.2em 0 0 0'});  
 
-  var tmpImg=createElement('img').prop({src:uFilter, alt:"filter"}).css({height:'1em',width:'1em','vertical-align':'text-bottom'}).addClass('undraggable');
+  var tmpImg=createElement('img').prop({src:uFilter, alt:"filter", draggable:false}).css({height:'1em',width:'1em','vertical-align':'text-bottom'}); 
   el.filterInfoWrap=createElement('span');
   var buttFilter=createElement('button').myAppend(tmpImg,' (',el.filterInfoWrap,')').addClass('flexWidth').css({'margin-right':'0.2em'}).on('click',function(){
     doHistPush({strView:'pageFilterDiv'});
@@ -1897,7 +1897,7 @@ class DivRowParentT extends HTMLElement{
     this.spanGrandParent=createElement('span-grand-parent'); this.spanGrandParent.connectStuff();
     this.spanGrandParent.css({'margin-right':'0.6em'}).attr('name','nParent');
 
-    var buttonExecute=createElement('button').myText(charFlash).on(strMenuOpenEvent, menuPageSingle.buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"}) 
+    var buttonExecute=createElement('button').myText(charFlash).on(strMenuOpenEvent, menuPageSingle.buttonExeSingleClick).addClass('unselectable'); 
     this.tdExecute=createElement('span').prop('valSort',0).myAppend(buttonExecute).attr('name','execute'); 
     this.tdR=createElement('span').attr('name','boOR').myText(charPublicRead).prop('title',PageRowLabel.boOR); this.tdW=createElement('span').attr('name','boOW').myText(charPublicWrite).prop('title',PageRowLabel.boOW); this.tdP=createElement('span').attr('name','boSiteMap').myText(charPromote).css({'margin-right':'0.15em'}).prop('title',PageRowLabel.boSiteMap);
     this.tdVer=createElement('span').attr('name','version').css({'min-width':'1.5em', background:'red'}); //, 'float':'right'  .css({'margin-left':'0.15em'});
@@ -2132,7 +2132,7 @@ var imageListExtend=function(el){
       var tdNParentI=createElement('span').myAppend(buttonNParentI).attr('name','nParentI').prop('title','Parents'); 
       var tdCB=createElement('span').prop('valSort',0).myAppend(cb).attr('name','cb');
       //var tmpImg=createElement('img').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'}); 
-      var buttonExecute=createElement('button').myText(charFlash).on(strMenuOpenEvent,buttonExeSingleClick).addClass('unselectable').prop({UNSELECTABLE:"on"});
+      var buttonExecute=createElement('button').myText(charFlash).on(strMenuOpenEvent,buttonExeSingleClick).addClass('unselectable');
       var tdExecute=createElement('span').prop('valSort',0).myAppend(buttonExecute).attr('name','execute'); 
       var tdTCreated=createElement('span').attr('name','tCreated').prop('title',Label.tCreated);  //.css({margin:'auto 0.3em'})
       var tdTLastAccess=createElement('span').attr('name','tLastAccess').prop('title',Label.tLastAccess);
@@ -2392,7 +2392,7 @@ var imageListExtend=function(el){
   });
   
   //var tmpImg=createElement('img').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
-  var buttonExecuteMult=createElement('button').myText(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
+  var buttonExecuteMult=createElement('button').myText(charFlash).addClass('fixWidth').addClass('unselectable'); //class: needed by firefox, prop: needed by opera, firefox and ie;
   var itemMulti=[buttonDelete];
   var menuMult=createElement('div').css({'text-align':'left', 'line-height':'1.3em'});  menuExtend(menuMult);
   var buttonExeMultClick=function(e){ 
@@ -2404,7 +2404,7 @@ var imageListExtend=function(el){
   buttonExecuteMult.on(strMenuOpenEvent,buttonExeMultClick);
 
 
-  //el.buttonExecuteParent=createElement('button').myText(charFlash).addClass('fixWidth').addClass('unselectable').prop({UNSELECTABLE:"on"});
+  //el.buttonExecuteParent=createElement('button').myText(charFlash).addClass('fixWidth').addClass('unselectable');
   //var divRowParent=new DivRowParentT(el);
   //headW.prepend(divRowParent);
 
@@ -2416,7 +2416,7 @@ var imageListExtend=function(el){
   var buttonFastBack=createElement('button').myAppend(spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){history.fastBack('adminMoreDiv');});
   //var spanLabel=createElement('span').myText('Images').css({'float':'right',margin:'0.2em 0 0 0'}); 
   
-  var tmpImg=createElement('img').prop({src:uFilter, alt:"filter"}).css({height:'1em',width:'1em','vertical-align':'text-bottom'}).addClass('undraggable');
+  var tmpImg=createElement('img').prop({src:uFilter, alt:"filter", draggable:false}).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
   el.filterInfoWrap=createElement('span');
   var buttFilter=createElement('button').myAppend(tmpImg,' (',el.filterInfoWrap,')').addClass('flexWidth').css({'margin-right':'0.2em'}).on('click',function(){ doHistPush({strView:'imageFilterDiv'}); imageFilterDiv.setVis();});
   var buttClear=createElement('button').myText('C').on('click',function(){imageFilterDiv.Filt.filtAll(); imageList.histPush(); imageList.loadTab()}).css({'margin':'0 1em 0 auto'});
@@ -2666,7 +2666,7 @@ var dragHRExtend=function(el){
   var hStart,mouseXStart,mouseYStart;
   //if(boTouch) el.on('touchstart',myMousedown); else el.on('mousedown',myMousedown);
   el.on(strMouseDownEvent,myMousedown);
-  el.addClass('unselectable').prop({UNSELECTABLE:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie;
+  el.addClass('unselectable'); //class: needed by firefox, prop: needed by opera, firefox and ie;
   el.css({cursor:'row-resize'});
   return el;
 }
@@ -3064,7 +3064,7 @@ var paymentDivExtend=function(el){
     // menuA
   // var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
   var spanLabel=createElement('span').myText('Pay/Donate').css({'float':'right',margin:'0.2em 0 0 0'}); 
-  spanLabel.addClass('unselectable').prop({UNSELECTABLE:"on"}); // class: needed by firefox, prop: needed by opera, firefox and ie 
+  spanLabel.addClass('unselectable'); // class: needed by firefox, prop: needed by opera, firefox and ie 
   var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
 
   el.fixedDiv=createElement('div').myAppend(menuB,menuA).css(cssFixed);
@@ -3197,7 +3197,7 @@ var slideShowExtend=function(el){
     divCaptionCont.empty().myAppend(Caption[iCur].cloneNode(true));  winCaption.openFunc(); 
     
   } 
-  el.addClass('unselectable').prop({UNSELECTABLE:"on"}).css({height:'100%',width:'100%'}); // class: needed by firefox, attr: needed by opera, firefox and ie 
+  el.addClass('unselectable').css({height:'100%',width:'100%'}); // class: needed by firefox, attr: needed by opera, firefox and ie 
   el.on('keydown',arrowPressF); 
   var StrImgUrl, Caption, iCur, nImg;
   
@@ -3302,18 +3302,21 @@ var redirectSetPopExtend=function(el){
     selSite.empty().myAppend(...Opt);    var tmpVal=(typeof rMat.idSite!='undefined')?rMat.idSite:objSite.idSite;    selSite.value=tmpVal;
     inpPageName.value=rMat.pageName; inpURL.value=rMat.url; inpPageName.focus();  return true;
   }
-  el.openFunc=function(boUpdT,boGotData){
+  el.openFunc=function(boUpdT){
     boUpd=boUpdT;
-    if(boGotData){
+    if(this==null){rMat=extend({},rDefault);}
+    else{
       var elR=this.parentNode.parentNode;
       rMat=elR.rMat;
-    } else {rMat=rDefault;}
+      // rMat=extend({}, elR.rMat);  <-- Should be using this, instead of the above right?!?
+    }
     //divInsOrUpd.toggle(boUpd); vippInsOrUpd.setStat(0);
     //selSite.push(inpPageName).prop('disabled',boUpd);
     doHistPush({strView:'redirectSetPop'});
     el.setVis();
     el.setUp();
   }
+
   el.setVis=function(){
     el.show(); return 1;
   }
@@ -3348,7 +3351,7 @@ var redirectSetPopExtend=function(el){
 
 var redirectDeletePopExtend=function(el){
   el.toString=function(){return 'redirectDeletePop';}
-  var ok=createElement('button').myText('OK').css({'margin-top':'1em'}).on('click',function(){    
+  var butOK=createElement('button').myText('OK').css({'margin-top':'1em'}).on('click',function(){    
     var pageName=elR.attr('pageName'), idSite=elR.attr('idSite'), vec=[['redirectTabDelete',{idSite,pageName},okRet]];   myFetch('POST',vec);    
   });
   var okRet=function(data){
@@ -3360,7 +3363,7 @@ var redirectDeletePopExtend=function(el){
     elR=this.parentNode.parentNode; spanPage.myText(elR.rMat.siteName+':'+elR.attr('pageName'));
     doHistPush({strView:'redirectDeletePop'});
     el.setVis();
-    ok.focus();
+    butOK.focus();
   }
   el.setVis=function(){
     el.show(); return 1;
@@ -3372,7 +3375,7 @@ var redirectDeletePopExtend=function(el){
   var p=createElement('div').myAppend(spanPage);
 
   var blanket=createElement('div').addClass("blanket");
-  var centerDiv=createElement('div').addClass("Center").myAppend(head,p,ok).css({'min-width':'17em','max-width':'25em', padding:'0.5em'}); //,cancel height:'10em', 
+  var centerDiv=createElement('div').addClass("Center").myAppend(head,p,butOK).css({'min-width':'17em','max-width':'25em', padding:'0.5em'}); //,cancel height:'10em', 
   el.addClass("Center-Container").myAppend(centerDiv,blanket); 
  
   return el; 
@@ -3405,10 +3408,10 @@ var redirectTabExtend=function(el){
       if('mySetSortVal' in td) { td.mySetSortVal(val);}   else td.valSort=val;
     }
     var buttEdit=createElement('button').attr('name','buttonEdit').myText('Edit').on('click',function(){
-      redirectSetPop.openFunc.call(this,1,1);
+      redirectSetPop.openFunc.call(this,1);
     });
     var buttCopy=createElement('button').attr('name','buttonCopy').myText('Copy').on('click',function(){
-      redirectSetPop.openFunc.call(this,0,1);
+      redirectSetPop.openFunc.call(this,0);
     });
     var buttDelete=createElement('button').attr('name','buttonDelete').css({'margin-right':'0.2em'}).myAppend(charDelete).on('click',redirectDeletePop.openFunc);
     var tEdit=createElement('td').myAppend(buttEdit), tCopy=createElement('td').myAppend(buttCopy), tDelete=createElement('td').myAppend(buttDelete); 
@@ -3448,7 +3451,6 @@ var redirectTabExtend=function(el){
 
   var StrCol=['siteName','pageName','url', 'tCreated', 'tMod', 'nAccess', 'tLastAccess'], BoAscDefault={tCreated:0};
   var Label={tCreated:'Age'};
-  //var tHead=headExtend(createElement('thead'), el, StrCol, BoAscDefault, Label);
   var trTmp=headExtendDyn(createElement('tr'), el, StrCol, BoAscDefault, Label);
   var tHead=createElement('thead').myAppend(trTmp);
   tHead.css({background:'white', width:'inherit'});  //,height:'calc(12px + 1.2em)'
@@ -3456,8 +3458,7 @@ var redirectTabExtend=function(el){
 
       // menuA
   var buttonAdd=createElement('button').myText('Add').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
-    redirectSetPop.openFunc.call({},0,0);
-    //redirectSetPop.openFunc.call({boButtonIns:1});
+    redirectSetPop.openFunc.call(null,0);
   });
   var buttonClearNAccess=createElement('button').myText('Clear nAccess').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'auto'}).on('click',function(){
     var vec=[['redirectTabResetNAccess', {}, function(){ el.setUp();}]];   myFetch('POST',vec);
@@ -3479,42 +3480,129 @@ var redirectTabExtend=function(el){
   return el;
 }
 
+/**************************************************************
+ * SiteTab
+ **************************************************************/
+
+app.SiteTabRow={ 
+  connectStuff:function(){
+    var {StrColOrder}=siteTab
+    //var {TDConstructors}=this.constructor
+    //var elR=createElement('tr');
+    var elR=this
+    for(var i=0;i<StrColOrder.length;i++) { 
+      var name=StrColOrder[i], td;
+      if(name in SiteTabRow.TDConstructors) { td=SiteTabRow.TDConstructors[name]();  } 
+      else td=createElement('td');
+      elR.append(td.attr('name',name));
+    }
+    var buttEdit=createElement('button').attr('name','buttonEdit').myText('Edit').on('click',function(){
+      siteSetPop.openFunc.call(this,1);
+    });
+    var buttCopy=createElement('button').attr('name','buttonCopy').myText('Copy').on('click',function(){
+      siteSetPop.openFunc.call(this,0);
+    });
+    var buttDelete=createElement('button').attr('name','buttonDelete').css({'margin-right':'0.2em'}).myAppend(charDelete).on('click',siteDeletePop.openFunc);
+    var tEdit=createElement('td').myAppend(buttEdit), tCopy=createElement('td').myAppend(buttCopy), tDelete=createElement('td').myAppend(buttDelete); 
+    elR.append(tEdit, tCopy, tDelete);
+    return elR;
+  },
+  mySet:function(objRow){
+    var {StrColOrder}=siteTab
+    var elR=this;
+    elR.attr({idSite:objRow.idSite}).prop('objRow',objRow)
+    for(var i=0;i<StrColOrder.length;i++) { 
+      var name=StrColOrder[i], val=objRow[name]; //, td=this.children.item(i)
+      var td=this.querySelector('td[name='+name+']');
+      if('mySetVal' in td) { td.mySetVal(val);}   else td.myText(val);
+      if('mySetSortVal' in td) { td.mySetSortVal(val);}   else td.valSort=val;
+    }
+  },
+  setDefaultClick:function(){ // "this" will be refering to the clicked button (see below)
+    var td=this.parentNode, elR=td.parentNode;
+    //var elR=this;
+    siteTab.clearDefault()
+    td.mySetVal(true)
+    var vec=[['siteTabSetDefault',{idSite:elR.objRow.idSite},function(){
+      console.log('todo: siteTabSetDefault-cb: check for error');
+      td.mySetVal(true);
+    }]];   myFetch('POST',vec);
+  },
+  TDProt:{
+    boDefault:{
+      mySetVal:function(boOn){  var td=this, b=td.firstChild, strCol=boOn?'green':''; b.css('background',strCol);  }
+    },
+    boTLS:{
+      mySetVal:function(boOn){  this.myHtml(boOn?'s':'<s>s</s>');  }
+    },
+    www:{
+      mySetVal:function(strText){
+        var td=this, strS=Number(td.parentNode.objRow.boTLS)?'s':'', a=td.firstChild.prop('href','http'+strS+'://'+strText).myText(strText);
+      }
+    },
+    tCreated:{
+      mySetVal:function(tCreated){      var td=this, strT=getSuitableTimeUnitStr(unixNow()-tCreated.toUnix());  td.myText(strT);  }
+    },
+    srcIcon16:{
+      mySetVal:function(url){     this.firstChild.prop({src:url, title:url});    }
+    },
+    // strLangSite:{
+    //   mySetVal:function(str){      this.firstChild.prop({src:str, title:strLangSite});   }
+    // }
+  },
+  TDConstructors:{
+    boDefault:function(){ 
+      var b=createElement('button').css('width','1.2em').on('click',SiteTabRow.setDefaultClick);
+      var el=createElement('td').css('text-align','center').myAppend(b);  extend(el,SiteTabRow.TDProt.boDefault);  return el;
+    },
+    boTLS:function(){ var el=createElement('td'); extend(el,SiteTabRow.TDProt.boTLS);  return el;  },
+    www:function(){ var a=createElement('a').prop({target:"_blank", rel:"noopener"}),  el=createElement('td').myAppend(a);  extend(el,SiteTabRow.TDProt.www);  return el;  },
+    tCreated:function(){ var el=createElement('td');  extend(el,SiteTabRow.TDProt.tCreated);  return el;  },
+    srcIcon16:function(){ var im=createElement('img').prop({alt:"iconProt"}).css({'vertical-align':'middle'}), el=createElement('td').myAppend(im); extend(el,SiteTabRow.TDProt.srcIcon16);  return el;  },
+    //strLangSite:function(){ var im=createElement('img').prop({alt:"icon200"}).css({'vertical-align':'middle', 'max-width':'50px', 'max-height':'50px'}), el=createElement('td').myAppend(im); extend(el,SiteTabRow.TDProt.strLangSite);  return el;  }
+  }
+}
+
 
 var siteSetPopExtend=function(el){
   el.toString=function(){return 'siteSetPop';}
-  var save=function(){ 
-    r.boTLS=Number(selBoTLS.value);
-    var idSite=inpName.value; if(idSite.length==0){ setMess('empty name',2);  return;}
-    r.www=inpWWW.value;  if(r.www.length==0){ setMess('empty www',2);  return;}
-    r.googleAnalyticsTrackingID=inpGog.value;
-    r.srcIcon16=inpSrcIcon16.value;
-    r.strLangSite=inpStrLangSite.value; //if(r.strLangSite.length!=2){ setMess('strLangSite should be two characters',2);  return;}
-    var objTmp=extend({},r); //boUpd
+  var save=function(){
+    var idSiteOld=objRow.idSite;
+    objRow.boTLS=Number(selBoTLS.value);
+    objRow.idSite=inpName.value; if(objRow.idSite.length==0){ setMess('empty name',2);  return;}
+    objRow.www=inpWWW.value;  if(objRow.www.length==0){ setMess('empty www',2);  return;}
+    objRow.googleAnalyticsTrackingID=inpGog.value;
+    objRow.srcIcon16=inpSrcIcon16.value;
+    objRow.strLangSite=inpStrLangSite.value; //if(objRow.strLangSite.length!=2){ setMess('strLangSite should be two characters',2);  return;}
+    var objTmp=extend({},objRow);
+    objTmp.idSiteOld=idSiteOld
     //var vec=[['siteTabSet', objTmp, saveRet]];   myFetch('POST',vec);
-    if(boUpd){  objTmp.idSiteNew=idSite; var vec=[['siteTabUpd', objTmp, saveRet]];   myFetch('POST',vec); }
-    else { objTmp.idSite=idSite;  var vec=[['siteTabInsert', objTmp, saveRet]];   myFetch('POST',vec); }
+    if(boUpd){  var vec=[['siteTabUpd', objTmp, saveRet]];   myFetch('POST',vec); }
+    else { var vec=[['siteTabInsert', objTmp, saveRet]];   myFetch('POST',vec); }
   }
   var saveRet=function(data){
     if(!data.boOK) return;
-    var idSiteOld=r.idSite; r.idSite=data.idSite;
-    if(boUpd) { siteTab.myEdit(idSiteOld, r); } //r.idSite=idSite;
-    //else {r.tCreated=new Date(); siteTab.myAdd(r); }    
-    //else {r.tCreated=data.objSite.tCreated;  siteTab.myAdd(r); }   
-    else {copySome(r, data.objSite, ['tCreated']); r.nPage=0; siteTab.myAdd(r); }    
+    if(boUpd) { siteTab.myEdit(objRow.idSiteOld, objRow); }
+    else {
+      copySome(objRow, data.objSite, ['tCreated']);   objRow.nPage=0;
+      var [elR]=siteTab.reserveRows();
+      SiteTabRow.mySet.call(elR, objRow);
+    }    
     //siteTab.setUp();
     historyBack();
   }
   el.setUp=function(){
-    if(typeof r.boTLS=='undefined') r.boTLS=0;
-    selBoTLS.value=Number(r.boTLS); inpName.value=r.idSite; inpWWW.value=r.www; inpGog.value=r.googleAnalyticsTrackingID; inpSrcIcon16.value=r.srcIcon16; inpStrLangSite.value=r.strLangSite;
+    if(typeof objRow.boTLS=='undefined') objRow.boTLS=0;
+    selBoTLS.value=Number(objRow.boTLS); inpName.value=objRow.idSite; inpWWW.value=objRow.www; inpGog.value=objRow.googleAnalyticsTrackingID; inpSrcIcon16.value=objRow.srcIcon16; inpStrLangSite.value=objRow.strLangSite;
     inpName.focus();  return true;
   }
-  el.openFunc=function(boUpdT,boGotData){
+  el.openFunc=function(boUpdT){
     boUpd=boUpdT;
-    if(boGotData){
-      var elR=this.parentNode.parentNode;  r=elR.rMat;
-    } else {r=rDefault;}
-    if(!boUpd) r.boDefault=0;
+    if(this==null){objRow=extend({},rDefault);}
+    else{
+      var elR=this.parentNode.parentNode;  objRow=extend({},elR.objRow);
+    } 
+    if(!boUpd) objRow.boDefault=0;
     doHistPush({strView:'siteSetPop'});
     el.setVis();
     el.setUp();
@@ -3524,7 +3612,7 @@ var siteSetPopExtend=function(el){
   }
  
   var rDefault={idSite:'', www:'', googleAnalyticsTrackingID:'', srcIcon16:'', strLangSite:''};
-  var boUpd, r; 
+  var boUpd, objRow; 
   var opt=createElement('option').prop({value:0, selected:true}).css({display:'block'}).myText('http'); 
   var optS=createElement('option').prop({value:1}).css({display:'block'}).myText('https'); 
   var selBoTLS=createElement('select').css({display:'block'}).myAppend(opt,optS); 
@@ -3560,7 +3648,7 @@ var siteSetPopExtend=function(el){
 
 var siteDeletePopExtend=function(el){
   el.toString=function(){return 'siteDeletePop';}
-  var ok=createElement('button').myText('OK').css({'margin-top':'1em'}).on('click',function(){    
+  var butOK=createElement('button').myText('OK').css({'margin-top':'1em'}).on('click',function(){    
     var vec=[['siteTabDelete',{idSite},okRet]];   myFetch('POST',vec);    
   });
   var okRet=function(data){
@@ -3569,10 +3657,10 @@ var siteDeletePopExtend=function(el){
     historyBack();
   }
   el.openFunc=function(){
-    elR=this.parentNode.parentNode; idSite=elR.rMat.idSite; spanSite.myText(idSite);
+    elR=this.parentNode.parentNode; idSite=elR.objRow.idSite; spanSite.myText(idSite);
     doHistPush({strView:'siteDeletePop'});
     el.setVis();
-    ok.focus();
+    butOK.focus();
   }
   el.setVis=function(){
     el.show(); return 1;
@@ -3585,76 +3673,41 @@ var siteDeletePopExtend=function(el){
   //var cancel=createElement('button').myText("Cancel").on('click',historyBack).css({'margin-top':'1em'});
 
   var blanket=createElement('div').addClass("blanket");
-  var centerDiv=createElement('div').addClass("Center").myAppend(head,p,ok).css({'min-width':'17em','max-width':'25em', padding:'0.5em'});  //,cancel height:'10em', 
+  var centerDiv=createElement('div').addClass("Center").myAppend(head,p,butOK).css({'min-width':'17em','max-width':'25em', padding:'0.5em'});  //,cancel height:'10em', 
   el.addClass("Center-Container").myAppend(centerDiv,blanket); 
  
   return el;
 }
 
+
+
 var siteTabExtend=function(el){
   el.toString=function(){return 'siteTab';}
-
-  var TDProt={
-    boDefault:{
-      mySetVal:function(boOn){  var td=this, b=td.firstChild, strCol=''; if(boOn) strCol='green'; b.css('background',strCol);  }
-    },
-    boTLS:{
-      mySetVal:function(boOn){  this.myHtml(boOn?'s':'<s>s</s>');  }
-    },
-    www:{
-      mySetVal:function(strText){
-        var td=this, strS=Number(td.parentNode.rMat.boTLS)?'s':'', a=td.firstChild.prop('href','http'+strS+'://'+strText).myText(strText);
-      }
-    },
-    tCreated:{
-      mySetVal:function(tCreated){      var td=this, strT=getSuitableTimeUnitStr(unixNow()-tCreated.toUnix());  td.myText(strT);  }
-    },
-    srcIcon16:{
-      mySetVal:function(url){     this.firstChild.prop({src:url, title:url});    }
-    },
-    // strLangSite:{
-    //   mySetVal:function(str){      this.firstChild.prop({src:str, title:strLangSite});   }
-    // }
-  }
-  var TDConstructors={
-    boDefault:function(){ var b=createElement('button').css('width','1.2em').on('click',setDefault), el=createElement('td').css('text-align','center').myAppend(b);  extend(el,TDProt.boDefault);  return el;  },
-    boTLS:function(){ var el=createElement('td'); extend(el,TDProt.boTLS);  return el;  },
-    www:function(){ var a=createElement('a').prop({target:"_blank", rel:"noopener"}),  el=createElement('td').myAppend(a);  extend(el,TDProt.www);  return el;  },
-    tCreated:function(){ var el=createElement('td');  extend(el,TDProt.tCreated);  return el;  },
-    srcIcon16:function(){ var im=createElement('img').prop({alt:"iconProt"}).css({'vertical-align':'middle'}), el=createElement('td').myAppend(im); extend(el,TDProt.srcIcon16);  return el;  },
-    //strLangSite:function(){ var im=createElement('img').prop({alt:"icon200"}).css({'vertical-align':'middle', 'max-width':'50px', 'max-height':'50px'}), el=createElement('td').myAppend(im); extend(el,TDProt.strLangSite);  return el;  }
-  }
-  el.myAdd=function(rMat){
-    var elR=createElement('tr'); elR.attr({idSite:rMat.idSite}).prop('rMat',rMat)
-    for(var i=0;i<StrColOrder.length;i++) { 
-      var name=StrColOrder[i], val=rMat[name], td; if(name in TDConstructors) {td=new TDConstructors[name](); }   else td=createElement('td');   elR.append(td.attr('name',name));
-      if('mySetVal' in td) { td.mySetVal(val);}   else td.append(val);
-      if('mySetSortVal' in td) { td.mySetSortVal(val);}   else td.valSort=val;
-    }
-    var buttEdit=createElement('button').attr('name','buttonEdit').myText('Edit').on('click',function(){
-      siteSetPop.openFunc.call(this,1,1);
-    });
-    var buttCopy=createElement('button').attr('name','buttonCopy').myText('Copy').on('click',function(){
-      siteSetPop.openFunc.call(this,0,1);
-    });
-    var buttDelete=createElement('button').attr('name','buttonDelete').css({'margin-right':'0.2em'}).myAppend(charDelete).on('click',siteDeletePop.openFunc);
-    var tEdit=createElement('td').myAppend(buttEdit), tCopy=createElement('td').myAppend(buttCopy), tDelete=createElement('td').myAppend(buttDelete); 
-    elR.append(tEdit, tCopy, tDelete);
-    tBody.append(elR); 
-    el.nRowVisible=tBody.children.length;
-    return el;
-  }
   el.myRemove=function(elR){
     elR.remove();
-    el.nRowVisible=tBody.children.length;
+    RowCache.push(elR)
+    //el.nRowVisible=tBody.childElementCount
     return el; 
   }
-  el.myEdit=function(idSiteOld, rMat){
+  el.myEdit=function(idSiteOld, objRow){
     var elR=tBody.querySelector('[idSite="'+idSiteOld+'"]');
-    elR.attr({idSite:rMat.idSite});
-    //for(var i=0;i<StrCol.length;i++) { var name=StrCol[i], val=rMat[name], td=elR.children[i]; if(td.mySetVal) td.mySetVal(val); else td.myText(val); }
-    for(var i=0;i<StrColOrder.length;i++) { var name=StrColOrder[i], val=rMat[name], td=elR.children[i]; if(td.mySetVal) td.mySetVal(val); else td.myText(val); }
+    SiteTabRow.mySet.call(elR, objRow);
     return el;
+  }
+  el.reserveRows=function(n=1){
+    var Rows=Array(n)
+    for(var i=0; i<n;i++){
+      var elR
+      if(RowCache.length) {elR=RowCache.pop();}
+      else { 
+        // var elR=document.createElement('tr', { is: "site-tab-row" });
+        // elR.connectStuff(el);
+        var elR=document.createElement('tr'); 
+        SiteTabRow.connectStuff.call(elR)
+      } 
+      tBody.append(elR); Rows[i]=elR;
+    }
+    return Rows
   }
   el.setUp=async function(){
     if(el.boUpToDate) return;
@@ -3665,40 +3718,46 @@ var siteTabExtend=function(el){
     //StrCol=data.StrCol;
     el.boUpToDate=1;
     
-    tBody.empty(); 
-    el.indexSiteTabById={};
-    for(var i=0;i<ObjSite.length;i++) {  
-      var r=ObjSite[i];   el.myAdd(r);   el.indexSiteTabById[r.idSite]=r;
+    //tBody.empty(); 
+    var nOld=tBody.childElementCount, nNew=ObjSite.length;
+    if(nOld<nNew) el.reserveRows(nNew-nOld);
+    else if(nOld>nNew){
+      var Row=[...tBody.children];
+      for(var i=nNew; i<nOld;i++){
+        var elR=Row[i]; elR.remove(); RowCache.push(elR)
+      }
     }
-    el.nRowVisible=ObjSite.length;
+    var Row=[...tBody.children];
+    el.indexSiteTabById={};
+    for(var i=0;i<nNew;i++) {  
+      var objSiteT=ObjSite[i], elR=Row[i]
+      //elR.mySet(objSiteT);
+      SiteTabRow.mySet.call(elR, objSiteT);
+      el.indexSiteTabById[objSiteT.idSite]=objSiteT;
+    }
+    //el.nRowVisible=nNew
   }
-  
-  var setDefault=function(){
-    var elR=this.parentNode.parentNode, rMat=elR.rMat;
-    var vec=[['siteTabSetDefault',{idSite:rMat.idSite},function(){
-      var Row=[...tBody.childNodes];
-      Row.forEach(function(rowA,i){
-        var idA=rowA.rMat.idSite;  //.data('r')
-        var td=rowA.querySelector('[name=boDefault]'); td.mySetVal(idA==rMat.idSite);
-      })
-    }]];   myFetch('POST',vec);
+  el.clearDefault=function(){
+    var Row=[...tBody.children];
+    Row.forEach(function(rowA){
+      var td=rowA.querySelector('[name=boDefault]'); td.mySetVal(false);
+    })
   }
   //el.boRefreshNeeded; // The parent view of this view (siteTab) should set this to 1
   var ObjSite=el.ObjSite=[];
   //var StrCol;
   el.boUpToDate=0;
 
-
+  var RowCache=[];
   var tBody=el.tBody=createElement('tbody');
   el.table=createElement('table').myAppend(tBody).addClass('tableSticky'); //.css({width:'100%',position:'relative'});
 
-  var StrColOrder=['boDefault','boTLS', 'idSite','www','googleAnalyticsTrackingID','srcIcon16','strLangSite','tCreated','nPage'];
+  el.StrColOrder=['boDefault','boTLS', 'idSite','www','googleAnalyticsTrackingID','srcIcon16','strLangSite','tCreated','nPage'];
 
   var BoAscDefault={boDefault:0,boTLS:0,tCreated:0,nPage:0};
   var Label={boDefault:'Default',idSite:'name/key', gog:'gog...', tCreated:'Age', nPage:'#page', boTLS: 'secure (TLS)'};
-  el.nRowVisible=0;
-  //var tHead=headExtend(createElement('thead'), el, StrColHead, BoAscDefault, Label);
-  var trTmp=headExtendDyn(createElement('tr'), el, StrColOrder, BoAscDefault, Label);
+  //el.nRowVisible=undefined;
+  var trTmp=headExtendDyn(createElement('tr'), el, el.StrColOrder, BoAscDefault, Label);
   var tHead=createElement('thead').myAppend(trTmp);
   tHead.css({background:'white', width:'inherit'});  //,height:'calc(12px + 1.2em)'
   el.table.prepend(tHead);
@@ -3706,7 +3765,7 @@ var siteTabExtend=function(el){
 
       // menuA
   var buttonAdd=createElement('button').myText('Add').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
-    siteSetPop.openFunc.call({},0,0);
+    siteSetPop.openFunc.call(null,0);
   });
   var spanLabel=createElement('span').myText('SiteTab'); //.css({'float':'right',margin:'0.2em 0 0 0'});  
   //var menuA=createElement('div').myAppend(buttonAdd,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
@@ -4027,7 +4086,7 @@ app.hovHelpMy=createElement('span').myText('❓').addClass('btn-round', 'helpBut
 app.imgHelp=hovHelpMy;
 
 var sizeIcon=1.5, strSizeIcon=sizeIcon+'em';
-var imgProt=createElement('img').css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('undraggable'); 
+var imgProt=createElement('img').css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}); 
 
 
 

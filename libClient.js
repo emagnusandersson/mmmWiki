@@ -575,7 +575,7 @@ app.popupDragExtend=function(elBubble,strTitle,elParent){
 
 //⬌⬍↔↕╔╗⤢⤡⇱⌜⌝
 
-  elTitle.setAttribute.UNSELECTABLE="on"; elTitle.classList.add('unselectable');
+  elTitle.classList.add('unselectable');
   
   //elArea.on('click', function(e) {     if(elBubble.parentNode) elBubble.closeFunc();  else {  e.stopPropagation();  elBubble.openFunc();  }     });
   

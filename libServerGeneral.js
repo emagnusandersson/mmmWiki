@@ -147,39 +147,40 @@ app.md5=function(str){return myCrypto.createHash('md5').update(str).digest('hex'
 
 
   // Redis v3
-app.cmdRedis=async function(strCommand, arr){
-  if(!(arr instanceof Array)) arr=[arr];
-  return await new Promise(resolve=>{
-    redisClient.send_command(strCommand, arr, (...arg)=>resolve(arg)  ); 
-  });
-  //return await redisClient.sendCommand([strCommand, ...arr] ).toNBP();
-}
-// Redis v4 (with legacy mode)
-app.cmdRedis=async function(strCommand, arr){
-if(!(arr instanceof Array)) arr=[arr];
-return await new Promise(resolve=>{
-  redisClient.sendCommand([strCommand, ...arr], (...arg)=>resolve(arg)  ); 
-});
-//return await redisClient.sendCommand([strCommand, ...arr] ).toNBP();
-}
-app.getRedis=async function(strVar, boObj=false){
-  var [err,data]=await cmdRedis('GET', [strVar]);  if(boObj) data=JSON.parse(data);  return [err,data];
-}
-app.setRedis=async function(strVar, val, tExpire=-1){
-  if(typeof val!='string') var strA=JSON.stringify(val); else var strA=val;
-  var arr=[strVar,strA];  if(tExpire>0) arr.push('EX',tExpire);   var [err,strTmp]=await cmdRedis('SET', arr);
-  return [err,strTmp];
-}
-app.expireRedis=async function(strVar, tExpire=-1){
-  if(tExpire==-1) var [err,strTmp]=await cmdRedis('PERSIST', [strVar]);
-  else var [err,strTmp]=await cmdRedis('EXPIRE', [strVar,tExpire]);
-  return [err,strTmp];
-}
-app.delRedis=async function(arr){ 
-  if(!(arr instanceof Array)) arr=[arr];
-  var [err,strTmp]=await cmdRedis('DEL', arr);
-  return [err,strTmp];
-}
+// app.cmdRedis=async function(strCommand, arr){
+//   if(!(arr instanceof Array)) arr=[arr];
+//   return await new Promise(resolve=>{
+//     redisClient.send_command(strCommand, arr, (...arg)=>resolve(arg)  ); 
+//   });
+//   //return await redisClient.sendCommand([strCommand, ...arr] ).toNBP();
+// }
+// // Redis v4 (with legacy mode)
+// app.cmdRedis=async function(strCommand, arr){
+// if(!(arr instanceof Array)) arr=[arr];
+// return await new Promise(resolve=>{
+//   redisClient.sendCommand([strCommand, ...arr], (...arg)=>resolve(arg)  ); 
+// });
+// //return await redisClient.sendCommand([strCommand, ...arr] ).toNBP();
+// }
+// app.getRedis=async function(strVar, boObj=false){
+//   var [err,data]=await cmdRedis('GET', [strVar]);  if(boObj) data=JSON.parse(data);  return [err,data];
+// }
+// app.setRedis=async function(strVar, val, tExpire=-1){
+//   if(typeof val!='string') var strA=JSON.stringify(val); else var strA=val;
+//   var arr=[strVar,strA];  if(tExpire>0) arr.push('EX',tExpire);   var [err,strTmp]=await cmdRedis('SET', arr);
+//   return [err,strTmp];
+// }
+// app.expireRedis=async function(strVar, tExpire=-1){
+//   if(tExpire==-1) var [err,strTmp]=await cmdRedis('PERSIST', [strVar]);
+//   else var [err,strTmp]=await cmdRedis('EXPIRE', [strVar,tExpire]);
+//   return [err,strTmp];
+// }
+// app.delRedis=async function(arr){ 
+//   if(!(arr instanceof Array)) arr=[arr];
+//   var [err,strTmp]=await cmdRedis('DEL', arr);
+//   return [err,strTmp];
+// }
+
   // ioredis 
 app.getRedis=async function(strVar, boObj=false){
   var [err,data]=await redis.get(strVar).toNBP();  if(boObj) data=JSON.parse(data);  return [err,data];
@@ -364,18 +365,21 @@ app.makeTable=function(arrObj, StrHead=null){
 
 
 
-app.csvParseMy=function(strCSV){  // Should be in lib.js. Although as long as Safari doesn't compile if RegExp-lookbehindes are seen, I workaround the problem by placing this function here.  
+app.csvParseMy=function(strCSV){  // Should be in lib.js. Although as it is only used on the server I place it here.  
   var arrStr=[];
   var replaceStr=function(m, str){
     var i=arrStr.length;
     arrStr.push(str);
     return `"${i}"`;
   }
-  var putBackStr=function(m, str){ return arrStr[Number(str)];  }
+  var putBackStr=function(m, str){ 
+    return arrStr[Number(str)];  
+  }
 
   //strCSV="0, \"a\\\"b\", 1, \"a\"";  // Example of string for testing
-  var regString=/"(.*?)(?<!\\)"/g;  // My favorite solution. Beginning with a '"', ending with a '"' (wo '\' to the left of it).  // Doesn't work on Safari
-  //var regString=RegExp('"(.*?)(?<!\\\\)"', 'g');  // Compiles on Safari, but won't work when the program is run.
+  //strCSV=`0, "a\\"b", 1, "a"`;  // Example of string for testing
+  var regString=/"(.*?)(?<!\\)"/g;  // Makes whole script "crash" on older Safari (because of the "lookbehind").  
+  //var regString=RegExp('"(.*?)(?<!\\\\)"', 'g');  // Same as above (The regular expression doesn't work (although, the whole script doesn't fail)).
   //var regString=/"(.*?[^\\])"/g; // Works on Safari, but doesn't match an empty string '""' (which is perhaps not needed in this perticular example since the strings are simply put back in.)
   strCSV=strCSV.trim();
   strCSV = strCSV.replace(regString, replaceStr);
@@ -384,6 +388,7 @@ app.csvParseMy=function(strCSV){  // Should be in lib.js. Although as long as Sa
   arrRow=arrRow.map(function(strRow){
     var row=strRow.trim().split(',');
     row=row.map(function(it){
+      it=it.trim()
       it = it.replace(/^"(.*)"$/, putBackStr); return it;
     });
     return row;

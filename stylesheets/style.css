@@ -1,17 +1,15 @@
-
-
-* {box-sizing:border-box}
-
-html {height:auto}
 /* html, body  {height:100%} */
+html {height:auto}
+* {box-sizing:border-box}
 html, body { -webkit-overflow-scrolling: touch; }
-html, body { -webkit-appearance:none}
-/* -webkit-appearance:none is required to make disabled buttons have grey text on Safari. */
 html, body {overscroll-behavior: contain; overflow:auto}
 
-body { -webkit-text-size-adjust: 100%; }
+  /* Is there really a difference using this. Tested values "100%" and "none" (Used by Chrome, Edge. Not used by Safari, Firefox) */
+/* body { -webkit-text-size-adjust: none; } */
 
-select, button, input  {color: inherit} /*Removing blue text in buttons ... on Safari*/
+  /* -webkit-appearance:none is required to make disabled buttons have grey text on Safari. */
+html, body {-webkit-appearance:none}
+select, button, input  {color: inherit} /* Removing blue text in buttons ... on Safari */
 :disabled {color:grey}
 input, button, textarea, select { font: inherit; }  /* Preventing zoom, especially on Safari. */
   
@@ -133,18 +131,18 @@ img.thumbborder {
 }
 
 p {
-    margin: 0.3em 0em 0.3em 0em;
-    line-height: 1.2em;
+  margin: 0.3em 0em 0.3em 0em;
+  line-height: 1.2em;
 }
 
 dl{
-    margin-top: 0.2em;
-    margin-bottom: 0.5em;
+  margin-top: 0.2em;
+  margin-bottom: 0.5em;
 }
 dd {
-    line-height: 1.2em;
-    margin-left: 2em;
-    margin-bottom: 0.1em;
+  line-height: 1.2em;
+  margin-left: 2em;
+  margin-bottom: 0.1em;
 }
 
 a {
@@ -186,7 +184,6 @@ code {
 }
 
 pre {
-	
 	border: solid 1px #3c78b5;
 	padding: 1em;
 	border-style:dashed;
@@ -247,10 +244,10 @@ ins	{background-color:#aaffaa;text-decoration: none;}
 
 /* Sortable tables */
 table.sortable thead {
-    background-color:#eee;
-    color:#666666;
-    font-weight: bold;
-    cursor: default;
+  background-color:#eee;
+  color:#666666;
+  font-weight: bold;
+  cursor: default;
 }
 
 
@@ -383,27 +380,9 @@ border-top-right-radius: var(--notchSizeR);*/
   font-size: 0.95em;
 }
 
-.fixedArea {margin:0em 0; text-align:center; position:fixed; bottom:0; width:100%; background:#fff}
 
 
-/*z-index ooveeerrrr nine thoussaaaannnd*/
-/*
-  .blanketPop {
-   background-color:#111;
-   opacity: 0.65;
-   position:absolute;
-   z-index: 9001; 
-   top:0px;
-   left:0px;
-   width:100%;
-}
-.popUpDiv {
-  position:absolute;
-	background-color:#eeeeee;
-	z-index: 9002; 
-  border:1px solid
-}
-*/
+
 
 .blanket{
   position: relative;
@@ -435,20 +414,10 @@ border-top-right-radius: var(--notchSizeR);*/
 }
 
 *.unselectable {
-   -webkit-user-select: none; /* Safari, Chrome */
-    -khtml-user-select: none; /* Konqueror */
-    -moz-user-select: none; /* Firefox */
-    -ms-user-select: none; /* IE */
-    -o-user-select: none;
-    user-select: none; /* CSS3 */
+  -webkit-user-select: none; /* Safari */
+  user-select: none;
 }
 
-*.undraggable {
-  -webkit-user-drag: none;
-  user-drag: none;
-}
-
-.boardTransition {transition-property: left; transition-duration: 1s;}
 
 .message{
   border:black 1px solid;
@@ -515,3 +484,6 @@ border-top-right-radius: var(--notchSizeR);*/
   align-items:center;
   justify-content:space-between
 }
+
+
+

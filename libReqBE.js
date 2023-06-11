@@ -133,15 +133,15 @@ ReqBE.prototype.go=async function(){
     // Get boARLoggedIn / boAWLoggedIn.  Conditionally push deadlines forward ("expire" returns 1 if timer was set or 0 if variable doesn't exist)
   var {sessionIDR, sessionIDW}=req.cookies; //, arrCookieOut=[];
   if(sessionIDR){
-    //var [err,value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);  var [err, value]=await redis.myDogFeederFun(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
-    var [err, value]=await redis.myDogFeederFun(sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
+    //var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
+    var [err, value]=await redis.myGetNExpire(sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
     
     //arrCookieOut.push("sessionIDR="+sessionIDR+StrSessionIDRProp[this.boARLoggedIn]);
     res.replaceCookie("sessionIDR="+sessionIDR+StrSessionIDRProp[this.boARLoggedIn]);
   }else {this.boARLoggedIn=0;}
   if(sessionIDW){
-    //var [err,value]=await cmdRedis('EVAL',[luaDogFeederFun, 1, sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
-    var [err, value]=await redis.myDogFeederFun(sessionIDW+'_adminWTimer', maxAdminWUnactivityTime).toNBP(); this.boAWLoggedIn=Number(value);
+    //var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+    var [err, value]=await redis.myGetNExpire(sessionIDW+'_adminWTimer', maxAdminWUnactivityTime).toNBP(); this.boAWLoggedIn=Number(value);
     //arrCookieOut.push("sessionIDW="+sessionIDW+StrSessionIDWProp[this.boAWLoggedIn]);
     res.replaceCookie("sessionIDW="+sessionIDW+StrSessionIDWProp[this.boAWLoggedIn]);
   }else {this.boAWLoggedIn=0;}
@@ -202,8 +202,8 @@ ReqBE.prototype.go=async function(){
     if(!CSRFIn){ this.mesO('CSRFCode not set (try reload page)'); return;}
     
     if(!('sessionIDCSRF' in req.cookies)) { this.mesO('sessionIDCSRF cookie not set (try reload page)'); return;}
-    //var [err, CSRFCode]=await cmdRedis('EVAL', [luaDogFeederFun, 1, req.cookies.sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
-    var [err, CSRFCode]=await redis.myDogFeederFun(req.cookies.sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime).toNBP();
+    //var [err, CSRFCode]=await cmdRedis('EVAL', [luaGetNExpire, 1, req.cookies.sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
+    var [err, CSRFCode]=await redis.myGetNExpire(req.cookies.sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime).toNBP();
     
 
     if(!CSRFCode) { this.mesO('No such CSRF code stored for that sessionIDCSRF (try reload page)'); return;}
@@ -217,8 +217,8 @@ ReqBE.prototype.go=async function(){
       var sessionIDCSRF=null, CSRFCode=null;
       if('sessionIDCSRF' in req.cookies) { 
         sessionIDCSRF=req.cookies.sessionIDCSRF;
-        //var [err, CSRFCode]=await cmdRedis('EVAL', [luaDogFeederFun, 1, sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
-        var [err, CSRFCode]=await redis.myDogFeederFun(sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime).toNBP();
+        //var [err, CSRFCode]=await cmdRedis('EVAL', [luaGetNExpire, 1, sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
+        var [err, CSRFCode]=await redis.myGetNExpire(sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime).toNBP();
         if(!CSRFCode) sessionIDCSRF=randomHash(); // To avoid session fixation
       }  else sessionIDCSRF=randomHash();
     } 
@@ -1777,10 +1777,10 @@ ReqBE.prototype.siteTabInsert=async function(inObj){
   if(err && (typeof err=='object') && err.code==11000){ self.mes(err.message); extend(Ou, {boOK:0});}   // dup key
   else if(err) return [err];
   else{
-    var c=result.insertedCount;
+    //var c=result.insertedCount;
     var idSite=result.insertedId, strIdSite=idSite; //.toString()
     //objSite.nPage=0;
-    self.mes(c+" site(s) inserted.");  extend(Ou, {boOK:1, idSite:idSite, objSite});
+    self.mes(`${idSite} insertion acknowledged: `+result.acknowledged);  extend(Ou, {boOK:1, idSite:idSite, objSite});
     var [err]=await createManifestNStoreToCache({idSite, www, srcIcon16});   if(err) return [err];
   }
   
