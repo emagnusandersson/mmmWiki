@@ -407,7 +407,7 @@ app.objOthersActivityDefault={nEdit:0, pageName:'',  nImage:0, imageName:''};
 // }
 //   // How to use: var objDefault=createDefaultDocument(app.InitCollection[nameCollection]);
 // app.createDefaultDocument=function(objInitCollection){
-//   var date0=new Date(0), id0=ObjectId("123456789012345678901234"); //, int0=mongodb.Int32(0), long0=mongodb.Long(0);
+//   var date0=new Date(0), id0=new ObjectId("123456789012345678901234"); //, int0=mongodb.Int32(0), long0=mongodb.Long(0);
 //   var {validator, ArrUnique, objDefault}=objInitCollection;
 //   var {$jsonSchema}=validator, {required, properties}=$jsonSchema, OOut={};
 //   for(var strProp of required){
@@ -437,7 +437,7 @@ app.objOthersActivityDefault={nEdit:0, pageName:'',  nImage:0, imageName:''};
 //   var {validator, ArrUnique}=objInitCollection;
 //   var {$jsonSchema}=validator, {properties}=$jsonSchema, OOut={};
 //   var Key=Object.keys(properties);
-//   //var date0=new Date(0), id0=ObjectId("123456789012345678901234"), int0=mongodb.Int32(0), long0=mongodb.Long(0);
+//   //var date0=new Date(0), id0=new ObjectId("123456789012345678901234"), int0=mongodb.Int32(0), long0=mongodb.Long(0);
 //   for(var strProp of Key){
 //     var prop=properties[strProp];  if(typeof prop=="undefined") {prop={bsonType:"bool"};}
 //     var {bsonType}=prop;    bsonType=bsonType.toLowerCase();
@@ -462,7 +462,7 @@ app.objOthersActivityDefault={nEdit:0, pageName:'',  nImage:0, imageName:''};
 app.copyObjWMongoTypes=function(o){ // Also copies Date
   if (o===undefined || o===null || ['string', 'number', 'boolean'].indexOf(typeof o)!==-1) return o;
   if(o instanceof Date) return new Date(o.getTime());
-  if(o instanceof ObjectId) return ObjectId.createFromHexString(o.toHexString());
+  if(o instanceof ObjectId) return new ObjectId.createFromHexString(o.toHexString());
   if(o instanceof Int32) return Int32(o);
   if(o instanceof Long) return Long(o);
   var n= o instanceof Array? [] :{};
@@ -479,7 +479,7 @@ app.copyNCastMongoObj=function(obj, objInit){
   if(bsonType=="bool") { return (typeof obj=="boolean")?obj:Boolean(obj);}
   if(bsonType=="string") {return (typeof obj=="string")?obj:String(obj);}
   if(bsonType=="date") {return (obj instanceof Date)? (new Date(obj.getTime())) : (new Date(obj));}
-  if(bsonType=="objectid") {var str= (obj instanceof ObjectId)? (obj.toHexString()):obj; return ObjectId.createFromHexString(str);}
+  if(bsonType=="objectid") {var str= (obj instanceof ObjectId)? (obj.toHexString()):obj; return new ObjectId.createFromHexString(str);}
   if(bsonType=="int") { return Int32(obj); }
   if(bsonType=="long") { return Long(obj); }
 
@@ -514,7 +514,7 @@ app.copyNCastMongoObj=function(obj, objInit){
   if(bsonType=="bool") { return (typeof obj=="boolean")?obj:Boolean(obj);}
   if(bsonType=="string") {return (typeof obj=="string")?obj:String(obj);}
   if(bsonType=="date") {return (obj instanceof Date)? (new Date(obj.getTime())) : (new Date(obj));}
-  if(bsonType=="objectid") {var str= (obj instanceof ObjectId)? (obj.toHexString()):obj; return ObjectId.createFromHexString(str);}
+  if(bsonType=="objectid") {var str= (obj instanceof ObjectId)? (obj.toHexString()):obj; return new ObjectId.createFromHexString(str);}
   if(bsonType=="int") { return Int32(obj); }
   if(bsonType=="long") { return Long(obj); }
 

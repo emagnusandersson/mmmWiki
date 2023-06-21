@@ -1,366 +1,416 @@
-/* html, body  {height:100%} */
-html {height:auto}
+
+
+/*Emp=emphasis*/
+@media (prefers-color-scheme:light) {
+  :root {
+      color-scheme:normal;
+      --bg-colorRoot:white;
+      --bg-color:#eee;
+      --bg-colorEmp:#ddd;
+      --bg-colorImg:lightblue;
+      --bg-green:lightgreen;
+      --bg-red:#ff7f7f;
+      --bg-blue:lightblue;
+      --bg-yellow:yellow;
+      --bg-orange:orange;
+      --text-color:#123;
+      --border-color:#123;
+      --link-external:#36b;
+      --link-external-visited:#636;
+      --invert:0;
+      --border-shadow-color:#191919; --border-lit-color:#666666;   /* To make ios buttons look like chrome. */
+
+  }
+  .boxShadowOn {box-shadow:0 0 0 0.2em lightgreen inset; background-color:#eee; color:limegreen}
+  .boxShadowOff {box-shadow:0 0 0 0.2em darkgrey inset; background-color:#ddd}
+  
+}
+@media (prefers-color-scheme:dark) {
+  :root {
+      color-scheme:dark;
+      --bg-colorRoot:#303030;
+      --bg-color:#404040;
+      --bg-colorEmp:#505050; /*Emp=emphasis*/
+      --bg-colorImg:#005470;
+      --bg-green:#007300;
+      --bg-red:#c00020;
+      --bg-blue:#005470;
+      --bg-yellow:#707000;
+      --bg-orange:#b17300;
+      --text-color:#dddddd;
+      --border-color:#dddddd;
+      --link-external:#5487df;
+      --link-external-visited:#b477b4;
+      --invert:1;
+      --border-shadow-color:#191919; --border-lit-color:#777;
+  }
+  a:link{color:#368cff}
+  a:visited{color:#de41ff}
+  .boxShadowOn {box-shadow:0 0 0 0.2em lightgreen inset; background-color:var(--bg-colorEmp); color:limegreen}
+  .boxShadowOff {box-shadow:0 0 0 0.2em #777 inset; background-color:var(--bg-color); color:darkgrey}
+  .monochrome {filter:invert(1)}
+  
+}
+:root {
+  color-scheme:light dark;
+  background:var(--bg-colorRoot);
+  /* color:var(--text-color) */
+}
+
+/* html, body {height:100%} */
+html {height:auto} /* Overstriken in chrome webtools and firefox webtools */
 * {box-sizing:border-box}
-html, body { -webkit-overflow-scrolling: touch; }
-html, body {overscroll-behavior: contain; overflow:auto}
+html, body {-webkit-overflow-scrolling:touch} /* "Invalid property value" in chrome webtools. "Invalid property name" firefox webtools */
+html, body {overscroll-behavior:contain; overflow:auto}
 
   /* Is there really a difference using this. Tested values "100%" and "none" (Used by Chrome, Edge. Not used by Safari, Firefox) */
-/* body { -webkit-text-size-adjust: none; } */
+/* body {-webkit-text-size-adjust:none} */
 
   /* -webkit-appearance:none is required to make disabled buttons have grey text on Safari. */
-html, body {-webkit-appearance:none}
-select, button, input  {color: inherit} /* Removing blue text in buttons ... on Safari */
+html, body {-webkit-appearance:none; appearance:none}
+select, button, input, input[type=file]::file-selector-button {color:inherit} /* Removing blue text in buttons ... on Safari */
 :disabled {color:grey}
-input, button, textarea, select { font: inherit; }  /* Preventing zoom, especially on Safari. */
-  
+input, button, textarea, select {font:inherit}  /* Preventing zoom, especially?!?! on Safari. */
+
+
+/* button::-moz-focus-inner {padding:0; border:0} */ /*Making firefox buttons behave like other browsers (doesn't appear to do any difference)*/
 
 
 /* images */
 table.floatnone {
-	display: inline-block;
+	display:inline-block;
 }
 span.floatnone a img {
 	vertical-align:middle;
 }
 
 div.floatright, table.floatright {
-	clear: right;
-	float: right;
-	position: relative;
-	margin: 0 0 .5em .5em;
-	border: 0;
+	clear:right;
+	float:right;
+	position:relative;
+	margin:0 0 .5em .5em;
+	border:0;
 /*
-	border: .5em solid white;
-	border-width: .5em 0 .8em 1.4em;
+	border:.5em solid white;
+	border-width:.5em 0 .8em 1.4em;
 */
 }
 
 
-div.floatright p { font-style: italic; }
+div.floatright p {font-style:italic}
 div.floatleft, table.floatleft {
-	float: left;
-	clear: left;
-	position: relative;
-	margin: 0 .5em .5em 0;
-	border: 0;
+	float:left;
+	clear:left;
+	position:relative;
+	margin:0 .5em .5em 0;
+	border:0;
 /*
-	margin: .3em .5em .5em 0;
-	border: .5em solid white;
-	border-width: .5em 1.4em .8em 0;
+	margin:.3em .5em .5em 0;
+	border:.5em solid white;
+	border-width:.5em 1.4em .8em 0;
 */
 }
-div.floatleft p { font-style: italic; }
+div.floatleft p {font-style:italic}
 /* thumbnails */
 div.thumb {
-	margin-bottom: .5em;
-	border-style: solid;
-	border-color: white;
-	width: auto;
+	margin-bottom:.5em;
+	border-style:solid;
+	border-color:var(--bg-colorEmp);
+	width:auto;
 }
 div.noFrame {
-	margin-bottom: .5em;
-	border-style: hidden;
-	width: auto;
+	margin-bottom:.5em;
+	border-style:hidden;
+	width:auto;
 }
 div.noFrameinner {
-	border: 1px hidden #ccc;
-	padding: 3px !important;
-	font-size: 94%;
-	text-align: center;
-	overflow: hidden;
+	border:1px hidden var(--bg-colorEmp);
+	padding:3px !important;
+	font-size:94%;
+	text-align:center;
+	overflow:hidden;
 }
 div.thumbinner {
-	border: 1px solid #ccc;
-	padding: 3px !important;
-	background-color: #f9f9f9;
-	font-size: 94%;
-	text-align: center;
-	overflow: hidden;
+	border:1px solid var(--bg-colorEmp);
+	padding:3px !important;
+	font-size:94%;
+	text-align:center;
+	overflow:hidden;
 }
 html .thumbimage {
-	border: 1px solid #ccc;
+	border:1px solid var(--bg-colorEmp);
 }
 html .thumbcaption {
-	border: none;
-	text-align: left;
-	line-height: 1.4em;
-	padding: 3px !important;
-	font-size: 94%;
+	border:none;
+	text-align:left;
+	line-height:1.4em;
+	padding:3px !important;
+	font-size:94%;
 }
 html .noFrameCaption {
-	border: none;
-	text-align: center;
-	line-height: 1.4em;
-	padding: 3px !important;
-	font-size: 94%;
+	border:none;
+	text-align:center;
+	line-height:1.4em;
+	padding:3px !important;
+	font-size:94%;
 }
 div.magnify {
-	float: right;
-	border: none !important;
-	background: none !important;
+	float:right;
+	border:none !important;
+	background:none !important;
 }
 div.magnify a, div.magnify img {
-	display: block;
-	border: none !important;
-	background: none !important;
+	display:block;
+	border:none !important;
+	background:none !important;
 }
 div.tright {
-	clear: right;
-	float: right;
-	border-width: .5em 0 .8em 1.4em;
+	clear:right;
+	float:right;
+	border-width:.5em 0 .8em 1.4em;
 }
 div.tleft {
-	float: left;
-	clear: left;
-	margin-right: .5em;
-	border-width: .5em 1.4em .8em 0;
+	float:left;
+	clear:left;
+	margin-right:.5em;
+	border-width:.5em 1.4em .8em 0;
 }
 
 img.thumbborder {
-	border: 1px solid #dddddd;
+	border:1px solid var(--bg-colorEmp);
 }
 
 /* emulate center */
 .center {
-	width: 100%;
-	text-align: center;
+	width:100%;
+	text-align:center;
 }
 *.center * {
-	margin-left: auto;
-	margin-right: auto;
+	margin-left:auto;
+	margin-right:auto;
 }
 
 p {
-  margin: 0.3em 0em 0.3em 0em;
-  line-height: 1.2em;
+  margin:0.3em 0em 0.3em 0em;
+  line-height:1.2em;
 }
 
 dl{
-  margin-top: 0.2em;
-  margin-bottom: 0.5em;
+  margin-top:0.2em;
+  margin-bottom:0.5em;
 }
 dd {
-  line-height: 1.2em;
-  margin-left: 2em;
-  margin-bottom: 0.1em;
+  line-height:1.2em;
+  margin-left:2em;
+  margin-bottom:0.1em;
 }
 
 a {
-	text-decoration: none;
-	color: #0000ff;
-	background: none;
-}
-a:visited {
-	color: #9a16b6;
+	text-decoration:none;
+	background:none;
 }
 a:active {
-	color: #faa700;
+	color:#faa700;
 }
 a:hover {
-	text-decoration: underline;
+	text-decoration:underline;
 }
 a.stub, :visited.stub{
-	color: #ff2233;
+	color:#ff2233;
 }
 
 
 a.external {
-	background: url(external.png) center right no-repeat;
-	padding-right: 13px;
-  color:#36b
+	background:url(external.png) center right no-repeat;
+	padding-right:13px;
+  color:var(--link-external)
 }
-a.external:visited {  color:#636  }
+a.external:visited {color:var(--link-external-visited)}
 a.wikipedia {
-	background: url(wikipedia.png) center right no-repeat;
-	padding-right: 13px;
-  color:#36b
+	background:url(wikipedia.png) center right no-repeat;
+	padding-right:13px;
+  color:var(--link-external)
 }
-a.wikipedia:visited {  color:#636  }
+a.wikipedia:visited {color:var(--link-external-visited)}
 
-*.hidden {	visibility: hidden;height:10;}
+*.hidden {	visibility:hidden; height:10}
 
 code {	
 	font-family:courier;
 }
 
 pre {
-	border: solid 1px #3c78b5;
-	padding: 1em;
+	border:solid 1px #3c78b5;
+	padding:1em;
 	border-style:dashed;
-  white-space: pre-wrap
+  white-space:pre-wrap
 }
 
 
 /*body {font-size:100%}*/
-body {	font-family:verdana, arial, helvetica;}
+body {	font-family:verdana, arial, helvetica}
 
-.fillScreen { height:100%;overflow:hidden}
+.fillScreen {height:100%; overflow:hidden}
 
 
-div.gallerytext{overflow:hidden;font-size:94%;padding:2px 4px}
-li.gallerybox{vertical-align:top;background-color:#f9f9f9;border:solid 1px white;display:-moz-inline-box}
+div.gallerytext{overflow:hidden; font-size:94%; padding:2px 4px}
+li.gallerybox{vertical-align:top; border:solid 1px var(--bg-color); display:-moz-inline-box}
 ul.gallery,li.gallerybox{display:inline-block} /*;*display:inline*/
-ul.gallery{margin:2px;padding:2px;background-color:white;display:block}
-li.gallerycaption{font-weight:bold;text-align:center;display:block;overflow-wrap:break-word}
-li.gallerybox div.thumb{text-align:center;border:1px solid #ccc;margin:2px}
+ul.gallery{margin:2px; padding:2px; display:block}
+li.gallerycaption{font-weight:bold; text-align:center; display:block; overflow-wrap:break-word}
+li.gallerybox div.thumb{text-align:center; border:1px solid var(--bg-colorEmp); margin:2px}
 
-li.HLbox{vertical-align:top;background-color:#f9f9f9;border:solid 2px white;display:-moz-inline-box}
+li.HLbox{vertical-align:top; border:solid 2px var(--bg-color); display:-moz-inline-box}
 ul.HL,li.HLbox{display:inline-block} /*;*display:inline*/
-ul.HL{margin:2px;padding:2px;background-color:white;display:block}
-li.HLbox div.thumb{text-align:center;border:1px solid #ccc;margin:2px}
-
-
-/*
-button {
-border-radius: 2px;
-border: solid 1px grey;
-margin:2px;
-padding:1px 6px;
-background:#ddd;
-}*/
-
-button::-moz-focus-inner {   padding: 0;    border: 0  } /*Making firefox buttons behave like other browsers*/
+ul.HL{margin:2px; padding:2px; display:block}
+li.HLbox div.thumb{text-align:center; border:1px solid var(--bg-colorEmp); margin:2px}
 
 
 
-input[type='text'], input[type='number'], input[type='password'], textarea {font-size:16px;}
 
-div.aRPassword{
-  border:black 2px solid;
-  position:fixed;
-  top:50%;
-  left:50%;
-  margin:0;
-  padding:10px;
-  background:lightgray;
-  transform: translate(-50%,-50%);
-}
+
+
+input[type='text'], input[type='number'], input[type='password'], textarea {font-size:16px}
+
+
  
 
-dt	{font-weight:bold;}
+dt	{font-weight:bold}
 
-del	{background-color:#ffaaaa;}
-ins	{background-color:#aaffaa;text-decoration: none;}
+del	{background-color:var(--bg-red)}
+ins	{background-color:var(--bg-green); text-decoration:none}
 
 /* Sortable tables */
 table.sortable thead {
-  background-color:#eee;
-  color:#666666;
-  font-weight: bold;
-  cursor: default;
+  font-weight:bold;
+  cursor:default;
 }
 
 
-.tableSticky {border-width:0px;}
-.tableSticky td, .tableSticky th {background:lightgrey} /*box-shadow:0 0 0.3em 0.1em darkgrey inset*/
-.tableSticky th {position:sticky; position: -webkit-sticky; top:0px; background:white; z-index:1}
+.tableSticky {border-width:0px}
+.tableSticky td {background:var(--bg-color)} /*box-shadow:0 0 0.3em 0.1em var(--border-color) inset*/
+.tableSticky th {position:sticky; top:0px; background:var(--bg-color); z-index:1; opacity:0.9; border-bottom:var(--bg-colorEmp) 1px solid} /*position:-webkit-sticky;*/
 
-td,th {border-width:inherit;border-style:inherit }
-tr {border-width:inherit;border-style:inherit }
-tbody,thead {border-width:inherit;border-style:inherit }
+td,th {border-width:inherit; border-style:inherit}
+tr {border-width:inherit; border-style:inherit}
+tbody,thead {border-width:inherit; border-style:inherit}
+thead {opacity:0.9}
 
-.boxShadowOn {box-shadow: 0 0 0 0.2em lightgreen inset;background-color:#eee; color:limegreen}
-.boxShadowOff {box-shadow: 0 0 0 0.2em darkgrey inset;background-color: #ddd}
 
-.eye {font-family:courier; font-size:90%; letter-spacing:-.5em; transform:translate(0px, 0em) rotate(90deg); display:block;width:1.1em;text-align:start}
+.eye {font-family:courier; font-size:90%; letter-spacing:-.5em; transform:translate(0px, 0em) rotate(90deg); display:block; width:1.1em; text-align:start}
 
-button, button-toggle, select { height:2.5em; font-size:0.8em; margin:0.5 0.5; padding:0 0.2em; font-size: inherit;vertical-align:middle;background-color:#eee;border-radius:0.4em;user-select:none; display:inline-flex; align-items: center; justify-content: center;}
-.rowButtonFeat  span { vertical-align:bottom}
-.rowButtonFeat button, .rowButtonFeat select { min-height:1.5em; font-size:0.8em; margin:0.5 0.5; padding:0 0.2em; font-size: inherit;vertical-align:bottom;background-color:#eee;border-radius:0.4em; display:unset}
-.rowButtonFeat button > span:first-child { vertical-align:baseline;line-height:2.3em}
-.rowButtonFeat button > span:nth-child(2) { vertical-align:baseline;line-height:2.3em}
 
-.redirectTab td, .siteTab td { background-color: #ccc;}
+
+/* input[type=file] {font-size:0.95em} */
+
+input[type=file]::file-selector-button {border:revert; appearance:none}
+button-toggle {display:inline-flex; align-items:center; justify-content:center}
+
+button, select, button-toggle, input[type=file]::file-selector-button {
+  height:2.5em; border-radius:0.4em; background-color:var(--bg-colorEmp); padding:0 0.2em; font-size:inherit; vertical-align:middle; user-select:none;
+  border-bottom-color:var(--border-shadow-color); border-right-color:var(--border-shadow-color);
+  border-top-color:var(--border-lit-color); border-left-color:var(--border-lit-color);
+  border-width:2px
+}
+/* input[type=file]::file-selector-button {font-size:1rem} */
+
+
+
+.rowButtonFeat span {vertical-align:bottom}
+.rowButtonFeat button > span:first-child {vertical-align:baseline; line-height:2.3em}
+.rowButtonFeat button > span:nth-child(2) {vertical-align:baseline; line-height:2.3em}
+
+/*.redirectTab td, .siteTab td {background-color:var(--bg-colorEmp)}*/
 
 
 .aArrow {
-  --notchSizeX: 0.5em;
-  --notchSizeY: 5%;
-  --notchSizeR: 1.6em;
-display: inline-flex;
-justify-content: center;
-align-items: center;
-border-radius: 0;
+  --notchSizeX:0.5em;
+  --notchSizeY:5%;
+  --notchSizeR:1.6em;
+display:inline-flex;
+justify-content:center;
+align-items:center;
+border-radius:0;
 border:0px;
 padding:0em;
 min-width:1.4em
 }
 
 .aArrowLeft {
-clip-path: polygon( 0% calc(50% - var(--notchSizeY)), var(--notchSizeX) 0%, 100% 0%, 100% 100%, var(--notchSizeX) 100%, 0% calc(50% + var(--notchSizeY)) );
+clip-path:polygon( 0% calc(50% - var(--notchSizeY)), var(--notchSizeX) 0%, 100% 0%, 100% 100%, var(--notchSizeX) 100%, 0% calc(50% + var(--notchSizeY)) );
 
 }
-/*padding: .5em .1em .5em .3em;*/
-/*border-bottom-left-radius: var(--notchSizeR);
-border-top-left-radius: var(--notchSizeR);*/
+/*padding:.5em .1em .5em .3em;*/
+/*border-bottom-left-radius:var(--notchSizeR);
+border-top-left-radius:var(--notchSizeR);*/
 .aArrowRight {
-clip-path: polygon( 0% 0%, calc(100% - var(--notchSizeX)) 0%, 100% calc(50% - var(--notchSizeY)), 100% calc(50% + var(--notchSizeY)), calc(100% - var(--notchSizeX)) 100%, 0% 100% );
+clip-path:polygon( 0% 0%, calc(100% - var(--notchSizeX)) 0%, 100% calc(50% - var(--notchSizeY)), 100% calc(50% + var(--notchSizeY)), calc(100% - var(--notchSizeX)) 100%, 0% 100% );
 }
 
-/* padding: .5em .3em .5em .1em; */
-/*border-bottom-right-radius: var(--notchSizeR);
-border-top-right-radius: var(--notchSizeR);*/
-.pageList p { overflow:hidden;background: #ccc; } /*line-height:2em*/
-.imageList p { background: #ddd} /*; line-height:3em*/
+/* padding:.5em .3em .5em .1em; */
+/*border-bottom-right-radius:var(--notchSizeR);
+border-top-right-radius:var(--notchSizeR);*/
+.pageList p {overflow:hidden; background:var(--bg-color)} /*line-height:2em*/
+.imageList p {background:var(--bg-color)} /*; line-height:3em*/
 
-.listHead span{  vertical-align:top}
-.listHead {margin:.5em 0 0; } /* position:sticky; position:-webkit-sticky; top:57px; z-index:1 */
+.listHead span{vertical-align:top}
+.listHead {margin:.5em 0 0} /* position:sticky; position:-webkit-sticky; top:57px; z-index:1 */
 .listHead span {cursor:pointer}
-.listHead img {margin:0.3em auto;display:block}
+.listHead img {margin:0.3em auto; display:block; filter:invert(var(--invert))}
 
-.pageList span, .imageList span { display:inline-block}
+.pageList span, .imageList span {display:inline-block}
 
   /* parentRow, pageHead, pageList, imageHead and imageList */
-.pageList span[name=execute] , .imageList span[name=execute] { min-width:1.2em; margin-left:0.5em;}
-.pageList span[name=tMod] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
-.pageList span[name=tCreated] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
-.imageList span[name=tCreated] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
-.pageList span[name=tLastAccess] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
-.imageList span[name=tLastAccess] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
-.pageList span[name=nAccess] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
-.imageList span[name=nAccess] { margin-left:0.3em; margin-right:0.3em; width:1.3em;}
-.pageList span[name=size], .imageList span[name=size] { min-width:2em; text-align:right}  /*float: right;*/
-.pageList span[name=execute] > button, .imageList span[name=execute] > button { width:1.2em;padding:0em;}
+.pageList span[name=execute] , .imageList span[name=execute] {min-width:1.2em; margin-left:0.5em}
+.pageList span[name=tMod] {margin-left:0.3em; margin-right:0.3em; width:1.3em}
+.pageList span[name=tCreated] {margin-left:0.3em; margin-right:0.3em; width:1.3em}
+.imageList span[name=tCreated] {margin-left:0.3em; margin-right:0.3em; width:1.3em}
+.pageList span[name=tLastAccess] {margin-left:0.3em; margin-right:0.3em; width:1.3em}
+.imageList span[name=tLastAccess] {margin-left:0.3em; margin-right:0.3em; width:1.3em}
+.pageList span[name=nAccess] {margin-left:0.3em; margin-right:0.3em; width:1.3em}
+.imageList span[name=nAccess] {margin-left:0.3em; margin-right:0.3em; width:1.3em}
+.pageList span[name=size], .imageList span[name=size] {min-width:2em; text-align:right}  /*float:right;*/
+.pageList span[name=execute] > button, .imageList span[name=execute] > button {width:1.2em; padding:0em}
 
   /* parentRow, pageHead and pageList */
-.pageList span[name=nChild], .pageList span[name=nImage] { min-width:1.5em}  /*float: right;*/
-.pageList span[name=boOR], .pageList span[name=boOW], .pageList span[name=boSiteMap] { width:1.2em;font-family:courier}
-.pageList span[name=siteName] { margin:0 0.2em; min-width: 1.7em; }
-.pageList span[name=strLang] { margin:0 0.2em; min-width: 1.2em; }
-.pageList span[name=link] {  min-width: 2em; }
+.pageList span[name=nChild], .pageList span[name=nImage] {min-width:1.5em}  /*float:right;*/
+.pageList span[name=boOR], .pageList span[name=boOW], .pageList span[name=boSiteMap] {width:1.2em; font-family:courier}
+.pageList span[name=siteName] {margin:0 0.2em; min-width:1.7em}
+.pageList span[name=strLang] {margin:0 0.2em; min-width:1.2em}
+.pageList span[name=link] {min-width:2em}
 
-.pageList span[name=nChild] > button, .pageList span[name=nImage] > button { padding:0; min-width:1.4em}
-.pageList span[name=nChild] button {background: #eeeeee;}
-.pageList span[name=nImage] button {background: lightblue;}
+.pageList span[name=nChild] > button, .pageList span[name=nImage] > button {padding:0; min-width:1.4em}
+.pageList span[name=nChild] button {background:var(--bg-colorEmp)}
+.pageList span[name=nImage] button {background:var(--bg-colorImg)}
 
   /* parentRow, pageList and imageList */
-.pageList span[name=link] > a, .imageList span[name=link] > a { word-break:break-all} /*; vertical-align:top */
+.pageList span[name=link] > a, .imageList span[name=link] > a {word-break:break-all} /*; vertical-align:top */
 
   /* pageHead, pageList, imageHead and imageList */
-.pageList span[name=nParent], .imageList span[name=nParent], .imageList span[name=nParentI] { min-width:1.5em;}
+.pageList span[name=nParent], .imageList span[name=nParent], .imageList span[name=nParentI] {min-width:1.5em}
 
 
-.pageList span[name=nParent] > button, .imageList span[name=nParent] > button, .imageList span[name=nParentI] > button { padding:0; min-width:1.4em}
-.pageList span[name=nParent] button, .imageList span[name=nParent] button {background: #eeeeee;}
-.imageList span[name=nParentI] button {background: lightblue;}
-.pageList span[name=cb], .imageList span[name=cb] { margin-left:0.5em; width:1.4em;}
+.pageList span[name=nParent] > button, .imageList span[name=nParent] > button, .imageList span[name=nParentI] > button {padding:0; min-width:1.4em}
+.pageList span[name=nParent] button, .imageList span[name=nParent] button {background:var(--bg-colorEmp)}
+.imageList span[name=nParentI] button {background:var(--bg-colorImg)}
+.pageList span[name=cb], .imageList span[name=cb] {margin-left:0.5em; width:1.4em}
 
-.pageList span[name=version] {  margin:0 0.2em; min-width:1.1em;}  /*float: right;*/
-.imageList span[name=boOther] {  margin-left:0.5em; margin-right:0.5em }  /*float: right;*/
+.pageList span[name=version] {margin:0 0.2em; min-width:1.1em}  /*float:right;*/
+.imageList span[name=boOther] {margin-left:0.5em; margin-right:0.5em}  /*float:right;*/
   
   /* pageList and imageList */
-.pageList span[name=cb] > input, .imageList span[name=cb] > input { transform:scale(1.5,1.5);}
-.listBody span[name=version], .listBody span[name=boOther] { background:red; }
+.pageList span[name=cb] > input, .imageList span[name=cb] > input {transform:scale(1.5,1.5)}
+.listBody span[name=version], .listBody span[name=boOther] {background:red}
   /* imageHead and imageList */
-.imageList span[name=image] { margin-left:0.5em; width:50px;}
-.imageList span[name=image] > img { vertical-align: middle;margin-right:0.1em; max-width:50px; max-height:50px}
+.imageList span[name=image] {margin-left:0.5em; width:50px}
+.imageList span[name=image] > img {vertical-align:middle; margin-right:0.1em; max-width:50px; max-height:50px}
 
 
 
-.listHead span[name=link] { margin-left:2em}
-/*.listHead span[name=version], .listHead span[name=boOther] { }*/
-.listHead span[name=execute] { visibility:hidden}
-.listHead span[name=image] { visibility:hidden}
+.listHead span[name=link] {margin-left:2em}
+/*.listHead span[name=version], .listHead span[name=boOther] {}*/
+.listHead span[name=execute] {visibility:hidden}
+.listHead span[name=image] {visibility:hidden}
 
 
 
@@ -369,121 +419,112 @@ border-top-right-radius: var(--notchSizeR);*/
 
 .popupHover {
   position:absolute;
-  z-index:9010; 
-  padding: 0.2em;
-  margin-left: .7em;
-  margin-top: .3em;
-  max-width: 16em;
-  border: 1px solid black;
-  background-color: #777;
-  color: white;
-  font-size: 0.95em;
+  z-index:9010;
+  padding:0.2em;
+  margin-left:.7em;
+  margin-top:.3em;
+  max-width:16em;
+  background-color:var(--bg-color);
+  border:1px solid;
+  color:var(--text-color);
+  font-size:0.95em;
 }
-
-
-
 
 
 .blanket{
-  position: relative;
-  width: 100%;
-  height: 100%;
-  background-color: white;
+  position:relative;
+  width:100%;
+  height:100%;
+  background-color:var(--bg-color);
   opacity:0.5;
-  position: fixed;
+  position:fixed;
   top:0px;
-  z-index: 9001;
+  z-index:9001;
 }
 
-.Center-Container {
-  position: relative;
-}
-
-.Center {
-  max-width:300px;
-  min-width:200px;
-  overflow: auto;  
-  margin: auto;
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  background-color: #eeeeee;
+.Center-Container-Flex {position:absolute; left:0px; top:0px; width:100%; height:100%; display:flex}
+.Center-Flex {
+  max-width:95%;
+  max-height:98%;
+  padding:0.5em;
+  overflow:auto;
+  margin:auto;
+  background-color:var(--bg-color);
   border:1px solid;
-  z-index: 9002;
-  transform: translate(-50%,-50%);
+  z-index:9002;
 }
+
 
 *.unselectable {
-  -webkit-user-select: none; /* Safari */
-  user-select: none;
+  -webkit-user-select:none; /* Safari */
+  user-select:none;
 }
 
 
 .message{
-  border:black 1px solid;
+  border:1px solid;
   position:absolute;
   bottom:0%;
   right:0%;
   margin:0;
   padding:1px;
-  background-color:#F7F700;
-  font-size: 0.8em;
-  z-index: 10000;
+  background-color:var(--bg-yellow);
+  font-size:0.8em;
+  z-index:10000;
 }
 
 
 
 
 .btn-round {
-  text-align: center;
-  width: 1.6em;
-  height: 1.6em;
-  border-radius: 100%;
-  border: 1px solid;
-  display: inline-block;
-  text-decoration: none;
-  line-height: 1.7em;
-  cursor: default
-}
-.helpButtonGradient {
-  background-image: radial-gradient(#daeaff, #8cbdfd, #0064ea);;
-  color: #5780a8;
-  border: 0;
-  font-weight: bold;
-  font-size: 90%;
-}
-
-
-
-.viewDiv {
   text-align:center;
-  height:100%;
+  width:1.6em;
+  height:1.6em;
+  border-radius:100%;
+  border:1px solid;
+  display:inline-block;
+  text-decoration:none;
+  line-height:1.8em; /* to make it look good on safari */
+  cursor:default;
+  overflow:hidden;
+  vertical-align:bottom;
+  padding-top:1px
+}
+.helpButton {
+  background-image:radial-gradient(#daeaff, #8cbdfd, #0064ea);
+  border:0;
+  font-weight:bold;
+  font-size:0.9rem;
+}
+
+
+.viewDivWOFlex {
+  text-align:center;margin:0 auto;
+}
+.contDivWOFlex {
+  width:min(var(--menuMaxWidth),100%);
+  margin:0 auto 3em;
+  text-align:left;
   display:flex;
   flex-direction:column;
-  align-items:center
+  gap:0.2em; 
 }
-.contDiv { /*Should be called contDivW, like: content-wrapper, or container or something*/
-  flex:1 1 0; 
-  overflow-y:scroll;
-  width:100%
-}
-.footDivW {
-  margin: 0em auto;
-  /* max-width: var(--maxWidth); */
-  width: 100%;
-  border-top: solid 1px;
-  flex:0 0 auto;
+.contDivWOFlex>div {background:var(--bg-colorEmp); padding:0.4em 0;}
+.footDivWOFlex {
+  width:min(100vw, var(--menuMaxWidth));;
+  margin:0em auto;
+  border-top:solid 1px;
+  position:fixed;
+  bottom:0;
   display:flex;
   align-items:center;
-  justify-content:space-between
+  justify-content:space-between;
+  gap:0.8em;
+  background:var(--bg-color);
+  opacity: 0.9;
 }
-.footDiv {
-  min-width:min(100vw, var(--menuMaxWidth));
-  margin:.5em auto .5em;
-  display:flex;
-  align-items:center;
-  justify-content:space-between
-}
+
+
 
 
 

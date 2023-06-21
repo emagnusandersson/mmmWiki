@@ -6,7 +6,7 @@
 "use strict"
 const funLoad=async function(){
 console.log('load');
-var MmmWikiFiltExtention={
+var MmmWikiFiltExtention={  // Monkey patching Filt (see more below)
   setSingleParent:function(idParent){
     var tmpFilt=this[this.iParent]; array_mergeM(tmpFilt[0],tmpFilt[1]); var ind=tmpFilt[0].indexOf(idParent); if(ind!=-1)  mySplice1(tmpFilt[0],ind);  tmpFilt[1]=[idParent]; tmpFilt[2]=1;
   },
@@ -126,7 +126,7 @@ var aRLoginDivExtend=function(el){
   var aRPass=createElement('input').prop('type', 'password').on('keypress',  function(e){ if(e.which==13) {vPassF();return false;} });     
   var vPassButt=createElement('button').myText('Login').on('click',vPassF);
   el.aRPass=aRPass;
-  el.addClass('aRPassword').myAppend(aRPass, vPassButt);
+  el.myAppend(aRPass, vPassButt).css({ border:'2px solid', position:'fixed', top:'50%', left:'50%', margin:0, padding:'10px', background:'var(--bg-colorEmp)', transform:'translate(-50%,-50%)' });
 
   return el;
 }
@@ -154,6 +154,7 @@ var divMessageTextCreate=function(){
     if(time)     messTimer=setTimeout(resetMess, time*1000);
     imgBusyLoc.toggle(Boolean(boRot));
   };
+  el.on('click',el.resetMess)
   var messTimer;
   el.addClass('message');
   return el;
@@ -174,18 +175,17 @@ var areYouSurePopExtend=function(el){
   }
  
   var continueClickLoc, cancelClickLoc;
-  //el=popUpExtend(el);  
-  //el.css({'max-width':'20em', padding: '1.2em 0.5em 1.2em 1.2em'}); 
 
-  var labPageName=createElement('div');
-  var buttonCancel=createElement('button').myText('Cancel').on('click',function(){ cancelClickLoc(); }).css({'margin-top':'1em'});
-  var buttonContinue=createElement('button').myText('Yes').on('click',function(){  continueClickLoc();  }).css({'margin-top':'1em'});
-  var divBottom=createElement('div').myAppend(buttonCancel,buttonContinue);
-  //el.append(labPageName,divBottom);
+  var labPageName=createElement('div').css({'word-break':'break-word'});
+  var buttonCancel=createElement('button').myText('Cancel').on('click',function(){ cancelClickLoc(); });
+  var buttonContinue=createElement('button').myText('Yes').on('click',function(){  continueClickLoc();  });
+  var divBottom=createElement('div').myAppend(buttonCancel,buttonContinue).css({display:'flex', gap:'0.4em', 'justify-content':'space-between'});
 
   var blanket=createElement('div').addClass("blanket");
-  var centerDiv=createElement('div').addClass("Center").myAppend(labPageName,divBottom).css({'max-width':'20em', padding: '1.2em 0.5em 1.2em 1.2em'});  // height:'8em', '
-  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
+  var centerDiv=createElement('div').addClass("Center-Flex").myAppend(labPageName,divBottom);;
+  centerDiv.css({display:'flex', gap:'1em', 'flex-direction':'column', 'justify-content':'space-between', width:'min(10em,98%)'});
+
+  el.addClass("Center-Container-Flex").myAppend(centerDiv,blanket); 
   
   return el;
 }
@@ -263,9 +263,11 @@ var editButtonExtend=function(el){
 }
 
 var spanModExtend=function(el){
-  el.setup=function(data){   el.myHtml((data.boOR?"<span>"+charPublicRead+"</span>":' ')
+  el.setup=function(data){
+    el.myHtml((data.boOR?"<span>"+charPublicRead+"</span>":' ')
    + (data.boOW?"<span style=\"font-size:1em\">"+charPublicWrite+"</span>":' ')
-    + (data.boSiteMap?charPromote:' '));  }
+    + (data.boSiteMap?charPromote:' '));
+  }
   return el;
 }
 
@@ -277,7 +279,7 @@ var pageDivFixedExtend=function(el){
     divCreatedW.toggle(tCreated>1000); // tCreated==1000 means that it is unknown (and should be hidden)
 
     spanMod.setup(objPage);
-    el.css({background:objPage.boOR?'#fff':'lightgreen'});
+    el.css({background:objPage.boOR?'var(--bg-color)':'var(--bg-green)'});
     editButton.setImg(objPage.boOW);
     return this
   }
@@ -295,11 +297,11 @@ var pageDivFixedExtend=function(el){
 
 
   // versionMenu
-  var versionTableButton=createElement('button').myText('Version list').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
+  var versionTableButton=createElement('button').myText('Version list').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
     doHistPush({strView:'versionTable'});
     versionTable.setVis();
   });    
-  var diffButton=createElement('button').myText('Diff').addClass('fixWidth').css({'margin-right':'1em'}).on('click',function(){
+  var diffButton=createElement('button').myText('Diff').css({'margin-right':'1em'}).on('click',function(){
     //var arrVersionCompared=[bound(nVersion-iRow-1,1),nVersion-iRow];
     if(nVersion<2) return;
     arrVersionCompared[0]=arrVersionCompared[1]-1;
@@ -309,11 +311,11 @@ var pageDivFixedExtend=function(el){
     diffDiv.setVis();
   });
   var spanNR=createElement('span').css({margin:'0em 0.1em'});
-  var nextButton=createElement('button').myText(charNext).addClass('fixWidth').on('click',function(){
+  var nextButton=createElement('button').myText(charNext).on('click',function(){
     var iVer=arrVersionCompared[1]+1; if(iVer>nVersion) iVer=1;
     var vec=[['pageLoad',{version:iVer}]];   myFetch('GET',vec); 
   });
-  var prevButton=createElement('button').myText(charPrev).addClass('fixWidth').css({'margin-left':'0.8em'}).on('click',function(){
+  var prevButton=createElement('button').myText(charPrev).css({'margin-left':'0.8em'}).on('click',function(){
     var iVer=arrVersionCompared[1]-1; if(iVer<1) iVer=nVersion;
     var vec=[['pageLoad',{version:iVer}]];   myFetch('GET',vec); 
   });
@@ -336,34 +338,34 @@ var pageDivFixedExtend=function(el){
   var timeSpecialR=0, nSpecialReq=0;
 
     // paymentButton
-  var tmpSpan=createElement('span').myText('Pay/Donate');//.css({display:'inline-block','vertical-align':'text-bottom',height:strSizeIcon});  display:'inline-block',
-  var paymentButton=createElement('button').myAppend(tmpSpan).addClass('fixWidth').css({'vertical-align':'bottom','margin-right':'1em','line-height':strSizeIcon}).on('click',function(){
+  var tmpSpan=createElement('span').myText('Pay/­Donate');//.css({display:'inline-block','vertical-align':'text-bottom',height:strSizeIcon});  display:'inline-block',
+  var paymentButton=createElement('button').myAppend(tmpSpan).css({'vertical-align':'bottom'}).on('click',function(){
     doHistPush({strView:'paymentDiv'});
     paymentDiv.setVis();
-  }); if(ppStoredButt=='' && strBTC=='') paymentButton.hide();
+  }); if(ppStoredButt=='' && strBTC=='') paymentButton.hide();  //,'line-height':strSizeIcon
 
     // editButton
-  var editButton=editButtonExtend(createElement('button')).addClass('fixWidth').prop({"aria-label":"edit"}).css({'margin-left':'0em','margin-right':'1em'}).on('click',function(){
+  var editButton=editButtonExtend(createElement('button')).prop({"aria-label":"edit"}).css({}).on('click',function(){
     doHistPush({strView:'pageView', arg:'edit'});
     pageView.setVis('edit');
   });
   editButton.on('click', adminButtonToggleEventF);
-  var tmpImg=createElement('img').prop({src:uAdmin, alt:"admin", draggable:false}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'});    //var strAdmin='👤🔑';
-  var adminButton=createElement('button').myAppend(tmpImg).addClass('fixWidth').prop({title:"Administrator entry."}).on('click',function(){
+  var tmpImg=createElement('img').prop({src:uAdmin, alt:"admin", draggable:false}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('monochrome');    //var strAdmin='👤🔑';
+  var adminButton=createElement('button').myAppend(tmpImg).prop({title:"Administrator entry."}).on('click',function(){
     doHistPush({strView:'pageView', arg:'admin'});
     pageView.setVis('admin');
   });
   //if(!boTouch) popupHover(adminButton,createElement('div').myText('Administrator entry.'));
 
     // spanMod
-  var spanMod=spanModExtend(createElement('span')).css({'margin-right':'0.5em'}); //,'font-family':'monospace'
+  var spanMod=spanModExtend(createElement('span')).css({'line-height':'0.9em', 'text-align':'center'}); //,'font-family':'monospace'
   var ElAdmin=[spanMod, adminButton];
   //var spanAdmin=createElement('span').myAppend(spanMod, adminButton).css({'margin-left':'auto'});  // 'float':'right'
   //spanAdmin.toggle(boShowAdminButton);
   ElAdmin.forEach(ele=>ele.toggle(boShowAdminButton));
 
 
-    // divAA
+    // divMetaNComment
   var spanCreated=createElement('span'), spanLastMod=createElement('span');
   var divCreatedW=createElement('div').myAppend('Created: ', spanCreated);
   var divLastModW=createElement('div').myAppend('Last mod: ', spanLastMod);
@@ -372,17 +374,18 @@ var pageDivFixedExtend=function(el){
   el.commentButton=commentButtonExtend(createElement('div')).css({'margin-top':'.3em'});
   el.commentButton.setUp(boTalkExist);
 
-  var divAA=createElement('div').myAppend(divCreatedW, divLastModW, el.commentButton).css({'font-size':'0.73em', 'margin-right':'auto'});
+  var divMetaNComment=createElement('div').myAppend(divCreatedW, divLastModW, el.commentButton).css({'font-size':'0.73em', 'margin-right':'auto', 'min-width':'5.2em'});
 
-  el.butARLogout=createElement('button').myText('Logout').prop({title:'Logout (write-access AND read-access)'}).on('click',function(){
+  el.butARLogout=createElement('button').myText('Log­out').prop({title:'Logout (write-access AND read-access)'}).on('click',function(){
     var vec=[['aWLogout',{}], ['aRLogout',{}]];   myFetch('POST',vec); 
-  }).hide().css({'margin-left':'0.3em'});
+  }).hide().css({});
 
-  var menuA=createElement('div').myAppend(editButton, paymentButton, divAA, el.butARLogout, ...ElAdmin).css({padding:'0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'0em'});  //.css({margin:'1em 0','text-align':'center',position:'fixed',bottom:0,width:'100%'});
-  menuA.css({position:'relative', display:'flex', 'align-items':'center', 'justify-content':'space-between'});
+  var menuA=createElement('div').myAppend(editButton, paymentButton, divMetaNComment, el.butARLogout, ...ElAdmin).css({padding:'0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'0em'});  //.css({margin:'1em 0','text-align':'center',position:'fixed',bottom:0,width:'100%'});
+  menuA.css({position:'relative', display:'flex', 'align-items':'center', 'justify-content':'space-between', gap:'0.3em'});
 
 
   //menuA.css({padding:'0 0.3em 0.6em 0', margin:'.2em auto 0em'});  // Bottom bar and Center versions
+  var cssFixed={margin:'0em 0', 'text-align':'center', position:'fixed', bottom:0, width:'100%', background:"var(--bg-color)", opacity:0.9, 'border-top':'3px solid'}
 
   el.myAppend(versionMenu, menuA).css(cssFixed);//.css({position:'static'});
   el.css({right:'1em',bottom:'1em',width:'','border-radius':'5px', border:'1px solid', padding:'.3em', margin:''})  // Corner version
@@ -404,14 +407,23 @@ var pageViewExtend=function(el){
   el.histPush=function(strType){
     doHistPush({strView:'pageView', arg:strType});
   }
+  el.setVersioninfo=function(){
+    el.pageDivFixed.setVersioninfo();
+    warningDiv.toggle(matVersion.length>1);
+  }
+
+  var warningDiv=createElement('div').myText("The page has unconfirmed changes. Use the buttons below to see older versions.").css({'background':'var(--bg-yellow)','padding':'0.2em','text-align':'center','font-weight':'bold','font-size':'0.9em', width:'100%'}).hide();  //, position:'fixed', top:'0px', right:'0em', opacity:'0.8'
+  //var warningDivW=createElement('div').myAppend(warningDiv); warningDivW.toString=function(){return 'warningDivW';}
+  var cssFixedDrag={margin:'0em 0', 'text-align':'center', position:'fixed', bottom:0, width:'100%', background:"var(--bg-color)", opacity:0.9}
 
   el.pageDivFixed=pageDivFixedExtend(createElement('div'))
   el.editDivFixed=editDivFixedExtend(createElement('div')); el.editDivFixed.css(cssFixedDrag)
-  el.editDivFixed.css({background:'rgb(255, 255, 255, 0.8)'});
+  el.editDivFixed.css({background:"var(--bg-color)", opacity: '0.9'});  //background:'rgb(255, 255, 255, 0.8)'
 
   el.adminDivFixed=adminDivFixedExtend(createElement('div')); el.adminDivFixed.css(cssFixedDrag)
-  el.adminDivFixed.css({background:'rgb(255, 255, 255, 0.8)'});
+  el.adminDivFixed.css({background:"var(--bg-color)", opacity: '0.9'});  //background:'rgb(255, 255, 255, 0.8)'
 
+  el.prepend(warningDiv);
   el.myAppend(el.pageDivFixed, el.editDivFixed, el.adminDivFixed);
   return el;
 }
@@ -453,29 +465,33 @@ var adminDivFixedExtend=function(el){
     password2.value='';
     boLCacheObs.value=1;
   }
-  var butLogin=createElement('button').myText('Login').on('click',aPassF); 
+  var butLogin=createElement('button').myText(langHtml.Login).on('click',aPassF); 
   var handyClickF=function(){  
     var vec=[['saveByReplace',{strEditText:editText.value}]];   myFetch('POST',vec); 
     boLCacheObs.value=1;
   }
   var handyButton=createElement('button').myText('Over­write').on('click',handyClickF); 
   var password2=createElement('input').prop({type:'password', placeholder:"Overwrite", title:'Login (write-access) and overwrite'}).on('keypress',  function(e){   if(e.which==13) {aPass2F(); return false;}   }); 
-  var imgH=imgHelp.cloneNode(1).css({margin:'0em 1em 0 auto', flex:"0 0 auto"}); popupHover(imgH,createElement('div').myHtml('Write password for:<li>Login (adm): logging in with write-access<li>Overwrite: A brutal but handy quick route for saving plus deleting all old versions.'));
+  var imgH=imgHelp.cloneNode(1).css({'margin-left':'auto', flex:"0 0 auto"}); popupHover(imgH,createElement('div').myHtml('Write password for:<li>Login (adm): logging in with write-access<li>Overwrite: A brutal but handy quick route for saving plus deleting all old versions.'));
 
 
-  var moreButton=createElement('button').myText('Mo­re').addClass('fixWidth').on('click',function(){
+  var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({'margin-left':'.8em'});
+  var moreButton=createElement('button').myText('Mo­re').on('click',function(){
     doHistPush({strView:'adminMoreDiv'});
     adminMoreDiv.setVis();
   }); 
 
-  [password, password2].forEach(ele=>ele.css({width:'6em'}));
+  [password, password2].forEach(ele=>ele.css({width:'6em', 'min-width':'2em'}));
 
-  var menuB=createElement('div').css({padding:'0 0.3em 0 0',display:'flex','max-width':menuMaxWidth, margin:'1em auto', "align-items":"center", "justify-content":"space-between"});
-  menuB.myAppend(moreButton, imgH, butAWLogout, password, butLogin, handyButton, password2);
+  var menuB=createElement('div').myAppend(buttonBack, moreButton, imgH, butAWLogout, password, butLogin, handyButton, password2);
 
+  var cssTmp={'min-width':'min(100vw, var(--menuMaxWidth))', margin:'.5em auto .5em', display:'flex', 'align-items':'center', 'justify-content':'space-between', gap:'0.8em'}
+  menuB.css(cssTmp);
+  menuB.css({'max-width':menuMaxWidth, gap:'0.4em'});
+  
+  //menuB.css({padding:'0 0.3em 0 0',display:'flex','max-width':menuMaxWidth, margin:'1em auto', "align-items":"center", "justify-content":"space-between", gap:'0.4em'});
 
-  el.myAppend(dragHR,menuB).css(cssFixedDrag);
-  el.css({background:'rgb(255, 255, 255, 0.8)'});
+  el.myAppend(dragHR,menuB);
   el.menus=menuB;
   return el;
 }
@@ -508,7 +524,7 @@ class AdminMoreDiv extends HTMLElement{
   }
   connectStuff(){
     var strPublicRead='<span style="display:inline-block">'+charPublicRead+'</span>';
-    var imgH=imgHelp.cloneNode(1).css({'margin-left':'.5em','margin-right':'0.5em'}); popupHover(imgH,createElement('div').myHtml(strPublicRead+' = public read access<br>'+charPublicWrite+' = public write access<br>'+charPromote+' = promote = include the page in sitemap.xml etc. (encourage search engines to list the page)'));
+    var imgH=imgHelp.cloneNode(1).css({'margin-left':'.5em','margin-right':'0.5em', 'vertical-align':'middle'}); popupHover(imgH,createElement('div').myHtml(strPublicRead+' = public read access<br>'+charPublicWrite+' = public write access<br>'+charPromote+' = promote = include the page in sitemap.xml etc. (encourage search engines to list the page)'));
 
     // Methods of the below buttons:
     var clickModF=function(){
@@ -527,21 +543,20 @@ class AdminMoreDiv extends HTMLElement{
     this.setMod();
 
     
-    var uploadAdminDiv='', buttonDiffBackUpDiv='';
-    uploadAdminDiv=uploadAdminDivExtend(createElement('span')); 
-    buttonDiffBackUpDiv=createElement('button').myText('Backup (diff)').on('click',function(){
+    var uploadAdminDiv=uploadAdminDivExtend(createElement('div')); 
+    var buttonDiffBackUpDiv=createElement('button').myText('Backup (diff)').on('click',function(){
       doHistPush({strView:'diffBackUpDiv'});
       diffBackUpDiv.setVis();
     });
     
 
     var statLink=createElement('a').prop({href:'stat.html'}).myText('stat');
-    var pageListButton=createElement('button').myText('pageList').addClass('fixWidth').on('click',function(){
+    var pageListButton=createElement('button').myText('pageList').on('click',function(){
       //var idTmp=objPage.idPage; if(isNaN(idTmp)) idTmp=null;
       var idTmp=objPage.idPage; if(typeof idTmp=='string' && idTmp.length==0) idTmp=null;
       pageFilterDiv.Filt.setSingleParent(idTmp);  pageList.histPush(); pageList.loadTab();  pageList.setVis();
     });    
-    var imageListButton=createElement('button').myText('imageList').addClass('fixWidth').css({'background':'lightblue'}).on('click',function(){
+    var imageListButton=createElement('button').myText('imageList').css({'background':'var(--bg-colorImg)'}).on('click',function(){
       //var idTmp=objPage.idPage; if(isNaN(idTmp)) idTmp=null;
       var idTmp=objPage.idPage; if(typeof idTmp=='string' && idTmp.length==0) idTmp=null;
       imageFilterDiv.Filt.setSingleParent(idTmp);   imageList.histPush();  imageList.loadTab();  imageList.setVis();  // pageFilterDiv.Filt.filtAll();
@@ -572,11 +587,11 @@ class AdminMoreDiv extends HTMLElement{
     
     var strOverwrite='This will overwrite data in the db?';
     
-    var siteButton=createElement('button').myText('Site table').addClass('fixWidth').on('click',function(){
+    var siteButton=createElement('button').myText('Site table').on('click',function(){
       doHistPush({strView:'siteTab'});
       siteTab.setVis();
     });
-    var redirectButton=createElement('button').myText('Redirect table').addClass('fixWidth').on('click',function(){
+    var redirectButton=createElement('button').myText('Redirect table').on('click',function(){
       doHistPush({strView:'redirectTab'});
       redirectTab.setVis();
     });
@@ -591,30 +606,27 @@ class AdminMoreDiv extends HTMLElement{
     var butSetSiteOfPage=createElement('button').myAppend('Set site').css({'margin-left':'0.5em'}).on('click',function(){
       setSiteOfPagePop.openFunc(objPage.idSite, [objPage.idPage]);
     });
-    var objBottomLine={'border-bottom':'gray solid 1px'};
-    var menuA0=createElement('div').myAppend(pageListButton, imageListButton).css(objBottomLine);
-    var menuA=createElement('div').myAppend(this.butModRead, this.butModWrite, this.butModSiteMap, imgH, ' | ', renameButton, butSetStrLang, butSetSiteOfPage).css(objBottomLine);
+    var menuA0=createElement('div').myAppend(pageListButton, imageListButton);
+    var menuA=createElement('div').myAppend(this.butModRead, this.butModWrite, this.butModSiteMap, imgH, ' | ', renameButton, butSetStrLang, butSetSiteOfPage);
     var menuB0=createElement('div').myHtml("<b>BU download: </b>");
     var menuB=createElement('div').myAppend(this.aBUFilesToComp, ', Use prefix on default-site-pages: ', cb, imgHPrefix);
-    var menuC=createElement('div').myAppend(aBUImageToComp, ' | ', buttonDiffBackUpDiv).css({'background':'lightblue'});
+    var menuC=createElement('div').myAppend(aBUImageToComp, ' | ', buttonDiffBackUpDiv).css({'background':'var(--bg-colorImg)'});
     //var menuD=createElement('div').myAppend(aBUVideoToComp);
-    var menuE=createElement('div').myAppend(aBUMeta, imgHSql).css(objBottomLine);  // , ' | ', aBUMetaSQL
-    var menuF=createElement('div').myHtml("Save to server-BU-Folder: ").myAppend(butBUPageServ,butBUImageServ,butBUMetaServ).css(objBottomLine);
-    var menuG=createElement('div').myAppend(uploadAdminDiv).css(objBottomLine);
-    var menuH=createElement('div').myAppend(siteButton,redirectButton).css(objBottomLine);
+    var menuE=createElement('div').myAppend(aBUMeta, imgHSql);  // , ' | ', aBUMetaSQL
+    var menuF=createElement('div').myHtml("Save to server-BU-Folder: ").myAppend(butBUPageServ,butBUImageServ,butBUMetaServ);
+    var menuG=createElement('div').myAppend(uploadAdminDiv);
+    var menuH=createElement('div').myAppend(siteButton,redirectButton);
     var menuJ=createElement('div').myAppend('DB: '+strDBType, ' | ', statLink);
-    var Menu=[menuA0, menuA, menuB0, menuB,menuC,menuE,menuF,menuG, menuH, menuJ]; Menu.forEach(ele=>ele.css({margin:'0.5em 0'})); //,menuD , menuI
+    var Menu=[menuA0, menuA, menuB0, menuB,menuC,menuE,menuF,menuG, menuH, menuJ]; //Menu.forEach(ele=>ele.css({})); //,menuD , menuI
 
-      // menuBottom
-    //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
-
-    var divCont=createElement('div').myAppend(...Menu).css({margin:'1em auto','text-align':'left',display:'inline-block'});
-    var divContW=createElement('div').myAppend(divCont).addClass('contDiv');
+      // divCont
+    var divCont=createElement('div').myAppend(...Menu).addClass('contDivWOFlex');
   
+    var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({'margin-left':'.8em'});
     var spanLabel=createElement('span').myText('adminMore').css({ margin:"0 0 0 auto"});
-    var footDiv=createElement('div').myAppend(spanLabel).addClass('footDiv'); 
-    var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW');
-    this.append(divContW, footDivW);
+    var divFoot=createElement('div').myAppend(buttonBack, spanLabel).addClass('footDivWOFlex'); 
+    this.append(divCont, divFoot);
+    this.css({ display:'block', 'max-width':'var(--menuMaxWidth)'})
     return this;
   }
  
@@ -631,10 +643,10 @@ var diffBackUpDetailDivExtend=function(el){  // Details of how differential back
     var StrOld=arrStr[0], StrDeleted=arrStr[1], StrReuse=arrStr[2], StrFetchChanged=arrStr[3], StrFetchNew=arrStr[4], StrNew=arrStr[5];
     var nOld=StrOld.length, nDel=StrDeleted.length, nReuse=StrReuse.length, nFetchChanged=StrFetchChanged.length, nFetchNew=StrFetchNew.length, nNew=StrNew.length;
 
-    var tha=createElement('th').myText('Deleted ('+nDel+')').css({background:'orange'});
-    var thb=createElement('th').myText('Reused ('+nReuse+')').css({background:'yellow'});
-    var thc=createElement('th').myText('Fetch Changed ('+nFetchChanged+')').css({background:'lightgreen'});
-    var thd=createElement('th').myText('Fetch New ('+nFetchNew+')').css({background:'lightblue'});
+    var tha=createElement('th').myText('Deleted ('+nDel+')').css({background:'var(--bg-orange)'});
+    var thb=createElement('th').myText('Reused ('+nReuse+')').css({background:'var(--bg-yellow)'});
+    var thc=createElement('th').myText('Fetch Changed ('+nFetchChanged+')').css({background:'var(--bg-green)'});
+    var thd=createElement('th').myText('Fetch New ('+nFetchNew+')').css({background:'var(--bg-blue)'});
     table.myAppend(createElement('tr').myAppend(tha,thb,thc,thd));
 
     //var nMax=Math.max(nOld,nNew);
@@ -642,9 +654,9 @@ var diffBackUpDetailDivExtend=function(el){  // Details of how differential back
     for(var i=0;i<nMax;i++){
       var r=createElement('tr');
       var tda=createElement('td'), tdb=createElement('td'), tdc=createElement('td'), tdd=createElement('td');
-      var strNameA='', strColorA=''; if(i<nDel) {strNameA=StrDeleted[i]; strColorA='orange'; }
+      var strNameA='', strColorA=''; if(i<nDel) {strNameA=StrDeleted[i]; strColorA='var(--bg-orange)'; }
 
-      var strNameB='', strColorB=''; if(i<nReuse) {strNameB=StrReuse[i]; strColorB='yellow'; }
+      var strNameB='', strColorB=''; if(i<nReuse) {strNameB=StrReuse[i]; strColorB='var(--bg-yellow)'; }
       var strNameC='', strColorC='';
       if(i<nFetchChanged){
         strNameC=StrFetchChanged[i];
@@ -655,9 +667,9 @@ var diffBackUpDetailDivExtend=function(el){  // Details of how differential back
             tdc.prop('title','Old: '+dateOld+"\u000d"+'New: '+dateNew);
           }
         }
-        strColorC='lightgreen';
+        strColorC='var(--bg-green)';
       }
-      var strNameD='', strColorD=''; if(i<nFetchNew) {strNameD=StrFetchNew[i]; strColorD='lightblue'; }
+      var strNameD='', strColorD=''; if(i<nFetchNew) {strNameD=StrFetchNew[i]; strColorD='var(--bg-blue)'; }
       tda.myText(strNameA).css({background:strColorA}); 
       tdb.myText(strNameB).css({background:strColorB}); 
       tdc.myText(strNameC).css({background:strColorC}); 
@@ -669,7 +681,18 @@ var diffBackUpDetailDivExtend=function(el){  // Details of how differential back
     
   }
   var table=createElement('table').addClass('tableSticky');
-  el.append(table);
+  
+
+    // divCont
+  var divCont=createElement('div').myAppend(table).addClass('contDivWOFlex').css({width:'fit-content'});
+
+  var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({'margin-left':'.8em'});
+  var spanLabel=createElement('span').myText('diffBackUpDetailDiv').css({ margin:"0 0 0 auto"});
+  var divFoot=createElement('div').myAppend(buttonBack, spanLabel).addClass('footDivWOFlex'); 
+  divFoot.css({left:'50%', transform:'translateX(-50%)'})
+  el.append(divCont, divFoot);
+  el.css({ 'text-align':'center'})
+
   return el;
 }
 
@@ -689,7 +712,8 @@ var tabBUSumExtend=function(el){
   }
   var StrAction=['toBeDeleted','toBeReused','toFetchChanged','toFetchNew'], nAction=StrAction.length;
   var StrActionLabel=['To be deleted','To be reused','To fetch (changed)','To fetch (new)'];
-  var StrActionColor=['orange','yellow','lightgreen','lightblue'];
+  //var StrActionColor=['orange','yellow','lightgreen','lightblue'];
+  var StrActionColor=['var(--bg-orange)','var(--bg-yellow)','var(--bg-green)','var(--bg-blue)'];
   var tdOld=createElement('td'), tdNew=createElement('td'), divExplanation=createElement('div').attr({colspan:"3"});
   for(var i=0;i<nAction;i++){
     var divAction=createElement('div').css({'background':StrActionColor[i],'height':'20px', width:'25%', display:'inline-block'});
@@ -977,23 +1001,33 @@ var diffBackUpDivExtend=function(el){
 
   var zipFileEntry=null, zipWriter=null;
 
-  var imgDone=createElement('span').myText('Done').css({'background':'lightgreen'}).hide();
+  var imgDone=createElement('span').myText('Done').css({'background':'var(--bg-green)'}).hide();
 
   var imgHHead=imgHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHHead,createElement('div').myHtml('<p>If the old files\' size and modification date match then they are considered up to date.'));
   var head=createElement('div').myAppend('Differential backup of images',imgHHead).css({'font-weight':'bold'});
-  var imgHLoad=imgHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHLoad,createElement('div').myHtml('<p>Accepted file endings: '+strImageExtWComma+', or zip files containing these formats (no folders in the zip file)'));
+  var imgHLoad=imgHelp.cloneNode(1).css({'margin-left':'1em', 'vertical-align':'middle'}); popupHover(imgHLoad,createElement('div').myHtml(`Should be a zip file containing ${strImageExtWComma} files`));
+  //'<p>Accepted file endings: '+strImageExtWComma+', or zip files containing these formats (no folders in the zip file)'
   var formFile=createElement('form').prop({enctype:"multipart/form-data"});
-  var inpFile=createElement('input').prop({name:"file", type:"file", accept:"application/zip"}).css({background:'lightgrey'}); //multiple
+  var inpFile=createElement('input').prop({name:"file", type:"file", accept:"application/zip"}).css({background:'var(--bg-colorEmp)'}); //multiple , 'font-size':"0.95em"
   var ul=createElement('ul');//.hide();
   
   var EntryLocal, StrOld;
 
-  formFile.myHtml('<b>Select your old backup (zip) file:</b> ').myAppend(inpFile);   formFile.css({display:'inline'});
-  el.append(head, formFile, imgHLoad, ul);
-
   inpFile.on('change', async function(e) {
     var [err]=await inpSelChange(this.files); if(err) {setMess(err); return;}
   });
+
+  formFile.myHtml('<b>Select your old backup (zip) file:</b> ').myAppend(inpFile, imgHLoad);   formFile.css({display:'inline'});
+
+
+    // divCont
+  var divCont=createElement('div').myAppend(head, formFile, ul).addClass('contDivWOFlex');
+
+  var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({'margin-left':'.8em'});
+  var spanLabel=createElement('span').myText('diffBackUpDiv').css({ margin:"0 0 0 auto"});
+  var divFoot=createElement('div').myAppend(buttonBack, spanLabel).addClass('footDivWOFlex'); 
+  el.append(divCont, divFoot);
+  el.css({ 'max-width':'var(--menuMaxWidth)'})
 
   return el;
 }
@@ -1062,7 +1096,8 @@ var uploadAdminDivExtend=function(el){
     sendConflictCheck(arrName);
     return [null];
   }
-  var sendFun=function(){
+  var sendFun=function(e){
+    e.preventDefault();
     if(boFormDataOK==0) {alert("This browser doesn't support FormData"); return; };
     var formData = new FormData();
     formData.append("type", 'multi');
@@ -1109,19 +1144,20 @@ var uploadAdminDivExtend=function(el){
   }
 
   app.strImageExtWComma=StrImageExt.join(', ');
-  var imgHUpload=imgHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHUpload,createElement('div').myText('Accepted file endings: '+strImageExtWComma+', txt or zip files containing these formats (no folders in the zip file)'));
+  var imgHUpload=imgHelp.cloneNode(1).css({'margin-left':'1em', 'vertical-align':'middle'}); popupHover(imgHUpload,createElement('div').myText('Accepted file endings: '+strImageExtWComma+', txt or zip files containing these formats (no folders in the zip file)'));
 
 
   var formFile=createElement('form').prop({enctype:"multipart/form-data"});
-  var inpFile=createElement('input').prop({name:"file", type:"file", multiple:true}).css({background:'lightgrey'});
+  var inpFile=createElement('input').prop({name:"file", type:"file", multiple:true}).css({background:'var(--bg-colorEmp)', 'max-width':'-webkit-fill-available'}); //, 'font-size':"0.95em"
   //var inpUploadButton=createElement('input type="button" value="Upload"');
-  var uploadButton=createElement('button').myText('Upload').prop("disabled",true);
+  var uploadButton=createElement('button').myText('Upload').prop({disabled:true, type:"submit"});
   var progress=createElement('progress').prop({max:100, value:0}).hide();
   
   var arrName, arrFile, StrConflict;  //arrOrg, 
 
-  formFile.myHtml('<b>Upload:</b> ').myAppend(inpFile).css({display:'inline'});
-  el.append(formFile, uploadButton, imgHUpload, progress);
+  var labUpload=createElement('label').myText('Upload:')
+  formFile.myAppend(labUpload, inpFile, uploadButton).css({display:'inline'});
+  el.append(formFile, imgHUpload, progress);
 
   //var flowVerify;
   inpFile.on('change', async function(e) {
@@ -1217,13 +1253,13 @@ var uploadUserDivExtend=function(el){
   //el.css({'max-width':'20em', padding: '0.3em 0.5em 1.2em 0.6em'});
   var maxUserUploadSizeMB=boDbg?0.5:1;
 
-  var head=createElement('h3').myAppend('Upload Image: (max '+maxUserUploadSizeMB+'MB)').css({'font-weight':'bold'});
+  var head=createElement('h3').myAppend('Upload Image: (max '+maxUserUploadSizeMB+'MB)').css({margin:0, 'font-weight':'bold'});
   var formFile=createElement('form').prop({enctype:"multipart/form-data"});
-  var inpFile=createElement('input').prop({name:"file", type:"file", id:'file', accept:"image/*"}).css({background:'lightgrey'});
+  var inpFile=createElement('input').prop({name:"file", type:"file", id:'file', accept:"image/*"}).css({background:'var(--bg-colorEmp)'}); //, 'font-size':"0.95em"
   //var inpUploadButton=createElement('input type="button" value="Upload"');
   var uploadButton=createElement('button').myText('Upload').prop("disabled",true).css({'margin-right':'0.5em', 'float':'right'});
-  var progress=createElement('progress').prop({max:100, value:0}).css({'display':'block','margin-top':'1em'}).invisible();
-  var divMess=createElement('div').css({'margin-top':'1.2em'});
+  var progress=createElement('progress').prop({max:100, value:0}).css({'display':'block'}).invisible(); //,'margin-top':'1em'
+  var divMess=createElement('div'); //.css({'margin-top':'1.2em'});
   
   var objFile;
   inpFile.on('change', verifyFun).on('click',function(){this.value=''; uploadButton.prop("disabled",true);});
@@ -1245,17 +1281,20 @@ var uploadUserDivExtend=function(el){
   var spanExtension=createElement('span').css({'font-size':'0.8em'});
   var spanOK=createElement('span').myText('').css({'margin-left':'0.3em',  width:'3em', display:'inline-block', 'font-size':'0.8em'});
   var divNameInner=createElement('div').myAppend(inpName, spanExtension);
-  var divName=createElement('div').myAppend('Select name: ', divNameInner, spanOK).css({'margin-top':'1.2em','line-height':'1,3em', background:'lightgrey'}).hide();
+  var divName=createElement('div').myAppend('Select name: ', divNameInner, spanOK).hide();
+  divName.css({'margin-top':'1.2em','line-height':'1,3em', background:'var(--bg-colorEmp)'});
   
 
   var closeButton=createElement('button').myText('Close').on('click',historyBack);
-  var menuBottom=createElement('div').myAppend(closeButton, uploadButton).css({'margin-top':'1.2em'});
-
+  var menuBottom=createElement('div').myAppend(closeButton, uploadButton);
+  //menuBottom.css({'margin-top':'1.2em'});
+  menuBottom.css({display:'flex', gap:'0.4em', 'justify-content':'space-between'});
 
   var blanket=createElement('div').addClass("blanket");
-  var centerDiv=createElement('div').myAppend(head, formFile, divName, divMess, progress, menuBottom);  
-  centerDiv.addClass("Center").css({padding: '0.3em 0.2em 1.2em 0.3em', 'box-sizing':'content-box'}); // 'width':'20em', height:'26em', 
-  el.addClass("Center-Container").myAppend(centerDiv,blanket); //
+  var centerDiv=createElement('div').myAppend(head, formFile, divName, divMess, progress, menuBottom).addClass("Center-Flex");  
+  //centerDiv.css({width: 'min(95%,10em)'});
+  centerDiv.css({display:'flex', gap:'1em', 'flex-direction':'column', 'justify-content':'space-between', width:'min(15em,98%)'});
+  el.addClass("Center-Container-Flex").myAppend(centerDiv,blanket); 
   
 
   uploadButton.on('click',sendFun);
@@ -1266,67 +1305,61 @@ var uploadUserDivExtend=function(el){
 
 
 
-var PageFilterDiv=function(Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst=[], StrGroup=[]){   //  Note!! StrOrderFilt should not be changed by any clinet side plugins (as it is also used on the server)
+var PageFilterDiv=function(Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst=[], StrGroup=[]){   //  Note!! StrOrderFilt should not be changed by any client side plugins (as it is also used on the server)
   var el=createElement('div'); 
   el.toString=function(){return 'pageFilterDiv';}
-  el.setNFilt=function(arr){ var tmp=arr[0]+'/'+arr[1]; infoWrap.myText(tmp);  pageList.filterInfoWrap.myText(tmp);  } 
+  el.setNFilt=function(arr){ var tmp=arr[0]+'<wbr>/<wbr>'+arr[1]; infoWrap.myHtml(tmp);  pageList.filterInfoWrap.myHtml(tmp);  } 
   
   //el.Prop=Prop; el.Label=Label; el.StrOrderFilt=StrOrderFilt; el.changeFunc=changeFunc; el.StrGroupFirst=StrGroupFirst; el.StrGroup=StrGroup;
-  //$.extend(el,FilterDivProt);
   
-  //el.divCont=createElement('div').css({'max-width':menuMaxWidth,margin:'0em auto','text-align':'left'}); //cssFixed
   var objArg={Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst, StrGroup, helpBub, objSetting:objFilterSetting};
   //objArg.StrProp=oRole.filter.StrProp;
 
   el.divCont=createElement('filter-div-i').connectStuff(objArg, changeFunc);
-  el.divCont.css({display:'block', 'max-width':menuMaxWidth,margin:'0em auto','text-align':'left'});
+  //el.divCont.css({display:'block', 'max-width':menuMaxWidth,margin:'0em auto','text-align':'left'});
+  el.divCont.addClass('contDivWOFlex').css({'margin-bottom':'3em'});
 
       // menuA
-  var buttClear=createElement('button').myText('C').on('click',function(){el.Filt.filtAll(); pageList.histReplace(-1); pageList.loadTab();}).css({'margin-left':'1em'});
-  var infoWrap=createElement('span'),     spanLabel=createElement('span').myAppend('Page filter',' (',infoWrap,')');
-  //var menuA=createElement('div').myAppend(buttClear,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});  // buttonBack,
+  var buttonClear=createElement('button').myText('C').on('click',function(){el.Filt.filtAll(); pageList.histReplace(-1); pageList.loadTab();});
+  var infoWrap=createElement('span'),     spanLabel=createElement('span').myAppend('Page filter',' (',infoWrap,')').css({'margin-left':'auto'});
   
-  el.addClass('unselectable').prop({unselectable:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie
-
-  el.css({'text-align':'center'});
+  el.addClass('unselectable');
 
 
-  var divContW=createElement('div').myAppend(el.divCont).addClass('contDiv');
-
-  var footDiv=createElement('div').myAppend(buttClear,spanLabel).addClass('footDiv'); 
-  var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW');
-  el.append(divContW, footDivW);
+  var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({'margin-left':'.8em'});
+  var divFoot=createElement('div').myAppend(buttonBack, buttonClear, spanLabel).addClass('footDivWOFlex');
+  divFoot.css({padding:'0.5em 0'}); 
+  el.append(el.divCont, divFoot);
+  el.css({ 'text-align':'center', margin:'0 auto', 'max-width':'var(--menuMaxWidth)'}) //display:'block', 
   return el;
 }
 
 var ImageFilterDiv=function(Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst=[], StrGroup=[]){   //  Note!! StrOrderFilt should not be changed by any client side plugins (as it is also used on the server)
   var el=createElement('div'); 
   el.toString=function(){return 'imageFilterDiv';}
-  el.setNFilt=function(arr){ var tmp=arr[0]+'/'+arr[1]; infoWrap.myText(tmp);  imageList.filterInfoWrap.myText(tmp);  } 
+  el.setNFilt=function(arr){ var tmp=arr[0]+'<wbr>/<wbr>'+arr[1]; infoWrap.myHtml(tmp);  imageList.filterInfoWrap.myHtml(tmp);  } 
   
   //el.Prop=Prop; el.Label=Label; el.StrOrderFilt=StrOrderFilt; el.changeFunc=changeFunc; el.StrGroupFirst=StrGroupFirst; el.StrGroup=StrGroup;
-  //$.extend(el,FilterDivProt);
-  //el.divCont=createElement('div').css({'max-width':menuMaxWidth,margin:'0em auto','text-align':'left'}); //cssFixed
   var objArg={Prop, Label, StrOrderFilt, changeFunc, StrGroupFirst, StrGroup, helpBub, objSetting:objFilterSetting};
   //objArg.StrProp=oRole.filter.StrProp;
   
   el.divCont=createElement('filter-div-i').connectStuff(objArg, changeFunc);
-  el.divCont.css({display:'block', 'max-width':menuMaxWidth,margin:'0em auto','text-align':'left'});
+  //el.divCont.css({display:'block', 'max-width':menuMaxWidth,margin:'0em auto','text-align':'left'});
+  el.divCont.addClass('contDivWOFlex').css({'margin-bottom':'3em'});
   
       // menuA
-  var buttClear=createElement('button').myText('C').on('click',function(){el.Filt.filtAll(); imageList.histReplace(-1); imageList.loadTab()}).css({'margin-left':'1em'});
-  var infoWrap=createElement('span'),     spanLabel=createElement('span').myAppend('Image filter',' (',infoWrap,')');
-  //var menuA=createElement('div').myAppend(buttClear,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});  //buttonBack,
+  var buttonClear=createElement('button').myText('C').on('click',function(){el.Filt.filtAll(); imageList.histReplace(-1); imageList.loadTab()});
+  var infoWrap=createElement('span'),     spanLabel=createElement('span').myAppend('Image filter',' (',infoWrap,')').css({'margin-left':'auto'});
 
-  el.addClass('unselectable').prop({unselectable:"on"}); //class: needed by firefox, prop: needed by opera, firefox and ie
+  el.addClass('unselectable');
 
   el.css({'text-align':'center'});
 
-  var divContW=createElement('div').myAppend(el.divCont).addClass('contDiv');
-
-  var footDiv=createElement('div').myAppend(buttClear,spanLabel).addClass('footDiv'); 
-  var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW').css({background:'lightblue'});
-  el.append(divContW, footDivW);
+  var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({'margin-left':'.8em'});
+  var divFoot=createElement('div').myAppend(buttonBack, buttonClear, spanLabel).addClass('footDivWOFlex');
+  divFoot.css({padding:'0.5em 0', background:'var(--bg-colorImg)'}); 
+  el.append(el.divCont, divFoot);
+  el.css({ 'text-align':'center', margin:'0 auto', 'max-width':'var(--menuMaxWidth)'}) //display:'block', 
   return el;
 }
 
@@ -1426,7 +1459,7 @@ var clickSetParentFilterI=function(){
 var PageRowLabel={nParent:'Parents / Alternative parents', cb:'Select',tCreated:'Created',tMod:'Last Modified',tLastAccess:'Last Access', nAccess:'nAccess',boOR:'Public read access', boOW:'Public write access', boSiteMap:'Promote (include in Sitemap.xml etc)', nImage:'Images on page', nChild:'Child pages', version:'Supplied by user / mult versions', strLang:'Language code', siteName:'Site'};
   
   
-var pageListExtend=function(el){ 
+var pageListExtend=function(el){
   el.toString=function(){return 'pageList';}
   var condAddRows=function(){
     var Row=tBody.childNodes;
@@ -1557,7 +1590,7 @@ var pageListExtend=function(el){
 
       // Create TextByParentId
       // If there are pages (parents) with the same "pageName" (on different sites) then use siteName:pageName (when the page is listed). 
-    var StrOrderFiltPageFlip=array_flip(StrOrderFiltPage);
+    //var StrOrderFiltPageFlip=array_flip(StrOrderFiltPage);
     var IdParent=pageFilterDiv.divCont.Hist[StrOrderFiltPageFlip.parent][0];
     TextByParentId={}; var len=IdParent.length, objCount={}, ObjParentInfo=Array(len);
     for(var i=0;i<len;i++) {
@@ -1669,13 +1702,13 @@ var pageListExtend=function(el){
   //var spanFill=createElement('span').css({height:'calc(1.5*8px + 0.6em)'});
   //var headFill=createElement('p').append().css({background:'white',margin:'0px',height:'calc(12px + 1.2em)'});
   var head=headExtendDyn(createElement('p'), el, StrCol, BoAscDefault, PageRowLabel, 'p', 'span').addClass('pageList');
-  head.css({background:'white', width:'inherit'});     // ,height:'calc(12px + 1.2em)' , position:'sticky', top:'57px', 'z-index':'1', margin:'0px'
-  el.headW=createElement('div').myAppend(head).css({background:'white', width:'inherit', position:'sticky', top:'0px', 'z-index':'1', margin:'0px'});     
+  head.css({background:'var(--bg-color)', width:'inherit'});     // ,height:'calc(12px + 1.2em)' , position:'sticky', top:'57px', 'z-index':'1', margin:'0px'
+  el.headW=createElement('div').myAppend(head).css({background:'var(--bg-color)', width:'inherit', position:'sticky', top:'0px', 'z-index':'1', margin:'0px', opacity:0.9, "border-bottom":'1px solid'});     
   el.table.prepend(el.headW); //,headFill
 
 
     // menuA
-  var allButton=createElement('button').myText('All').addClass('fixWidth').css({'margin-right':'1em'}).on('click',function(){  //'margin-left':'0.8em'
+  var allButton=createElement('button').myText('All').on('click',function(){  //'margin-left':'0.8em'
     var boOn=allButton.myText()=='All';
     //var Tr=tBody.children('p:lt('+el.nRowVisible+')');
     //Tr.find('input').prop({'checked':boOn});
@@ -1716,7 +1749,7 @@ var pageListExtend=function(el){
   });
   
   //var tmpImg=createElement('img').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});   
-  var buttonExecuteMult=createElement('button').myText(charFlash).addClass('fixWidth').addClass('unselectable');
+  var buttonExecuteMult=createElement('button').myText(charFlash).addClass('unselectable');
   var itemMulti=[buttonROn, buttonROff, buttonWOn, buttonWOff, buttonPOn, buttonPOff, buttonDelete, buttonSetStrLang];
   var menuMult=createElement('div').css({'text-align':'left', 'line-height':'1.3em'});  menuExtend(menuMult);
   var buttonExeMultClick=function(e){ 
@@ -1731,32 +1764,32 @@ var pageListExtend=function(el){
 
   var File=[]; el.nRowVisible=0;
 
-  //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
   var spanTmp=createElement('span').myText(strFastBackSymbol).css({'font-size':'0.7em'});
-  var buttonFastBack=createElement('button').myAppend(spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){history.fastBack('adminMoreDiv');});
+  var buttonFastBack=createElement('button').myAppend(spanTmp).css({'margin-left':'0.8em'}).on('click',function(){history.fastBack('adminMoreDiv');});
+  var buttonBack=createElement('button').on('click', historyBack).myText(charBack);
   //var spanLabel=createElement('span').append('Pages').css({'float':'right',margin:'0.2em 0 0 0'});  
 
-  var tmpImg=createElement('img').prop({src:uFilter, alt:"filter", draggable:false}).css({height:'1em',width:'1em','vertical-align':'text-bottom'}); 
+  var tmpImg=imgFilter.cloneNode(1)
   el.filterInfoWrap=createElement('span');
-  var buttFilter=createElement('button').myAppend(tmpImg,' (',el.filterInfoWrap,')').addClass('flexWidth').css({'margin-right':'0.2em'}).on('click',function(){
+  var buttFilter=createElement('button').myAppend(tmpImg,el.filterInfoWrap).css({display:'inline-block'}).on('click',function(){
     doHistPush({strView:'pageFilterDiv'});
     pageFilterDiv.setVis();
   });
-  var buttClear=createElement('button').myText('C').on('click',function(){pageFilterDiv.Filt.filtAll(); pageList.histPush(); pageList.loadTab()}).css({'margin':'0 1em 0 auto'});
-  var spanTmp=createElement('span').myText('orp­hans').css({'font-size':'0.8em'});
-  var buttOrphan=createElement('button').myText('orp­hans').on('click',function(){pageFilterDiv.Filt.setSingleParent(null);  pageList.histPush(); pageList.loadTab()}).css({'float':'right','margin-right':'1em'});
-
-  //var menuA=createElement('div').myAppend(buttonFastBack, allButton, buttonExecuteMult, buttFilter, buttClear, buttOrphan);  // buttonBack, 
-  //menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});
+  var buttClear=createElement('button').myText('C').on('click',function(){pageFilterDiv.Filt.filtAll(); pageList.histPush(); pageList.loadTab()}).css({'margin-left':'auto'});
+  var spanTmp=createElement('span').myText(langHtml.orphansInParenthesis).css({'font-size':'0.8em'});
+  var buttOrphan=createElement('button').myAppend(spanTmp).on('click',function(){pageFilterDiv.Filt.setSingleParent(null);  pageList.histPush(); pageList.loadTab()});
 
 
-  el.css({'text-align':'center'});
-  var divCont=createElement('div').myAppend(el.table).css({margin:'0em auto 1em','text-align':'left',display:'inline-block'});//
-  var divContW=createElement('div').myAppend(divCont).addClass('contDiv');
+    // divCont
+  var divCont=createElement('div').myAppend(el.table).addClass('contDivWOFlex').css({width:'fit-content'});
+  el.table.css({padding:0})
 
-  var footDiv=createElement('div').myAppend(buttonFastBack, allButton, buttonExecuteMult, buttClear, buttOrphan, buttFilter).addClass('footDiv'); 
-  var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW');
-  el.append(divContW, footDivW);
+  var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({});
+  var divFoot=createElement('div').myAppend(buttonFastBack, buttonBack, allButton, buttonExecuteMult, buttClear, buttOrphan, buttFilter).addClass('footDivWOFlex'); 
+  divFoot.css({left:'50%', transform:'translateX(-50%)'})
+  el.append(divCont, divFoot);
+  el.css({ 'text-align':'center'})
+
   return el;
 }
 
@@ -1832,7 +1865,7 @@ class SpanGrandParent extends HTMLElement{
       parentSelPop.setUp(self.GrandParent, self.objParent); parentSelPop.setVis();
       doHistPush({strView:'parentSelPop'});
     }).hide();
-    this.buttOrphan=createElement('button').myText('(orphans)').addClass('aArrow','aArrowLeft').on('click',function(){ self.clickFunc(null); }).hide();
+    this.buttOrphan=createElement('button').myText(langHtml.orphansInParenthesis).addClass('aArrow','aArrowLeft').on('click',function(){ self.clickFunc(null); }).hide();
     this.spanButt=createElement('span').on('click',function(e){
       var ele=e.target;
       if(ele.nodeName!='BUTTON') return;
@@ -1938,7 +1971,7 @@ class DivRowParentT extends HTMLElement{
         if(nParentsOff){ var strTmp='('+nParentsOff+' parents off)', StrTmp=pageFilterDiv.Filt.getParentsOff(); }
         else {var strTmp='(No parent filter)', StrTmp=[];}
       }
-      var StrTmp=StrTmp.slice(0,5), indT=StrTmp.indexOf(null); if(indT!=-1) StrTmp[indT]='(orphans)';
+      var StrTmp=StrTmp.slice(0,5), indT=StrTmp.indexOf(null); if(indT!=-1) StrTmp[indT]=langHtml.orphansInParenthesis;
       var strTitle=StrTmp.join('\n');
       this.tdOrphan.myText(strTmp).css({color:'grey'}).prop('title',strTitle);
       return;
@@ -1957,7 +1990,7 @@ class DivRowParentT extends HTMLElement{
     if(idPage==null) {
       //this.children().hide();
       [...this.childNodes].forEach(ele=>ele.hide());  this.tdNChild.show(); this.tdNImage.show();
-      this.tdOrphan.show().myText('orphans'+(boPageList?' (roots)':'')); this.aLink.myText('');
+      this.tdOrphan.show().myText(langHtml.orphansInParenthesis+(boPageList?' (roots)':'')); this.aLink.myText('');
     } else {
       //this.children().show();
       [...this.childNodes].forEach(ele=>ele.show());
@@ -2031,26 +2064,28 @@ var parentSelPopExtend=function(el){
     var idPageList=FiltT.getSingleParent();
     if(strType=='page'){
       var {nParent, idPage, parent, boOR, boOW, boSiteMap, boOther, lastRev, tCreated, tMod, tLastAccess, nAccess, size, nChild, nImage, strLang, boTLS, siteName, www, pageName}=data;
-      var butP=createElement('button').prop({disabled:1}).myText("cur").addClass('aArrow', 'aArrowLeft'); //nParent
+      //var butP=createElement('button').prop({disabled:1}).myText("cur").addClass('aArrow', 'aArrowLeft'); //nParent
       var butC=createElement('button').prop({idPage, strType:'page'}).myText(nChild).on('click',cbGotoList).visibilityToggle(nChild);
-      var butI=createElement('button').prop({idPage, strType:'image'}).myText(nImage).on('click',cbGotoList).css({background:'lightblue'}).visibilityToggle(nImage);
+      var butI=createElement('button').prop({idPage, strType:'image'}).myText(nImage).on('click',cbGotoList).css({background:'var(--bg-colorImg)'}).visibilityToggle(nImage);
       var spanSite=createElement('span').myText(siteName);
       var url=createUrlFrPageData({boTLS, www, pageName});
-      var a=createElement('a').prop({href:url, target:"_blank", rel:"noopener"}).myText(pageName).css({display:'inline-block'});
+      var a=createElement('a').prop({href:url, target:"_blank", rel:"noopener"}).myText(pageName);//.css({display:'inline-block'});
       var ElTmp=[butC, butI]; ElTmp.forEach(ele=>ele.addClass('aArrow', 'aArrowRight'));
-      ElTmp=[butP, ...ElTmp, spanSite]; ElTmp.forEach(ele=>ele.css({'margin-right':"0.4em"}));
-      child.empty().myAppend(...ElTmp, a);
+      var ElTmpA=[spanSite, a]; //butP, 
+      ElTmpA.forEach(ele=>ele.css({'align-self': 'center'}));
+      child.empty().myAppend(...ElTmpA, ...ElTmp);
     }else{
       var {idImage, imageName, boOther, tCreated, strHash, size, widthSkipThumb, width, height, extension, tLastAccess, nAccess, tMod, hash, nParent}=data;
-      var butP=createElement('button').prop({disabled:1}).myText("cur").addClass('aArrow', 'aArrowLeft'); // nParent
+      //var butP=createElement('button').prop({disabled:1}).myText("cur").addClass('aArrow', 'aArrowLeft'); // nParent
       var url=createUrlFrPageData({boTLS, www, imageName});
       var img=createElement('img').prop({src:'50apx-'+imageName, alt:"thumb"}).css({'vertical-align':'middle', 'max-width':'50px', 'max-height':'50px'}).on('click',function(){window.open(imageName);});
-      var a=createElement('a').prop({href:url, target:"_blank", rel:"noopener"}).myText(imageName).css({display:'inline-block'});
-      ElTmp=[butP]; ElTmp.forEach(ele=>ele.css({'margin-right':"0.4em"}));
-      child.empty().myAppend(...ElTmp, img, a);
+      var a=createElement('a').prop({href:url, target:"_blank", rel:"noopener"}).myText(imageName).css({'align-self':'center'});
+      //ElTmp=[butP];
+      //ElTmp.forEach(ele=>ele.css({'margin-right':"0.4em"}));
+      child.empty().myAppend(img, a); //...ElTmp, 
     }
     
-    div.empty();
+    divParents.empty();
     for(var i=0;i<Parent.length;i++) {  
       var {boTLS, siteName, www, idPage, pageName, nChild, nImage, size, strLang, boOR, boOW, boSiteMap, nParent, tCreated, tMod, tLastAccess, nAccess}=Parent[i];
       //var idPage=Parent[i].idPage, name=Parent[i].pageName, siteName=Parent[i].siteName;
@@ -2060,15 +2095,15 @@ var parentSelPopExtend=function(el){
       var boDisabled=boCur && strType=='page';
       var butC=createElement('button').prop({idPage, strType:'page', disabled:boDisabled}).myText(boDisabled?"cur":nChild).on('click',cbGotoList).visibilityToggle(nChild);
       var boDisabled=boCur && strType=='image';
-      var butI=createElement('button').prop({idPage, strType:'image', disabled:boDisabled}).myText(boDisabled?"cur":nImage).on('click',cbGotoList).css({background:'lightblue'}).visibilityToggle(nImage);
+      var butI=createElement('button').prop({idPage, strType:'image', disabled:boDisabled}).myText(boDisabled?"cur":nImage).on('click',cbGotoList).css({background:'var(--bg-colorImg)'}).visibilityToggle(nImage);
       var spanSite=createElement('span').myText(siteName);
       var url=createUrlFrPageData({boTLS, www, pageName});
-      var a=createElement('a').prop({href:url, target:"_blank", rel:"noopener"}).myText(pageName).css({display:'inline-block'});
+      var a=createElement('a').prop({href:url, target:"_blank", rel:"noopener"}).myText(pageName).css({'align-self':'center'});
       var ElTmp=[butC, butI]; ElTmp.forEach(ele=>ele.addClass('aArrow', 'aArrowRight'));
-      ElTmp=[butP, ...ElTmp, spanSite]; ElTmp.forEach(ele=>ele.css({'margin-right':"0.4em"}));
+      ElTmp=[butP, ...ElTmp]; //ElTmp.forEach(ele=>ele.css({'margin-right':"0.4em"})); //, spanSite
       //if(!boEqual) r.prepend(siteName+' ');
-      var r=createElement('p').css({display:'block'}).myAppend(...ElTmp, a);
-      div.append(r);
+      var r=createElement('p').css({display:'flex', 'flex-wrap':'wrap', gap:'3px', background:'var(--bg-color)'}).myAppend(...ElTmp, a);
+      divParents.append(r);
     }  
   }
   el.closeFunc=function(){   historyBack();    }
@@ -2082,23 +2117,34 @@ var parentSelPopExtend=function(el){
   //var spanNParent=createElement('span');
 
 
-  var div=createElement('div').css({ overflow: 'auto'}); //'overflow-y':'scroll'     
-  var close=createElement('button').myText(charClose).css({'align-self': 'flex-end'}).on('click',function(){historyBack();}); 
-  var child=createElement('div').css({'font-weight':'bold', background:'#aaa', flex:2}); // ,'margin-left':'1em'  .myAppend(spanNParent,' Parents')
-  var foot=createElement('div').css({display:'flex', 'align-items':'center'}).myAppend(child); //close,   .myAppend(spanNParent,' Parents')
+  var divParents=createElement('div').css({wordBreak: 'break-word'}); //'overflow-y':'scroll'   overflow: 'auto'   
+  var close=createElement('button').myText(charClose).on('click',function(){historyBack();});
+  //close.css({'align-self': 'flex-start'})
+  close.css({position: 'absolute', top:'.2em', right:'.2em'})
+  var child=createElement('div').css({display:'flex', 'align-items':'center', 'flex-wrap':'wrap', flex:'1 1 0%', background:'var(--bg-color)'}); // ,'margin-left':'1em'  .myAppend(spanNParent,' Parents') 'font-weight':'bold', 
+  var childW=createElement('div').css({display:'flex', 'align-items':'center', background:'var(--bg-colorRoot)', wordBreak: 'break-word'}).myAppend(child); //close,   .myAppend(spanNParent,' Parents')
  
-  //el.append(head,div,close);
+  //el.append(head,divParents,close);
   //el.css({'text-align':'left'});
 
+
+  var divTree=createElement('div').myAppend(divParents, childW).css({background:'var(--bg-colorRoot)', display:'flex', gap:'3px'});
+
+  var butCancel=createElement('button').on('click', historyBack).myText(charBack);
+  var divBottom=createElement('div').myAppend(butCancel).css({display:'flex', gap:'0.4em', 'justify-content':'space-between'});
+
   var blanket=createElement('div').addClass("blanket");
-  var centerDiv=createElement('div').addClass("Center").css({background:'#ccc'}).myAppend(close, div, foot).css({'max-width':'95%', 'max-height':'98%', padding: '0.5em 0.5em 1.2em 0.5em', display:'flex', 'flex-direction':'column'});  // height:'22em', 
-  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
+  var centerDiv=createElement('div').addClass("Center-Flex").myAppend(divTree, close);
+  centerDiv.css({display:'flex', gap:'1em', 'flex-direction':'column', 'justify-content':'space-between'});
+  centerDiv.css({display:'block', position:'relative'});
+
+  el.addClass("Center-Container-Flex").myAppend(centerDiv,blanket); 
   
   return el;
 }
 
 
-var imageListExtend=function(el){ 
+var imageListExtend=function(el){
   el.toString=function(){return 'imageList';}
   var imageClick=function(){
     //var Tr=tBody.children('p:lt('+el.nRowVisible+')'); 
@@ -2244,7 +2290,7 @@ var imageListExtend=function(el){
 
       // Create TextByParentId
       // If there are pages (parents) with the same "pageName" (on different sites) then use siteName:pageName (when the page (parent) is written). 
-    var StrOrderFiltImageFlip=array_flip(StrOrderFiltImage);
+    //var StrOrderFiltImageFlip=array_flip(StrOrderFiltImage);
     var IdParent=imageFilterDiv.divCont.Hist[StrOrderFiltImageFlip.parent][0];
     TextByParentId={}; var len=IdParent.length, objCount={}, ObjParentInfo=Array(len);
     for(var i=0;i<len;i++) {
@@ -2344,13 +2390,13 @@ var imageListExtend=function(el){
   var BoAscDefault={cb:0,boOther:0,size:0,nAccess:0}, Label={nParent:strTmp, nParentI:strTmp, cb:'Select',tCreated:'Created',tLastAccess:'Last Access',nAccess:'nAccess',boOther:'Supplied by user'}; //'nParent',
   //var headFill=createElement('p').myAppend().css({background:'white',margin:'0px',height:'calc(12px + 1.2em)'});
   var head=headExtendDyn(createElement('p'), el, StrCol, BoAscDefault, Label, 'p', 'span').addClass('imageList');
-  head.css({background:'white', width:'inherit'});     // ,height:'calc(12px + 1.2em)', position:'sticky', top:'57px', 'z-index':'1', margin:'0px'
-  el.headW=createElement('div').myAppend(head).css({background:'white', width:'inherit', position:'sticky', top:'0px', 'z-index':'1', margin:'0px'});     
+  head.css({background:'var(--bg-color)', width:'inherit'});     // ,height:'calc(12px + 1.2em)', position:'sticky', top:'57px', 'z-index':'1', margin:'0px'
+  el.headW=createElement('div').myAppend(head).css({background:'var(--bg-color)', width:'inherit', position:'sticky', top:'0px', 'z-index':'1', margin:'0px', opacity:0.9, "border-bottom":'1px solid'});     
   el.table.prepend(el.headW); //,headFill
 
   
     // menuA
-  var allButton=createElement('button').myText('All').addClass('fixWidth').css({'margin-right':'1em'}).on('click',function(){  //'margin-left':'0.8em'
+  var allButton=createElement('button').myText('All').on('click',function(){  //'margin-left':'0.8em'
     var boOn=allButton.myText()=='All';
     //var Tr=tBody.children('p:lt('+el.nRowVisible+')');
     //Tr.find('input').prop({'checked':boOn});
@@ -2392,7 +2438,7 @@ var imageListExtend=function(el){
   });
   
   //var tmpImg=createElement('img').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
-  var buttonExecuteMult=createElement('button').myText(charFlash).addClass('fixWidth').addClass('unselectable'); //class: needed by firefox, prop: needed by opera, firefox and ie;
+  var buttonExecuteMult=createElement('button').myText(charFlash).addClass('unselectable');
   var itemMulti=[buttonDelete];
   var menuMult=createElement('div').css({'text-align':'left', 'line-height':'1.3em'});  menuExtend(menuMult);
   var buttonExeMultClick=function(e){ 
@@ -2404,36 +2450,37 @@ var imageListExtend=function(el){
   buttonExecuteMult.on(strMenuOpenEvent,buttonExeMultClick);
 
 
-  //el.buttonExecuteParent=createElement('button').myText(charFlash).addClass('fixWidth').addClass('unselectable');
+  //el.buttonExecuteParent=createElement('button').myText(charFlash).addClass('unselectable');
   //var divRowParent=new DivRowParentT(el);
   //headW.prepend(divRowParent);
 
 
   var File=[]; el.nRowVisible=0;
 
-  //var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
   var spanTmp=createElement('span').myText(strFastBackSymbol).css({'font-size':'0.7em'});
-  var buttonFastBack=createElement('button').myAppend(spanTmp).addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){history.fastBack('adminMoreDiv');});
+  var buttonFastBack=createElement('button').myAppend(spanTmp).css({'margin-left':'0.8em'}).on('click',function(){history.fastBack('adminMoreDiv');});
+  var buttonBack=createElement('button').on('click', historyBack).myText(charBack);
   //var spanLabel=createElement('span').myText('Images').css({'float':'right',margin:'0.2em 0 0 0'}); 
   
-  var tmpImg=createElement('img').prop({src:uFilter, alt:"filter", draggable:false}).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
+  var tmpImg=imgFilter.cloneNode(1)
   el.filterInfoWrap=createElement('span');
-  var buttFilter=createElement('button').myAppend(tmpImg,' (',el.filterInfoWrap,')').addClass('flexWidth').css({'margin-right':'0.2em'}).on('click',function(){ doHistPush({strView:'imageFilterDiv'}); imageFilterDiv.setVis();});
-  var buttClear=createElement('button').myText('C').on('click',function(){imageFilterDiv.Filt.filtAll(); imageList.histPush(); imageList.loadTab()}).css({'margin':'0 1em 0 auto'});
-  var spanTmp=createElement('span').myText('(orphans)').css({'font-size':'0.8em'});
-  var buttOrphan=createElement('button').myAppend(spanTmp).on('click',function(){imageFilterDiv.Filt.setSingleParent(null);  imageList.histPush(); imageList.loadTab()}).css({'margin-right':'1em'});
-
-  //var menuA=createElement('div').myAppend(buttonFastBack, allButton, buttonExecuteMult, buttFilter, buttClear, buttOrphan);  // buttonBack, 
-  //menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});
+  var buttFilter=createElement('button').myAppend(tmpImg,el.filterInfoWrap).css({display:'inline-block'}).on('click',function(){ doHistPush({strView:'imageFilterDiv'}); imageFilterDiv.setVis();});
+  var buttClear=createElement('button').myText('C').on('click',function(){imageFilterDiv.Filt.filtAll(); imageList.histPush(); imageList.loadTab()}).css({'margin-left':'auto'});
+  var spanTmp=createElement('span').myText(langHtml.orphansInParenthesis).css({'font-size':'0.8em'});
+  var buttOrphan=createElement('button').myAppend(spanTmp).on('click',function(){imageFilterDiv.Filt.setSingleParent(null);  imageList.histPush(); imageList.loadTab()});
 
 
-  el.css({'text-align':'center'});
-  var divCont=createElement('div').myAppend(el.table).css({margin:'0em auto 1em','text-align':'left',display:'inline-block'});//
-  var divContW=createElement('div').myAppend(divCont).addClass('contDiv');
+    // divCont
+  var divCont=createElement('div').myAppend(el.table).addClass('contDivWOFlex').css({width:'fit-content'});
+  el.table.css({padding:0})
 
-  var footDiv=createElement('div').myAppend(buttonFastBack, allButton, buttonExecuteMult, buttClear, buttOrphan, buttFilter).addClass('footDiv'); 
-  var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW').css({'background':'lightblue'});
-  el.append(divContW, footDivW);
+  var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({});
+  var divFoot=createElement('div').myAppend(buttonFastBack, buttonBack, allButton, buttonExecuteMult, buttClear, buttOrphan, buttFilter).addClass('footDivWOFlex'); 
+  divFoot.css({left:'50%', transform:'translateX(-50%)', background:'var(--bg-colorImg)'})
+  el.append(divCont, divFoot);
+  el.css({ 'text-align':'center'})
+
+
   return el;
 }
 
@@ -2475,17 +2522,21 @@ var renamePopExtend=function(el){
 
  
   var type=createElement('span'); 
-  var head=createElement('h3').myAppend('Rename ',type);
-  var nameLab=createElement('div').myText('New name: ');
+  var head=createElement('h3').myAppend('Rename ',type).css({margin:0});
+  var labName=createElement('label').myText('New name: ');
   var inpName=createElement('input').css({display:'block',width:'100%'}).on('keypress',  function(e){ if(e.which==13) {save();return false;}} );
 
-  var saveButton=createElement('button').myText('Save').on('click',save).css({'margin-top':'1em'});
-  var cancelButton=createElement('button').myText('Cancel').on('click',historyBack).css({'margin-top':'1em'});
-  //el.append(head,nameLab,inpName,cancelButton,saveButton); //.css({padding:'0.1em'}); 
+  var secName=createElement('section').myAppend(labName,inpName)
+
+  var saveButton=createElement('button').myText('Save').on('click',save);
+  var cancelButton=createElement('button').myText('Cancel').on('click',historyBack);
+  //el.append(head,labName,inpName,cancelButton,saveButton); //.css({padding:'0.1em'}); 
+  var foot=createElement('div').myAppend(cancelButton,saveButton).css({display:'flex', gap:'0.4em', 'justify-content':'space-between'});
 
   var blanket=createElement('div').addClass("blanket");
-  var centerDiv=createElement('div').addClass("Center").myAppend(head,nameLab,inpName,cancelButton,saveButton).css({'min-width':'17em', 'max-width':'30em', padding: '0.3em 0.5em 1.2em 1.2em'}); // height:'12em', 
-  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
+  var centerDiv=createElement('div').addClass("Center-Flex").myAppend(head, secName, foot); //.css({width:'min(95%,40em)'});
+  centerDiv.css({display:'flex', gap:'1em', 'flex-direction':'column', 'justify-content':'space-between', width:'min(40em,98%)'});
+  el.addClass("Center-Container-Flex").myAppend(centerDiv,blanket); 
   
   return el;
 }
@@ -2517,16 +2568,21 @@ var setStrLangPopExtend=function(el){
 
   var Id, strLang, cbDone;
  
-  var head=createElement('h3').myAppend('Set iso 639-1 language code');
-  var nameLab=createElement('div').myText('Language code:');
-  var intL=11, inpStrLang=createElement('input').css({display:'block'}).attr({maxlength:intL, title:'ISO 639-1 Language Code', size:intL}).on('keypress',  function(e){ if(e.which==13) {save();return false;}} );
+  var head=createElement('h3').myAppend('Set iso 639-1 language code').css({margin:0});
+  var labStrLang=createElement('label').myText('Language code:');
+  var intL=11, inpStrLang=createElement('input').css({display:'block',width:'100%'}).attr({maxlength:intL, title:'ISO 639-1 Language Code', size:intL}).on('keypress',  function(e){ if(e.which==13) {save();return false;}} );
 
-  var saveButton=createElement('button').myText('Save').on('click',save).css({'margin-top':'1em'});
-  var cancelButton=createElement('button').myText('Cancel').on('click',historyBack).css({'margin-top':'1em'});
+  var secStrLang=createElement('section').myAppend(labStrLang,inpStrLang)
+
+  var saveButton=createElement('button').myText('Save').on('click',save);
+  var cancelButton=createElement('button').myText('Cancel').on('click',historyBack);
+  var foot=createElement('div').myAppend(cancelButton,saveButton);
+  foot.css({display:'flex', gap:'0.4em', 'justify-content':'space-between'});
 
   var blanket=createElement('div').addClass("blanket");
-  var centerDiv=createElement('div').addClass("Center").myAppend(head,nameLab,inpStrLang,cancelButton,saveButton).css({'min-width':'17em', 'max-width':'30em', padding: '0.3em 0.5em 1.2em 1.2em'}); // height:'12em', 
-  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
+  var centerDiv=createElement('div').addClass("Center-Flex").myAppend(head, secStrLang, foot);
+  centerDiv.css({display:'flex', gap:'1em', 'flex-direction':'column', 'justify-content':'space-between'});
+  el.addClass("Center-Container-Flex").myAppend(centerDiv,blanket); 
   
   return el;
 }
@@ -2581,19 +2637,22 @@ var setSiteOfPagePopExtend=function(el){
 
   var Id, idSite, cbDone;
  
-  var head=createElement('h3').myAppend('Set site of page(s)');
-  var nameLab=createElement('div').myText('Site:');
+  var head=createElement('h3').myAppend('Set site of page(s)').css({margin:0});
+  var labSite=createElement('label').myText('Site:');
   var selSite=createElement('select').css({display:'block'}).attr({title:'Set site of page(s)'}).on('change',  function(e){ cbTestForCollision();} );
+  var secSite=createElement('section').myAppend(labSite, selSite)
 
   var divCollision=createElement('div');
   
 
-  var saveButton=createElement('button').myText('Save').on('click',save).css({'margin-top':'1em'});
-  var cancelButton=createElement('button').myText('Cancel').on('click',historyBack).css({'margin-top':'1em'});
+  var saveButton=createElement('button').myText('Save').on('click',save);
+  var cancelButton=createElement('button').myText('Cancel').on('click',historyBack);
+  var foot=createElement('div').myAppend(cancelButton,saveButton).css({display:'flex', gap:'0.4em', 'justify-content':'space-between'});
 
   var blanket=createElement('div').addClass("blanket");
-  var centerDiv=createElement('div').addClass("Center").myAppend(head,nameLab,selSite,cancelButton,saveButton, divCollision).css({'min-width':'17em', 'max-width':'30em', padding: '0.3em 0.5em 1.2em 1.2em'}); // height:'12em', 
-  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
+  var centerDiv=createElement('div').addClass("Center-Flex").myAppend(head, secSite, foot, divCollision);
+  centerDiv.css({display:'flex', gap:'1em', 'flex-direction':'column', 'justify-content':'space-between'});
+  el.addClass("Center-Container-Flex").myAppend(centerDiv,blanket); 
   
   return el;
 }
@@ -2615,19 +2674,26 @@ var editDivFixedExtend=function(el){
   }
   
     // menuB
-  el.spanSave=spanSaveExtend(createElement('span'));
-  var templateButton=createElement('button').myText('Template list').addClass('fixWidth').css({'margin-right':'1em'}).on('click',function(){
+  var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({'margin-left':'.8em'});
+  el.objWSaveElements=objWSaveElementsCreator(); //createElement('fragment')
+  el.templateButton=createElement('button').myText(langHtml.TemplateList).on('click',function(){
     doHistPush({strView:'templateList'});
     templateList.setVis();
   });
-  el.templateButton=templateButton;
   var upLoadButton=createElement('button').myAppend('Upload image').on('click',function(){
     doHistPush({strView:'uploadUserDiv'});
     uploadUserDiv.setVis();
   }).css({'float':'right'});
-  
-  var menuB=createElement('div').myAppend(el.spanSave, templateButton).addClass('fixWidth').css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'1em auto 0'});
-  el.myAppend(menuB);
+
+
+  var cssTmp={'min-width':'min(100vw, var(--menuMaxWidth))', margin:'.5em auto .5em', display:'flex', 'align-items':'center', 'justify-content':'space-between', gap:'0.8em'}
+  var {divReCaptcha, summary, signature, buttonSave, preview}=el.objWSaveElements.El
+  var menuA=createElement('div').myAppend(divReCaptcha).css(cssTmp);
+  menuA.css({display:'flex', 'justify-content':'space-between', gap:'0.3em', 'max-width':menuMaxWidth})
+  var menuB=createElement('div').myAppend(buttonBack, summary, signature, buttonSave, preview, el.templateButton).css(cssTmp);
+  //menuB.css({padding:'0 0.3em 0 0', 'max-width':menuMaxWidth, 'text-align':'left', margin:'1em auto 0'});
+  menuB.css({display:'flex', 'justify-content':'space-between', gap:'0.3em', 'max-width':menuMaxWidth})
+  el.myAppend(menuA,menuB);
   return el;
 }
 
@@ -2666,7 +2732,7 @@ var dragHRExtend=function(el){
   var hStart,mouseXStart,mouseYStart;
   //if(boTouch) el.on('touchstart',myMousedown); else el.on('mousedown',myMousedown);
   el.on(strMouseDownEvent,myMousedown);
-  el.addClass('unselectable'); //class: needed by firefox, prop: needed by opera, firefox and ie;
+  el.addClass('unselectable');
   el.css({cursor:'row-resize'});
   return el;
 }
@@ -2711,11 +2777,12 @@ var editTextExtend=function(el){
 }
 
 
-var spanSaveExtend=function(el){
-  el.divReCaptcha=createElement('div');
-  var summary=createElement('input').prop({type:'text', placeholder:'Summary'}).css({width:'5em'}); //spanSummary=createElement('span').myAppend('Summary: ',summary).css({'white-space':'nowrap'});
-  var signature=createElement('input').prop({type:'text', placeholder:'Signature'}).css({width:'5em'}); //spanSignature=createElement('span').myAppend('Signature: ',signature).css({'white-space':'nowrap'});
-  var save=createElement('button').myText('Save').on('click',function(){
+var objWSaveElementsCreator=function(){ // The elements and methods are grouped together like this incase one would want to login on multiple places
+  var obj={}
+  var divReCaptcha=createElement('div');
+  var summary=createElement('input').prop({type:'text', placeholder:'Summary'}).css({width:'5em', 'min-width':'2em'}); //spanSummary=createElement('span').myAppend('Summary: ',summary).css({'white-space':'nowrap'});
+  var signature=createElement('input').prop({type:'text', placeholder:'Signature'}).css({width:'5em', 'min-width':'2em'}); //spanSignature=createElement('span').myAppend('Signature: ',signature).css({'white-space':'nowrap'});
+  var buttonSave=createElement('button').myText(langHtml.Save).on('click',function(){
     if(!summary.value || !signature.value) { setMess('Summary- or signature- field is empty',5); return;}
     
     if(boDbgSkipRecaptcha) var strTmp="recapcha disabled (boDbgSkipRecaptcha=true)";
@@ -2729,12 +2796,16 @@ var spanSaveExtend=function(el){
     summary.value=''; signature.value='';
     boLCacheObs.value=1;
   });
-  var preview=createElement('button').myText('Show preview').on('click',function(){
+  obj.myToggle=function(boOn=true){
+    Object.values(obj.El).forEach(ele=>ele.toggle(boOn))
+  }
+  var preview=createElement('button').myText(langHtml.ShowPreview).on('click',function(){
     var vec=[['getPreview',{strEditText:editText.value}]];   myFetch('POST',vec); 
   });
-  var ElTmp=[summary,signature,save]; ElTmp.forEach(el=>el.css({'margin-right':'0.4em'}))
-  el.append(el.divReCaptcha, ...ElTmp, preview);
-  return el;
+  obj.El={divReCaptcha, summary, signature, buttonSave, preview}
+  //el.append(el.divReCaptcha, ...ElTmp, preview);
+  //obj.El=[obj.divReCaptcha, ...ElTmp, preview];
+  return obj;
 }
 
 
@@ -2760,14 +2831,18 @@ class TemplateListDiv extends HTMLElement {
     pageView.editDivFixed.templateButton.toggle(boAny);
   }
   connectStuff(){
-    this.div=createElement('div');
-    var divContW=createElement('div').myAppend(this.div).addClass('contDiv');
-    // var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
 
-    var spanLabel=createElement('span').myText('Template list').css({ margin:"0 0 0 auto"});  
-    var footDiv=createElement('div').myAppend(spanLabel).addClass('footDiv');
-    var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW');  //.css(cssFixed)
-    this.append(divContW, footDivW);
+      // divCont
+    this.div=createElement('div').addClass('contDivWOFlex').css({width:'fit-content'});
+
+    var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({'margin-left':'.8em'});
+    var spanLabel=createElement('span').myText('Template list').css({ margin:"0 0 0 auto"});
+    var divFoot=createElement('div').myAppend(buttonBack, spanLabel).addClass('footDivWOFlex');
+    divFoot.css({left:'50%', transform:'translateX(-50%)'})
+    this.append(this.div, divFoot);
+    this.css({ display:'block', 'text-align':'center'})
+
+
     return this;
   }
 }
@@ -2894,15 +2969,15 @@ var versionTableExtend=function(el){
     arrButtT[jBRed].hide(); // Hide latest red-button
 
     if(arrVersionCompared[0]!==null){
-      //var iRowRedT=nVersion-arrVersionCompared[0];   tBody.querySelector('tr:nth-of-type('+(iRowRedT+1)+')').css({"background-color":'#faa'}); // rowRed
-      var iRowRedT=nVersion-arrVersionCompared[0];   tBody.children[iRowRedT].css({"background-color":'#faa'}); // rowRed
+      //var iRowRedT=nVersion-arrVersionCompared[0];   tBody.querySelector('tr:nth-of-type('+(iRowRedT+1)+')').css({"background-color":'var(--bg-red)'}); // rowRed
+      var iRowRedT=nVersion-arrVersionCompared[0];   tBody.children[iRowRedT].css({"background-color":'var(--bg-red)'}); // rowRed
       //tBody.querySelector('tr:nth-of-type('+(iRowRedT+1)+')').querySelector('button:nth-of-type('+(jBRed+1)+')').css({"background-color":'red'}); // buttRed
       //var arrButtT=tBody.querySelector('tr:nth-of-type('+(iRowRedT+1)+')').querySelectorAll('button');
       var arrButtT=tBody[iRowRedT].querySelectorAll('button');
       arrButtT[jBRed].css({"background-color":'red'}); // buttRed
     } 
-    //var iRowVerT=nVersion-arrVersionCompared[1];     tBody.querySelector('tr:nth-of-type('+(iRowVerT+1)+')').css({"background-color":"#afa"}); // rowGreen
-    var iRowVerT=nVersion-arrVersionCompared[1];     tBody.children[iRowVerT].css({"background-color":"#afa"}); // rowGreen
+    //var iRowVerT=nVersion-arrVersionCompared[1];     tBody.querySelector('tr:nth-of-type('+(iRowVerT+1)+')').css({"background-color":"var(--bg-green)"}); // rowGreen
+    var iRowVerT=nVersion-arrVersionCompared[1];     tBody.children[iRowVerT].css({"background-color":"var(--bg-green)"}); // rowGreen
     //tBody.querySelector('tr:nth-of-type('+(iRowVerT+1)+')').querySelector('button:nth-of-type('+(jBGreen+1)+')').css({"background-color":'green'}); // buttGreen
     //var arrButtT=tBody.querySelector('tr:nth-of-type('+(iRowVerT+1)+')').querySelectorAll('button');
     var arrButtT=tBody.children[iRowVerT].querySelectorAll('button');
@@ -2917,23 +2992,26 @@ var versionTableExtend=function(el){
   //var colgroup=createElement('colgroup').myAppend(createElement('col'),createElement('col'),createElement('col'),createElement('col'),createElement('col'),createElement('col').css({}),createElement('col'));
   //.css({'overflow':'visible',position:'relative'})
   var tHead=createElement('thead').myAppend(createElement('th'), createElement('th'), createElement('th').myText('Sum/Sign'), createElement('th'),
-      createElement('th').css({'background':'#faa'}), createElement('th').css({'max-width':'10px',background:'lightgreen',overflow:'visible',position:'relative'}).myAppend(spanDiff) );
-  var tBody=createElement('tbody').css({border:'1px solid #000'});
+      createElement('th').css({'background':'var(--bg-red)'}), createElement('th').css({'max-width':'10px',background:'var(--bg-green)',overflow:'visible',position:'relative'}).myAppend(spanDiff) );
+  var tBody=createElement('tbody').css({border:'1px solid'});
   //var tmp='[name=ind],[name=date],[name=summary]';
   tBody.on('click', cbVersionView);
-  el.table=createElement('table').myAppend(tHead,tBody).css({"border-collapse":"collapse",'margin':'1em auto'}); 
+  el.table=createElement('table').myAppend(tHead,tBody).css({"border-collapse":"collapse"}); //,'margin':'1em auto'
   el.append(el.table); //'<h3>Versions</h3>',
-  //tBody.find('td').css({border:'1px #000 soild'});
-
-  var divCont=createElement('div').myAppend(el.table).addClass('contDiv');
+  //tBody.find('td').css({border:'1px soild'});
 
 
-      // menuA
-  // var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
-  var spanLabel=createElement('span').myText('Version list').css({ margin:"0 0 0 auto"});  
-  var footDiv=createElement('div').myAppend(spanLabel).addClass('footDiv');
-  var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW');
-  el.append(divCont, footDivW);
+
+    // divCont
+  var divCont=createElement('div').myAppend(el.table).addClass('contDivWOFlex').css({width:'fit-content'});
+
+  var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({'margin-left':'.8em'});
+  var spanLabel=createElement('span').myText('Version list').css({ margin:"0 0 0 auto"});
+  var divFoot=createElement('div').myAppend(buttonBack, spanLabel).addClass('footDivWOFlex');
+  divFoot.css({left:'50%', transform:'translateX(-50%)'})
+  el.append(divCont, divFoot);
+  el.css({ 'text-align':'center'})
+
   return el;
 }
 
@@ -2943,17 +3021,17 @@ var diffDivExtend=function(el){
     divCont.myHtml(strHtml);
     //el.divCont.find('td').css({border:'1px #fff'});
     //el.divCont.find('td:nth-child(2):not(:first)').css({background:'#ddd'});
-    //el.divCont.find('td:nth-child(1)').css({background:'pink'});
-    //el.divCont.find('td:nth-child(3)').css({background:'lightgreen'});
+    //el.divCont.find('td:nth-child(1)').css({background:'var(--bg-red)'});
+    //el.divCont.find('td:nth-child(3)').css({background:'var(--bg-green)'});
     //[...el.divCont.querySelectorAll('td')].forEach(ele=>ele.css({border:'1px #fff'}));
     //[...el.divCont.querySelectorAll('td:nth-child(2):not(:first-of-type)')].forEach(ele=>ele.css({background:'#ddd'}));
-    //[...el.divCont.querySelectorAll('td:nth-child(1)')].forEach(ele=>ele.css({background:'pink'}));
-    //[...el.divCont.querySelectorAll('td:nth-child(3)')].forEach(ele=>ele.css({background:'lightgreen'}));
+    //[...el.divCont.querySelectorAll('td:nth-child(1)')].forEach(ele=>ele.css({background:'var(--bg-red)'}));
+    //[...el.divCont.querySelectorAll('td:nth-child(3)')].forEach(ele=>ele.css({background:'var(--bg-green)'}));
     [...divCont.querySelectorAll('tr')].forEach((tr,i)=>{
-      [...tr.childNodes].forEach(td=>td.css({border:'1px #fff'}));
-      tr.children[0].css({background:'pink'});
-      if(i) tr.children[1].css({background:'#ddd'});
-      tr.children[2].css({background:'lightgreen'});
+      [...tr.childNodes].forEach(td=>td.css({border:'0px solid var(--bg-colorEmp)'}));
+      tr.children[0].css({background:'var(--bg-red)'});
+      if(i) tr.children[1].css({background:'var(--bg-colorEmp)'});
+      tr.children[2].css({background:'var(--bg-green)'});
     });
     var elT=divCont.querySelector('table'); if(elT) elT.css({'margin':'1em auto'});
 
@@ -2978,29 +3056,29 @@ var diffDivExtend=function(el){
 
 
         // menuC
-  var nextButtonNew=createElement('button').myText(charNext).addClass('fixWidth').on('click',function(){
+  var nextButtonNew=createElement('button').myText(charNext).on('click',function(){
     arrVersionCompared[1]++;   if(arrVersionCompared[1]>nVersion) {arrVersionCompared[1]=nVersion;}
     var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec); 
   });
-  var prevButtonNew=createElement('button').myText(charPrev).addClass('fixWidth').on('click',function(){
+  var prevButtonNew=createElement('button').myText(charPrev).on('click',function(){
     arrVersionCompared[1]--; if(arrVersionCompared[0]==arrVersionCompared[1]) arrVersionCompared[0]--;
     if(arrVersionCompared[0]==0) {arrVersionCompared=[nVersion-1,nVersion];}
     var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec);  
   });
-  var versionNew=createElement('span').css({'background':'#afa'}), detailNew=createElement('span'); 
+  var versionNew=createElement('span').css({'background':'var(--bg-green)'}), detailNew=createElement('span'); 
   
 
         // menuB
-  var nextButtonOld=createElement('button').myText(charNext).addClass('fixWidth').on('click',function(){
+  var nextButtonOld=createElement('button').myText(charNext).on('click',function(){
     arrVersionCompared[0]++; if(arrVersionCompared[0]==arrVersionCompared[1]) arrVersionCompared[1]++;
     if(arrVersionCompared[1]>nVersion) {arrVersionCompared=[1,2];}
     var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec);
   });
-  var prevButtonOld=createElement('button').myText(charPrev).addClass('fixWidth').on('click',function(){
+  var prevButtonOld=createElement('button').myText(charPrev).on('click',function(){
     arrVersionCompared[0]--;   if(arrVersionCompared[0]==0) {arrVersionCompared[0]=1;}
     var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec); 
   });
-  var versionOld=createElement('span').css({'background':'#faa'}), detailOld=createElement('span'); 
+  var versionOld=createElement('span').css({'background':'var(--bg-red)'}), detailOld=createElement('span'); 
 
   [versionNew, versionOld].forEach(ele=>ele.css({'margin':'auto 0.3em'}));
   [detailNew, detailOld].forEach(ele=>ele.css({'margin':'auto 0.3em'}));
@@ -3013,27 +3091,33 @@ var diffDivExtend=function(el){
 
 
         // menuA
-  var nextButton=createElement('button').myText(charNext).addClass('fixWidth').css({'margin':'0 1em'}).on('click',function(){
+  var nextButton=createElement('button').myText(charNext).css({'margin':'0 1em'}).on('click',function(){
     arrVersionCompared[0]++; arrVersionCompared[1]++;
     if(arrVersionCompared[1]>nVersion) {arrVersionCompared=[1,2];}
     var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec);
   });
-  var prevButton=createElement('button').myText(charPrev).addClass('fixWidth').css({'margin':'0 1em'}).on('click',function(){
+  var prevButton=createElement('button').myText(charPrev).css({'margin':'0 1em'}).on('click',function(){
     arrVersionCompared[0]--; arrVersionCompared[1]--; 
     if(arrVersionCompared[0]==0) {arrVersionCompared=[nVersion-1,nVersion];}
     var vec=[['pageCompare',{arrVersionCompared }]];   myFetch('POST',vec);  
   });
-  // var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
-  var spanLabel=createElement('span').myText('Diff').css({'float':'right',margin:'0.2em 0 0 0'});  
-  var menuA=createElement('div').myAppend(prevButton,nextButton,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
+  
+  var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({'margin-left':'.8em'});
+  var spanLabel=createElement('span').myText('diffDiv').css({'margin-left':'auto'}); 
+  var menuA=createElement('div').myAppend(buttonBack,prevButton,nextButton,spanLabel)
+  //menuA.css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});
+  menuA.css({display:'flex', 'align-items':'center'});
 
 
-  var divCont=createElement('div');
-  var divContW=createElement('div').myAppend(divCont).addClass('contDiv');
+    // divCont
+  var divCont=createElement('div').addClass('contDivWOFlex').css({width:'fit-content', 'margin-bottom':'5em'});
 
-  var footDiv=createElement('div').myAppend(menuC,menuB,menuA).addClass('footDiv').css({display:"block"}); //.css(cssFixed);
-  var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW');  //.css(cssFixed)
-  el.append(divContW, footDivW);
+  var divFoot=createElement('div').myAppend(menuC,menuB,menuA).addClass('footDivWOFlex'); 
+  divFoot.css({left:'50%', transform:'translateX(-50%)', display:'block'})
+  el.append(divCont, divFoot);
+  el.css({ 'text-align':'center'})
+
+
   return el;
 }
 
@@ -3062,10 +3146,11 @@ var paymentDivExtend=function(el){
   var menuB=createElement('div').myAppend(divBC,divPP).css({'text-align':'center'}).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'center',margin:'1em auto'});
 
     // menuA
-  // var buttonBack=createElement('button').myText('⇦').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',historyBack);
+  var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({'margin-left':'.8em'});
   var spanLabel=createElement('span').myText('Pay/Donate').css({'float':'right',margin:'0.2em 0 0 0'}); 
-  spanLabel.addClass('unselectable'); // class: needed by firefox, prop: needed by opera, firefox and ie 
-  var menuA=createElement('div').myAppend(spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
+  spanLabel.addClass('unselectable');
+  var menuA=createElement('div').myAppend(buttonBack, spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'});
+  var cssFixed={margin:'0em 0', 'text-align':'center', position:'fixed', bottom:0, width:'100%', background:"var(--bg-color)", opacity:0.9, 'border-top':'3px solid'}
 
   el.fixedDiv=createElement('div').myAppend(menuB,menuA).css(cssFixed);
 
@@ -3189,7 +3274,7 @@ var slideShowExtend=function(el){
     Img[0].css({left:'-100%'});
     Img[2].css({left:'100%'});  
     
-    Img.forEach(ele=>ele.css({width:'100%', height:'100%',  margin:'auto',position:'absolute', border:'#fff 1px solid', display:'block'}));  //,transition:'left 1s'
+    Img.forEach(ele=>ele.css({width:'100%', height:'100%',  margin:'auto',position:'absolute', border:'1px solid', display:'block'}));  //,transition:'left 1s'
     Img.forEach(ele=>ele.css({'background-size':'contain', 'background-repeat':'no-repeat', 'background-position':'center'}));    
     board.empty().myAppend(...Img);
     document.on('keydown',arrowPressF);
@@ -3197,7 +3282,7 @@ var slideShowExtend=function(el){
     divCaptionCont.empty().myAppend(Caption[iCur].cloneNode(true));  winCaption.openFunc(); 
     
   } 
-  el.addClass('unselectable').css({height:'100%',width:'100%'}); // class: needed by firefox, attr: needed by opera, firefox and ie 
+  el.addClass('unselectable').css({height:'100%',width:'100%'});
   el.on('keydown',arrowPressF); 
   var StrImgUrl, Caption, iCur, nImg;
   
@@ -3325,25 +3410,32 @@ var redirectSetPopExtend=function(el){
   var boUpd, rMat; //siteTab,
   
 
-  var labSite=createElement('b').myText('siteName');
+  var labSite=createElement('label').myText('siteName');
   var selSite=createElement('select').css({display:'block'});
-  var labPageName=createElement('b').myText('pageName');
+  var labPageName=createElement('label').myText('pageName');
   var inpPageName=createElement('input').prop({type:'text'});
-  var labURL=createElement('b').myText('Redirect to (pageName or url)');
+  var labURL=createElement('label').myText('Redirect to (pageName or url)');
   var inpURL=createElement('input').prop({type:'text'});
 
 
   [labSite, labPageName, labURL].forEach(ele=>ele.css({'margin-right':'0.5em'}));
   [inpPageName, inpURL].forEach(ele=>ele.css({display:'block',width:'100%'}).on('keypress',  function(e){ if(e.which==13) {save();return false;}} ));
-  var inpNLab=[labSite, selSite, labPageName, inpPageName, labURL, inpURL];
+  //var inpNLab=[labSite, selSite, labPageName, inpPageName, labURL, inpURL];
 
+  var secSite=createElement('section').myAppend(labSite, selSite);
+  var secPageName=createElement('section').myAppend(labPageName, inpPageName);
+  var secURL=createElement('section').myAppend(labURL, inpURL);
+  var Sec=[secSite, secPageName, secURL];
 
-  var buttonSave=createElement('button').myText('Save').on('click',save).css({'margin-top':'1em'});
-  var divBottom=createElement('div').myAppend(buttonSave);  //buttonCancel,
+  var butCancel=createElement('button').on('click', historyBack).myText("Cancel");
+  var buttonSave=createElement('button').myText('Save').on('click',save);
+  var divBottom=createElement('div').myAppend(butCancel, buttonSave).css({display:'flex', gap:'0.4em', 'justify-content':'space-between'});
 
   var blanket=createElement('div').addClass("blanket");
-  var centerDiv=createElement('div').addClass("Center").myAppend(...inpNLab,divBottom).css({'min-width':'17em','max-width':'30em', padding: '1.2em 0.5em 1.2em 1.2em'});  // height:'18em', 
-  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
+  var centerDiv=createElement('div').addClass("Center-Flex").myAppend(...Sec, divBottom); //.css({width: 'min(95%,40em)'}); 
+  centerDiv.css({display:'flex', gap:'.5em', 'flex-direction':'column', 'justify-content':'space-between', width:'min(40em,98%)'});
+
+  el.addClass("Center-Container-Flex").myAppend(centerDiv,blanket); 
    
   return el;
 }
@@ -3351,7 +3443,7 @@ var redirectSetPopExtend=function(el){
 
 var redirectDeletePopExtend=function(el){
   el.toString=function(){return 'redirectDeletePop';}
-  var butOK=createElement('button').myText('OK').css({'margin-top':'1em'}).on('click',function(){    
+  var butOK=createElement('button').myText('OK').on('click',function(){    
     var pageName=elR.attr('pageName'), idSite=elR.attr('idSite'), vec=[['redirectTabDelete',{idSite,pageName},okRet]];   myFetch('POST',vec);    
   });
   var okRet=function(data){
@@ -3370,13 +3462,18 @@ var redirectDeletePopExtend=function(el){
   }
  
   var elR;
-  var head=createElement('h3').myText('Delete');
+  var head=createElement('h3').myText('Delete').css({margin:0});
   var spanPage=createElement('span');//.css({'font-weight': 'bold'});
-  var p=createElement('div').myAppend(spanPage);
+  var p=createElement('div').myAppend(spanPage).css({'word-break':'break-word'});
+
+  var butCancel=createElement('button').on('click', historyBack).myText("Cancel");
+  var divBottom=createElement('div').myAppend(butCancel, butOK).css({display:'flex', gap:'0.4em', 'justify-content':'space-between'});
 
   var blanket=createElement('div').addClass("blanket");
-  var centerDiv=createElement('div').addClass("Center").myAppend(head,p,butOK).css({'min-width':'17em','max-width':'25em', padding:'0.5em'}); //,cancel height:'10em', 
-  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
+  var centerDiv=createElement('div').addClass("Center-Flex").myAppend(head, p, divBottom);
+  centerDiv.css({display:'flex', gap:'1em', 'flex-direction':'column', 'justify-content':'space-between', width:'min(20em,98%)'});
+
+  el.addClass("Center-Container-Flex").myAppend(centerDiv,blanket); 
  
   return el; 
 }
@@ -3453,30 +3550,30 @@ var redirectTabExtend=function(el){
   var Label={tCreated:'Age'};
   var trTmp=headExtendDyn(createElement('tr'), el, StrCol, BoAscDefault, Label);
   var tHead=createElement('thead').myAppend(trTmp);
-  tHead.css({background:'white', width:'inherit'});  //,height:'calc(12px + 1.2em)'
+  tHead.css({background:'', width:'inherit'});  //,height:'calc(12px + 1.2em)'
   el.table.prepend(tHead);
 
       // menuA
-  var buttonAdd=createElement('button').myText('Add').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
+  var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({'margin-left':'.8em'});
+  var buttonAdd=createElement('button').myText('Add').css({}).on('click',function(){
     redirectSetPop.openFunc.call(null,0);
   });
-  var buttonClearNAccess=createElement('button').myText('Clear nAccess').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'auto'}).on('click',function(){
+  var buttonClearNAccess=createElement('button').myText('Clear nAccess').css({}).on('click',function(){
     var vec=[['redirectTabResetNAccess', {}, function(){ el.setUp();}]];   myFetch('POST',vec);
   });
-  var spanLabel=createElement('span').myText('Redirect');//.css({margin:'0.2em 0 0 0'});  
-  //var menuA=createElement('div').myAppend(buttonAdd,buttonClearNAccess,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); 
+  var spanLabel=createElement('span').myText('Redirect').css({'margin-left':'auto'}); 
 
   el.addClass('redirectTab');
 
-  
-  el.css({'text-align':'center'});
 
-  var divCont=createElement('div').myAppend(el.table).css({margin:'1em auto','text-align':'left',display:'inline-block'});
-  var divContW=createElement('div').myAppend(divCont).addClass('contDiv');
+    // divCont
+  var divCont=createElement('div').myAppend(el.table).addClass('contDivWOFlex').css({width:'fit-content'});
 
-  var footDiv=createElement('div').myAppend(buttonAdd,buttonClearNAccess,spanLabel).addClass('footDiv'); 
-  var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW');
-  el.append(divContW, footDivW);
+  var divFoot=createElement('div').myAppend(buttonBack, buttonAdd, buttonClearNAccess, spanLabel).addClass('footDivWOFlex'); 
+  divFoot.css({left:'50%', transform:'translateX(-50%)'})
+  el.append(divCont, divFoot);
+  el.css({ 'text-align':'center'})
+
   return el;
 }
 
@@ -3616,39 +3713,50 @@ var siteSetPopExtend=function(el){
   var opt=createElement('option').prop({value:0, selected:true}).css({display:'block'}).myText('http'); 
   var optS=createElement('option').prop({value:1}).css({display:'block'}).myText('https'); 
   var selBoTLS=createElement('select').css({display:'block'}).myAppend(opt,optS); 
-  var labName=createElement('b').myText('Name (used as prefix when backing up etc.)');
+  var labName=createElement('label').myText('Name (used as prefix when backing up etc.)');
   var inpName=createElement('input').prop('type', 'text');
   var imgHWWW=imgHelp.cloneNode(1).css({margin:'0em 1em'}); popupHover(imgHWWW,createElement('div').myHtml('<p>Ex:<p>www.example.com<p>127.0.0.1:5000<p>localhost:5000'));
-  var labWWW=createElement('b').myAppend('www (domain)', imgHWWW);
+  var labWWW=createElement('label').myAppend('www (domain)', imgHWWW);
   var inpWWW=createElement('input').prop('type', 'text');
-  var labGog=createElement('b').myText('googleAnalyticsTrackingID');
+  var labGog=createElement('label').myText('googleAnalyticsTrackingID').css({wordBreak:'break-word'});
   var inpGog=createElement('input').prop('type', 'text');
   var imgSrcIcon16=imgHelp.cloneNode(1).css({margin:'0em 1em'}); popupHover(imgSrcIcon16,createElement('div').myHtml('<p>srcIcon16<p>Note!!! The source/url must have "16" right before the period. Ex:<br>Site/Icon/icon16.png<p>("16" will be replaced with 144, 192, 200, 512 and 1024 respectivly, to provide high resolution icons.)'));  //<p>Make sure the corresponding files exist in the selected location.
   //'<p>srcIcon16<p>The source/url must have the "16" right before the period. Ex:<br>Site/Icon/icon16.png<p>("16" will be replaced with 144, 192, 200, 512 and 1024 respectivly, to provide high resolution icons.)'
-  var labSrcIcon16=createElement('b').myAppend('srcIcon16', imgSrcIcon16);
+  var labSrcIcon16=createElement('label').myAppend('srcIcon16', imgSrcIcon16);
   var inpSrcIcon16=createElement('input').prop('type', 'text').attr({pattern:"16"});
   var imgStrLangSite=imgHelp.cloneNode(1).css({margin:'0em 1em'}); popupHover(imgStrLangSite,createElement('div').myHtml('ISO 639-1 Language Code (used by search engines)'));
-  var labStrLangSite=createElement('b').myAppend('strLangSite', imgStrLangSite);
+  var labStrLangSite=createElement('label').myAppend('strLangSite', imgStrLangSite);
   var intL=11, inpStrLangSite=createElement('input').prop({type:'text'}).attr({maxlength:intL, title:'ISO 639-1 Language Code', size:intL}).css({display:'block'});
  
   [labName, labWWW, labGog, labSrcIcon16, labStrLangSite].forEach(ele=>ele.css({'margin-right':'0.5em'}));
   [inpName, inpWWW, inpGog, inpSrcIcon16].forEach(ele=>ele.css({display:'block',width:'100%'}).on('keypress',  function(e){ if(e.which==13) {save();return false;}} ));
-  var inpNLab=[selBoTLS, labName, inpName, labWWW, inpWWW, labGog, inpGog, labSrcIcon16, inpSrcIcon16, labStrLangSite, inpStrLangSite];
+  //var inpNLab=[selBoTLS, labName, inpName, labWWW, inpWWW, labGog, inpGog, labSrcIcon16, inpSrcIcon16, labStrLangSite, inpStrLangSite];
 
-  //var buttonCancel=createElement('button').myText('Cancel').on('click',historyBack).css({'margin-top':'1em'});
-  var buttonSave=createElement('button').myText('Save').on('click',save).css({'margin-top':'1em'});
-  var divBottom=createElement('div').myAppend(buttonSave);  //buttonCancel,
+
+  var secBoTLS=createElement('section').myAppend(selBoTLS);
+  var secName=createElement('section').myAppend(labName, inpName);
+  var secWWW=createElement('section').myAppend(labWWW, inpWWW);
+  var secGog=createElement('section').myAppend(labGog, inpGog);
+  var secSrcIcon16=createElement('section').myAppend(labSrcIcon16, inpSrcIcon16);
+  var secStrLangSite=createElement('section').myAppend(labStrLangSite, inpStrLangSite);
+  var Sec=[secBoTLS, secName, secWWW, secGog, secSrcIcon16, secStrLangSite, secStrLangSite]
+
+  var butCancel=createElement('button').on('click', historyBack).myText("Cancel");
+  var buttonSave=createElement('button').myText('Save').on('click',save);
+  var divBottom=createElement('div').myAppend(butCancel, buttonSave).css({display:'flex', gap:'0.4em', 'justify-content':'space-between'});
 
   var blanket=createElement('div').addClass("blanket");
-  var centerDiv=createElement('div').addClass("Center").myAppend(...inpNLab,divBottom).css({'min-width':'17em','max-width':'30em', padding: '1.2em 0.5em 1.2em 1.2em'}); //height:'24em', 
-  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
+  var centerDiv=createElement('div').addClass("Center-Flex").myAppend(...Sec, divBottom); //.css({width: 'min(95%,40em)'}); 
+  centerDiv.css({display:'flex', gap:'.5em', 'flex-direction':'column', 'justify-content':'space-between', width:'min(40em,98%)'});
+
+  el.addClass("Center-Container-Flex").myAppend(centerDiv,blanket); 
    
   return el;
 }
 
 var siteDeletePopExtend=function(el){
   el.toString=function(){return 'siteDeletePop';}
-  var butOK=createElement('button').myText('OK').css({'margin-top':'1em'}).on('click',function(){    
+  var butOK=createElement('button').myText('OK').on('click',function(){    
     var vec=[['siteTabDelete',{idSite},okRet]];   myFetch('POST',vec);    
   });
   var okRet=function(data){
@@ -3667,14 +3775,17 @@ var siteDeletePopExtend=function(el){
   }
  
   var elR, idSite;
-  var head=createElement('h3').myText('Delete');
+  var head=createElement('h3').myText('Delete').css({margin:0});
   var spanSite=createElement('span');//.css({'font-weight': 'bold'});
-  var p=createElement('div').myAppend(spanSite);
-  //var cancel=createElement('button').myText("Cancel").on('click',historyBack).css({'margin-top':'1em'});
+  var p=createElement('div').myAppend(spanSite).css({'word-break':'break-word'});
+  var butCancel=createElement('button').on('click', historyBack).myText("Cancel");
+  var divBottom=createElement('div').myAppend(butCancel, butOK).css({display:'flex', gap:'0.4em', 'justify-content':'space-between'});
 
   var blanket=createElement('div').addClass("blanket");
-  var centerDiv=createElement('div').addClass("Center").myAppend(head,p,butOK).css({'min-width':'17em','max-width':'25em', padding:'0.5em'});  //,cancel height:'10em', 
-  el.addClass("Center-Container").myAppend(centerDiv,blanket); 
+  var centerDiv=createElement('div').addClass("Center-Flex").myAppend(head, p, divBottom);
+  centerDiv.css({display:'flex', gap:'1em', 'flex-direction':'column', 'justify-content':'space-between', width:'min(10em,98%)'});
+
+  el.addClass("Center-Container-Flex").myAppend(centerDiv,blanket); 
  
   return el;
 }
@@ -3759,27 +3870,28 @@ var siteTabExtend=function(el){
   //el.nRowVisible=undefined;
   var trTmp=headExtendDyn(createElement('tr'), el, el.StrColOrder, BoAscDefault, Label);
   var tHead=createElement('thead').myAppend(trTmp);
-  tHead.css({background:'white', width:'inherit'});  //,height:'calc(12px + 1.2em)'
+  tHead.css({background:'', width:'inherit'});  //,height:'calc(12px + 1.2em)'
   el.table.prepend(tHead);
 
 
       // menuA
-  var buttonAdd=createElement('button').myText('Add').addClass('fixWidth').css({'margin-left':'0.8em','margin-right':'1em'}).on('click',function(){
+  var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({'margin-left':'.8em'});
+  var buttonAdd=createElement('button').myText('Add').css({}).on('click',function(){
     siteSetPop.openFunc.call(null,0);
   });
-  var spanLabel=createElement('span').myText('SiteTab'); //.css({'float':'right',margin:'0.2em 0 0 0'});  
-  //var menuA=createElement('div').myAppend(buttonAdd,spanLabel).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'.3em auto .4em'}); //buttonBack,
+  var spanLabel=createElement('span').myText('SiteTab').css({'margin-left':'auto'});
 
   el.addClass('siteTab');
 
-  el.css({'text-align':'center'});
 
-  var divCont=createElement('div').myAppend(el.table).css({margin:'1em auto','text-align':'left',display:'inline-block'});
-  var divContW=createElement('div').myAppend(divCont).addClass('contDiv');
+    // divCont
+  var divCont=createElement('div').myAppend(el.table).addClass('contDivWOFlex').css({width:'fit-content'});
 
-  var footDiv=createElement('div').myAppend(buttonAdd,spanLabel).addClass('footDiv'); 
-  var footDivW=createElement('div').myAppend(footDiv).addClass('footDivW');
-  el.append(divContW, footDivW);
+  var divFoot=createElement('div').myAppend(buttonBack, buttonAdd, spanLabel).addClass('footDivWOFlex'); 
+  divFoot.css({left:'50%', transform:'translateX(-50%)'})
+  el.append(divCont, divFoot);
+  el.css({ 'text-align':'center'})
+
   return el;
 }
 
@@ -3852,8 +3964,7 @@ var GRet=function(data){
     //objPage.idPage=objPage._id; delete objPage._id;
     overwriteProperties(objPage, tmp);
     //objPage=tmp; 
-    //editDiv.fixedDiv.spanSave.toggle(Boolean(objPage.boOW));  
-    pageView.editDivFixed.spanSave.toggle(Boolean(objPage.boOW));
+    pageView.editDivFixed.objWSaveElements.myToggle(Boolean(objPage.boOW));
     adminMoreDiv.setMod();
     templateList.setUp(objPage.IdChildLax, objPage.IdChild);
   }
@@ -3864,8 +3975,9 @@ var GRet=function(data){
   copyIfExist(app, data, ['arrVersionCompared']);
 
   tmp=data.matVersion;   if(typeof tmp!='undefined') {  
-    matVersion=tabNStrCol2ArrObj(tmp); app.nVersion=matVersion.length; versionTable.setTable(); pageView.pageDivFixed.setVersioninfo();
-    warningDiv.toggle(matVersion.length>1);
+    matVersion=tabNStrCol2ArrObj(tmp); app.nVersion=matVersion.length; versionTable.setTable();
+    pageView.setVersioninfo();
+    //pageView.pageDivFixed.setVersioninfo(); warningDiv.toggle(matVersion.length>1);
   }
   
   tmp=data.strDiffText;   if(typeof tmp!="undefined") {diffDiv.setUp(tmp);  }  
@@ -3916,6 +4028,13 @@ window.langHtml={
   M:[['mo','mo'],['month','months']],
   y:[['y','y'],['year','years']]
   },
+  Login:'Log­in',
+  Orphans:'Or­ph­ans',
+  orphans:'or­ph­ans',
+  roots:'roo­ts',
+  ShowPreview:'Show pre­view',
+  TemplateList:'Tem­p­la­te list',
+  Save:'Sa­ve'
 };
 langHtml.label={
 parent:'Parent name',
@@ -3933,6 +4052,7 @@ tCreated:'Created',
 tLastAccess:'Last Access',
 nAccess:'nAccess'
 }
+langHtml.orphansInParenthesis=`(${langHtml.orphans})`
 var helpBub={}
 
 
@@ -3965,8 +4085,8 @@ var boSmallAndroid=0;
 var strMenuOpenEvent=boTouch?'click':'mousedown';
 
 
-var charBackSymbol='◄';
-var strFastBackSymbol=charBackSymbol+charBackSymbol;
+var charBack='◄';
+var strFastBackSymbol=charBack+charBack;
 var charFlash='↯';//⚡↯
 var charPublicRead='<span style="font-family:courier">͡°</span>'; //☉͡°
 var charPublicRead='<span class=eye>(∘)</span>'; //☉͡° ·
@@ -3981,9 +4101,10 @@ var charThumbsDown='👎'; //👎☟
 var charSpeechBaloon='🗪'; //💬🗨
 var charCamera='📷';
 var charHourGlass='⏳';
-var charAdmin='♚'   // ♛♕♚♔
+var charAdmin='🂡'   // ♛♕♚♔⚖
 var charPrev='⇦' //'⇩'
 var charNext='⇨' //'⇧'
+var charQuestionMark='❓'
 // charPhone ✆☎☏📱🌍👨‍🔬💻💡👷🏢👨‍💼
 
 // ♿⚠⌂💰💋♥ 👪
@@ -4007,18 +4128,17 @@ var menuMaxWidth="var(--menuMaxWidth)";
 
 var urlPayPal='https://www.paypal.com/cgi-bin/webscr';
 
-var cssFixed={margin:'0em 0','text-align':'center',position:'fixed',bottom:0,width:'100%','border-top':'3px #aaa solid',background:'#fff'}; //,'z-index':5
-var cssFixedDrag={margin:'0em 0','text-align':'center',position:'fixed',bottom:0,width:'100%',background:'#ddd'}; //,'z-index':5
-if(boTouch) { cssFixedDrag=extend({},cssFixed); cssFixedDrag['border-top']=''};
+
 var sizeIcon=1.5, strSizeIcon=sizeIcon+'em';
-
-
 
 indexAssign();
 setItem('CSRFCode',CSRFCode);
 
 assignCommonJS();
 //extend(window,{boARLoggedIn:0, boAWLoggedIn:0});
+
+var StrOrderFiltPageFlip=array_flip(StrOrderFiltPage);
+var StrOrderFiltImageFlip=array_flip(StrOrderFiltImage);
 
 matVersion=tabNStrCol2ArrObj(matVersion);  app.nVersion=matVersion.length;
 
@@ -4081,12 +4201,13 @@ var uDelete=uLibImageFolder+'delete.png';
 var uDelete1=uLibImageFolder+'delete1.png';
 
 
-//var imgHelp=createElement('img').prop({src:uHelpFile, alt:"help"}).css({'vertical-align':'-0.4em', height:'fit-content'});
-app.hovHelpMy=createElement('span').myText('❓').addClass('btn-round', 'helpButtonGradient').css({color:'transparent', 'text-shadow':'0 0 0 #5780a8'}); //on('click', function(){return false;})    //'pointer-events':'none',
+app.hovHelpMy=createElement('span').myText(charQuestionMark).addClass('btn-round', 'helpButton').css({color:'transparent', 'text-shadow':'0 0 0 #5780a8'}); //on('click', function(){return false;})    //'pointer-events':'none',
 app.imgHelp=hovHelpMy;
 
 var sizeIcon=1.5, strSizeIcon=sizeIcon+'em';
 var imgProt=createElement('img').css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}); 
+
+var imgFilter=createElement('img').prop({src:uFilter, alt:"filter", draggable:false}).css({height:'1em',width:'1em','vertical-align':'text-bottom'}).addClass('monochrome'); 
 
 
 
@@ -4226,11 +4347,9 @@ var errorFunc=function(jqXHR, textStatus, errorThrown){
   setMess('responseText: '+jqXHR.responseText+', textStatus: '+' '+textStatus+', errorThrown: '+errorThrown);     throw 'bla';
 }
 
-var warningDiv=createElement('div').myText("The page has unconfirmed changes. Use the buttons below to see older versions.").css({'background':'yellow','padding':'0.2em','text-align':'center','font-weight':'bold','font-size':'0.9em'}).hide();
-var warningDivW=createElement('div').myAppend(warningDiv); warningDivW.toString=function(){return 'warningDivW';}
 
 
-var pageText=document.querySelector('#pageText'); pageTextExtend(pageText);   pageText.modStuff();
+var pageText=document.querySelector('#pageText'); pageTextExtend(pageText);   pageText.modStuff(); pageText.css({display:'flow-root'})
 var imgBusy=createElement('img').prop({src:uBusy, alt:"busy"});
 //messageText=messExtend(createElement('span'));  window.setMess=messageText.setMess;  window.resetMess=messageText.resetMess;   elBody.append(messageText); 
 //var spanMessageText=spanMessageTextCreate();  window.setMess=spanMessageText.setMess;  window.setMessHtml=spanMessageText.setHtml;  window.resetMess=spanMessageText.resetMess;  window.appendMess=spanMessageText.appendMess;  elBody.append(spanMessageText)
@@ -4240,7 +4359,7 @@ var divMessageText=divMessageTextCreate();  copySome(window, divMessageText, ['s
 var divMessageTextW=createElement('div').myAppend(divMessageText).css({width:'100%', position:'fixed', bottom:'0px', left:'0px', 'z-index':'10'});
 elBody.append(divMessageTextW);
 
-var busyLarge=createElement('img').prop({src:uBusyLarge, alt:"busy"}).css({position:'fixed',top:'50%',left:'50%','margin-top':'-42px','margin-left':'-42px','z-index':'1000',border:'black solid 1px'}).hide();
+var busyLarge=createElement('img').prop({src:uBusyLarge, alt:"busy"}).css({position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', 'z-index':'1000', border:'solid 1px'}).addClass('monochrome').hide();
 elBody.append(busyLarge);
 //loginInfo=loginInfoExtend(createElement('div')); elBody.prepend(loginInfo);
 
@@ -4252,25 +4371,25 @@ elBody.append(busyLarge);
 
 var dragHR=dragHRExtend(createElement('hr')); dragHR.css({height:'0.3em',background:'grey',margin:0});
 if(boTouch) dragHR="";
-var editText=editTextExtend(createElement('textarea')).css({background:'rgb(255, 255, 255, 0)', 'font-family':'monospace'});
+var editText=editTextExtend(createElement('textarea')).css({'font-family':'monospace'});
  
 //var pageView=pageViewExtend(createElement('div'));
 var pageView=document.querySelector('#pageView'); pageViewExtend(pageView); pageView.css({height:'100%', overflow:'auto'})
 //var editDiv=editDivExtend(createElement('div')).css({width:'100%'}); 
-var templateList=createElement('template-list').addClass('viewDiv').connectStuff()
+var templateList=createElement('template-list').addClass('viewDivWOFlex').connectStuff()
 
 
 //var adminDiv=adminDivExtend(createElement('div')).css({width:'100%'});  
 
-var adminMoreDiv=createElement('admin-more').addClass('viewDiv').connectStuff()
+var adminMoreDiv=createElement('admin-more').addClass('viewDivWOFlex').connectStuff()
 var uploadUserDiv=uploadUserDivExtend(createElement('div')); //elBody.append(uploadUserDiv);
 
 var menuPageSingle=menuPageSingleExtend(createElement('div'));
 var parentSelPop=parentSelPopExtend(createElement('div'));
 //var divRowParent=new DivRowParentT();
 var divRowParent=createElement('div-row-parent').connectStuff();
-var pageList=pageListExtend(createElement('div')).addClass('viewDiv');
-var imageList=imageListExtend(createElement('div')).addClass('viewDiv');
+var pageList=pageListExtend(createElement('div')).addClass('viewDivWOFlex');
+var imageList=imageListExtend(createElement('div')).addClass('viewDivWOFlex');
 var renamePop=renamePopExtend(createElement('div'));
 var setStrLangPop=setStrLangPopExtend(createElement('div'));
 var setSiteOfPagePop=setSiteOfPagePopExtend(createElement('div'));
@@ -4282,13 +4401,13 @@ var paymentDiv=paymentDivExtend(createElement('div'));
     //filter colors
 //var colButtAllOn='#9f9', colButtOn='#0f0', colButtOff='#ddd', colFiltOn='#bfb', colFiltOff='#ddd', colFontOn='#000', colFontOff='#777', colActive='#65c1ff', colStapleOn='#f70', colStapleOff='#bbb';  
 //var maxStaple=20;
-var objFilterSetting={colButtAllOn:'#9f9', colButtOn:'#0f0', colButtOff:'#ddd', colFiltOn:'#bfb', colFiltOff:'#ddd', colFontOn:'#000', colFontOff:'#777', colActive:'#65c1ff', colStapleOn:'#f70', colStapleOff:'#bbb', maxStaple:20};  
+var objFilterSetting={colButtAllOn:'#9f9', colButtOn:'#0f0', colButtOff:'#ddd', colFiltOn:'#bfb', colFiltOff:'#ddd', colFontOn:'#000', colFontOff:'#777', colActive:'#65c1ff', colStapleOn:'#f70', colStapleOff:'#bbb', maxStaple:20, colBg:'var(--bg-color)'};  
 
-extend(Filt.tmpPrototype,MmmWikiFiltExtention);
+extend(Filt.tmpPrototype,MmmWikiFiltExtention); // Monkey patching Filt
 var pageFilterDiv=PageFilterDiv(PropPage, langHtml.label, StrOrderFiltPage, function(){ pageList.histReplace(-1); pageList.loadTab();}); 
 var imageFilterDiv=ImageFilterDiv(PropImage, langHtml.label, StrOrderFiltImage, function(){ imageList.histReplace(-1); imageList.loadTab();});  
-pageFilterDiv.addClass('viewDiv');
-imageFilterDiv.addClass('viewDiv');
+pageFilterDiv.addClass('viewDivWOFlex');
+imageFilterDiv.addClass('viewDivWOFlex');
 
 
     // apply "plugin changes"
@@ -4303,6 +4422,8 @@ extend(PropImage.boOther, {    setFilterButtF:tmpRowButtf  });
 pageFilterDiv.divCont.createDivs();   pageFilterDiv.Filt=pageFilterDiv.divCont.Filt;
 imageFilterDiv.divCont.createDivs();  imageFilterDiv.Filt=imageFilterDiv.divCont.Filt; 
 
+pageFilterDiv.Filt.iParent=StrOrderFiltPageFlip.parent  // Monkey patching Filt
+imageFilterDiv.Filt.iParent=StrOrderFiltImageFlip.parent  // Monkey patching Filt
 
 
 
@@ -4310,25 +4431,26 @@ imageFilterDiv.divCont.createDivs();  imageFilterDiv.Filt=imageFilterDiv.divCont
 var aRLoginDiv=aRLoginDivExtend(createElement('div'));
 
 
-var versionTable=versionTableExtend(createElement('div')).addClass('viewDiv');   versionTable.setTable();  pageView.pageDivFixed.setVersioninfo();
-warningDiv.toggle(matVersion.length>1);
+var versionTable=versionTableExtend(createElement('div')).addClass('viewDivWOFlex');   versionTable.setTable();
+pageView.setVersioninfo();
+//pageView.pageDivFixed.setVersioninfo(); warningDiv.toggle(matVersion.length>1);
 
-var diffDiv=diffDivExtend(createElement('div')).addClass('viewDiv');
+var diffDiv=diffDivExtend(createElement('div')).addClass('viewDivWOFlex');
 
 var slideShow=slideShowExtend(createElement('div'));
 
 var redirectSetPop=redirectSetPopExtend(createElement('div'));
 var redirectDeletePop=redirectDeletePopExtend(createElement('div'));
-var redirectTab=redirectTabExtend(createElement('div')).addClass('viewDiv');
+var redirectTab=redirectTabExtend(createElement('div')).addClass('viewDivWOFlex');
 var siteSetPop=siteSetPopExtend(createElement('div'));
 var siteDeletePop=siteDeletePopExtend(createElement('div'));
-var siteTab=siteTabExtend(createElement('div')).addClass('viewDiv');
+var siteTab=siteTabExtend(createElement('div')).addClass('viewDivWOFlex');
 
-var diffBackUpDiv=diffBackUpDivExtend(createElement('div'));
-var diffBackUpDetailDiv=diffBackUpDetailDivExtend(createElement('div'));
+var diffBackUpDiv=diffBackUpDivExtend(createElement('div')).addClass('viewDivWOFlex');
+var diffBackUpDetailDiv=diffBackUpDetailDivExtend(createElement('div')).addClass('viewDivWOFlex');
 
 
-var MainDiv=[aRLoginDiv, warningDivW, pageView, adminMoreDiv, pageList, imageList, templateList, versionTable, diffDiv, paymentDiv, slideShow, pageFilterDiv, imageFilterDiv, uploadUserDiv, renamePop, setStrLangPop, setSiteOfPagePop, parentSelPop, areYouSurePop, redirectTab, redirectSetPop, redirectDeletePop, siteTab, siteSetPop, siteDeletePop, diffBackUpDiv, diffBackUpDetailDiv]; //, editDiv, adminDiv
+var MainDiv=[aRLoginDiv, pageView, adminMoreDiv, pageList, imageList, templateList, versionTable, diffDiv, paymentDiv, slideShow, pageFilterDiv, imageFilterDiv, uploadUserDiv, renamePop, setStrLangPop, setSiteOfPagePop, parentSelPop, areYouSurePop, redirectTab, redirectSetPop, redirectDeletePop, siteTab, siteSetPop, siteDeletePop, diffBackUpDiv, diffBackUpDetailDiv]; //, editDiv, adminDiv , warningDivW
 var StrMainDiv=MainDiv.map(obj=>obj.toString());
 var StrMainDivFlip=array_flip(StrMainDiv);
 
@@ -4336,6 +4458,7 @@ var StrMainDivFlip=array_flip(StrMainDiv);
 var MainNonDefault=AMinusB(MainDiv, [pageView]); MainNonDefault.forEach(ele=>ele.hide());
 //MainDiv.forEach(ele=>ele.hide());
 elBody.append(...MainNonDefault);
+//elBody.prepend(warningDivW);
 
 var intMarginBottom=70;
 
@@ -4345,7 +4468,7 @@ aRLoginDiv.setVis=function(){
   return true;
 }
 pageView.setVis=function(arg){
-  MainDiv.forEach(ele=>ele.hide()); [this, warningDivW].forEach(ele=>ele.show());
+  MainDiv.forEach(ele=>ele.hide()); [this].forEach(ele=>ele.show());  //warningDivW
   [this.pageDivFixed, this.editDivFixed, this.adminDivFixed].forEach(ele=>ele.hide());
   if(arg=='page') this.pageDivFixed.setUp().show();
   else if(arg=='edit') this.editDivFixed.setUp().show();
@@ -4447,8 +4570,7 @@ editText.value=strEditText;
 templateList.setUp(objPage.IdChildLax, objPage.IdChild);
 
 
-//editDiv.fixedDiv.spanSave.toggle(Boolean(objPage.boOW));
-pageView.editDivFixed.spanSave.toggle(Boolean(objPage.boOW));
+pageView.editDivFixed.objWSaveElements.myToggle(Boolean(objPage.boOW));
 
 //var boMakeFirstScroll=1;
 
@@ -4488,12 +4610,12 @@ const strSha1NotLoaded='sha1.js is not loaded yet';
 
 
 
-//window.divReCaptcha=divReCaptchaExtend(editDiv.fixedDiv.spanSave.divReCaptcha);
-window.divReCaptcha=divReCaptchaExtend(pageView.editDivFixed.spanSave.divReCaptcha);
+window.divReCaptcha=divReCaptchaExtend(pageView.editDivFixed.objWSaveElements.El.divReCaptcha);
 window.cbRecaptcha=function(){
   if(pageView.editDivFixed.style.display!='none') { console.log('Setting up recaptcha (onload)'); divReCaptcha.setUp(); } // Otherwise "render" will occur when editDiv is opened.
 }
-window.boDbgSkipRecaptcha=boDbg; //=0;
+window.boDbgSkipRecaptcha=boDbg;
+//window.boDbgSkipRecaptcha=0; // When debugging interface
 if(!boDbgSkipRecaptcha) divReCaptcha.loadScript();
 
 

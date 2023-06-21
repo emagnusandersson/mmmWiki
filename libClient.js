@@ -285,7 +285,7 @@ app.popupHover=function(elArea, elBubble, tClose=4){
   }
   var elBlanket, timer, boIOSTmp=boTouch;
   if(boIOSTmp){
-    elBlanket=createElement('div').css({'background':'#555',opacity:0,'z-index': 9001,top:'0px',left:'0px',width:'100%',position:'fixed',height:'100%'});
+    elBlanket=createElement('div').css({background:'#000', opacity:0.25, 'z-index': 9001,top:'0px',left:'0px',width:'100%',position:'fixed',height:'100%'});
     elBlanket.on('click', closeFunc);
   }
   if(boTouch){
@@ -378,7 +378,7 @@ app.menuExtend=function(el, ElItem=[]){
     el.remove();
   } 
 
-  var objCss={position:'absolute',border:'black 1px solid',background:'#fff',cursor:'pointer', 'z-index':100};
+  var objCss={position:'absolute',border:'1px solid',background:'var(--bg-color)',cursor:'pointer', 'z-index':100};
   el.css(objCss);
   //$el.on('mouseover','.menuItem',function(e){$(this).css({background:'grey'});});
   //$el.on('mouseout','.menuItem',function(e){$(this).css({background:''});});
@@ -409,7 +409,7 @@ app.menuExtend=function(el, ElItem=[]){
  *******************************************************************************************************************/
 
 app.popupDragExtendM=function(elBubble,strTitle,elParent){ 
-  elBubble.css({position:'absolute','z-index':200,'background-color':'#ccc','text-align':'left',padding:'0em',border:'solid black 1px'}); 
+  elBubble.css({position:'absolute','z-index':200,'background-color':'var(--bg-colorEmp)','text-align':'left',padding:'0em',border:'solid 1px'}); 
   popupDragExtend(elBubble,strTitle,elParent);
   return elBubble;
 }
@@ -538,7 +538,7 @@ app.popupDragExtend=function(elBubble,strTitle,elParent){
     return false;
   });
   if(!boTouch){
-    elDeleteButton.on('mouseover', function(){this.css({'font-weight':'bold', color:'white'});})
+    elDeleteButton.on('mouseover', function(){this.css({'font-weight':'bold', color:'var(--bg-color)'});})
     elDeleteButton.on('mouseout', function(){this.css({'font-weight':'', color:''});});
   }
 
@@ -563,7 +563,7 @@ app.popupDragExtend=function(elBubble,strTitle,elParent){
   
   elDragBarB.css({background:'grey'});
 
-  var elTitle=createElement('div').css({color:'white', position:'absolute', top:'0px', 'text-align':'center', width:'100%', 'white-space':'nowrap'});
+  var elTitle=createElement('div').css({color:'var(--bg-color)', position:'absolute', top:'0px', 'text-align':'center', width:'100%', 'white-space':'nowrap'});
   elTitle.append(createTextNode(strTitle));
   var elBar=createElement('div').css({height:floatSize+'em',position:'relative',display:'flex'});
   elBar.append(elDragBarA, elDragBarB, elDeleteButton, elDragBarC, elTitle);

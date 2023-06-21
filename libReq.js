@@ -37,9 +37,14 @@
 
 
 // nsVote and syncameeting should use StateOpen instead of StateMy
-// First visible MainDiv: mmmWiki:pageView, locatabl:viewFront, idPlace:mainDiv, nsVote:voterListDiv, syncAMeeting:schW
+// First visible MainDiv: mmmWiki:pageView, locatabl:viewFront, idPlace:mainDiv, nsVote:summaryDiv, syncAMeeting:viewFront
 // mSort and merge should be in lib.js instead of libClient.js. Right
-// Remove UNSELECTABLE property (already done on mmmWiki) (only supported by ie)
+// Rewrite redirectTab (etc on other apps) as siteTab (using SiteTabRow "class")
+
+// Safari back button issues
+// Go back to using fixed foot div rather that vertical flex box (so one can have a transparent foot (perhaps))
+// Movable fixed div in viewFront
+
 
 /******************************************************************************
  * BU (BackUp requests):
@@ -365,19 +370,10 @@ var makeOutput=function(objOut, strHtmlText){
   var {objSiteDefault, objSite, objPage}=objOut, {pageName}=objPage; //, {www:wwwSite}=objSite;
 
   var ua=req.headers['user-agent']||''; ua=ua.toLowerCase();
-  var boIOS= RegExp('iphone','i').test(ua);
+  //var boIOS= RegExp('iphone','i').test(ua);
 
   var strMetaNoIndex='', boTemplate=RegExp('^template:','i').test(pageName);
   if(!objPage || !objPage.boSiteMap || !objPage.boOR || boTemplate){ strMetaNoIndex='<meta name="robots" content="noindex">\n'; }
-
-
-    // If boDbg then set vTmp=0 so that the url is the same, this way the debugger can reopen the file between changes
-    
-    // Use normal vTmp on iOS (since I don't have any method of disabling cache on iOS devices (nor any debugging interface))
-  var boClientHasDebugger=!boIOS
-  var boDbgNClientHasDebugger=boDbg&&boClientHasDebugger;
-  var boDbgNClientHasNoDebugger=boDbg&&!boClientHasDebugger;
-
 
 
     // uSite, uSiteCommon, uCanonical    
@@ -387,12 +383,9 @@ var makeOutput=function(objOut, strHtmlText){
   var uCanonical=uSite; if(pageName!='start') uCanonical=uCanonical+"/"+pageName;
 
     // Files to include
-    // Note! If boDbgNClientHasDebugger=1 then url is made to look the same (v=0 (even if the file has changed)), this way the client debugger will keep breakpoints.
-    //  (In the client debugger one should disable cache so one still gets updated files)
-  //var keyTmp=wwwSite+'/'+leafManifest, vTmp=boDbgNClientHasDebugger?0:CacheUri[keyTmp].strHash;     const uManifest=uSite+'/'+leafManifest+'?v='+vTmp;
-  var keyTmp=wwwSite+'/'+leafManifest, vTmp=boDbgNClientHasDebugger?0:CacheUri[keyTmp].strHash;     const uManifest=`${strSchemeLong}${keyTmp}?v=${vTmp}`;
-  var pathTmp='lib/foundOnTheInternet/zip.js', vTmp=boDbgNClientHasDebugger?0:CacheUri[pathTmp].strHash;    const uZip=`${uSiteCommon}/${pathTmp}?v=${vTmp}`;
-  var pathTmp='lib/foundOnTheInternet/sha1.js', vTmp=boDbgNClientHasDebugger?0:CacheUri[pathTmp].strHash;   const uSha1=`${uSiteCommon}/${pathTmp}?v=${vTmp}`;
+  var keyTmp=wwwSite+'/'+leafManifest, vTmp=CacheUri[keyTmp].strHash;     const uManifest=`${strSchemeLong}${keyTmp}?v=${vTmp}`;
+  var pathTmp='lib/foundOnTheInternet/zip.js', vTmp=CacheUri[pathTmp].strHash;    const uZip=`${uSiteCommon}/${pathTmp}?v=${vTmp}`;
+  var pathTmp='lib/foundOnTheInternet/sha1.js', vTmp=CacheUri[pathTmp].strHash;   const uSha1=`${uSiteCommon}/${pathTmp}?v=${vTmp}`;
 
  
   var strTracker, tmpID=objSite.googleAnalyticsTrackingID||null;
@@ -454,8 +447,7 @@ var makeOutput=function(objOut, strHtmlText){
   var objData={uIcon16, uIcon114, strMetaNoIndex, uCanonical, uSiteCommon, uManifest, strTracker, strObjOut, strTitle, strHtmlText, strDescription:strTitle};
   //objPage.idPage=objPage._id; delete objPage._id;
   copySome(objData, objPage, ['strLang']);
-  //var strTmp=boDbgT?strIndexTemplateIOSLoc:strIndexTemplate; 
-  var strTmp=boDbgNClientHasNoDebugger?strIndexTemplateIOSLoc:strIndexTemplate;   
+  var strTmp=strIndexTemplate;   
   var strOut=ejs.render(strTmp, objData, {});
   return {strOut};
 }
@@ -1268,7 +1260,8 @@ app.reqStat=async function(){
     // Include JS-files
   var StrTmp=['lib.js', 'libClient.js'];
   for(var i=0;i<StrTmp.length;i++){
-    var pathTmp=StrTmp[i], vTmp=CacheUri[pathTmp].strHash; if(boDbg) vTmp=0;    Str.push(`<script type="module" src="${uSiteCommon}/${pathTmp}?v=${vTmp}" crossorigin="anonymous"></script>`);  // crossorigin : to make request cors (not needed really)
+    var pathTmp=StrTmp[i], vTmp=CacheUri[pathTmp].strHash; //if(boDbg) vTmp=0;
+    Str.push(`<script type="module" src="${uSiteCommon}/${pathTmp}?v=${vTmp}" crossorigin="anonymous"></script>`);  // crossorigin : to make request cors (not needed really)
   }
 
   //Str.push('<script type="module" src="'+uSiteCommon+'/lib/foundOnTheInternet/sortable.js" crossorigin="anonymous"></script>');
@@ -1280,16 +1273,16 @@ app.reqStat=async function(){
 
   var {nPage, nFileWiki, nFileHtml, nImage, nFileImage, nThumb, nFileThumb}=NRow;
 
-  var strCol=(nFileWiki==nPage)?"lightgreen":"pink", strTmpA='nFileWiki: <font style="background:'+strCol+'">'+nFileWiki+'</font>';
-  var strCol=(nFileHtml==nPage)?"lightgreen":"pink", strTmpB='nFileHtml: <font style="background:'+strCol+'">'+nFileHtml+'</font>'; 
+  var strCol=(nFileWiki==nPage)?"green":"red", strTmpA=`nFileWiki: <font style="background:var(--bg-${strCol})">${nFileWiki}</font>`;
+  var strCol=(nFileHtml==nPage)?"green":"red", strTmpB=`nFileHtml: <font style="background:var(--bg-${strCol})">${nFileHtml}</font>`; 
   var strRow="nPage: <b>"+nPage+"</b>"+" ("+strTmpA+", "+strTmpB+")";
   Str.push("<p>"+strRow+"</p>");
 
-  var strCol=(nFileImage==nImage)?"lightgreen":"pink", strTmpA='nFileImage: <font style="background:'+strCol+'">'+nFileImage+'</font>';
+  var strCol=(nFileImage==nImage)?"green":"red", strTmpA=`nFileImage: <font style="background:var(--bg-${strCol})">${nFileImage}</font>`;
   var strRow="nImage: <b>"+nImage+"</b>"+" ("+strTmpA+")";
   Str.push("<p>"+strRow+"</p>");
 
-  var strCol=(nFileThumb==nThumb)?"lightgreen":"pink", strTmpA='nFileThumb: <font style="background:'+strCol+'">'+nFileThumb+'</font>';
+  var strCol=(nFileThumb==nThumb)?"green":"red", strTmpA=`nFileThumb: <font style="background:var(--bg-${strCol})">${nFileThumb}</font>`;
   var strRow="nThumb: <b>"+nThumb+"</b>"+" ("+strTmpA+")";
   Str.push("<p>"+strRow+"</p>");
 

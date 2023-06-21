@@ -199,8 +199,8 @@ app.createManifest=function(arg){
     IntSizeIcon.forEach((size, ind)=>{icons[ind]={ src: p1+size+p2, type:strType, sizes: size+"x"+size, purpose: "any maskable" }; })
   } else { var icons=[{ src: srcIcon16, type:strType, sizes: "16x16", purpose: "any maskable" }]}
   var uSite="https://"+www;
-  let objOut={theme_color:"#fff", background_color:"#fff", display:"minimal-ui", prefer_related_applications:false,  short_name:siteName, name:siteName, start_url: uSite, icons }
-  
+  let objOut={display:"minimal-ui", prefer_related_applications:false,  short_name:siteName, name:siteName, start_url: uSite, icons }
+  //theme_color:"#fff", background_color:"#fff", 
   //let str=serialize(objOut);
   let str=JSON.stringify(objOut);
   return str;

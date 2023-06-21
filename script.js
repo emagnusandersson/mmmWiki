@@ -280,20 +280,16 @@ var [err]=await createManifestNStoreToCacheFrDB(); if(err) {console.error(err.me
   // Read index template and do some initial insertions of data, then calc its hash.
 var [err, buf]=await fsPromises.readFile('views/index.html').toNBP();   if(err) {console.error(err); process.exit(-1);}
 app.strIndexTemplate=buf.toString();
-app.strIndexTemplateIOSLoc=strIndexTemplate;
 
 
 var FlJS=['filter.js', 'lib.js', 'libClient.js', 'client.js', leafCommon];
 for(var i=0;i<FlJS.length;i++) { 
   var pathTmp=FlJS[i], vTmp=CacheUri[pathTmp].strHash, varName='u'+ucfirst(pathTmp.slice(0,-3));
   app.strIndexTemplate=strIndexTemplate.replace(RegExp(`<%=${varName}%>`), `<%=uSiteCommon%>/${pathTmp}?v=${vTmp}`);
-  app.strIndexTemplateIOSLoc=strIndexTemplateIOSLoc.replace(RegExp(`<%=${varName}%>`), `<%=uSiteCommon%>/${pathTmp}?v=0`);
 }
 var pathTmp='stylesheets/style.css', vTmp=CacheUri[pathTmp].strHash;
 app.strIndexTemplate=strIndexTemplate.replace(/<%=uStyle%>/, `<%=uSiteCommon%>/${pathTmp}?v=${vTmp}`);
-app.strIndexTemplateIOSLoc=strIndexTemplateIOSLoc.replace(/<%=uStyle%>/, `<%=uSiteCommon%>/${pathTmp}?v=0`);
 app.strHashTemplate=md5(strIndexTemplate);
-//app.strHashTemplateIOSLoc=md5(strIndexTemplateIOSLoc);
 
 var redisVar=strAppName+'_IndexTemplateHash';
 var luaIndexTemplateHashTestNSetFun=`local strHash=redis.call('GET',KEYS[1]);     if(strHash==ARGV[1]) then return 1; else redis.call('SET',KEYS[1],ARGV[1]); return 0; end;`;

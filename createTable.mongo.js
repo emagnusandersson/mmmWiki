@@ -61,9 +61,9 @@ db.Setting.insertMany(arrSetting);
 
 
 
-var idA=ObjectId("123456789012345678901234");
-var idB=ObjectId("123456789012345678901235");
-var idC=ObjectId("123456789012345678901236");
+var idA=new ObjectId("123456789012345678901234");
+var idB=new ObjectId("123456789012345678901235");
+var idC=new ObjectId("123456789012345678901236");
 
 // Tree
 /*

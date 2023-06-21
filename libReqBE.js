@@ -96,8 +96,9 @@ ReqBE.prototype.go=async function(){
     //var strOriginTmp=req.urlSite; //if(req.port==5000) strOriginTmp+=':5000';
     //var strT=req.headers.Origin; if(strT!=strOriginTmp) {this.mesEO(Error("Origin-header is not the same wwwSite"));return; }
     if('x-type' in req.headers ){ //&& req.headers['x-type']=='single'
-      var form = new formidable.IncomingForm();
-      form.multiples = true;  
+      //var form = new formidable.IncomingForm();
+      var form = formidable({});
+      //form.multiples = true;  
       var File=this.File=[];
 
       form.on('file', function(field, file) {
@@ -107,7 +108,9 @@ ReqBE.prototype.go=async function(){
         File.push(file);
       });
 
-      var [err, fields, files]=await new Promise(resolve=>{  form.parse(req, (...arg)=>resolve(arg));  });     if(err){ this.mesEO(err); return; } 
+      //var [err, fields, files]=await new Promise(resolve=>{  form.parse(req, (...arg)=>resolve(arg));  });     if(err){ this.mesEO(err); return; } 
+      var [err, arrRes]=await form.parse(req).toNBP();    if(err){ this.mesEO(err); return; } 
+      var [fields, files]=arrRes;
       
       //this.File=files['fileToUpload[]'];
       if('g-recaptcha-response' in fields) this.captchaIn=fields['g-recaptcha-response']; else this.captchaIn='';
@@ -374,11 +377,11 @@ ReqBE.prototype.myChModImage=async function(inObj){
   if('Id' in inObj && inObj.Id instanceof Array && inObj.Id.length) var Id=inObj.Id; else {  return [new ErrorClient('chmodImage: no files')]; }
 
   var {boOther}=inObj; boOther=Boolean(boOther);
-  var lId=Id.length; for(var i=0;i<lId;i++){ Id[i]=ObjectId(Id[i]); }
+  var lId=Id.length; for(var i=0;i<lId;i++){ Id[i]=new ObjectId(Id[i]); }
 
   // var lId=Id.length, arg=Array(lId);
   // for(var i=0;i<lId;i++){
-  //   arg[i]={ updateOne: { "filter": { _id:ObjectId(Id[i]) }, "update": { $set : {boOther:inObj.boOther} },  "upsert": true } }
+  //   arg[i]={ updateOne: { "filter": { _id:new ObjectId(Id[i]) }, "update": { $set : {boOther:inObj.boOther} },  "upsert": true } }
   // }
   // var [err, result]=await collectionImage.bulkWrite(arg, {session:sessionMongo}).toNBP(); if(err) return [err];
 
@@ -416,7 +419,7 @@ ReqBE.prototype.deleteImage=async function(inObj){
 
   if('Id' in inObj && inObj.Id instanceof Array && inObj.Id.length) var Id=inObj.Id; else { return [new ErrorClient('deleteImage: no files')]; }
   
-  for(var i=0;i<Id.length;i++) Id[i]=ObjectId(Id[i]);
+  for(var i=0;i<Id.length;i++) Id[i]=new ObjectId(Id[i]);
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
@@ -472,7 +475,7 @@ ReqBE.prototype.setSiteOfPage=async function(inObj){
 
   var idPage= myJSEscape(Id[0]);
   
-  //for(var i=0;i<Id.length;i++) Id[i]=ObjectId(Id[i]);
+  //for(var i=0;i<Id.length;i++) Id[i]=new ObjectId(Id[i]);
 
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
@@ -1217,7 +1220,7 @@ ReqBE.prototype.renameImage=async function(inObj){
     var arrRet=[null];
 
     var {id:idImageOld, strNewName}=inObj;
-    idImageOld=ObjectId(idImageOld);
+    idImageOld=new ObjectId(idImageOld);
     var imageNameNew=strNewName.replace(RegExp(' ','g'),'_'), imageNameNewLC=imageNameNew.toLowerCase();      // Calculate new name
 
       // Check for collision
@@ -1358,7 +1361,7 @@ ReqBE.prototype.getParentOfImage=async function(inObj){
 
 
     // Get Image
-  var [err, objImage]=await collectionImage.findOne({_id:ObjectId(inObj.idImage)}).toNBP();   if(err) return [err];
+  var [err, objImage]=await collectionImage.findOne({_id:new ObjectId(inObj.idImage)}).toNBP();   if(err) return [err];
   if(!objImage) { return [new Error('image not found')];};
 
 
@@ -1408,7 +1411,7 @@ ReqBE.prototype.getImageInfoById=async function(inObj){
     var [err, nImage]=await collectionImage.countDocuments({nParent:0}).toNBP();   if(err) return [err];
     var Ou={nChild,nImage};
   } else {
-    var [err, objImage]=await collectionImage.findOne({_id:ObjectId(inObj.idImage)}).toNBP();   if(err) return [err];
+    var [err, objImage]=await collectionImage.findOne({_id:new ObjectId(inObj.idImage)}).toNBP();   if(err) return [err];
     objImage.idImage=objImage._id;
     var Ou=objImage;
     //debugger; // Todo: remember to deal with time-properties as Date() in client.js
@@ -1749,7 +1752,8 @@ ReqBE.prototype.siteTabGet=async function(inObj){  // Used by siteTab
   }
 
   var Ou=arrObj2TabNStrCol(ObjSite);
-  this.mes("Got "+ObjSite.length+" entries");
+  var c=ObjSite.length, strEntry=c==1?'entry':'entries'
+  this.mes(`Got ${c} ${strEntry}`);
   Ou.boOK=1;
   return [null, [Ou]];
 }
