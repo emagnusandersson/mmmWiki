@@ -5,44 +5,45 @@
 "use strict"
 
 
+
+
 app.sanitize=function(attrIn,tag){
   var tag=tag.toLowerCase(), matches=[],  out=[];
     
   if(tag=='tr') {
     var tmp='colspan';
-    var arr=[]; attrIn.replace(RegExp('('+tmp+')\\s*=\\s*[^\\s]+(?=\\s|$)','i'),function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' '));
+    var arr=[]; attrIn.replace(RegExp(`(${tmp})\\s*=\\s*[^\\s]+(?=\\s|$)`,'i'),function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' '));
   }
   else if(tag=='td') {
     var tmp='rowspan|colspan';
-    var arr=[]; attrIn.replace(RegExp('('+tmp+')\\s*=\\s*[^\\s]+(?=\\s|$)','i'),function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' '));
+    var arr=[]; attrIn.replace(RegExp(`(${tmp})\\s*=\\s*[^\\s]+(?=\\s|$)`,'i'),function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' '));
   }
   else if(tag=='br') {
-    var arr=[]; attrIn.replace(RegExp('clear\\s*=\\s*all','i'),function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' '));
+    var arr=[]; attrIn.replace(/clear\s*=\s*all/i,function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' '));
   }
   else if(tag=='source') {
-    var arr=[]; attrIn.replace(RegExp('src\\s*=\\s*[^\\s]+(?=\\s|$)','i'),function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' '));
+    var arr=[]; attrIn.replace(/src\s*=\s*[^\s]+(?=\s|$)/i,function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' '));
   }
   else if(tag=='video') {
     var tmp='controls|poster';
-    var arr=[]; attrIn.replace(RegExp('('+tmp+')\\s*=\\s*[^\\s]+(?=\\s|$)','i'),function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' '));
+    var arr=[]; attrIn.replace(RegExp(`(${tmp})\\s*=\\s*[^\\s]+(?=\\s|$)`,'i'),function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' '));
   }
   else if(tag=='iframe') {
     var tmp='scrolling';
-    var arr=[]; attrIn.replace(RegExp('('+tmp+')\\s*=\\s*[^\\s]+(?=\\s|$)','i'),function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' '));   
-    var arr=[]; attrIn.replace(RegExp('src\\s*=\\s*[^\\s]+(?=\\s|$)','i'),function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' '));
+    var arr=[]; attrIn.replace(RegExp(`(${tmp})\\s*=\\s*[^\\s]+(?=\\s|$)`,'i'),function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' '));   
+    var arr=[]; attrIn.replace(/src\s*=\s*[^\s]+(?=\s|$)/i,function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' '));
   }
   else if(tag=='img') {
-    var arr=[]; attrIn.replace(RegExp('src\\s*=\\s*[^\\s]+(?=\\s|$)','i'),function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' ')); 
+    var arr=[]; attrIn.replace(/src\s*=\s*[^\s]+(?=\s|$)/i,function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' ')); 
   }
-  else if( RegExp('('+simpleTags+')').test(tag) ) {
-  }
+  else if( RegExp(`(${simpleTags})`).test(tag) ) { }
 
-  var arr=[]; attrIn.replace(RegExp('class\\s*=\\s*[^\\s]+(?=\\s|$)','i'),function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' '));
+  var arr=[]; attrIn.replace(/class\s*=\s*[^\s]+(?=\s|$)/i,function(m,n){arr.push(m); return m;}); if(arr.length) out.push(arr.join(' '));
     
-  var arr=[]; attrIn.replace(RegExp('style\\s*=\\s*\\"([^\\"]*?)\\"','i'),function(m,n){arr.push(n); return m;}); 
-  if(arr.length==0) attrIn.replace(RegExp('style\\s*=\\s*\\\'([^\\"]*?)\\\'','i'),function(m,n){arr.push(n); return m;});  // If no double quoted attribute, the try single quoted attribute
+  var arr=[]; attrIn.replace(/style\s*=\s*\"([^\"]*?)\"/i,function(m,n){arr.push(n); return m;}); 
+  if(arr.length==0) attrIn.replace(/style\s*=\s*\'([^\"]*?)\'/i,function(m,n){arr.push(n); return m;});  // If no double quoted attribute, the try single quoted attribute
   if(arr.length){
-    var text=sanitizeStyle(arr[0]);  out.push(' style="'+text+'"'); 
+    var text=sanitizeStyle(arr[0]);  out.push(` style="${text}"`); 
   }
   out=out.join(' ');
 
@@ -51,7 +52,7 @@ app.sanitize=function(attrIn,tag){
 
 
 app.sanitizeStyle=function(attrIn){
-  var out=attrIn.replace(RegExp('expression|behavior|javascript|-moz-binding','i'),function(m){return 'MM'+m;});
+  var out=attrIn.replace(/expression|behavior|javascript|-moz-binding/i,function(m){return 'MM'+m;});
   return out;
 }
 

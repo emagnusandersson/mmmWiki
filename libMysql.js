@@ -3,7 +3,7 @@
 
 //storeMultPage=function(){
   //var Sql=[];
-  //Sql.push(`LOCK TABLES `+pageTab+` WRITE;`);
+  //Sql.push(`LOCK TABLES ${pageTab} WRITE;`);
   //Sql.push(`UNLOCK TABLES;`);
   
 //}
@@ -16,7 +16,7 @@ app.getInfoNDataNoReqRes=async function(objArg){
   //return [null,Ou];
 
     // Get site
-  var sql=`SELECT boDefault, @boTLS:=boTLS AS boTLS, @idSite:=idSite AS idSite, siteName, @www:=www AS www, googleAnalyticsTrackingID, srcIcon16, strLangSite, aWPassword, aRPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM `+siteTab+` WHERE www=?;`;
+  var sql=`SELECT boDefault, @boTLS:=boTLS AS boTLS, @idSite:=idSite AS idSite, siteName, @www:=www AS www, googleAnalyticsTrackingID, srcIcon16, strLangSite, aWPassword, aRPassword, UNIX_TIMESTAMP(tCreated) AS tCreated FROM ${siteTab} WHERE www=?;`;
   var Val=[wwwSite];
   var [err, results]=await this.myMySql.query(sql, Val); if(err) return [err];
   if(results.length==0) { extend(Ou, {mess:'wwwNotFound'}); return [null,Ou]; } //res.out500(wwwSite+', site not found'); return [];
@@ -24,18 +24,18 @@ app.getInfoNDataNoReqRes=async function(objArg){
   
     // Check if there is a redirect for this page
   var sql=`SET @queredPage=?;
-  SELECT url AS urlRedir FROM `+redirectTab+` WHERE idSite=@idSite AND pageName=@queredPage;`, Val=[queredPage];
+  SELECT url AS urlRedir FROM ${redirectTab} WHERE idSite=@idSite AND pageName=@queredPage;`, Val=[queredPage];
   var [err, results]=await this.myMySql.query(sql, Val); if(err) return [err];
   if(results[1].length) {
     var urlRedir=results[1][0].urlRedir;
-    var sql=`UPDATE `+redirectTab+` SET nAccess=nAccess+1, tLastAccess=now() WHERE idSite=@idSite AND pageName=@queredPage;`, Val=[queredPage];
+    var sql=`UPDATE ${redirectTab} SET nAccess=nAccess+1, tLastAccess=now() WHERE idSite=@idSite AND pageName=@queredPage;`, Val=[queredPage];
     var [err, results]=await this.myMySql.query(sql, Val); if(err) return [err];
     //res.out301(urlRedir); return;
     extend(Ou, {mess:'redirect', urlRedir}); return [null,Ou];
   };
   
     // Check if there is a redirect for this domain
-  var sql=`SELECT url AS urlRedirDomain FROM `+redirectDomainTab+` WHERE www=@www;`, Val=[];
+  var sql=`SELECT url AS urlRedirDomain FROM ${redirectDomainTab} WHERE www=@www;`, Val=[];
   var [err, results]=await this.myMySql.query(sql, Val); if(err) return [err];
   if(results.length) { 
     //res.out301(results[0].urlRedirDomain+'/'+queredPage); return;
@@ -43,13 +43,13 @@ app.getInfoNDataNoReqRes=async function(objArg){
   };
   
     // Get wwwCommon
-  var sql=`SELECT boTLS, siteName, www  FROM `+siteTab+` WHERE boDefault=1;`, Val=[];
+  var sql=`SELECT boTLS, siteName, www  FROM ${siteTab} WHERE boDefault=1;`, Val=[];
   var [err, results]=await this.myMySql.query(sql, Val); if(err) return [err];
   if(results.length==0) { extend(Ou, {mess:'noDefaultSite'}); return [null,Ou]; } //res.out500('no default site'); return;
   var objSiteDefault=results[0];
   
     // Check if page exist
-  var sql=`SELECT @pageName:=pageName AS pageName, @idPage:=idPage AS idPage, @boOR:=boOR AS boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod FROM `+pageTab+` WHERE idSite=@idSite AND pageName=@queredPage;`, Val=[];
+  var sql=`SELECT @pageName:=pageName AS pageName, @idPage:=idPage AS idPage, @boOR:=boOR AS boOR, boOW, boSiteMap, UNIX_TIMESTAMP(tCreated) AS tCreated, UNIX_TIMESTAMP(tMod) AS tMod FROM ${pageTab} WHERE idSite=@idSite AND pageName=@queredPage;`, Val=[];
   var [err, results]=await this.myMySql.query(sql, Val); if(err) return [err];
   if(results.length==0) { Ou.mess='noSuchPage'; return [null,Ou]; };
   var objPage=results[0];
@@ -68,17 +68,17 @@ app.getInfoNDataNoReqRes=async function(objArg){
   var boTalkExist=false;
   if(boTalk==0) {
     var talkPage=(boTemplate?'template_':'')+'talk:'+queredPage;
-    var sql=`SELECT count(idPage) AS boTalkExist FROM `+pageTab+` WHERE idSite=@idSite AND pageName=?;`, Val=[talkPage];
+    var sql=`SELECT count(idPage) AS boTalkExist FROM ${pageTab} WHERE idSite=@idSite AND pageName=?;`, Val=[talkPage];
     var [err, results]=await this.myMySql.query(sql, Val); if(err) return [err];
     var {boTalkExist}=results[0];
   };
   
     // Get version table
-  var sql=`SELECT rev, summary, signature, idFile, idFileCache, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache, strHash FROM `+versionTab+` WHERE idPage=@idPage;`, Val=[];
+  var sql=`SELECT rev, summary, signature, idFile, idFileCache, UNIX_TIMESTAMP(tMod) AS tMod, UNIX_TIMESTAMP(tModCache) AS tModCache, strHash FROM ${versionTab} WHERE idPage=@idPage;`, Val=[];
   var [err, results]=await this.myMySql.query(sql, Val); if(err) return [err];
   var nVersion=results.length;
   if(nVersion==0) { Ou.mess='noSuchRev'; return [null,Ou];  } //res.out500('no versions?!?'); return;
-  if(rev>=nVersion) { Ou.mess='noSuchRev'; return [null,Ou];  } //res.out500('No rev '+rev+', ('+nVersion+' version)'); return; 
+  if(rev>=nVersion) { Ou.mess='noSuchRev'; return [null,Ou];  } //res.out500(`No rev ${rev}, (${nVersion} version)`); return; 
   if(rev==-1) rev=nVersion-1;  //version=rev+1;
   var arrVersionCompared=[null,rev+1];
   var matVersionOrg=results,  matVersion=makeMatVersion(matVersionOrg);
@@ -91,14 +91,14 @@ app.getInfoNDataNoReqRes=async function(objArg){
   if(boValidReqCache) { Ou.mess='304'; return [null,Ou]; } //res.out304(); return;
   
 
-  var sql=`SELECT data AS strEditText FROM `+fileTab+` WHERE idFile=?;`, Val=[idFile];
+  var sql=`SELECT data AS strEditText FROM ${fileTab} WHERE idFile=?;`, Val=[idFile];
   var [err, results]=await this.myMySql.query(sql, Val); if(err) return [err];
   var strEditText=results[0].strEditText.toString();
   
   if(boValidServerCache){
       // Calc VboValidReqCache
-    var sql=`SELECT data AS strHtmlText FROM `+fileTab+` WHERE idFile=?;
-        SELECT pageName, boOnWhenCached FROM `+subTab+` WHERE idPage=@idPage AND pageName REGEXP '^template:';`, Val=[idFileCache];
+    var sql=`SELECT data AS strHtmlText FROM ${fileTab} WHERE idFile=?;
+        SELECT pageName, boOnWhenCached FROM ${subTab} WHERE idPage=@idPage AND pageName REGEXP '^template:';`, Val=[idFileCache];
     var [err, results]=await this.myMySql.query(sql, Val); if(err) return [err];
     var strHtmlText=results[0][0].strHtmlText.toString();
     var objTemplateE=createObjTemplateE(results[1]);

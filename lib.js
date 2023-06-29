@@ -25,13 +25,13 @@ app.urldecode=function(url) {
 
 
 app.extractLoc=function(obj,strObjName){   // Ex: eval(extractLoc(objMy,'objMy'));
-  var Str=[];  for(var key in obj) Str.push(key+'='+strObjName+'.'+key);
+  var Str=[];  for(var key in obj) Str.push(`${key}=${strObjName}.${key}`);
   var str=''; if(Str.length) str='var '+Str.join(', ')+';';  return str;
 }
 app.extract=function(obj,par=app){ for(var key in obj){ par[key]=obj[key]; } }
 //extractLocSome=function(strObjName,arrSome){  // Ex: eval(extractLocSome('objMy',['a','b']));
   //if(typeof arrSome=='string') arrSome=[arrSome];
-  //var len=arrSome.length, Str=Array(len);  for(var i=0;i<len;i++) { var key=arrSome[i]; Str[i]=key+'='+strObjName+'.'+key; }
+  //var len=arrSome.length, Str=Array(len);  for(var i=0;i<len;i++) { var key=arrSome[i]; Str[i]=`${key}=${strObjName}.${key}`; }
   //return 'var '+Str.join(', ')+';';
 //}
 
@@ -168,13 +168,14 @@ app.mySwedDate=function(t){
 app.swedDate=function(tmp, sep=''){ 
   if(typeof tmp=="number") tmp=new Date(Number(tmp)*1000);
   //if(tmp){tmp=UTC2JS(tmp);  
-  tmp=tmp.getFullYear()+sep+pad2(tmp.getMonth()+1)+sep+pad2(tmp.getDate());
+  //tmp=tmp.getFullYear()+sep+pad2(tmp.getMonth()+1)+sep+pad2(tmp.getDate());
+  tmp=[tmp.getFullYear(), pad2(tmp.getMonth()+1), pad2(tmp.getDate())].join(sep);
   return tmp;
 }
 app.swedTime=function(tmp){ 
   if(typeof tmp=="number") tmp=new Date(Number(tmp)*1000);
   //if(tmp){tmp=UTC2JS(tmp);
-  tmp=tmp.getFullYear()+'-'+pad2(tmp.getMonth()+1)+'-'+pad2(tmp.getDate())+' '+pad2(tmp.getHours())+':'+pad2(tmp.getMinutes());
+  tmp=`${tmp.getFullYear()}-${pad2(tmp.getMonth()+1)}-${pad2(tmp.getDate())} ${pad2(tmp.getHours())}:${pad2(tmp.getMinutes())}`;
   return tmp;
 }
 app.UTC2JS=function(utcTime){ var tmp=new Date(Number(utcTime)*1000);  return tmp;  }
@@ -330,12 +331,12 @@ app.tabNStrCol2ArrObjGC=function(tabNStrCol, arrObj){
 }
 
 app.deserialize=function(serializedJavascript){
-  return eval('(' + serializedJavascript + ')');
+  return eval(`(${serializedJavascript})`);
 }
 
 app.calcBUFileName=function(wwwSite,type,ending){
   var www=wwwSite.replace('/','_').replace(':','_'), date=swedDate(unixNow());
-  return www+'_'+date+'_'+type+'.'+ending;
+  return `${www}_${date}_${type}.${ending}`;
 }
 
 app.regParsePageNameHD=RegExp('([^:]+):','g');

@@ -546,7 +546,7 @@ app.popupDragExtend=function(elBubble,strTitle,elParent){
   var strEventStart='mousedown', strEventMove='mousemove', strEventEnd='mouseup'; if(boTouch){strEventStart='touchstart'; strEventMove='touchmove'; strEventEnd='touchend';}
 
   var floatSize=1.30;
-  elDeleteButton.css({flex:'0 0 '+floatSize+'em', cursor:'pointer', background:'red'}); 
+  elDeleteButton.css({flex:`0 0 ${floatSize}em`, cursor:'pointer', background:'red'}); 
 
   var elDragBarA=createElement('div'), elDragBarB=createElement('div'), elDragBarC=createElement('div');
   

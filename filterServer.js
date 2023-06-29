@@ -12,12 +12,12 @@ app.setUpCond=function(arg){
   for(var i=0;i<StrProp.length;i++){
     var name=StrProp[i];    name=mongoSanitize(name);
     var filt=Filt[name];
-    if(!is_array(filt)) {return [new Error('Filt property '+i+' not OK.')];  }
+    if(!is_array(filt)) {return [new Error(`Filt property ${i} not OK.`)];  }
     if(filt.length==0) continue;
     var {feat, condBNameF, condBNullF, condBF, cond0F, cond1F}=Prop[name];  //condBNameF
     var objCondFeat=null;
     if(feat.kind[0]=='B'){
-      if(!is_array(filt[0])) {return [new Error('Filt['+name+'][0] is not an array.')];  }
+      if(!is_array(filt[0])) {return [new Error(`Filt[${name}][0] is not an array.`)];  }
       var [arrSpec, boWhite]=filt;
       var nameB=condBNameF?condBNameF(name):name;
       if(condBF){
@@ -62,8 +62,8 @@ app.setUpCond=function(arg){
   // var arrCol=[],ii=0;
   // for(var i=0;i<KeySel.length;i++) {
   //   var key=KeySel[i], b=Prop[key].b, pre=Prop[key].pre||preDefault;
-  //   var tmp; if('selF' in Prop[key]) { tmp=Prop[key].selF(pre+key);  }   else tmp=pre+"`"+key+"`";
-  //   arrCol.push(tmp+" AS "+"`"+key+"`"); ii++;
+  //   var tmp; if('selF' in Prop[key]) { tmp=Prop[key].selF(pre+key);  }   else tmp=`${pre}\`${key}\``;
+  //   arrCol.push(`${tmp} AS \`${key}\``); ii++;
   // }
   // var strSel=arrCol.join(', ');
   // return {strSel, Where}; //, nColTrans:ii
@@ -97,7 +97,7 @@ app.HistCalc.prototype.getHist=async function(){
     var arg={name, prop, Where};
     var [err, hist]=await this.getHistOne(arg); if(err) return [err];
     Hist[i]=hist;
-    var tMeas=(new Date())-tStart; if(boDbg) console.log(name+': '+tMeas+'ms');
+    var tMeas=(new Date())-tStart; if(boDbg) console.log(`${name}: ${tMeas}ms`);
   }
   return [null,Hist];
 }

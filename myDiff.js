@@ -96,20 +96,20 @@ app.myDiff=function(strOld,strNew,headOld,headNew){
   for(var j=0;j<len;j++){ 
     var k=tableProt[j], boInclude=k.include;
     if(!boIncludePrevious && boInclude) {
-      var tmpOld=''; if('iROldFirst' in k) tmpOld='Line '+k.iROldFirst+': ';
-      var tmpNew=''; if('iRNewFirst' in k) tmpNew='Line '+k.iRNewFirst+': ';
-      ret+='<tr><td><b>'+tmpOld+'</b></td><td></td><td><b>'+tmpNew+'</b></td></tr>';
+      var tmpOld=''; if('iROldFirst' in k) tmpOld=`Line ${k.iROldFirst}: `;
+      var tmpNew=''; if('iRNewFirst' in k) tmpNew=`Line ${k.iRNewFirst}: `;
+      ret+=`<tr><td><b>${tmpOld}</b></td><td></td><td><b>${tmpNew}</b></td></tr>`;
     }
     if(boInclude) {
       var tmpOld=''; if('labOld' in k) tmpOld=k.labOld;
       var tmpNew=''; if('labNew' in k) tmpNew=k.labNew;
-      ret+='<tr><td>'+tmpOld+'</td><td class=textcompare>'+k.text+'</td><td>'+tmpNew+'</td></tr>'; 
+      ret+=`<tr><td>${tmpOld}</td><td class=textcompare>${k.text}</td><td>${tmpNew}</td></tr>`; 
     } 
     
     boIncludePrevious=boInclude;
   }
   
-  if(ret.length) ret='<table>'+ret+'</table>';
+  if(ret.length) ret=`<table>${ret}</table>`;
   return ret;
 }
 

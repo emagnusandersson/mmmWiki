@@ -321,42 +321,42 @@ app.setAccessControlAllowOrigin=function(req, res, RegAllowed){
 app.makeTHead=function(K){
   if(!K) return "";
   var strD=''; 
-  for(var i=0; i<K.length; i++){var d=K[i]; strD+="<th>"+d+"</th>";}
-  var strR="<tr>"+strD+"</tr>";
-  return "<thead>"+strR+"</thead>";
+  for(var i=0; i<K.length; i++){var d=K[i]; strD+=`<th>${d}</th>`;}
+  var strR=`<tr>${strD}</tr>`;
+  return `<thead>${strR}</thead>`;
 }
 app.makeTBody=function(K,M){
   var strR=''; 
   for(var j=0;j<M.length;j++){
     var r=M[j];
     var strD='';
-    //for(var i in r){var d=r[i]; strD+="<td>"+d+"</td>";}
-    for(var i=0;i<K.length;i++){var d=r[K[i]]; strD+="<td>"+d+"</td>";}
-    strR+="<tr>"+strD+"</tr>";
+    //for(var i in r){var d=r[i]; strD+=`<td>${d}</td>`;}
+    for(var i=0;i<K.length;i++){var d=r[K[i]]; strD+=`<td>${d}</td>`;}
+    strR+=`<tr>${strD}</tr>`;
   }
-  return "<tbody>"+strR+"</tbody>";
+  return `<tbody>${strR}</tbody>`;
 }
 app.makeTable=function(K,M){
-  return "<table>"+makeTHead(K)+makeTBody(K,M)+"</table>";
+  return `<table>${makeTHead(K)}${makeTBody(K,M)}</table>`;
 }
 
 
 app.makeTHead=function(StrHead){
   if(!StrHead) return "";
   var strD=''; 
-  for(var i=0; i<StrHead.length; i++){var d=StrHead[i]; strD+="<th>"+d+"</th>";}
-  var strR="<tr>"+strD+"</tr>";
-  return "<thead>"+strR+"</thead>";
+  for(var i=0; i<StrHead.length; i++){var d=StrHead[i]; strD+=`<th>${d}</th>`;}
+  var strR=`<tr>${strD}</tr>`;
+  return `<thead>${strR}</thead>`;
 }
 app.makeTBody=function(arrObj, StrHead){
   var strR='', boUseStrHead=Boolean(StrHead), nHead=StrHead?StrHead.length:-1; 
   for(var j=0;j<arrObj.length;j++){
     var r=arrObj[j];
     var strD='', nColOut=boUseStrHead?nHead:r.length;
-    for(var i=0;i<nColOut;i++){ var k=boUseStrHead?StrHead[i]:i; var d=r[k]; strD+="<td>"+d+"</td>";}
-    strR+="<tr>"+strD+"</tr>";
+    for(var i=0;i<nColOut;i++){ var k=boUseStrHead?StrHead[i]:i; var d=r[k]; strD+=`<td>${d}</td>`;}
+    strR+=`<tr>${strD}</tr>`;
   }
-  return "<tbody>"+strR+"</tbody>";
+  return `<tbody>${strR}</tbody>`;
 }
 app.makeTable=function(arrObj, StrHead=null){
   if(arrObj.length && !StrHead) StrHead=Object.keys(arrObj[0]);

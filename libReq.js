@@ -30,7 +30,7 @@
 // Fix cache problem when returning to edited page
 // Fix green monitor.html that should be white
 
-// links to private pages should be green
+// links to private pages should be green (or perhaps a lock (🔒) symbol)
 // parse async
 
 // (?<!cmd|del|set|get)redis
@@ -42,8 +42,20 @@
 // Rewrite redirectTab (etc on other apps) as siteTab (using SiteTabRow "class")
 
 // Safari back button issues
-// Go back to using fixed foot div rather that vertical flex box (so one can have a transparent foot (perhaps))
 // Movable fixed div in viewFront
+
+
+//["'] *\+ *([a-zA-Z0-9-\.\(\)\[\]_/\+ ]+) *\+ *['"]      ${$1}
+//[`] *\+ *([a-zA-Z0-9-\.\(\)\[\]_/\+]+) *\+ *[`]        ${$1}
+//` *\+ *([a-zA-Z0-9-\.\[\]_/\+]+)               ${$1}`
+//` *\+ *([a-zA-Z0-9-\.\(\)\[\]_/\+]+)           ${$1}`
+//([a-zA-Z0-9-\.\[\]_/\+]+) *\+ *[`]             `${$1}
+//([a-zA-Z0-9-\.\(\)\[\]_/\+]+) *\+ *[`]         `${$1}
+
+// \$\{([^\+\}]+)\+                 }${
+
+// DB
+// Image extension as property (filterable)
 
 
 /******************************************************************************
@@ -93,8 +105,8 @@ app.reqBU=async function(strArg) {
   
   var boFilter='arrName' in inObj;
   var {arrName=[]}=inObj, nName=arrName.length;
-  if(boFilter) {
-    if(nName) { tmpQ=array_fill(nName, "?").join(','); tmpQ=strNameVar+" IN ("+tmpQ+")";  } else tmpQ="false";  
+  if(boFilter) { 
+    if(nName) { tmpQ=array_fill(nName, "?").join(','); tmpQ=`${strNameVar} IN (${tmpQ})`;  } else tmpQ="false";  
   } else { var arrName=[], tmpQ='true';}
 
   var {boUsePrefixOnDefaultSitePages=true}=inObj;
@@ -209,7 +221,7 @@ app.reqBU=async function(strArg) {
     if(err) { console.log(err); res.out500(err); }
     res.out200(outFileName+' written');
   }else{
-    var outFileName=strSiteDefault+'_'+swedDate(unixNow())+'_'+type+'.zip';
+    var outFileName=`${strSiteDefault}_${swedDate(unixNow())}_${type}.zip`;
     var objHead={"Content-Type": MimeType.zip, "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
     res.writeHead(200,objHead);
     res.end(outdata,'binary');
@@ -286,7 +298,8 @@ app.reqBUMeta=async function(strArg) {
 
   //var zipfile = new NodeZip();
   var zip = new JSZip();
-  var myEscapeF=function(str){ return '"'+myEscaper.escape(str)+'"'; }
+  //var myEscapeF=function(str){ return `"${myEscaper.escape(str)}"`; }
+  var myEscapeF=function(str){ return `"${myEscaper.escape(str)}"`; }
   var StrData=[], StrFileName=[];
   
     // Site
@@ -350,7 +363,7 @@ app.reqBUMeta=async function(strArg) {
     }
     res.out200(strMess);
   }else{
-    var outFileName=strSiteDefault+'_'+swedDate(unixNow())+'_meta.zip';
+    var outFileName=`${strSiteDefault}_${swedDate(unixNow())}_meta.zip`;
     
     var objHead={"Content-Type": MimeType.zip, "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
     res.writeHead(200,objHead);
@@ -401,7 +414,7 @@ var makeOutput=function(objOut, strHtmlText){
   ga('send', 'pageview');
 </script>`;
   }
-  //ga('create', '`+tmpID+`', 'auto');
+  //ga('create', '${tmpID}', 'auto');
   
   extend(objOut, {uZip, uSha1});
 
@@ -461,7 +474,7 @@ app.reqIndex=async function() {
   var tNow=nowSFloored();
   
   var strT=req.headers['sec-fetch-mode'];
-  if(strT && !(strT=='navigate' || strT=='same-origin')) { res.outCode(400, "sec-fetch-mode header not allowed ("+strT+")"); return;}
+  if(strT && !(strT=='navigate' || strT=='same-origin')) { res.outCode(400, `sec-fetch-mode header not allowed (${strT})`); return;}
   
   var qs=req.objUrl.query||'', objQS=parseQS2(qs);
   var pathName=decodeURIComponent(pathName);
@@ -497,7 +510,7 @@ app.reqIndex=async function() {
 
   //if(req.boTLS) res.setHeader("Strict-Transport-Security", "max-age="+24*3600+"; includeSubDomains");
   //var tmpS=req.boTLS?'s':'';
-  //res.setHeader("Content-Security-Policy", "default-src http"+tmpS+": 'this'  *.google.com; img-src *");
+  //res.setHeader("Content-Security-Policy", `default-src http${tmpS}: 'this'  *.google.com; img-src *`);
   //res.setHeader("Content-Security-Policy", "default-src http");
   
   
@@ -756,7 +769,7 @@ app.reqStatic=async function() {
   var {buf, type, strHash, boZip, boUglify}=objT;
   if(strHash===strHashIn){ res.out304(); return; }
   var mimeType=MimeType[type];
-  if(typeof mimeType!='string') console.log('type: '+type+', mimeType: ', mimeType);
+  if(typeof mimeType!='string') console.log(`type: ${type}, mimeType: `, mimeType);
   if(typeof buf!='object' || !('length' in buf)) console.log('typeof buf: '+typeof buf);
   if(typeof strHash!='string') console.log('typeof strHash: '+strHash);
   var objHead={"Content-Type": mimeType, "Content-Length":buf.length, ETag:strHash, "Cache-Control":"public, max-age=31536000"};
@@ -788,8 +801,8 @@ app.reqMediaImage=async function(){
   this.strHashIn=getETag(req.headers);
   this.requesterCacheTime=getRequesterTime(req.headers);
 
-  var RegThumb=RegExp('(\\d+)(.?)px-(.*)\\.('+strImageExtWBar+')$','i'); 
-  var RegImage=RegExp('(.*)\\.('+strImageExtWBar+')$','i');  // Ex "100hpx-oak.jpg"
+  var RegThumb=RegExp(`(\\d+)(.?)px-(.*)\\.(${strImageExtWBar})$`,'i'); 
+  var RegImage=RegExp(`(.*)\\.(${strImageExtWBar})$`,'i');  // Ex "100hpx-oak.jpg"
   var Match, nameOrg, wMax, hMax, kind, boThumb;
   if(Match=RegThumb.exec(nameQ)){ 
     nameOrg=Match[3]+'.'+Match[4];
@@ -1005,7 +1018,7 @@ app.reqMediaVideo=async function(){
 
 
     // Get info from videoTab
-  var sql="SELECT idVideo, UNIX_TIMESTAMP(tCreated) AS tCreated, idFile, strHash, size, name FROM "+videoTab+" WHERE name=?";
+  var sql=`SELECT idVideo, UNIX_TIMESTAMP(tCreated) AS tCreated, idFile, strHash, size, name FROM ${videoTab} WHERE name=?`;
   var Val=[nameOrg];
   var [err, results]=await this.myMySql.query(sql, Val); if(err) {  res.out500(err); return; }
   var c=results.length; if(c==0) {res.out404('Not Found'); return;}
@@ -1033,18 +1046,18 @@ app.reqMediaVideo=async function(){
   var mimeType=MimeType[type]||'txt'; 
 
 
-  //var sql="SELECT data FROM "+fileTab+" WHERE idFile=?";
-  var sql="SELECT substr(data, "+(start+1)+", "+chunksize+") AS data FROM "+fileTab+" WHERE idFile=?";
+  //var sql=`SELECT data FROM ${fileTab} WHERE idFile=?`;
+  var sql=`SELECT substr(data, ${start+1}, ${chunksize}) AS data FROM ${fileTab} WHERE idFile=?`;
   var Val=[idFileOrg];
   var [err, results]=await this.myMySql.query(sql, Val); if(err) {  res.out500(err); return; }
   var c=results.length; if(c==0) {res.out404('Not Found');  return;}
   var c=results.length; if(c!=1) {res.out500('c!=1'); return;}
   var {data:buf}=results[0];
 
-  if(chunksize!=buf.length) {res.out500('chunksize!=buf.length, ('+chunksize+'!='+buf.length+')'); return;}
+  if(chunksize!=buf.length) {res.out500(`chunksize!=buf.length, (${chunksize}!=${buf.length})`); return;}
 
   res.writeHead(206, {
-    "Content-Range": "bytes " + start + "-" + end + "/" + total,
+    "Content-Range": `bytes ${start}-${end}/${total}`,
     "Accept-Ranges": "bytes",
     "Content-Length": chunksize,
     "Content-Type": mimeType,
@@ -1086,7 +1099,7 @@ app.reqSiteMap=async function() {
     var url=uSite+tmp;
     //var tMod=(new Date(file.tMod*1000)).toISOString().slice(0,10);
     var tMod=file.tMod.toISOString().slice(0,10);
-    Str.push("<url><loc>"+url+"</loc><lastmod>"+tMod+"</lastmod></url>");
+    Str.push(`<url><loc>${url}</loc><lastmod>${tMod}</lastmod></url>`);
   }
   Str.push('</urlset>');  
   var str=Str.join('\n'); //res.writeHead(200, "OK", {'Content-Type': MimeType.xml});
@@ -1108,7 +1121,8 @@ app.reqRobots=async function() {
   }
   //if(1) {res.out404('404 Not found'); return; }
 
-  var sql="SELECT boTLS, pageName, boOR, boOW, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther FROM "+pageLastSiteView+" WHERE www=? AND !(pageName REGEXP '^template:.*') AND boOR=1 AND boSiteMap=1"; 
+  //var sql=`SELECT boTLS, pageName, boOR, boOW, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther FROM ${pageLastSiteView} WHERE www=? AND !(pageName REGEXP '^template:.*') AND boOR=1 AND boSiteMap=1`;
+  var sql=`SELECT boTLS, pageName, boOR, boOW, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther FROM ${pageLastSiteView} WHERE www=? AND !(pageName REGEXP '^template:.*') AND boOR=1 AND boSiteMap=1`; 
   var Val=[wwwSite];
   var [err, results]=await this.myMySql.query(sql, Val); if(err) {  res.out500(err); return; }
   var Str=[];
@@ -1173,9 +1187,9 @@ app.reqMonitor=async function(){
   var colImg='';  //if(boImageBUNeeded) colImg='orange';
   var n=objOthersActivity.nImage,  strImg=n==1?objOthersActivity.imageName:n;   if(n) colImg='red';   
 
-  if(colPage) strPage="<span style=\"background-color:"+colPage+"\">"+strPage+"</span>";
-  if(colImg) strImg="<span style=\"background-color:"+colImg+"\">"+strImg+"</span>";
-  res.end("<body style=\"margin: 0px;padding: 0px\">"+strPage+" / "+strImg+"</body>");
+  if(colPage) strPage=`<span style="background-color:${colPage}">${strPage}</span>`;
+  if(colImg) strImg=`<span style="background-color:${colImg}">${strImg}</span>`;
+  res.end(`<body style="margin: 0px;padding: 0px">${strPage} / ${strImg}</body>`);
 
 }
 
@@ -1255,7 +1269,7 @@ app.reqStat=async function(){
 
     // Include site specific JS-files
   //var uSite=req.strSchemeLong+wwwSite;
-  //var keyCache=req.strSite+'/'+leafSiteSpecific, vTmp=CacheUri[keyCache].strHash; if(boDbg) vTmp=0;  Str.push('<script type="module" src="'+uSite+'/'+leafSiteSpecific+'?v='+vTmp+'"></script>');
+  //var keyCache=req.strSite+'/'+leafSiteSpecific, vTmp=CacheUri[keyCache].strHash; if(boDbg) vTmp=0;  Str.push(`<script type="module" src="${uSite}/${leafSiteSpecific}?v=${vTmp}"></script>`);
 
     // Include JS-files
   var StrTmp=['lib.js', 'libClient.js'];
@@ -1264,7 +1278,7 @@ app.reqStat=async function(){
     Str.push(`<script type="module" src="${uSiteCommon}/${pathTmp}?v=${vTmp}" crossorigin="anonymous"></script>`);  // crossorigin : to make request cors (not needed really)
   }
 
-  //Str.push('<script type="module" src="'+uSiteCommon+'/lib/foundOnTheInternet/sortable.js" crossorigin="anonymous"></script>');
+  //Str.push(`<script type="module" src="${uSiteCommon}/lib/foundOnTheInternet/sortable.js" crossorigin="anonymous"></script>`);
 
   Str.push(`</head>
 <body style="margin:0">
@@ -1275,16 +1289,22 @@ app.reqStat=async function(){
 
   var strCol=(nFileWiki==nPage)?"green":"red", strTmpA=`nFileWiki: <font style="background:var(--bg-${strCol})">${nFileWiki}</font>`;
   var strCol=(nFileHtml==nPage)?"green":"red", strTmpB=`nFileHtml: <font style="background:var(--bg-${strCol})">${nFileHtml}</font>`; 
-  var strRow="nPage: <b>"+nPage+"</b>"+" ("+strTmpA+", "+strTmpB+")";
-  Str.push("<p>"+strRow+"</p>");
+  //var strRow=`nPage: <b>${nPage}</b> (${strTmpA}, ${strTmpB})`;
+  // Str.push(`<p>${strRow}</p>`);
+  var strRow=`nPage: <b>${nPage}</b> (${strTmpA}, ${strTmpB})`;
+  Str.push(`<p>${strRow}</p>`);
 
   var strCol=(nFileImage==nImage)?"green":"red", strTmpA=`nFileImage: <font style="background:var(--bg-${strCol})">${nFileImage}</font>`;
-  var strRow="nImage: <b>"+nImage+"</b>"+" ("+strTmpA+")";
-  Str.push("<p>"+strRow+"</p>");
+  //var strRow=`nImage: <b>${nImage}</b> (${strTmpA})`;
+  // Str.push(`<p>${strRow}</p>`);
+  var strRow=`nImage: <b>${nImage}</b> (${strTmpA})`;
+  Str.push(`<p>${strRow}</p>`);
 
   var strCol=(nFileThumb==nThumb)?"green":"red", strTmpA=`nFileThumb: <font style="background:var(--bg-${strCol})">${nFileThumb}</font>`;
-  var strRow="nThumb: <b>"+nThumb+"</b>"+" ("+strTmpA+")";
-  Str.push("<p>"+strRow+"</p>");
+  //var strRow=`nThumb: <b>${nThumb}</b> (${strTmpA})`;
+  // Str.push(`<p>${strRow}</p>`);
+  var strRow=`nThumb: <b>${nThumb}</b> (${strTmpA})`;
+  Str.push(`<p>${strRow}</p>`);
 
 
       // PageWNParentErr

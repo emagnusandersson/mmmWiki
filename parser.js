@@ -10,7 +10,26 @@ var escapeHtml=function(text) {
 app.simpleTags='div|span|font|code|small|sub|sup|u|h1|h2|h3|h4|h5|h6|s';
 
 app.STARTCHAR=String.fromCharCode(1);  app.ENDCHAR=String.fromCharCode(2);
-app.STARTCHARSTR='\\01';  app.ENDCHARSTR='\\02';
+app.STARTCHARSTR='\\01';  app.ENDCHARSTR='\\02';  // Used in RegExp
+
+
+  // Used for creating temporary tags
+app.MyTagger={}
+MyTagger.singleI=function(tag, i){
+  return `${STARTCHAR}${tag}${i}${ENDCHAR}`;
+}
+MyTagger.range=function(tag, text){
+  return `${STARTCHAR}${tag}${ENDCHAR}${text}${STARTCHAR}/${tag}${ENDCHAR}`;
+}
+MyTagger.rangeI=function(tag, i, text){
+  return `${STARTCHAR}${tag}${i}${ENDCHAR}${text}${STARTCHAR}/${tag}${i}${ENDCHAR}`;
+}
+MyTagger.rangeIJ=function(tag, i, j, text){
+  return `${STARTCHAR}${tag}${i}_${j}${ENDCHAR}${text}${STARTCHAR}/${tag}${i}_${j}${ENDCHAR}`; 
+}
+// return MyTagger.singleI('template', i);
+// return MyTagger.range('bold', n);
+// return MyTagger.rangeI('iLink', i, innerText);
 
 app.Parser=function(text, boTrustEditors){
   this.boTrustEditors=boTrustEditors;
@@ -79,16 +98,17 @@ Parser.prototype.renameILinkOrImage = function(text, strILink='', strILinkN='', 
   text = text.replace(RegExp("<pre>([\\s\\S]*?)<\/pre>",'ig'),thisChanged(this.replacePreCB,this)); 
     //Replace pre-sections (<pre></pre>) with temporary markups (although not "spacePre" (see below))
   
-  text=text.replace(/([^\[])\[([^\[])/g, '$1' +STARTCHAR +'singleLBracket' +ENDCHAR +'$2');   //Temporary markups of single left brackets. If you know any better way to handle brackets, doublebrackets etc. you can change all this. Especially how to handle single brackets in linktext etc, at the same time as handling links in imagecaptions.
-  text=text.replace(/([^\]])\]([^\]])/g,'$1' +STARTCHAR +'singleRBracket' +ENDCHAR +'$2');    //Temporary markups of single right brackets.  
+
+  text=text.replace(/([^\[])\[([^\[])/g, `$1${STARTCHAR}singleLBracket${ENDCHAR}$2`);  //Temporary markups of single left brackets. If you know any better way to handle brackets, doublebrackets etc. you can change all this. Especially how to handle single brackets in linktext etc, at the same time as handling links in imagecaptions.
+  text=text.replace(/([^\]])\]([^\]])/g,`$1${STARTCHAR}singleRBracket${ENDCHAR}$2`);    //Temporary markups of single right brackets.  
   text = text.replace(/\[\[([^\[\]]+?)\]\]/g ,thisChanged(this.replaceILinkRenameCB,this));  //Replace internal links with temporary markups.
   text = text.replace(/\[\[([^\[\]]+?)\]\]/g ,thisChanged(this.replaceILinkRenameCB,this));  //Replace internal links with temporary markups.
 
   text = text.replace(/\[\[ *image *:(.+?)\]\]/ig,thisChanged(this.replaceImageRenameCB,this));   //Replace images with temporary markups.
   
-  
-  text = text.replace(RegExp(STARTCHARSTR +'img(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/img(\\1)' +ENDCHARSTR,'g'), thisChanged(this.putBackImageRenameCB,this)); //Put back Images   
-  text = text.replace(RegExp(STARTCHARSTR +'iLink(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/iLink(\\1)' +ENDCHARSTR,'g') ,thisChanged(this.putBackILinkRenameCB,this)); //Put back Internal links
+
+  text = text.replace(RegExp(`${STARTCHARSTR}img(\\d+)${ENDCHARSTR}([\\s\\S]*?)${STARTCHARSTR}\/img(\\1)${ENDCHARSTR}`,'g'), thisChanged(this.putBackImageRenameCB,this)); //Put back Images   
+  text = text.replace(RegExp(`${STARTCHARSTR}iLink(\\d+)${ENDCHARSTR}([\\s\\S]*?)${STARTCHARSTR}\/iLink(\\1)${ENDCHARSTR}`,'g') ,thisChanged(this.putBackILinkRenameCB,this)); //Put back Internal links
 
   //
   // Put back all the removed stuff
@@ -117,11 +137,14 @@ Parser.prototype.replaceILinkRenameCB=function(m,n){
   if(this.strILink==pageLikeWrittenLC) pageLikeWritten=this.strILinkN;
   else if(this.boSpaceOrUnderscore && this.strILinkWSpace==pageLikeWrittenLC) pageLikeWritten=this.strILinkNWSpace;    // If boSpaceOrUnderscore then both versions must be compared
   this.arrILink[i]=[pageLikeWritten, 0];
-  return STARTCHAR +'iLink' +i +ENDCHAR +innerText +STARTCHAR +'/iLink' +i +ENDCHAR;
+  //return STARTCHAR +'iLink' +i +ENDCHAR +innerText +STARTCHAR +'/iLink' +i +ENDCHAR;
+  //return `${STARTCHAR}iLink${i}${ENDCHAR}${innerText}${STARTCHAR}/iLink${i}${ENDCHAR}`;
+  return MyTagger.rangeI('iLink', i, innerText);
 }
 Parser.prototype.putBackILinkRenameCB=function(m,n,o){
   var pageLikeWritten=this.arrILink[n][0], text=o.length?'|'+o:'';
-  return '[[' +pageLikeWritten +text +']]';
+  //return '[[' +pageLikeWritten +text +']]';
+  return `[[${pageLikeWritten}${text}]]`;
 }
 
     // images
@@ -133,12 +156,15 @@ Parser.prototype.replaceImageRenameCB=function(m,n){
   if(this.strImage==nameLC) name=this.strImageN;
   else if(this.boSpaceOrUnderscoreImage && this.strImageWSpace==nameLC) name=this.strImageNWSpace;    // If boSpaceOrUnderscoreImage then both versions must be compared
   this.arrImageLink[i]=name;
-  return STARTCHAR +'img' +i +ENDCHAR +partsTmp.join('|') +STARTCHAR +'/img' +i +ENDCHAR; 
+  //return STARTCHAR +'img' +i +ENDCHAR +partsTmp.join('|') +STARTCHAR +'/img' +i +ENDCHAR; 
+  //return `${STARTCHAR}img${i}${ENDCHAR}${partsTmp.join('|')}${STARTCHAR}/img${i}${ENDCHAR}`;
+  return MyTagger.rangeI('img', i, partsTmp.join('|'));
 }
 Parser.prototype.putBackImageRenameCB=function(m,i,o){
   var name=this.arrImageLink[i];
   if(o.length) o='|'+o;
-  return '[[image:' +name +o +']]';
+  //return '[[image:' +name +o +']]';
+  return `[[image:${name}${o}]]`;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -189,8 +215,8 @@ Parser.prototype.parse = function(objTemplate) {
   // Remove more stuff
   //
   
-  text=text.replace(/([^\[])\[([^\[])/g, '$1' +STARTCHAR +'singleLBracket' +ENDCHAR +'$2');   //Temporary markups of single left brackets. If you know any better way to handle brackets, doublebrackets etc. you can change all this. Especially how to handle single brackets in linktext etc, at the same time as handling links in imagecaptions.
-  text=text.replace(/([^\]])\]([^\]])/g,'$1' +STARTCHAR +'singleRBracket' +ENDCHAR +'$2');    //Temporary markups of single right brackets.  
+  text=text.replace(/([^\[])\[([^\[])/g, `$1${STARTCHAR}singleLBracket${ENDCHAR}$2`);   //Temporary markups of single left brackets. If you know any better way to handle brackets, doublebrackets etc. you can change all this. Especially how to handle single brackets in linktext etc, at the same time as handling links in imagecaptions. 
+  text=text.replace(/([^\]])\]([^\]])/g,`$1${STARTCHAR}singleRBracket${ENDCHAR}$2`);    //Temporary markups of single right brackets.  
   text = text.replace(/\[\[ *((?:wikipedia)|(?:wiktionary)) *:([^\n]+?)\]\]/ig,thisChanged(this.replaceInterWikiLinkCB,this));  //Replace interwiki links with temporary markups.
   text = text.replace(/\[\[([^\[\]]+?)\]\]/g ,thisChanged(this.replaceILinkCB,this));  //Replace internal links with temporary markups.
 
@@ -212,7 +238,7 @@ Parser.prototype.parse = function(objTemplate) {
   
   while(1){
     this.boSimpleTagReplaced=0;
-    text = text.replace(RegExp("<("+simpleTags+")\\b([^\n>]*?)>([\\s\\S]*?)<\/\\1>",'ig'), thisChanged(this.replaceTagCB,this));
+    text = text.replace(RegExp(`<(${simpleTags})\\b([^\n>]*?)>([\\s\\S]*?)<\/\\1>`,'ig'), thisChanged(this.replaceTagCB,this));
     if(this.boSimpleTagReplaced==0) break;
   }
   
@@ -311,31 +337,31 @@ Parser.prototype.endParse = function(StrChild) {
   text = text.replace(RegExp(STARTCHARSTR +'nowiki(\\d+)' +ENDCHARSTR,'g'),thisChanged(this.putBackNoWikiCB,this));  //Put back nowiki sections
     
   text = text.replace(RegExp(STARTCHARSTR +'style(\\d+)'+ENDCHARSTR,'g'),thisChanged(this.putBackStyleCB,this));    
-  text = text.replace(RegExp(STARTCHARSTR +'comment(\\d+)'+ENDCHARSTR,'g'),thisChanged(this.putBackCommentCB,this));    
-  text = text.replace(RegExp(STARTCHARSTR +'iLink(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/iLink(\\1)' +ENDCHARSTR,'g') ,thisChanged(this.putBackILinkCB,this)); //Put back Internal links
-  text = text.replace(RegExp(STARTCHARSTR +'iWLink(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/iWLink(\\1)' +ENDCHARSTR,'g') ,thisChanged(this.putBackInterWikiLinkCB,this));
-  text = text.replace(RegExp(STARTCHARSTR +'eLink(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/eLink(\\1)' +ENDCHARSTR,'g'),thisChanged(this.putBackExternalLinkCB,this)); 
-  text = text.replace(RegExp(STARTCHARSTR +'eLink(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/eLink(\\1)' +ENDCHARSTR,'g'),thisChanged(this.putBackExternalLinkCB,this)); // Two times since we call replaceExternalLinkCB two times
+  text = text.replace(RegExp(STARTCHARSTR +'comment(\\d+)'+ENDCHARSTR,'g'),thisChanged(this.putBackCommentCB,this));
+  text = text.replace(RegExp(`${STARTCHARSTR}iLink(\\d+)${ENDCHARSTR}([\\s\\S]*?)${STARTCHARSTR}\/iLink(\\1)${ENDCHARSTR}`,'g') ,thisChanged(this.putBackILinkCB,this)); //Put back Internal links
+  text = text.replace(RegExp(`${STARTCHARSTR}iWLink(\\d+)${ENDCHARSTR}([\\s\\S]*?)${STARTCHARSTR}\/iWLink(\\1)${ENDCHARSTR}`,'g') ,thisChanged(this.putBackInterWikiLinkCB,this));
+  text = text.replace(RegExp(`${STARTCHARSTR}eLink(\\d+)${ENDCHARSTR}([\\s\\S]*?)${STARTCHARSTR}\/eLink(\\1)${ENDCHARSTR}`,'g'),thisChanged(this.putBackExternalLinkCB,this)); 
+  text = text.replace(RegExp(`${STARTCHARSTR}eLink(\\d+)${ENDCHARSTR}([\\s\\S]*?)${STARTCHARSTR}\/eLink(\\1)${ENDCHARSTR}`,'g'),thisChanged(this.putBackExternalLinkCB,this)); // Two times since we call replaceExternalLinkCB two times
   //text = text.replace(/\x01eLink(\d+)\x02([\s\S]*?)\x01\/eLink(\1)\x02/g, thisChanged(this.putBackExternalLinkCB,this)); 
-  text = text.replace(RegExp(STARTCHARSTR +'img(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/img(\\1)' +ENDCHARSTR,'g'), thisChanged(this.putBackImageCB,this)); //Put back Images  
-  text = text.replace(RegExp(STARTCHARSTR +'gall(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/gall(\\1)' +ENDCHARSTR,'g'), thisChanged(this.putBackGalleryCB,this)); //Put back Gallerys 
-  text = text.replace(RegExp(STARTCHARSTR +'hl(\\d+)' +ENDCHARSTR +'([\\s\\S]*?)' +STARTCHARSTR +'\/hl(\\1)' +ENDCHARSTR,'g'), thisChanged(this.putBackHLCB,this)); //Put back HL  
+  text = text.replace(RegExp(`${STARTCHARSTR}img(\\d+)${ENDCHARSTR}([\\s\\S]*?)${STARTCHARSTR}\/img(\\1)${ENDCHARSTR}`,'g'), thisChanged(this.putBackImageCB,this)); //Put back Images  
+  text = text.replace(RegExp(`${STARTCHARSTR}gall(\\d+)${ENDCHARSTR}([\\s\\S]*?)${STARTCHARSTR}\/gall(\\1)${ENDCHARSTR}`,'g'), thisChanged(this.putBackGalleryCB,this)); //Put back Gallerys 
+  text = text.replace(RegExp(`${STARTCHARSTR}hl(\\d+)${ENDCHARSTR}([\\s\\S]*?)${STARTCHARSTR}\/hl(\\1)${ENDCHARSTR}`,'g'), thisChanged(this.putBackHLCB,this)); //Put back HL  
   
 
 
-  text = text.replace(RegExp(STARTCHARSTR+'bold'+ENDCHARSTR+'([\\s\\S]*?)'+STARTCHARSTR+'\/bold'+ENDCHARSTR,'g'), thisChanged(this.putBackBoldCB,this));
-  text = text.replace(RegExp(STARTCHARSTR+'italic'+ENDCHARSTR+'([\\s\\S]*?)'+STARTCHARSTR+'\/italic'+ENDCHARSTR,'g'), thisChanged(this.putBackItalicCB,this));
-  text = text.replace(RegExp(STARTCHARSTR+'heading(\\d+)'+ENDCHARSTR+'([\\s\\S]*?)'+STARTCHARSTR+'\/heading\\1'+ENDCHARSTR,'g'), thisChanged(this.putBackHeadingCB,this));
+  text = text.replace(RegExp(`${STARTCHARSTR}bold${ENDCHARSTR}([\\s\\S]*?)${STARTCHARSTR}\/bold${ENDCHARSTR}`,'g'), thisChanged(this.putBackBoldCB,this));
+  text = text.replace(RegExp(`${STARTCHARSTR}italic${ENDCHARSTR}([\\s\\S]*?)${STARTCHARSTR}\/italic${ENDCHARSTR}`,'g'), thisChanged(this.putBackItalicCB,this));
+  text = text.replace(RegExp(`${STARTCHARSTR}heading(\\d+)${ENDCHARSTR}([\\s\\S]*?)${STARTCHARSTR}\/heading\\1${ENDCHARSTR}`,'g'), thisChanged(this.putBackHeadingCB,this));
   
   while(1){
     this.boSimpleTagReplaced=0;
-    text = text.replace(RegExp(STARTCHARSTR+"("+simpleTags+")"+'(\\d+)'+ENDCHARSTR+'([\\s\\S]*?)'+STARTCHARSTR+'\/\\1\\2'+ENDCHARSTR,'g'), thisChanged(this.putBackTagCB,this));
+    text = text.replace(RegExp(`${STARTCHARSTR}(${simpleTags})(\\d+)${ENDCHARSTR}([\\s\\S]*?)${STARTCHARSTR}\/\\1\\2${ENDCHARSTR}`,'g'), thisChanged(this.putBackTagCB,this));
     if(this.boSimpleTagReplaced==0) break;
   }
 
 
-  text = text.replace(RegExp(STARTCHARSTR+"iframe(\\d+)"+ENDCHARSTR+'([\\s\\S]*?)'+STARTCHARSTR+'\/iframe\\1'+ENDCHARSTR,'g'), thisChanged(this.putBackIframeCB,this));
-  text = text.replace(RegExp(STARTCHARSTR+"video(\\d+)" +ENDCHARSTR+'([\\s\\S]*?)'+STARTCHARSTR+'\/video\\1'+ENDCHARSTR,'g'), thisChanged(this.putBackVideoCB,this));
+  text = text.replace(RegExp(`${STARTCHARSTR}iframe(\\d+)${ENDCHARSTR}([\\s\\S]*?)${STARTCHARSTR}\/iframe\\1${ENDCHARSTR}`,'g'), thisChanged(this.putBackIframeCB,this));
+  text = text.replace(RegExp(`${STARTCHARSTR}video(\\d+)${ENDCHARSTR}([\\s\\S]*?)${STARTCHARSTR}\/video\\1${ENDCHARSTR}`,'g'), thisChanged(this.putBackVideoCB,this));
   text = text.replace(RegExp(STARTCHARSTR+"source(\\d+)"+ENDCHARSTR,'g'), thisChanged(this.putBackVideoSourceCB,this));
   text = text.replace(RegExp(STARTCHARSTR+"imgRaw(\\d+)"+ENDCHARSTR,'g'), thisChanged(this.putBackImgRawCB,this));
 
@@ -379,8 +405,8 @@ Parser.prototype.translateNestedLists=function(text){
     var j=0;
     while(true) {
       if(j==lines.length ) { break;}
-      //if ( preg_match( '/^('+preg_quote(chars[i])+'*)(.*?)$/' , lines[j] , matches ) ) {
-      var tmpStr='^(' +chars[i] +'*)(.*?)$';
+      //if ( preg_match( `/^(${preg_quote(chars[i])}*)(.*?)$/` , lines[j] , matches ) ) {
+      var tmpStr=`^(${chars[i]}*)(.*?)$`;
       var regTmp=RegExp(tmpStr), matches=lines[j].match(regTmp);
       if(matches) {
         var nLevel = matches[1].length;
@@ -418,7 +444,7 @@ Parser.prototype.translateDescriptionList=function(text){
   var j=0;
   while(true) {
     if(j==lines.length ) { break;}
-    //if ( preg_match( '/^('+preg_quote(chars[i])+'*)(.*?)$/' , lines[j] , matches ) ) {
+    //if ( preg_match( `/^(${preg_quote(chars[i])}*)(.*?)$/` , lines[j] , matches ) ) {
     var tmpStr='^(([;:])*)(.*?)$';
     var regTmp=RegExp(tmpStr), matches=lines[j].match(regTmp);
     myLabel: if(matches) {
@@ -498,7 +524,9 @@ Parser.prototype.replaceImageCB=function(m,n){
   this.arrImageWidth[i]=width;
   this.arrImageHAlign[i]=halign;
   
-  return STARTCHAR +'img' +i +ENDCHAR +capture +STARTCHAR +'/img' +i +ENDCHAR; 
+  //return STARTCHAR +'img' +i +ENDCHAR +capture +STARTCHAR +'/img' +i +ENDCHAR; 
+  //return `${STARTCHAR}img${i}${ENDCHAR}${capture}${STARTCHAR}/img${i}${ENDCHAR}`;
+  return MyTagger.rangeI('img', i, capture);
 }
 
 Parser.prototype.putBackImageCB=function(m,i,caption){
@@ -506,32 +534,33 @@ Parser.prototype.putBackImageCB=function(m,i,caption){
   var file=this.arrImageLink[i];
   var width=this.arrImageWidth[i];
   //confirm(width.length+' '+tmp.length)
-  //var widthstr;  if(width.length>0) widthstr='width=' +width; else widthstr='';
-  //var str='<a href="' +file +'" class=image><img src="' +file +'" ' +widthstr +' class=thumbimage></a>';
+  //var widthstr;  if(width.length>0) widthstr=`width=${width}`; else widthstr='';
+  //var str=`<a href="${file}" class=image><img src="${file}" ${widthstr} class=thumbimage></a>`;
   var thumb, thumb2, strSrc, strStyle, strClass;
   if(width.length) {
     thumb=width+'px-'+file;
-    //strStyle='style="max-width:'+width+'px"';
-    strStyle='style="width:'+width+'px"';
-    strClass='class=thumbimage';
-    thumb2=(2*width)+'px-'+file;
-    //strSrc='src="'+thumb+'"';
-    strSrc='srcset="'+thumb+' 1x, '+thumb2+' 2x"';
-  } else { thumb=file; strStyle=""; strClass=""; strSrc='src="'+thumb+'"'}
-  var str='<a href="'+file+'" class=image><img '+strSrc+' '+strStyle+' '+strClass+' alt="'+file+'"></a>';
+    strStyle=`style="width:${width}px"`;
+    strClass=`class="thumbimage checkerboard"`;
+    thumb2=`${2*width}px-${file}`;
+    //strSrc=`src="${thumb}"`;
+    strSrc=`srcset="${thumb} 1x, ${thumb2} 2x"`;
+  } else { thumb=file; strStyle=""; strClass="";
+    strSrc=`src="${thumb}"`
+  }
+  var str=`<a href="${file}" class=image><img ${strSrc} ${strStyle} ${strClass} alt="${file}"></a>`;
   var boFrame=this.arrImageFrame[i], halign=this.arrImageHAlign[i];
   var strAlignClass, strFrameWidth, strOuterFrameClass, strInnerFrameClass, strCaptionClass;
   if(boFrame) {
     if(halign=='right') strAlignClass='tright'; else if(halign=='left') strAlignClass='tleft'; else if(halign=='center') strAlignClass='center'; else strAlignClass=''; 
-    if(width.length>0) strFrameWidth='style="width:' +(Number(width)+2) +'px;"'; else strFrameWidth='';
+    if(width.length>0) strFrameWidth=`style="width:${Number(width)+2}px;"`; else strFrameWidth='';
     if(halign=='center' && width=='') {console.log("Is this right really?!? In putBackImageCB: halign=='center' && width==''"); strOuterFrameClass='noFrame';strInnerFrameClass='noFrame';strCaptionClass='noFrameCaption';} else {strOuterFrameClass='thumb';strInnerFrameClass='thumbinner';strCaptionClass='thumbcaption';}
     
-    str='<div class="' +strOuterFrameClass +' ' +strAlignClass +'"><div class=' +strInnerFrameClass +' ' +strFrameWidth +'>' +str +'<div class=' +strCaptionClass +'>' +caption +'</div></div></div>';        
+    str=`<div class="${strOuterFrameClass} ${strAlignClass}"><div class=${strInnerFrameClass} ${strFrameWidth}>${str}<div class=${strCaptionClass}>${caption}</div></div></div>`;        
   }
   else {
     if(halign=='right') strAlignClass='floatright'; else if(halign=='left') strAlignClass='floatleft'; else if(halign=='center') strAlignClass='floatcenter'; else strAlignClass='floatnone';
-    if(strAlignClass=='floatnone') str='<span class='+strAlignClass+'>' +str +'</span>';
-    else str='<div class='+strAlignClass+'>' +str +'</div>';
+    if(strAlignClass=='floatnone') str=`<span class=${strAlignClass}>${str}</span>`;
+    else str=`<div class=${strAlignClass}>${str}</div>`;
   }
   
   return str;
@@ -551,7 +580,7 @@ Parser.prototype.replaceILinkCB=function(m,n){
   
   this.arrILink[i]=[pageLikeWritten, pageLikeQuered];
   
-  return STARTCHAR +'iLink' +i +ENDCHAR +innerText +STARTCHAR +'/iLink' +i +ENDCHAR;
+  return MyTagger.rangeI('iLink', i, innerText);
 }
 
 Parser.prototype.putBackILinkCB=function(m,n,o){
@@ -565,9 +594,8 @@ Parser.prototype.putBackILinkCB=function(m,n,o){
   var pageCanonical=pageLikeQuered; if(boExist) pageCanonical=this.arrExistingSub[ind];
   var strClass='', strNoFollow=''; if(!boExist) { strClass='class=stub'; strNoFollow='rel="nofollow"'; }
   
-  return '<a href="' +pageCanonical +'" '+strClass+' '+strNoFollow+'>' +text +'</a>';
+  return `<a href="${pageCanonical}" ${strClass} ${strNoFollow}>${text}</a>`;
 }
-
 
 
 
@@ -581,7 +609,7 @@ Parser.prototype.replaceInterWikiLinkCB=function(m,n,o){
   var innerText; if(nParts>1)  innerText=parts[1];  else innerText='';
   var pagename=parts[0].trim();  //Wait with the convertion to lowercase and putting in underscores, since pagename might be used as linktext
   this.arrInterWikiLink[i]=pagename;
-  return STARTCHAR +'iWLink' +i +ENDCHAR +innerText +STARTCHAR +'/iWLink' +i +ENDCHAR;
+  return MyTagger.rangeI('iWLink', i, innerText);
 }
 Parser.prototype.putBackInterWikiLinkCB=function(m,n,o){
   var i=n;
@@ -595,7 +623,7 @@ Parser.prototype.putBackInterWikiLinkCB=function(m,n,o){
   //str1=strtr(pagename,' ','_');
 
   var strClass='class=wikipedia';
-  return '<a href="' +str0 +str1 +'" ' +strClass +'>' +text +'</a>';
+  return `<a href="${str0}${str1}" ${strClass}>${text}</a>`;
 }
 
 
@@ -608,7 +636,7 @@ Parser.prototype.putBackInterWikiLinkCB=function(m,n,o){
 //Parser.prototype.putBackExternalLinkCB=function(m,n,o){
   //var linkname=this.arrExtLink[n], text;    if(o.length>0) {text=o;} else {text=linkname;}
   //var strClass='class="external"';
-  //return '<a href="' +linkname +'" ' +strClass +'>' +text +'</a>';
+  //return `<a href="${linkname}" ${strClass}>${text}</a>`;
 //}
     // externalLink
 Parser.prototype.replaceExternalLinkCB=function(m,n,o){
@@ -616,24 +644,28 @@ Parser.prototype.replaceExternalLinkCB=function(m,n,o){
   var boOK=validator.isURL(n, {protocols: ['http','https'], require_tld:false}); if(!boOK) return '<link-url does not pass validator test>';
   var str1; this.arrExtLink.push(n);   if(typeof o=='string') str1=o; else str1=''; 
   //str1=myJSEscape(str1);
-  return STARTCHAR +'eLink' +i +ENDCHAR +str1 +STARTCHAR +'/eLink' +i +ENDCHAR;
+  return MyTagger.rangeI('eLink', i, str1);
 }
 Parser.prototype.putBackExternalLinkCB=function(m,n,o){
   var linkname=this.arrExtLink[n], text;    if(o.length>0) {text=o;} else {text=linkname;}
   var strClass='class="external"';
-  return '<a href="' +linkname +'" ' +strClass +'>' +text +'</a>';
+  return `<a href="${linkname}" ${strClass}>${text}</a>`;
 }
 
     // comments
 Parser.prototype.replaceCommentCB=function(m){
-    var i=this.arrComment.length;  this.arrComment[i]=m;  return STARTCHAR+'comment'+i+ENDCHAR;  }
+  var i=this.arrComment.length;  this.arrComment[i]=m;
+  //return STARTCHAR+'comment'+i+ENDCHAR;
+  return MyTagger.singleI('comment', i);
+}
 Parser.prototype.putBackCommentCB=function(m,n){  return this.arrComment[n];  }
 
     // nowiki
 Parser.prototype.replaceNoWikiCB=function(m,n){
   var i=this.arrNoWiki.length;
   this.arrNoWiki[i]=n;
-  return STARTCHAR +'nowiki' +i +ENDCHAR;
+  //return STARTCHAR+'nowiki' +i +ENDCHAR;
+  return MyTagger.singleI('nowiki', i);
 }
 Parser.prototype.putBackNoWikiCB=function(m,n){  return this.arrNoWiki[n];  }
 
@@ -646,7 +678,8 @@ Parser.prototype.replaceTemplateCB=function(m,n){
   templateName=escapeHtml(templateName); //to prevent scripttags in template name
   var i=this.bagTemplate.length;   //All templates (red or blue) are stored, So that one can later can create a list of them in the edit section 
   this.bagTemplate.push([templateName,0]);
-  return STARTCHAR+'template'+i+'/'+ENDCHAR;;
+  return `${STARTCHAR}template${i}/${ENDCHAR}`;
+  //return MyTagger.singleI('template', i);
 }
 
 Parser.prototype.putBackTemplateCB=function(m,n){
@@ -660,7 +693,7 @@ Parser.prototype.putBackTemplateStubsCB=function(m,n){
   var templateName=this.bagTemplate[n][0];
   var templateNameAsQuered='template:'+templateName;
   var strClass='class=stub';
-  return '<a href="'+'/'+templateNameAsQuered+'" '+strClass+'>'+templateNameAsQuered+'</a>';
+  return `<a href="/${templateNameAsQuered}" ${strClass}>${templateNameAsQuered}</a>`;
 }
 
     // htmlSection
@@ -668,7 +701,8 @@ Parser.prototype.replaceHtmlSectionCB=function(m,n){
   if(this.boTrustEditors==0) {return "<htmlsection-tag doesn't work unless the admin disables \"write-access\"/>";}
   var i=this.arrHtmlSection.length;
   this.arrHtmlSection.push(n);
-  return STARTCHAR+'htmlsection'+i+ENDCHAR;
+  //return STARTCHAR+'htmlsection'+i+ENDCHAR;
+  return MyTagger.singleI('htmlsection', i);
 }
 Parser.prototype.putBackHtmlSectionCB=function(m,n){
   return this.arrHtmlSection[n];
@@ -678,12 +712,13 @@ Parser.prototype.putBackHtmlSectionCB=function(m,n){
 Parser.prototype.replacePreCB=function(m,n){
   var i=this.arrPre.length;
   this.arrPre.push(n);
-  return STARTCHAR+'pre'+i+'/'+ENDCHAR;
+  return `${STARTCHAR}pre${i}/${ENDCHAR}`;
+  //return MyTagger.singleI('pre/', i);
 }
-Parser.prototype.putBackPreCB=function(m,n){    return '<pre>'+this.arrPre[n]+'</pre>';  }
+Parser.prototype.putBackPreCB=function(m,n){    return `<pre>${this.arrPre[n]}</pre>`;  }
 
 
-Parser.prototype.translateScriptTag=function(m,n){return '&lt;'+n+'&gt;';}
+Parser.prototype.translateScriptTag=function(m,n){return `&lt;${n}&gt;`;}
 
 
     // style
@@ -691,42 +726,44 @@ Parser.prototype.replaceStyleCB=function(m,n){
   if(this.boTrustEditors==0) {return "<style-tag doesn't work unless the admin disables \"write-access\"/>";}
   var i=this.arrStyle.length;
   this.arrStyle.push(sanitizeStyle(n));
-  return STARTCHAR+'style'+i+ENDCHAR;
+  //return STARTCHAR+'style'+i+ENDCHAR;
+  return MyTagger.singleI('style', i);
 }
-Parser.prototype.putBackStyleCB=function(m,n){  return '<style>'+this.arrStyle[n]+'</style>';  }
+Parser.prototype.putBackStyleCB=function(m,n){  return `<style>${this.arrStyle[n]}</style>`;  }
 
     // simple tags
 Parser.prototype.replaceTagCB=function(m,tag,attr,text){
   this.boSimpleTagReplaced=1;
   var i=this.arrTagAttr.length;
   this.arrTagAttr.push(sanitize(attr,tag));
-  return STARTCHAR+tag+i+ENDCHAR+text+STARTCHAR+"/"+tag+i+ENDCHAR;
+  return MyTagger.rangeI(tag, i, text);
 }
-Parser.prototype.putBackTagCB=function(m,tag,n,text){  
+Parser.prototype.putBackTagCB=function(m,tag,n,text){
   this.boSimpleTagReplaced=1;
   var attr=this.arrTagAttr[n]; 
-  return "<"+tag+" "+attr+">"+text+"</"+tag+">";  
+  return `<${tag} ${attr}>${text}</${tag}>`;  
 }
 
     // br
 Parser.prototype.replaceBRCB=function(m,n){
   var i=this.arrBRAttr.length;
   this.arrBRAttr.push(sanitize(n,'br'));
-  return STARTCHAR+'br'+i+ENDCHAR;
+  //return STARTCHAR+'br'+i+ENDCHAR;
+  return MyTagger.singleI('br', i);
 }
-Parser.prototype.putBackBRCB=function(m,n){    var attr=this.arrBRAttr[n];   return "<br "+attr+">";   }
+Parser.prototype.putBackBRCB=function(m,n){    var attr=this.arrBRAttr[n];   return `<br ${attr}>`;   }
 
     // bold, italic, headings
-Parser.prototype.replaceBoldCB=function(m,n){  return STARTCHAR+'bold'+ENDCHAR+n+STARTCHAR+'/bold'+ENDCHAR;  }
-Parser.prototype.putBackBoldCB=function(m,n){   return '<b>'+n+'</b>';  }
-Parser.prototype.replaceItalicCB=function(m,n){  return STARTCHAR+'italic'+ENDCHAR+n+STARTCHAR+'/italic'+ENDCHAR; }
-Parser.prototype.putBackItalicCB=function(m,n){    return '<i>'+n+'</i>';  }
+Parser.prototype.replaceBoldCB=function(m,n){  return MyTagger.range('bold', n);  }
+Parser.prototype.putBackBoldCB=function(m,n){   return `<b>${n}</b>`;  }
+Parser.prototype.replaceItalicCB=function(m,n){  return MyTagger.range('italic', n); }
+Parser.prototype.putBackItalicCB=function(m,n){    return `<i>${n}</i>`;  }
 Parser.prototype.replaceHeadingCB=function(m,n,o,p){
   var c1=n.length, c2=p.length; if(c1!==c2) return m;
   var c=c1-1; // Since "==" => h1,  "===" => h2 etc.
-  return STARTCHAR+'heading'+c+ENDCHAR+o+STARTCHAR+'/heading'+c+ENDCHAR;
+  return MyTagger.rangeI('heading', c, o);
 }
-Parser.prototype.putBackHeadingCB=function(m,n,o){  return "<h"+n+">"+o+"</h"+n+">";  }
+Parser.prototype.putBackHeadingCB=function(m,n,o){  return `<h${n}>${o}</h${n}>`;  }
 
 
   
@@ -736,11 +773,11 @@ Parser.prototype.replaceIframeCB=function(m,attr,text){
   var i=this.arrIframeAttr.length;
   var attr=sanitize(attr,'iframe');
   this.arrIframeAttr.push(attr);
-  return STARTCHAR+'iframe'+i+ENDCHAR+text+STARTCHAR+"/iframe"+i+ENDCHAR;
+  return MyTagger.rangeI('iframe', i, text);
 }
 Parser.prototype.putBackIframeCB=function(m,n,text){  
   var attr=this.arrIframeAttr[n];
-  return "<iframe "+attr+">"+text+"</iframe>";  
+  return `<iframe ${attr}>${text}</iframe>`;  
 }
 
 
@@ -750,26 +787,27 @@ Parser.prototype.replaceGalleryCB=function(m,text){
   var iGall=this.iGall=this.arrGalleryImageLink.length;
   this.arrGalleryImageLink[iGall]=[];
   text = text.replace(RegExp("^ *file: *(.*?)$",'gmi'), thisChanged(this.replaceImageInGalleryCB,this));
-  return STARTCHAR+'gall'+iGall+ENDCHAR+text+STARTCHAR+'/gall'+iGall+ENDCHAR; 
+  return MyTagger.rangeI('gall', iGall, text);
 }
 Parser.prototype.replaceImageInGalleryCB=function(m,n){ 
   var iGall=this.iGall, j=this.arrGalleryImageLink[iGall].length;
   var parts=n.split('|');
   this.arrGalleryImageLink[iGall].push(parts[0].trim());
   var capture=''; if(parts.length==2) capture=parts[1];
-  return STARTCHAR+'gallImg'+iGall+'_'+j+ENDCHAR+capture+STARTCHAR+'/gallImg'+iGall+'_'+j+ENDCHAR; 
+  return MyTagger.rangeIJ('gallImg', iGall, j, capture);
 }
 Parser.prototype.putBackGalleryCB=function(m,n,text){
-  text = text.replace(RegExp(STARTCHARSTR+'gallImg(\\d+)_(\\d+)'+ENDCHARSTR+'(.*?)'+STARTCHARSTR+'\/gallImg(\\1)_(\\2)'+ENDCHARSTR,'g'), thisChanged(this.putBackImageInGalleryCB,this) ); //Put back Imges
-  return "<ul class=gallery>"+text+"</ul>";
+  text = text.replace(RegExp(`${STARTCHARSTR}gallImg(\\d+)_(\\d+)${ENDCHARSTR}(.*?)${STARTCHARSTR}\/gallImg(\\1)_(\\2)${ENDCHARSTR}`,'g'), thisChanged(this.putBackImageInGalleryCB,this) ); //Put back Images
+  return `<ul class=gallery>${text}</ul>`;
 }
-Parser.prototype.putBackImageInGalleryCB=function(m,n,o,caption){
+Parser.prototype.putBackImageInGalleryCB=function(m,n,o,caption){  // changed to new strings
   var i=n,  j=o, uOrg=this.arrGalleryImageLink[i][j];
-  var width=150,  uThumb=""+width+"apx-"+uOrg+"";
+  var width=150,  uThumb=`${width}apx-${uOrg}`;
 
-  var strStyleLi="style=\"width:"+width+"px\"";
-  var strStyle="style=\"max-width:"+width+"px;max-height:"+width+"px\"";
-  var str="<li class=gallerybox "+strStyleLi+" ><a href="+uOrg+"><img "+strStyle+" src=\""+uThumb+"\"/></a><div>"+caption+"</div></li>";
+  var strStyleLi=`style="width:${width}px"`;
+  var strStyle=`style="max-width:${width}px; max-height:${width}px"`;
+  var strClass=`class="checkerboard"`;
+  var str=`<li class=gallerybox ${strStyleLi} ><a href=${uOrg}><img ${strClass} ${strStyle} src="${uThumb}"/></a><div>${caption}</div></li>`;  
   return str;
 }
 
@@ -779,51 +817,50 @@ Parser.prototype.replaceHLCB=function(m,text){
   var iHL=this.iHL=this.arrHLAttr.length; 
   this.arrHLAttr[iHL]=[];
   text = text.replace(RegExp("<hli(.*?)>([\\s\\S]*?)<\/hli>",'ig'), thisChanged(this.replaceHLItemCB,this));
-  return STARTCHAR+'hl'+iHL+ENDCHAR+text+STARTCHAR+'/hl'+iHL+ENDCHAR; 
+  return MyTagger.rangeI('hl', iHL, text);
 }
 Parser.prototype.replaceHLItemCB=function(m,n,text){ 
   var iHL=this.iHL, j=this.arrHLAttr[iHL].length;
   this.arrHLAttr[iHL].push(n.trim());
-  return STARTCHAR+'hli'+iHL+'_'+j+ENDCHAR+text+STARTCHAR+'/hli'+iHL+'_'+j+ENDCHAR; 
+  return MyTagger.rangeIJ('hli', iHL, j, text);
 }
 Parser.prototype.putBackHLCB=function(m,n,text){
-  text = text.replace(RegExp(STARTCHARSTR+'hli(\\d+)_(\\d+)'+ENDCHARSTR+'([\\s\\S]*?)'+STARTCHARSTR+'\/hli(\\1)_(\\2)'+ENDCHARSTR,'g'), thisChanged(this.putBackItemInHLCB,this) ); //Put back Imges
-  return "<ul class=HL>"+text+"</ul>";
+  text = text.replace(RegExp(`${STARTCHARSTR}hli(\\d+)_(\\d+)${ENDCHARSTR}([\\s\\S]*?)${STARTCHARSTR}\/hli(\\1)_(\\2)${ENDCHARSTR}`,'g'), thisChanged(this.putBackItemInHLCB,this) ); //Put back Images
+  return `<ul class=HL>${text}</ul>`;
 }
 Parser.prototype.putBackItemInHLCB=function(m,n,o,text){
   var i=n, j=o, attr=this.arrHLAttr[i][j];
-  return "<li class=HLbox "+attr+">"+text+"</li>";
+  return `<li class=HLbox ${attr}>${text}</li>`;
 }
 
     // video
 Parser.prototype.replaceVideoCB=function(m,attr,text){
   var i=this.arrVideoAttr.length;
   this.arrVideoAttr.push(sanitize(attr,'video'));
-  return STARTCHAR+'video'+i+ENDCHAR+text+STARTCHAR+"/video"+i+ENDCHAR;
+  return MyTagger.rangeI('video', i, text);
 }
 Parser.prototype.putBackVideoCB=function(m,n,text){  
   var attr=this.arrVideoAttr[n];
-  return "<video "+attr+">"+text+"</video>";  
+  return `<video ${attr}>${text}</video>`;  
 }
 Parser.prototype.replaceVideoSourceCB=function(m,attr){
   var i=this.arrVideoSourceAttr.length;
   this.arrVideoSourceAttr.push(sanitize(attr,'source'));
-  return STARTCHAR+'source'+i+ENDCHAR;
+  return MyTagger.singleI('source', i);
 }
 Parser.prototype.putBackVideoSourceCB=function(m,n){  
   var attr=this.arrVideoSourceAttr[n];
-  return "<source "+attr+">";  
+  return `<source ${attr}>`;  
 }
 Parser.prototype.replaceImgRawCB=function(m,attr){
   var i=this.arrImgRawAttr.length;
   this.arrImgRawAttr.push(sanitize(attr,'img'));
-  return STARTCHAR+'imgRaw'+i+ENDCHAR;
+  return MyTagger.singleI('imgRaw',i)
 }
 Parser.prototype.putBackImgRawCB=function(m,n){  
   var attr=this.arrImgRawAttr[n];
-  return "<img "+attr+">";  
+  return `<img ${attr}>`;  
 }
-
 
 
 Parser.prototype.getStrTemplate=function(){ // Returns [name, name ....] 

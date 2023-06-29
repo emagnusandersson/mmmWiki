@@ -75,11 +75,11 @@ app.helpTextExit=function(){
   -p, --port [PORT]   Port number (default: 5000)
 
   --mongodb [MONGODB_ACTION]  Run a mongodb action.
-    MONGODB_ACTION=`+StrValidMongoDBCalls.join('|')+`
+    MONGODB_ACTION=${StrValidMongoDBCalls.join('|')}
 
   --load [fileOrDirPath]
-    Looks for (and loads) pages (txt-files), image-files (`+strImageExtWComma+`), meta-files (csv-files) or zip-files containing the said file formats. (although no zip-files in the zip-files)
-    The meta-files must be named any of: `+StrValidLoadMeta.join(', ')+`.
+    Looks for (and loads) pages (txt-files), image-files (${strImageExtWComma}), meta-files (csv-files) or zip-files containing the said file formats. (although no zip-files in the zip-files)
+    The meta-files must be named any of: ${StrValidLoadMeta.join(', ')}.
     fileOrDirPath is a path relative to the "mmmWikiBackUp"-folder (a sibling of the "mmmWiki"-program folder).
     If fileOrDirPath is a folder, then the files in that folder is loaded.
     The fileOrDirPath-string is "splitted" on "+"-characters, (so one can supply multiple files like: fileA+fileB+fileC) .
@@ -158,7 +158,7 @@ var strMd5Config=md5(strConfig);
 eval(strConfig);
 if(typeof strSalt=='undefined') {console.error("typeof strSalt=='undefined'"); process.exit(-1); }
 
-var redisVar='str'+ucfirst(strAppName)+'Md5Config';
+var redisVar=`str${ucfirst(strAppName)}Md5Config`;
 //var [err,tmp]=await cmdRedis('GET',[redisVar]); if(err) {console.error(err); process.exit(-1);}
 var [err,tmp]=await getRedis(redisVar); if(err) {console.error(err); process.exit(-1);}
 
@@ -239,7 +239,7 @@ if(typeof argv.mongodb!='undefined'){
 
 var regexpLib=RegExp('^/(stylesheets|lib|Site)/');
 var regexpLooseJS=RegExp('^/(lib|libClient|client|filter|common)\\.js'); //siteSpecific
-var regexpImage=RegExp('^/[^/]*\\.('+strImageExtWBar+')$','i');
+var regexpImage=RegExp(`^/[^/]*\\.(${strImageExtWBar})$`,'i');
 var regexpVideo=RegExp('^/[^/]*\\.(mp4|ogg|webm)$','i');
 
 var regexpHerokuDomain=RegExp("\\.herokuapp\\.com$");
@@ -248,7 +248,7 @@ var regexpAFDomain=RegExp("\\.af\\.cm$");
 
 var StrPako=['pako', 'pako_deflate', 'pako_inflate'], strMin=1?'':'.min'; //boDbg
 for(var i=0;i<StrPako.length;i++){
-  StrPako[i]='bower_components/pako/dist/'+StrPako[i]+strMin+'.js';
+  StrPako[i]=`bower_components/pako/dist/${StrPako[i]}${strMin}.js`;
 }
 var regexpPakoJS=RegExp('^/bower_components/pako/dist/pako(|_deflate|_inflate)'); //siteSpecific
 
@@ -339,7 +339,7 @@ redis.defineCommand("myGetNExpire", { numberOfKeys: 1, lua: luaGetNExpire });
 const handler=async function(req, res){
   if(typeof isRedirAppropriate!='undefined'){ 
     //var tmpUrl=isRedirAppropriate(req); if(tmpUrl) { res.out301(tmpUrl); return; }
-    var tmpUrl=isRedirAppropriate(req); if(tmpUrl) { res.out200('The domain name has changed, use: '+tmpUrl+' instead'); return; }
+    var tmpUrl=isRedirAppropriate(req); if(tmpUrl) { res.out200(`The domain name has changed, use: ${tmpUrl} instead`); return; }
   }
 
   //res.setHeader("X-Frame-Options", "deny");  // Deny for all (note: this header is removed for images (see reqMediaImage) (should also be removed for videos))
@@ -395,7 +395,7 @@ const handler=async function(req, res){
   
     // If the counter is to high, then respond with 429
   if(intCountT>intDDOSMaxT) {
-    var strMess="Too Many Requests ("+intCountT+"), wait "+tDDOSBanT+"s\n";
+    var strMess=`Too Many Requests (${intCountT}), wait ${tDDOSBanT}s\n`;
     if(pathName=='/'+leafBE){ var reqBE=new ReqBE({req, res}); reqBE.mesEO(strMess, 429); }
     else res.outCode(429, strMess);
     return;
@@ -462,7 +462,7 @@ const handler=async function(req, res){
   else if(pathName=='/debug'){    debugger;  res.end();}
   else if(pathName=='/mini'){
     var tserver=(new Date()).valueOf();  
-    res.end('<script>var tserver='+tserver+", tclient=(new Date()).valueOf(); console.log('tserver: '+tserver/1000);console.log('tclient: '+tclient/1000);console.log('tdiff: '+(tclient-tserver)/1000);</script>");
+    res.end(`<script>var tserver=${tserver}, tclient=(new Date()).valueOf(); console.log('tserver: '+tserver/1000);console.log('tclient: '+tclient/1000);console.log('tdiff: '+(tclient-tserver)/1000);</script>`);
   }
   else if(pathName=='/timeZoneTest'){var dateTrash=new Date();  res.end(''+dateTrash.getTimezoneOffset());}
   else if(pathName=='/'+googleSiteVerification) res.end('google-site-verification: '+googleSiteVerification);

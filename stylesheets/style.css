@@ -1,64 +1,80 @@
 
 
 /*Emp=emphasis*/
-@media (prefers-color-scheme:light) {
-  :root {
-      color-scheme:normal;
-      --bg-colorRoot:white;
-      --bg-color:#eee;
-      --bg-colorEmp:#ddd;
-      --bg-colorImg:lightblue;
-      --bg-green:lightgreen;
-      --bg-red:#ff7f7f;
-      --bg-blue:lightblue;
-      --bg-yellow:yellow;
-      --bg-orange:orange;
-      --text-color:#123;
-      --border-color:#123;
-      --link-external:#36b;
-      --link-external-visited:#636;
-      --invert:0;
-      --border-shadow-color:#191919; --border-lit-color:#666666;   /* To make ios buttons look like chrome. */
+/* @media (prefers-color-scheme:light) */ 
+:root {
+  --bg-colorRoot:white;
+  --bg-color:#eee;
+  --bg-colorEmp:#ddd;
+  --bg-colorImg:lightblue;
+  --bg-green:lightgreen;
+  --bg-red:#ff7f7f;
+  --bg-blue:lightblue;
+  --bg-yellow:yellow;
+  --bg-orange:orange;
+  --text-color:#123;
+  --border-color:#123;
+  --link-external:#36b;
+  --link-external-visited:#636;
+  --color-link:#0000ee;
+  --color-link-visited:#551a8b;
+  --bg-seller:lightblue;
+  --bg-buyer:pink;
+  --invert:0;
+  --border-shadow-color:#191919; --border-lit-color:#666;   /* To make ios buttons look like chrome. */
 
-  }
-  .boxShadowOn {box-shadow:0 0 0 0.2em lightgreen inset; background-color:#eee; color:limegreen}
-  .boxShadowOff {box-shadow:0 0 0 0.2em darkgrey inset; background-color:#ddd}
-  
+  --bg-button:#efefef;
+  --bg-input:#fff
+
 }
-@media (prefers-color-scheme:dark) {
-  :root {
-      color-scheme:dark;
-      --bg-colorRoot:#303030;
-      --bg-color:#404040;
-      --bg-colorEmp:#505050; /*Emp=emphasis*/
-      --bg-colorImg:#005470;
-      --bg-green:#007300;
-      --bg-red:#c00020;
-      --bg-blue:#005470;
-      --bg-yellow:#707000;
-      --bg-orange:#b17300;
-      --text-color:#dddddd;
-      --border-color:#dddddd;
-      --link-external:#5487df;
-      --link-external-visited:#b477b4;
-      --invert:1;
-      --border-shadow-color:#191919; --border-lit-color:#777;
-  }
-  a:link{color:#368cff}
-  a:visited{color:#de41ff}
-  .boxShadowOn {box-shadow:0 0 0 0.2em lightgreen inset; background-color:var(--bg-colorEmp); color:limegreen}
-  .boxShadowOff {box-shadow:0 0 0 0.2em #777 inset; background-color:var(--bg-color); color:darkgrey}
-  .monochrome {filter:invert(1)}
-  
+
+/* @media (prefers-color-scheme:dark) */ 
+[data-theme="dark"] {
+  --bg-colorRoot:#303030;
+  --bg-color:#404040;
+  --bg-colorEmp:#505050; /*Emp=emphasis*/
+  --bg-colorImg:#005470;
+  --bg-green:#007300;
+  --bg-red:#c00020;
+  --bg-blue:#005470;
+  --bg-yellow:#707000;
+  --bg-orange:#b17300;
+  --text-color:#dddddd;
+  --border-color:#dddddd;
+  --link-external:#5487df;
+  --link-external-visited:#b477b4;
+  --color-link:#368cff;
+  --color-link-visited:#de41ff;
+  --bg-seller:#1e8aad;
+  --bg-buyer:#d8566b;
+  --invert:1;
+  --border-shadow-color:#191919; --border-lit-color:grey;
+
+  --bg-button:#6b6b6b;
+  --bg-input:#3b3b3b;
+  background:var(--bg-colorRoot);
+  color:var(--text-color)
 }
+
+.boxShadowOn {box-shadow:0 0 0 0.2em lightgreen inset; background-color:#eee; color:limegreen}
+.boxShadowOff {box-shadow:0 0 0 0.2em darkgrey inset; background-color:#ddd; color:#000}
+.boxShadowOn [data-theme="dark"] {box-shadow:0 0 0 0.2em lightgreen inset; background-color:var(--bg-colorEmp); color:limegreen}
+.boxShadowOff [data-theme="dark"] {box-shadow:0 0 0 0.2em #777 inset; background-color:var(--bg-color); color:darkgrey}
+
 :root {
   color-scheme:light dark;
-  background:var(--bg-colorRoot);
+  /* background:var(--bg-colorRoot); */
   /* color:var(--text-color) */
 }
 
+a:link{color:var(--color-link)}
+a:visited{color:var(--color-link-visited)}
+.invertOnDark {filter:invert(var(--invert))}
+.invertOnDarkBright {filter:invert(var(--invert)) brightness(calc(1 + var(--invert) * 0.4))}
+
+
 /* html, body {height:100%} */
-html {height:auto} /* Overstriken in chrome webtools and firefox webtools */
+html {height:-webkit-fill-available} /* Overstriken in chrome webtools and firefox webtools */
 * {box-sizing:border-box}
 html, body {-webkit-overflow-scrolling:touch} /* "Invalid property value" in chrome webtools. "Invalid property name" firefox webtools */
 html, body {overscroll-behavior:contain; overflow:auto}
@@ -285,6 +301,7 @@ table.sortable thead {
   font-weight:bold;
   cursor:default;
 }
+table.sortable thead img{filter:invert(var(--invert))}
 
 
 .tableSticky {border-width:0px}
@@ -369,11 +386,11 @@ border-top-right-radius:var(--notchSizeR);*/
 .imageList span[name=tLastAccess] {margin-left:0.3em; margin-right:0.3em; width:1.3em}
 .pageList span[name=nAccess] {margin-left:0.3em; margin-right:0.3em; width:1.3em}
 .imageList span[name=nAccess] {margin-left:0.3em; margin-right:0.3em; width:1.3em}
-.pageList span[name=size], .imageList span[name=size] {min-width:2em; text-align:right}  /*float:right;*/
+.pageList span[name=size], .imageList span[name=size] {min-width:2em; text-align:right}
 .pageList span[name=execute] > button, .imageList span[name=execute] > button {width:1.2em; padding:0em}
 
   /* parentRow, pageHead and pageList */
-.pageList span[name=nChild], .pageList span[name=nImage] {min-width:1.5em}  /*float:right;*/
+.pageList span[name=nChild], .pageList span[name=nImage] {min-width:1.5em}
 .pageList span[name=boOR], .pageList span[name=boOW], .pageList span[name=boSiteMap] {width:1.2em; font-family:courier}
 .pageList span[name=siteName] {margin:0 0.2em; min-width:1.7em}
 .pageList span[name=strLang] {margin:0 0.2em; min-width:1.2em}
@@ -395,8 +412,8 @@ border-top-right-radius:var(--notchSizeR);*/
 .imageList span[name=nParentI] button {background:var(--bg-colorImg)}
 .pageList span[name=cb], .imageList span[name=cb] {margin-left:0.5em; width:1.4em}
 
-.pageList span[name=version] {margin:0 0.2em; min-width:1.1em}  /*float:right;*/
-.imageList span[name=boOther] {margin-left:0.5em; margin-right:0.5em}  /*float:right;*/
+.pageList span[name=version] {margin:0 0.2em; min-width:1.1em}
+.imageList span[name=boOther] {margin-left:0.5em; margin-right:0.5em}
   
   /* pageList and imageList */
 .pageList span[name=cb] > input, .imageList span[name=cb] > input {transform:scale(1.5,1.5)}
@@ -498,10 +515,10 @@ border-top-right-radius:var(--notchSizeR);*/
 }
 
 
-.viewDivWOFlex {
+.viewDivFix {
   text-align:center;margin:0 auto;
 }
-.contDivWOFlex {
+.contDivFix {
   width:min(var(--menuMaxWidth),100%);
   margin:0 auto 3em;
   text-align:left;
@@ -509,8 +526,8 @@ border-top-right-radius:var(--notchSizeR);*/
   flex-direction:column;
   gap:0.2em; 
 }
-.contDivWOFlex>div {background:var(--bg-colorEmp); padding:0.4em 0;}
-.footDivWOFlex {
+.contDivFix>div {background:var(--bg-colorEmp); padding:0.4em 0;}
+.footDivFix {
   width:min(100vw, var(--menuMaxWidth));;
   margin:0em auto;
   border-top:solid 1px;
@@ -524,7 +541,7 @@ border-top-right-radius:var(--notchSizeR);*/
   opacity: 0.9;
 }
 
-
+img.checkerboard {background:repeating-conic-gradient(#808080 0% 25%, transparent 0% 50%) 50% / 20px 20px}
 
 
 

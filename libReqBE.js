@@ -55,7 +55,7 @@ ReqBE.prototype.mesEO=function(e, statusCode=500){
   if(typeof e=='string'){strEBrowser=e; }
   else if(typeof e=='object'){
     //if('syscal' in e) StrELog.push('syscal: '+e.syscal);
-    if(e instanceof Error) {strEBrowser='name: '+e.name+', code: '+e.code+', message: ' + e.message; }
+    if(e instanceof Error) {strEBrowser=`name: ${e.name}, code: ${e.code}, message: ${e.message}`; }
     else { strEBrowser=e.toString();  }
   }
 
@@ -77,7 +77,7 @@ ReqBE.prototype.go=async function(){
   var {req, res}=this;
   
   var strT=req.headers['sec-fetch-site'];
-  if(strT && strT!='same-origin') { this.mesEO(Error("sec-fetch-site header is not 'same-origin' ("+strT+")"));  return;}
+  if(strT && strT!='same-origin') { this.mesEO(Error(`sec-fetch-site header is not 'same-origin' (${strT})`));  return;}
   
 
   if('x-requested-with' in req.headers){
@@ -86,7 +86,7 @@ ReqBE.prototype.go=async function(){
 
   if('referer' in req.headers) {
     var urlT=req.strSchemeLong+req.wwwSite, lTmp=urlT.length, referer=req.headers.referer, lMin=Math.min(lTmp, referer.length);
-    if(referer.slice(0,lMin)!=urlT.slice(0,lMin)) { this.mesEO(Error('Referer does not match,  got: '+referer+', expected: '+urlT));  return;  }
+    if(referer.slice(0,lMin)!=urlT.slice(0,lMin)) { this.mesEO(Error(`Referer does not match,  got: ${referer}, expected: ${urlT}`));  return;  }
   } else {  this.mesEO(Error("Referer not set"));  return; }
 
 
@@ -366,7 +366,7 @@ ReqBE.prototype.myChMod=async function(inObj){
   var [err, result]=await collectionPage.updateMany(...Arg).toNBP(); if(err) return [err];
 
   this.mes("myChMod: nModified: "+result.modifiedCount);
-  //this.mes('chmod: '+strBit+" set to "+boBit+" on "+lId+" page(s).");
+  //this.mes(`chmod: ${strBit} set to ${boBit} on ${lId} page(s).`);
   GRet[strBit]=inObj[strBit]; // Sending boOW/boSiteMap  back will trigger closing/opening of the save/preview buttons
   return [null, [Ou]];
 }
@@ -389,7 +389,7 @@ ReqBE.prototype.myChModImage=async function(inObj){
   var [err, result]=await collectionImage.updateMany(...Arg).toNBP(); if(err) return [err];
 
   this.mes("chmodImage: nModified: "+result.result.nModified);
-  //this.mes("chmodImage: boOther set to "+boOther+" on "+lId+" page(s).");
+  //this.mes(`chmodImage: boOther set to ${boOther} on ${lId} page(s).`);
   
   GRet.boOther=inObj.boOther; // Sending boOther  back will trigger closing/opening of the save/preview buttons
   return [null, [Ou]];
@@ -737,7 +737,7 @@ ReqBE.prototype.pageCompare=async function(inObj){
   if(versionOld!==null){
     strDiffText=myDiff(strEditTextOld,strEditText);
     if(strDiffText.length==0) strDiffText='(equal)';
-    this.mes("v "+versionOld+" vs "+version);
+    this.mes(`v ${versionOld} vs ${version}`);
   } else this.mes("v "+version);
 
   extend(GRet,{strDiffText, arrVersionCompared:[versionOld,version], strHtmlText, strEditText});
@@ -832,7 +832,7 @@ ReqBE.prototype.saveByReplace=async function(inObj){
       if(!boOR && !self.boARLoggedIn) {arrRet=[new ErrorClient('Not logged in', 401)]; break stuff; }
       if(self.tModBrowser<tMod) {
         var tD=(tNow-tMod)/1000, strT=getSuitableTimeUnit(tD).join(' ');
-        arrRet=[new ErrorClient("Someone else has made an edit ("+strT+" ago). Copy your edits temporary, then reload the page")]; break stuff;
+        arrRet=[new ErrorClient(`Someone else has made an edit (${strT} ago). Copy your edits temporary, then reload the page`)]; break stuff;
       }
       var IdParentOld=IdParent;
     }
@@ -1000,7 +1000,7 @@ ReqBE.prototype.saveByAdd=async function(inObj){
       if(!boOR && !self.boARLoggedIn) {arrRet=[new ErrorClient('Not logged in', 401)]; break stuff; }
       if(self.tModBrowser<tMod) {
         var tD=(tNow-tMod)/1000, strT=getSuitableTimeUnit(tD).join(' ');
-        arrRet=[new ErrorClient("Someone else has made an edit ("+strT+" ago). Copy your edits temporary, then reload the page")]; break stuff;
+        arrRet=[new ErrorClient(`Someone else has made an edit (${strT} ago). Copy your edits temporary, then reload the page`)]; break stuff;
       }
       if(boOW==0) {arrRet=[new ErrorClient('not logged in (as Administrator)', 401)]; break stuff; }  
       var IdParentOld=IdParent;
@@ -1648,7 +1648,7 @@ ReqBE.prototype.redirectTabGet=async function(inObj){
 
 
   var Ou=arrObj2TabNStrCol(results);
-  //this.mes("Got "+results.length+" entries"); 
+  //this.mes(`Got ${results.length} entries`); 
   extend(Ou, {boOK:1});  //,nEntry:results.length
   return [null, [Ou]];
 }
@@ -1784,7 +1784,7 @@ ReqBE.prototype.siteTabInsert=async function(inObj){
     //var c=result.insertedCount;
     var idSite=result.insertedId, strIdSite=idSite; //.toString()
     //objSite.nPage=0;
-    self.mes(`${idSite} insertion acknowledged: `+result.acknowledged);  extend(Ou, {boOK:1, idSite:idSite, objSite});
+    self.mes(`${idSite} insertion acknowledged: ${result.acknowledged}`);  extend(Ou, {boOK:1, idSite:idSite, objSite});
     var [err]=await createManifestNStoreToCache({idSite, www, srcIcon16});   if(err) return [err];
   }
   
@@ -1804,7 +1804,7 @@ ReqBE.prototype.siteTabUpd=async function(inObj){
 
     //var { boTLS, siteName, www, googleAnalyticsTrackingID, srcIcon16, strLangSite}=inObj;
     //siteName=myJSEscape(siteName);
-    var { boTLS, idSiteNew, www, googleAnalyticsTrackingID, srcIcon16, strLangSite}=inObj;
+    var { boTLS, idSiteOld:idSite, idSite:idSiteNew, www, googleAnalyticsTrackingID, srcIcon16, strLangSite}=inObj;
     idSiteNew=myJSEscape(idSiteNew);
     www=myJSEscape(www);
     googleAnalyticsTrackingID=myJSEscape(googleAnalyticsTrackingID);
@@ -1813,7 +1813,7 @@ ReqBE.prototype.siteTabUpd=async function(inObj){
 
     //var [err, result]=await collectionSite.find({$or:[{siteName},{www}]}, {session:sessionMongo}).toNBP();
 
-    var idSite=myJSEscape(inObj.idSite);
+    var idSite=myJSEscape(idSite);
     if(idSite!==idSiteNew) {
       var [err, n]=await collectionSite.countDocuments({$and:[{_id:{$ne:idSite}}, {_id:idSiteNew}]}, {session:sessionMongo}).toNBP(); if(err){arrRet=[err]; break stuff;}
       if(n){ self.mes("Name exists"); extend(Ou, {boOK:0}); arrRet=[null, [Ou]]; break stuff;}
@@ -1831,7 +1831,7 @@ ReqBE.prototype.siteTabUpd=async function(inObj){
         // Get Pages
       var cursor=collectionPage.find({idSite}, {session:sessionMongo});
       var [err, Page]=await cursor.toArray().toNBP();   if(err){arrRet=[err]; break stuff;}
-      var regA=RegExp("^"+idSite+":(.*)");
+      var regA=RegExp(`^${idSite}:(.*)`);
       for(var i=0;i<Page.length;i++){
         var page=Page[i], {IdParent, IdChildLax, IdChild}=page;
         for(var j=0;j<IdParent.length;j++){   var Match=regA.exec(IdParent[j]); IdParent[j]=idSiteNew+":"+Match[1];   }
@@ -1853,7 +1853,7 @@ ReqBE.prototype.siteTabUpd=async function(inObj){
         // Get Images
       var cursor=collectionImage.find({IdParent:{$regex:"^"+idSite}}, {session:sessionMongo});
       var [err, Image]=await cursor.toArray().toNBP();   if(err){arrRet=[err]; break stuff;}
-      var regA=RegExp("^"+idSite+":(.*)");
+      var regA=RegExp(`^${idSite}:(.*)`);
       for(var i=0;i<Image.length;i++){
         var image=Image[i], {IdParent}=image;
         for(var j=0;j<IdParent.length;j++){   var Match=regA.exec(IdParent[j]); IdParent[j]=idSiteNew+":"+Match[1];   }
@@ -1934,7 +1934,7 @@ ReqBE.prototype.siteTabDelete=async function(inObj){
 
       // Count pages
     var [err, nPage]=await collectionPage.countDocuments({idSite:idSite}, {session:sessionMongo}).toNBP();   if(err){arrRet=[err]; break stuff;}
-    if(nPage!==0) { self.mes('Aborting, since the site has '+nPage+' pages.'); arrRet=[null, {boOK:0}]; break stuff; }
+    if(nPage!==0) { self.mes(`Aborting, since the site has ${nPage} pages.`); arrRet=[null, {boOK:0}]; break stuff; }
 
     var [err, result]=await collectionSite.deleteOne({_id:idSite}, {session:sessionMongo}).toNBP();   if(err){arrRet=[err]; break stuff;}
     var c=result.deletedCount;
@@ -2010,7 +2010,7 @@ ReqBE.prototype.siteTabSetDefault=async function(inObj){
 // 
 
 
-var regImg=RegExp("^("+strImageExtWBar+")$"), regVid=RegExp('^(mp4|ogg|webm)$'); 
+var regImg=RegExp(`^(${strImageExtWBar})$`), regVid=RegExp('^(mp4|ogg|webm)$'); 
 
 
 ReqBE.prototype.uploadUser=async function(inObj){ 
@@ -2148,7 +2148,11 @@ app.loadFrFiles=async function(FileOrg){
       for(var key of KeyCsv) {if(FileCsv[key]) return [new Error("Multiple "+strName)]; else FileCsv[key]=oZ.FileCsv[key];}
       FileImg.push(...oZ.FileImg); FilePage.push(...oZ.FilePage);
     }else if(strExt=='csv') {
-      if(StrValidLoadMetaBase.indexOf(strBase)==-1) return [new Error("CSV-file not valid: "+strName+", (valid ones are: "+StrValidLoadMeta.join(", ")+")")];
+      //if(StrValidLoadMetaBase.indexOf(strBase)==-1) return [new Error(`CSV-file not valid: ${strName}, (valid ones are: ${StrValidLoadMeta.join(", ")})`)];
+      if(StrValidLoadMetaBase.indexOf(strBase)==-1) {
+        var strTmp=StrValidLoadMeta.join(", ")
+        return [new Error(`CSV-file not valid: ${strName}, (valid ones are: ${strTmp})`)];
+      }
       var oFile={strName, strExt, path:strPath}; 
       if(FileCsv[strBase]) return [new Error("Multiple "+strName)]; else FileCsv[strBase]=oFile;
     }
@@ -2272,7 +2276,11 @@ app.parseZipFile=async function(strPath){
     //var bufFrZip=Buffer.from(fileInZip._data, 'binary');
     var [err, bufFrZip]=await fileInZip.async("uint8array").toNBP(); if(err) return [err];
     if(strExt=="csv") {
-      if(StrValidLoadMetaBase.indexOf(strBase)==-1) return [new Error("CSV-file not valid: "+strFile+", (valid ones are: "+StrValidLoadMeta.join(", ")+")")];
+      //if(StrValidLoadMetaBase.indexOf(strBase)==-1) return [new Error(`CSV-file not valid: ${strFile}, (valid ones are: ${StrValidLoadMeta.join(", ")})`)];
+      if(StrValidLoadMetaBase.indexOf(strBase)==-1) {
+        var strTmp=StrValidLoadMeta.join(", ")
+        return [new Error(`CSV-file not valid: ${strFile}, (valid ones are: ${strTmp})`)];
+      }
       //var bufT=bufData;
       var strData=new TextDecoder().decode(bufFrZip)
       //var strData=bufFrZip.toString();

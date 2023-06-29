@@ -39,7 +39,7 @@ app.ParserTable.prototype.replaceTable=function(lines) {
   while(true) {
     var matches=[];
     if(i==lines.length ) { // document ending found
-      //strLineWithTableTag=strLineWithTableTag +'<table' +iTable +'/>';
+      //strLineWithTableTag=`${strLineWithTableTag}<table${iTable}/>`;
       strLineWithTableTag=strLineWithTableTag +STARTCHAR +'table' +iTable +ENDCHAR;
       lines.splice(0, i, strLineWithTableTag); //replace rows 0...i
       return lines;
@@ -97,7 +97,7 @@ app.ParserTable.prototype.replaceTable=function(lines) {
       //if(first_character=='!') line=str_replace('!!', '||', line);
       if(first_character=='!') { line=line.replace(/!!/g, '||'); }
       var cells=line.split('||');
-      //echo 'i:' +i +'cells: ' +myDump2str(cells);
+      //echo `i:${i}cells: ${myDump2str(cells)}`;
       
       var type;   if(first_character=='|') type='td'; else type='th';
       boContainerOpened=type;
@@ -149,9 +149,9 @@ app.ParserTable.prototype.putbackTables=function(lines) {
     var line=lines[k];
     var matches;
     //if(preg_match('/^([\*#:;]*)'.STARTCHARSTR.'table(\d+)'.ENDCHARSTR.'(.*)$/', line, matches)) {
-    if(  matches=line.match( RegExp('^(.*?)' +STARTCHARSTR +'table(\\d+)' +ENDCHARSTR +'(.*?)$') )  ) {
+    if(  matches=line.match( RegExp(`^(.*?)${STARTCHARSTR}table(\\d+)${ENDCHARSTR}(.*?)$`) )  ) {
       //alert(k +line);
-      //echo 'k:' +k +', matches: ' +myDump2str(matches) +'<br>';
+      //echo `k:${k}, matches: ${myDump2str(matches)}<br>`;
       //list(trash, strLineStart, iTable, strLineEnd) = matches;
       var strLineStart=matches[1];
       var iTable=matches[2];
@@ -161,28 +161,28 @@ app.ParserTable.prototype.putbackTables=function(lines) {
       
       var newLines=new Array('');
       if(nRows>0){
-        newLines[0]='<table ' +this.arrTableAttributes[iTable] +">";
-        newLines[1]='<caption ' +this.arrTableCaptionAttributes[iTable] +'>' +this.arrTableCaption[iTable] +"</caption>";
+        newLines[0]=`<table ${this.arrTableAttributes[iTable]}>`;
+        newLines[1]=`<caption ${this.arrTableCaptionAttributes[iTable]}>${this.arrTableCaption[iTable]}</caption>`;
         
         for(var i=0;i<nRows;i++){
-          newLines.push('<tr ' +this.rowAttributes[iTable][i] +'>');
+          newLines.push(`<tr ${this.rowAttributes[iTable][i]}>`);
           
           var nCells=this.cellContent[iTable][i].length;
           
           for(var j=0;j<nCells;j++){
             var tmp=this.cellContent[iTable][i][j];
             
-            //echo 'k:' +k +', cell_lines: ' +ord(tmp[0]) +ord(tmp[1]) +myDump2str(tmp) +'<br>';
+            //echo `k:${k}, cell_lines: ${ord(tmp[0])}${ord(tmp[1])}${myDump2str(tmp)}<br>`;
             
             var cell_lines=this.cellContent[iTable][i][j].split("\n");
             
             cell_lines=this.putbackTables(cell_lines);
-            newLines.push('<' +this.cellType[iTable][i][j] +' ' +this.cellAttributes[iTable][i][j] +'>');
+            newLines.push(`<${this.cellType[iTable][i][j]} ${this.cellAttributes[iTable][i][j]}>`);
             //array_splice(newLines, count(newLines), 0,cell_lines); 
             //newLines.splice(newLines.length, 0,cell_lines); 
             newLines=newLines.concat(cell_lines); 
             //array_merge(newLines,cell_lines);
-            newLines.push("</" +this.cellType[iTable][i][j] +">");
+            newLines.push(`</${this.cellType[iTable][i][j]}>`);
             
           }
           newLines.push("</tr>\n");
@@ -197,7 +197,7 @@ app.ParserTable.prototype.putbackTables=function(lines) {
       newLines[0]=strLineStart +newLines[0];
       var n=newLines.length;
       //alert(lines[k]);
-      //alert('lines:'+lines.length +', k:'+k+', newLines:'+n);
+      //alert(`lines:${lines.length}, k:${k}, newLines:${n}`);
       newLines[n-1]=newLines[n-1] +strLineEnd;
       //array_splice(lines, k, 1,newLines); 
       //lines=lines.slice(0,k).concat(newLines).concat(lines.slice(k+1)); 
@@ -213,7 +213,7 @@ app.ParserTable.prototype.putbackTables=function(lines) {
       lines=tmpSt;
       
       k=k+n-1;
-      //echo 'iTable:' +iTable +', newLines: ' +var_dump(newLines) +'<br>';
+      //echo `iTable:${iTable}, newLines: ${var_dump(newLines)}<br>`;
     }
     k++;
     
