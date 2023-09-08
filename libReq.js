@@ -222,7 +222,7 @@ app.reqBU=async function(strArg) {
     res.out200(outFileName+' written');
   }else{
     var outFileName=`${strSiteDefault}_${swedDate(unixNow())}_${type}.zip`;
-    var objHead={"Content-Type": MimeType.zip, "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
+    var objHead={"Content-Type": StrMimeType.zip, "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
     res.writeHead(200,objHead);
     res.end(outdata,'binary');
   }
@@ -365,7 +365,7 @@ app.reqBUMeta=async function(strArg) {
   }else{
     var outFileName=`${strSiteDefault}_${swedDate(unixNow())}_meta.zip`;
     
-    var objHead={"Content-Type": MimeType.zip, "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
+    var objHead={"Content-Type": StrMimeType.zip, "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
     res.writeHead(200,objHead);
     res.end(outdata,'binary');
   } 
@@ -529,9 +529,9 @@ app.reqIndex=async function() {
 
     // Check if there is a redirect for this page
   var objFilt={idSite, pageName:queredPage}, objUpd={ $set: { tLastAccess: tNow }, $inc: { nAccess: 1 } };
-  var [err, result]=await collectionRedirect.findOneAndUpdate(objFilt, objUpd).toNBP();   if(err) {res.out500(err); return; };
-  if(result.value) {
-    res.out301(result.value.url); return;
+  var [err, objT]=await collectionRedirect.findOneAndUpdate(objFilt, objUpd).toNBP();   if(err) {res.out500(err); return; };
+  if(objT!=null) {
+    res.out301(objT.url); return;
   }
   
 
@@ -556,8 +556,7 @@ app.reqIndex=async function() {
   var objFilt={_id:idPage}, objUpd={ $set: { tLastAccess: tNow }, $inc: { nAccess: 1 } };
   var objOpt={ collation:{locale:"en", strength:2}, returnDocument:'after', returnOriginal:false}; // returnDocument should be enough
   //var [err, objPage]=await collectionPage.findOne(objFilt, objOpt).toNBP();   if(err) {res.out500(err); return; };
-  var [err, result]=await collectionPage.findOneAndUpdate(objFilt, objUpd, objOpt).toNBP();   if(err) {res.out500(err); return; };
-  var objPage=result.value;
+  var [err, objPage]=await collectionPage.findOneAndUpdate(objFilt, objUpd, objOpt).toNBP();   if(err) {res.out500(err); return; };
   if(objPage===null) { // No such page 
     res.statusCode=404;
     var boOR=1, boOW=1, boSiteMap=1, idPage=null, tCreated=null, tMod=null, arrRevision=[];
@@ -566,9 +565,12 @@ app.reqIndex=async function() {
     var strHtmlText='';
     var {strOut}=makeOutput.call(this, objOut, strHtmlText), strHash=md5(strOut);
 
-    var objHead={"Content-Type": MimeType.html, "Content-Encoding":'gzip'};  //, "Content-Length":strOut.length
+    var objHead={"Content-Type": StrMimeType.html, "Content-Encoding":'gzip'};  //, "Content-Length":strOut.length
     res.writeHead(404, objHead); 
-    Streamify(strOut).pipe(zlib.createGzip()).pipe(res);
+    //Streamify(strOut).pipe(zlib.createGzip()).pipe(res);
+    var s1=Streamify(strOut);
+    var s2=s1.pipe(zlib.createGzip());
+    var s3=s2.pipe(res);
     return;
   } 
   
@@ -610,10 +612,13 @@ app.reqIndex=async function() {
     var strHtmlText='';
     var {strOut}=makeOutput.call(this, objOut, strHtmlText), strHash=md5(strOut);
 
-    var objHead={"Content-Type": MimeType.html, "Cache-Control":"no-store, no-cache, must-revalidate, post-check=0, pre-check=0", "Content-Encoding":'gzip'};  //, "Content-Length":strOut.length
+    var objHead={"Content-Type": StrMimeType.html, "Cache-Control":"no-store, no-cache, must-revalidate, post-check=0, pre-check=0", "Content-Encoding":'gzip'};  //, "Content-Length":strOut.length
     res.replaceCookie("sessionIDCSRF="+sessionIDCSRF+strCookiePropLax);
     res.writeHead(403, objHead); 
-    Streamify(strOut).pipe(zlib.createGzip()).pipe(res);
+    //Streamify(strOut).pipe(zlib.createGzip()).pipe(res);
+    var s1=Streamify(strOut);
+    var s2=s1.pipe(zlib.createGzip());
+    var s3=s2.pipe(res);
     return;
   }
 
@@ -726,7 +731,7 @@ app.reqIndex=async function() {
     
     }
 
-    var objHead={"Content-Type": MimeType.html, ETag:strHash, "Cache-Control":"must-revalidate, public", 'Last-Modified':tModCache.toUTCString(), "Content-Encoding":'gzip'};  //, "Content-Length":strOut.length
+    var objHead={"Content-Type": StrMimeType.html, ETag:strHash, "Cache-Control":"must-revalidate, public", 'Last-Modified':tModCache.toUTCString(), "Content-Encoding":'gzip'};  //, "Content-Length":strOut.length
     res.writeHead(200, objHead); 
     console.log(200)
 
@@ -737,7 +742,10 @@ app.reqIndex=async function() {
   if(errTransaction) { var a=await sessionMongo.abortTransaction(); sessionMongo.endSession();  res.out500(errTransaction); return;  }
   var a=await sessionMongo.commitTransaction(); sessionMongo.endSession();
 
-  Streamify(strOut).pipe(zlib.createGzip()).pipe(res);
+  //Streamify(strOut).pipe(zlib.createGzip()).pipe(res);
+  var s1=Streamify(strOut);
+  var s2=s1.pipe(zlib.createGzip());
+  var s3=s2.pipe(res);
   return;
 }
 
@@ -768,7 +776,7 @@ app.reqStatic=async function() {
   //if(typeof objT.buf=='undefined') debugger;
   var {buf, type, strHash, boZip, boUglify}=objT;
   if(strHash===strHashIn){ res.out304(); return; }
-  var mimeType=MimeType[type];
+  var mimeType=StrMimeType[type];
   if(typeof mimeType!='string') console.log(`type: ${type}, mimeType: `, mimeType);
   if(typeof buf!='object' || !('length' in buf)) console.log('typeof buf: '+typeof buf);
   if(typeof strHash!='string') console.log('typeof strHash: '+strHash);
@@ -827,9 +835,9 @@ app.reqMediaImage=async function(){
 
     // Get info from collectionImage
   var objFilt={imageName:nameOrg}, objUpd={ $set: { tLastAccess: tNow }, $inc: { nAccess: 1 } }, objOpt={collation:{locale:'en', strength:2}};
-  var [err, result]=await collectionImage.findOneAndUpdate(objFilt, objUpd, objOpt).toNBP();   if(err) {res.out500(err); return; };
-  if(result.value===null) {res.out404('Not Found'); return; };
-  var {_id:idImage, tCreated:orgTime, idFile:idFileOrg, strHash:strHashOrg, imageName:nameCanonical}=result.value;
+  var [err, objT]=await collectionImage.findOneAndUpdate(objFilt, objUpd, objOpt).toNBP();   if(err) {res.out500(err); return; };
+  if(objT===null) {res.out404('Not Found'); return; };
+  var {_id:idImage, tCreated:orgTime, idFile:idFileOrg, strHash:strHashOrg, imageName:nameCanonical}=objT;
 
   // var Arg=[{imageName:nameOrg}, {collation:{locale:'en', strength:2}}];
   // var [err, results]=await collectionImage.findOne(...Arg).toNBP();   if(err) {res.out500(err); return; };
@@ -853,8 +861,8 @@ app.reqMediaImage=async function(){
 
 
     // Ok so the reponse will be an image
-  res.setHeader("Content-type", MimeType[kind]);
-  //res.setHeader("Content-type", MimeType.jpeg);
+  res.setHeader("Content-type", StrMimeType[kind]);
+  //res.setHeader("Content-type", StrMimeType.jpeg);
 
 
   var Arg=[{_id:idFileOrg}];
@@ -904,7 +912,7 @@ app.reqMediaImageThumb=async function(){
   } 
 
     // Ok so the reponse will be an image
-  var strMime=MimeType[kind];  if(kind=='svg') strMime=MimeType['png'];  // using png for svg-thumbs
+  var strMime=StrMimeType[kind];  if(kind=='svg') strMime=StrMimeType['png'];  // using png for svg-thumbs
   res.setHeader("Content-type",strMime);
 
   if(boGotStored){    res.setHeader('Last-Modified', thumbTime.toUTCString());   res.setHeader('ETag',strHashThumb);  res.setHeader('Content-Length',data.length);  res.end(data);  return;   }
@@ -969,7 +977,7 @@ app.reqMediaImageThumb=async function(){
       });
       if(err){res.out500(err);  return; } 
       
-    }     
+    }
   }
 
 
@@ -1043,7 +1051,7 @@ app.reqMediaVideo=async function(){
 
 
   var type, Match=RegExp('\\.(mp4|ogg|webm)$').exec(nameOrg); if(Match && Match.length>1) type=Match[1]; else {type='txt'; }
-  var mimeType=MimeType[type]||'txt'; 
+  var mimeType=StrMimeType[type]||'txt'; 
 
 
   //var sql=`SELECT data FROM ${fileTab} WHERE idFile=?`;
@@ -1102,7 +1110,7 @@ app.reqSiteMap=async function() {
     Str.push(`<url><loc>${url}</loc><lastmod>${tMod}</lastmod></url>`);
   }
   Str.push('</urlset>');  
-  var str=Str.join('\n'); //res.writeHead(200, "OK", {'Content-Type': MimeType.xml});
+  var str=Str.join('\n'); //res.writeHead(200, "OK", {'Content-Type': StrMimeType.xml});
   res.end(str);
 }
 
@@ -1135,7 +1143,7 @@ app.reqRobots=async function() {
     var q=file.pageName;
     Str.push("Allow: /"+q);
   }
-  var str=Str.join('\n');   //res.writeHead(200, "OK", {'Content-Type': MimeType.txt});   res.end(str);
+  var str=Str.join('\n');   //res.writeHead(200, "OK", {'Content-Type': StrMimeType.txt});   res.end(str);
   res.out200(str);
 }
 
@@ -1266,6 +1274,12 @@ app.reqStat=async function(){
 
     // Include stylesheets
   var pathTmp='stylesheets/style.css', vTmp=CacheUri[pathTmp].strHash; if(boDbg) vTmp=0;    Str.push(`<link rel="stylesheet" href="${uSiteCommon}/${pathTmp}?v=${vTmp}" type="text/css">`);
+
+  Str.push(`<script>
+  window.elHtml=document.documentElement
+  var themeOS=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"
+  if(themeOS=='dark') elHtml.setAttribute('data-theme', 'dark'); else elHtml.removeAttribute('data-theme');
+</script>`);
 
     // Include site specific JS-files
   //var uSite=req.strSchemeLong+wwwSite;
@@ -1690,6 +1704,10 @@ app.storeImage=async function(sessionMongo, oFile, arg={}){ //Used by BE-uploadU
 
   var data=buf;
 
+  if(width==0 && height==0){
+    //var [width, height]=await imGetSize(data);
+  }
+
   if(typeof extension=="undefined"){ var Match=regExt.exec(imageName), extension=Match[1].toLowerCase();}
 
   var size=data.length, strHash=md5(data), tNow=nowSFloored();
@@ -1852,8 +1870,12 @@ app.SetupMongo.prototype.countRows=async function(){
   return [null];
 }
 app.SetupMongo.prototype.create=async function(){
+  console.log(`Dropping collections:`)
+  console.log(`=====================`)
   var [err]=await this.drop();  if(err) return [err];
 
+  console.log(`Creating collections (and indexes):`)
+  console.log(`===================================`)
   for(var nameCollection of NameCollection){
     //var [err, result]=await app["collection"+nameCollection].deleteMany({}).toNBP();   if(err) return [err]; ;
 
@@ -1874,6 +1896,8 @@ app.SetupMongo.prototype.create=async function(){
   }
   var len=NameCollection.length||0;  console.log(len+" collections created.");
 
+  console.log("Populating settings.");
+  console.log("====================");
   var [err]=await this.populateSetting();  if(err) return [err];
   console.log("Populated settings.");
   return [null];

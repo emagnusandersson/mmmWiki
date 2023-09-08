@@ -1,4 +1,4 @@
-global.app=global;
+globalThis.app=globalThis;
 import http from "http";
 import https from 'https';
 //import tls from 'tls';
@@ -131,7 +131,6 @@ extend(app, {boDbg:0, boAllowSql:1, port:5000, levelMaintenance:0, googleSiteVer
   tDDOSIPBan:10, // tDDOSIPBan: How long in seconds til the blocking is lifted
   strSalt:'abcdefghijklmnopqrstuvwxyz', // Random letters to prevent that the hashed passwords looks the same as on other sites.
   uRecaptcha:'https://www.google.com/recaptcha/api.js?onload=cbRecaptcha&render=explicit',
-  uriDB:'mysql://USER:PASSWORD@localhost/DATABASENAME',
   strReCaptchaSiteKey:"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",   strReCaptchaSecretKey:"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
   aRPassword:"123", aWPassword:"123",
   RegRedir:[],
@@ -187,7 +186,7 @@ app.myEscaper=new MyEscaper();
 
 var urlMongo = 'mongodb://127.0.0.1:27017';
 app.mongoClient=undefined;
-var err, Arg=[urlMongo, { useUnifiedTopology: true}];
+var err, Arg=[urlMongo]; //, { useUnifiedTopology: true}
 var [err, result]=await MongoClient.connect(...Arg).toNBP();  if(err) {console.log(err); process.exit(-1);}
 mongoClient=result;
 process.on('exit', function(){ console.log('Goodbye!'); mongoClient.close();});
@@ -213,6 +212,8 @@ if(typeof argv.load!='undefined'){
   //var load=argv.load; if(load===true) load=
   var setupMongo=new SetupMongo();
   var [err]=await setupMongo.doQuery("create");
+  console.log('loadFrBUFolderOnServ')
+  console.log('====================')
   var [err]=await loadFrBUFolderOnServ(argv.load); if(err) {console.error(err); process.exit(-1);} 
   console.log('done loading');
   process.exit(0);
@@ -411,7 +412,7 @@ const handler=async function(req, res){
     // Set mimetype if the extention is recognized
   var regexpExt=RegExp('\.([a-zA-Z0-9]+)$');
   var Match=pathName.match(regexpExt), strExt; if(Match) strExt=Match[1];
-  if(strExt in MimeType) res.setHeader('Content-type', MimeType[strExt]);
+  if(strExt in StrMimeType) res.setHeader('Content-type', StrMimeType[strExt]);
 
   
 

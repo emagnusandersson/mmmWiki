@@ -48,7 +48,7 @@ app.getETag=function(headers){var t=false, f='if-none-match'; if(f in headers) t
 app.getRequesterTime=function(headers){if("if-modified-since" in headers) return new Date(headers["if-modified-since"]); else return false;}
 
 var tmp=http.ServerResponse.prototype;
-tmp.outCode=function(iCode,str){  str=str||''; this.statusCode=iCode; if(str) this.setHeader("Content-Type", MimeType.txt);   this.end(str);}
+tmp.outCode=function(iCode,str){  str=str||''; this.statusCode=iCode; if(str) this.setHeader("Content-Type", StrMimeType.txt);   this.end(str);}
 tmp.out200=function(str){ this.outCode(200, str); }
 tmp.out201=function(str){ this.outCode(201, str); }
 tmp.out204=function(str){ this.outCode(204, str); }
@@ -60,7 +60,7 @@ tmp.out404=function(str){ str=str||"404 Not Found\n"; this.outCode(404, str);   
 tmp.out500=function(e){
   debugger
   if(e instanceof Error) {var mess=e.name + ': ' + e.message; console.error(e);} else {var mess=e; console.error(mess);} 
-  this.writeHead(500, {"Content-Type": MimeType.txt});  this.end(mess+ "\n");
+  this.writeHead(500, {"Content-Type": StrMimeType.txt});  this.end(mess+ "\n");
 }
 tmp.out501=function(){ this.outCode(501, "Not implemented\n");   }
 
@@ -122,7 +122,7 @@ app.getBrowserLang=function(req){
 }
 
 
-app.MimeType={
+app.StrMimeType={
   txt:'text/plain; charset=utf-8',
   jpg:'image/jpg',
   jpeg:'image/jpg',
@@ -395,4 +395,45 @@ app.csvParseMy=function(strCSV){  // Should be in lib.js. Although as it is only
   });
   
   return arrRow;
+}
+
+//
+// Streams
+//
+
+app.readAllMy=async function(readable){
+  const chunks = []; let len=0
+  for await (let chunk of readable) {
+    chunks.push(chunk);
+    len+=chunk.length
+  }
+  if(chunks.length==1) return chunks[0]
+  var mergedArray = new Uint8Array(len);
+  let nStart=0
+  for(let chunk of chunks){
+    mergedArray.set(chunk, nStart)
+    nStart+=chunk.length
+  }
+  return mergedArray;
+}
+
+//
+// imagemagick
+//
+
+app.imGetSize=async function(bufData){
+  var args=[ "-ping", "-format", "%w %h", 'fd:0']
+  var command = new Deno.Command('identify', { args, stdin:"piped", stdout:"piped" });
+  var child = command.spawn();
+  var promiseRead=readAllMy(child.stdout);
+  var writer = child.stdin.getWriter();
+  await writer.ready;
+  writer.write(bufData);
+  writer.releaseLock();
+  await child.stdin.close();
+  var value = await promiseRead;
+  const decoder = new TextDecoder();
+  value=decoder.decode(value)
+  var [w, h]=value.split(' ')
+  return [Number(w), Number(h)]
 }

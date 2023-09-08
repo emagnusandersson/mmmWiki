@@ -14,7 +14,7 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "type": "pwa-node"
+            "type": "node"
         },
         
         {
@@ -25,7 +25,7 @@
                 "<node_internals>/**"
             ],
             "program": "${workspaceFolder}/script.js",
-            "console": "integratedTerminal",
+            //"console": "integratedTerminal",
             //"runtimeArgs": ["--trace-deprecation"]
         },
         {

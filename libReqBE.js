@@ -38,7 +38,7 @@ ReqBE.prototype.mesO=function(e){
   if(str.length<lenGZ) res.end(str);
   else{
     res.setHeader("Content-Encoding", 'gzip');
-    //res.setHeader('Content-Type', MimeType.txt);
+    //res.setHeader('Content-Type', StrMimeType.txt);
     Streamify(str).pipe(zlib.createGzip()).pipe(res);
   }
 }
@@ -65,7 +65,7 @@ ReqBE.prototype.mesEO=function(e, statusCode=500){
     // mmmWiki specific
   var GRet=this.GRet;    //if('tMod' in GRet && GRet.tMod instanceof Date) GRet.tMod=GRet.tMod.toUnix();
   
-  //res.writeHead(500, {"Content-Type": MimeType.txt}); 
+  //res.writeHead(500, {"Content-Type": StrMimeType.txt}); 
   var objOut=copySome({}, this, ["dataArr", "GRet"]);
   res.statusCode=statusCode;
   res.end(serialize(objOut));
@@ -152,7 +152,7 @@ ReqBE.prototype.go=async function(){
   //if(arrCookieOut.length) res.setHeader("Set-Cookie", arrCookieOut);
 
 
-  //res.setHeader("Content-type", MimeType.json);
+  //res.setHeader("Content-type", StrMimeType.json);
 
 
     // Remove the beArr[i][0] values that are not functions
@@ -240,7 +240,7 @@ ReqBE.prototype.go=async function(){
   for(var k=0; k<beArr.length; k++){
     var strFun=beArr[k][0];
     if(in_array(strFun,allowed)) {
-      var inObj=beArr[k][1],     tmpf; if(strFun in this) tmpf=this[strFun]; else tmpf=global[strFun];
+      var inObj=beArr[k][1],     tmpf; if(strFun in this) tmpf=this[strFun]; else tmpf=globalThis[strFun];
       if(typeof inObj=='undefined' || typeof inObj=='object') {} else {this.mesO('inObj should be of type object or undefined'); return;}
       var fT=[tmpf,inObj];   Func.push(fT);
     }
@@ -536,8 +536,7 @@ ReqBE.prototype.pageLoad=async function(inObj) {
     // var [err, objPage]=await collectionPage.findOne(...Arg).toNBP();   if(err) {arrRet=[err]; break stuff;}
     var objFilt={_id:idPage}, objUpd={ $set: { tLastAccess: tNow }, $inc: { nAccess: 1 } };
     var objOpt={ returnDocument:'after', returnOriginal:false, session:sessionMongo};
-    var [err, result]=await collectionPage.findOneAndUpdate(objFilt, objUpd, objOpt).toNBP();   if(err) {arrRet=[err]; break stuff;}
-    var objPage=result.value;
+    var [err, objPage]=await collectionPage.findOneAndUpdate(objFilt, objUpd, objOpt).toNBP();   if(err) {arrRet=[err]; break stuff;}
 
     if(objPage===null) { // No such page 
       
@@ -1670,13 +1669,14 @@ ReqBE.prototype.redirectTabSet=async function(inObj){
     //var Arg=[{idSite:idSiteOld, pageName:pageNameOld}, {$set:objSet}, {new:true}]; //, {upsert:true, new:true}
     //var [err, result]=await collectionRedirect.updateOne(...Arg).toNBP();
     var Arg=[{idSite:idSiteOld, pageName:pageNameOld}, {$set:objSet}, {returnDocument:"after", returnOriginal:false}]; //, {upsert:true, new:true}
-    var [err, result]=await collectionRedirect.findOneAndUpdate(...Arg).toNBP();
+    var [err, objDoc]=await collectionRedirect.findOneAndUpdate(...Arg).toNBP();
     if(err && (typeof err=='object') && err.code==11000){ this.mes(err.message); extend(Ou, {boOK:0});}  // dup key
     else if(err) return [err];
     else{
       //var c=result.modifiedCount; this.mes(c+" row(s) modified."); 
-      var boOK=result.ok, messTmp=boOK?"Entry modified.":"Entry not modified.";  this.mes(messTmp); 
-      var objDoc=result.value;
+      if(objDoc===null) {return [new Error('objDoc===null')]}
+      // var boOK=result.ok, messTmp=boOK?"Entry modified.":"Entry not modified.";  this.mes(messTmp); 
+      // var objDoc=result.value;
       extend(Ou, {boOK:1, idSite, objDoc});
     }
     return [null, [Ou]]; //['siteName','pageName','url', 'tCreated', 'tMod', 'nAccess', 'tLastAccess']

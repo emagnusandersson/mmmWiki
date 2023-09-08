@@ -77,7 +77,7 @@ a:visited{color:var(--color-link-visited)}
 html {height:-webkit-fill-available} /* Overstriken in chrome webtools and firefox webtools */
 * {box-sizing:border-box}
 html, body {-webkit-overflow-scrolling:touch} /* "Invalid property value" in chrome webtools. "Invalid property name" firefox webtools */
-html, body {overscroll-behavior:contain; overflow:auto}
+html, body {overscroll-behavior:contain} /*; overflow:auto (commented out since it makes stat.html look funny)*/
 
   /* Is there really a difference using this. Tested values "100%" and "none" (Used by Chrome, Edge. Not used by Safari, Firefox) */
 /* body {-webkit-text-size-adjust:none} */
@@ -525,6 +525,7 @@ border-top-right-radius:var(--notchSizeR);*/
   display:flex;
   flex-direction:column;
   gap:0.2em; 
+  padding-bottom: 3em;
 }
 .contDivFix>div {background:var(--bg-colorEmp); padding:0.4em 0;}
 .footDivFix {
