@@ -26,7 +26,7 @@ ppStoredButt="ABCDEFGHIJKLM";  // Paypal-stored-button
 intDDOSMax=300; // intDDOSMax: How many requests before DDOSBlocking occurs. 
 tDDOSBan=5; // tDDOSBan: How long in seconds till the blocking is lifted.
 
-strSalt='abcdef'; // Random letters to prevent that the hashed passwords looks the same as on other sites. (See more at https://en.wikipedia.org/wiki/Salt_(cryptography))
+app.strSalt='abcdef'; // Random letters to prevent that the hashed passwords looks the same as on other sites. (See more at https://en.wikipedia.org/wiki/Salt_(cryptography))
 
 
 googleSiteVerification="googleXXXXXXXXXXXXXXXX.html"; // Needed if you use Google Webmaster Tools  (www.google.com/webmasters)

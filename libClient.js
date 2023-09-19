@@ -583,3 +583,13 @@ app.popupDragExtend=function(elBubble,strTitle,elParent){
   return elBubble;
 }
 
+
+
+
+app.triggerDownloadOfBlob = (strFileName, blobData) => {  // Uint8Array and string should work
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blobData);
+  link.download = strFileName;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};

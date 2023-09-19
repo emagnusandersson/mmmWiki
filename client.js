@@ -477,8 +477,8 @@ var pageDivFixedExtend=function(el){
     pageView.setVis('edit');
   });
   editButton.on('click', adminButtonToggleEventF);
-  var tmpImg=createElement('img').prop({src:uAdmin, alt:"admin", draggable:false}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('invertOnDark');    //var strAdmin='👤🔑';
-  var adminButton=createElement('button').myAppend(tmpImg).prop({title:"Administrator entry."}).on('click',function(){
+  //var tmpImg=createElement('img').prop({src:uAdmin, alt:"admin", draggable:false}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('invertOnDark');    //var strAdmin='👤🔑';
+  var adminButton=createElement('button').myAppend(charAdmin).prop({title:"Administrator entry."}).on('click',function(){
     doHistPush({strView:'pageView', arg:'admin'});
     pageView.setVis('admin');
   });
@@ -512,7 +512,7 @@ var pageDivFixedExtend=function(el){
     doHistPush({strView:'settingDiv'});
     settingDiv.setVis();
   }); 
-  var themePopButton=createElement('button').myText(charBlackWhite).css({}).on('click',function(){
+  var themePopButton=createElement('button').myText(charBlackWhite).css({}).prop({title:'Change theme'}).on('click',function(){
     doHistPush({strView:'themePop'});
     themePop.setVis();
   });    
@@ -887,8 +887,6 @@ var tabBUSumExtend=function(el){
 }
 
 
-
-
 var diffBackUpDivExtend=function(el){
   el.strName='diffBackUpDiv'
   el.id=el.strName
@@ -919,41 +917,52 @@ var diffBackUpDivExtend=function(el){
     ul.empty().show();
     //saveButton.prop("disabled",true);
     var file=arrOrg[0];
+      // Create instanceJSZip
+    instanceJSZip = new JSZip();
+    await instanceJSZip.loadAsync(file);
+
+
     EntryLocal={}; // Create EntryLocal
 
-    var blobReader=new zip.BlobReader(file);
-    var [err, zipReader]=await new Promise(resolve=>{   zip.createReader(blobReader, zipReaderT=>resolve([null,zipReaderT]), err=>resolve([err]));   }); 
-    if(err) return [err];
+    // var blobReader=new zip.BlobReader(file);
+    // var [err, zipReader]=await new Promise(resolve=>{   zip.createReader(blobReader, zipReaderT=>resolve([null,zipReaderT]), err=>resolve([err]));   }); 
+    // if(err) return [err];
 
-    var [err, EntryTmp]=await new Promise(resolve=>{   zipReader.getEntries( EntryT=>resolve([null,EntryT]), err=>resolve([err]));    });   if(err) return [err];
+    // var [err, EntryTmp]=await new Promise(resolve=>{   zipReader.getEntries( EntryT=>resolve([null,EntryT]), err=>resolve([err]));    });   if(err) return [err];
 
 
-    EntryTmp.forEach(function(entry){  EntryLocal[entry.filename]=entry;   });  
+    // EntryTmp.forEach(function(entry){  EntryLocal[entry.filename]=entry;   });  
 
-    StrOld=Object.keys(EntryLocal); //var li=createElement('li').myAppend(`Old zip-file has <b>${nOld}</b> files.`); ul.append(li);
+    // StrOld=Object.keys(EntryLocal); //var li=createElement('li').myAppend(`Old zip-file has <b>${nOld}</b> files.`); ul.append(li);
 
-    var [err, data]=await new Promise(resolve=>{ myFetch('POST',[['getImageInfo',{},data=>resolve([null,data]) ]]);  });
-    if(err) return [err];
+    // var [err, data]=await new Promise(resolve=>{ myFetch('POST',[['getImageInfo',{},data=>resolve([null,data]) ]]);  });
+    // if(err) return [err];
+
+    StrOld=Object.keys(instanceJSZip.files);
+    EntryLocal=instanceJSZip.files
+    var [err, arr]=await myFetch('POST',[['getImageInfo',{} ]]); if(err) return [err];
+    var [[data]]=arr; 
 
     var FileNewInfo=data.FileInfo, FileNew={};
     for(var i=0;i<FileNewInfo.length;i++){ FileNew[FileNewInfo[i].imageName]=FileNewInfo[i]; } 
     StrNew=Object.keys(FileNew);
   
-    var writer;   // Create writer
-    if(creationMethod == "Blob") {
-      writer=new zip.BlobWriter();
-    } else {
+    // var writer;   // Create writer
+    // if(creationMethod == "Blob") {
+    //   writer=new zip.BlobWriter();
+    // } else {
 
-      var [err, zipFileEntryT]=await new Promise(resolve=>{   createTempFile(fileEntryT=>resolve([null, fileEntryT]), err=>resolve([err]));   });
-      if(err) return [err];
-      zipFileEntry=zipFileEntryT;
+    //   var [err, zipFileEntryT]=await new Promise(resolve=>{   createTempFile(fileEntryT=>resolve([null, fileEntryT]), err=>resolve([err]));   });
+    //   if(err) return [err];
+    //   zipFileEntry=zipFileEntryT;
 
-      writer=new zip.FileWriter(zipFileEntry);
-    }
+    //   writer=new zip.FileWriter(zipFileEntry);
+    // }
 
       // Create zipWriter
-    var [err, zipWriterT]=await new Promise(resolve=>{   zip.createWriter(writer, writerT=>resolve([null,writerT]), err=>resolve([err])); }); if(err) return [err];
-    zipWriter=zipWriterT;
+    // var [err, zipWriterT]=await new Promise(resolve=>{   zip.createWriter(writer, writerT=>resolve([null,writerT]), err=>resolve([err])); }); if(err) return [err];
+    // zipWriter=zipWriterT;
+
 
     StrDeleted=[]; StrReuse=[]; StrFetchAll=[]; StrFetchChanged=[]; StrFetchNew=[]; objFetchChanged={};   
 
@@ -961,22 +970,23 @@ var diffBackUpDivExtend=function(el){
       if(!(key in FileNew)){ StrDeleted.push(key); }
     }
   
-    var progress=createElement('progress'), iNew=0, imgDoneLast=imgDone.cloneNode();
+    var progress=createElement('progress'), iProgress=0, imgDoneLast=imgDone.cloneNode();
     var li=createElement('li').myText('Extracting meta data from the selected file (names, modification dates and file-sizes): ').myAppend(progress, imgDoneLast); ul.append(li);
     
     for(var key in FileNew){  // Create StrReuse, StrFetchChanged, StrFetchNew and objFetchChanged
       if(key in EntryLocal){
         var entryLocal = EntryLocal[key];
-        var writer = new zip.BlobWriter(entryLocal);
+        //var writer = new zip.BlobWriter(entryLocal);
 
         //var [err, blob]=await new Promise(resolve=>{   entryLocal.getData(writer, blobT=>resolve([null,blobT]), onprogress); }); if(err) return [err];
 
         //var dateOld=new Date(entryLocal.lastModDate);
-        var size=entryLocal.uncompressedSize;
-        var dosRaw=entryLocal.lastModDateRaw, dosDate=dosRaw>>>16, dosTime=dosRaw&0xffff, dateOld=dosTime2tUTC(dosDate,dosTime);
+        var size=entryLocal._data.uncompressedSize;
+        //var dosRaw=entryLocal.lastModDateRaw, dosDate=dosRaw>>>16, dosTime=dosRaw&0xffff, dateOld=dosTime2tUTC(dosDate,dosTime);
+        var dateOld=entryLocal.date
         //var dateOldUnix=dateOld.toUnix();
       
-// local database 1411715164
+          // local database 1411715164
         var dSize=FileNew[key].size-size, dateNew=FileNew[key].tCreated, dUnix=dateNew-dateOld; dUnix=dUnix/1000;
         //if(FileNew[key].size==size && FileNew[key].tCreated>>1==dateOldUnix>>1){  // Division by two (>>1) because zip uses microsoft time 
         if(dSize==0 && dUnix>>1==0){  // Division by two (>>1) because zip uses microsoft time 
@@ -988,7 +998,7 @@ var diffBackUpDivExtend=function(el){
       } else {
         StrFetchNew.push(key);
       }
-      iNew++; progress.attr({value:iNew,max:StrNew.length});
+      iProgress++; progress.attr({value:iProgress, max:StrNew.length});
     }
     imgDoneLast.show();
 
@@ -1013,31 +1023,51 @@ var diffBackUpDivExtend=function(el){
 
     //if(confirm("Continue ?")) {} else {progress.detach(); return;}
     var buttonContinue=createElement('button').myText('Continue').on('click',async function(){
-      var [err]=await continueFunc(); if(err) return [err];
+      var [err]=await downloadDifference(); if(err) return [err];
       buttonContinue.prop("disabled",true);
     });
     var li=createElement('li').myAppend(buttonContinue); ul.append(li); progress.detach();
     return [null];
   }
 
-  var continueFunc=async function(){
+  var downloadDifference=async function(){
     var progress=createElement('progress')
       // Writing fresh files
-    var iAdded=0, imgDoneLast=imgDone.cloneNode();
-    var li=createElement('li').myText('Reusing (adding) old images to new zip: ').myAppend(progress, imgDoneLast); ul.append(li);
-    for(var i=0;i<StrReuse.length;i++){
-      var key=StrReuse[i];
-      var entryLocal = EntryLocal[key];
-      var writer = new zip.BlobWriter(entryLocal);
+    // var iProgress=0, imgDoneLast=imgDone.cloneNode();
+    // var li=createElement('li').myText('Reusing (adding) old images to new zip: ').myAppend(progress, imgDoneLast); ul.append(li);
+    // for(var i=0;i<StrReuse.length;i++){
+    //   var key=StrReuse[i];
+    //   var entryLocal = EntryLocal[key];
+    //   var writer = new zip.BlobWriter(entryLocal);
 
-      var [err, blob]=await new Promise(resolve=>{   entryLocal.getData(writer, blobT=>resolve([null,blobT]), onprogress); }); if(err) return [err];
+    //   var [err, blob]=await new Promise(resolve=>{   entryLocal.getData(writer, blobT=>resolve([null,blobT]), onprogress); }); if(err) return [err];
 
-      var date=new Date(entryLocal.lastModDate), size=entryLocal.uncompressedSize;
+    //   var date=new Date(entryLocal.lastModDate), size=entryLocal.uncompressedSize;
 
-      var blobReader=new zip.BlobReader(blob);
-      var [err]=await new Promise(resolve=>{   zipWriter.add(key, blobReader, ()=>resolve([null]), onprogress, {lastModDate:date}); }); if(err) return [err];
+    //   var blobReader=new zip.BlobReader(blob);
+    //   var [err]=await new Promise(resolve=>{   zipWriter.add(key, blobReader, ()=>resolve([null]), onprogress, {lastModDate:date}); }); if(err) return [err];
 
-      iAdded++;  progress.attr({value:iAdded,max:StrReuse.length}); 
+    //   iProgress++;  progress.attr({value:iProgress,max:StrReuse.length}); 
+    // }
+    // imgDoneLast.show();
+
+      // Removing deleted files
+    var iProgress=0, imgDoneLast=imgDone.cloneNode();
+    var li=createElement('li').myText('Removing deleted files in zip: ').myAppend(progress, imgDoneLast); ul.append(li);
+    for(var i=0;i<StrDeleted.length;i++){
+      var key=StrDeleted[i];
+      instanceJSZip.remove(key)
+      iProgress++;  progress.attr({value:iProgress, max:StrDeleted.length}); 
+    }
+    imgDoneLast.show();
+
+      // Removing old files
+    var iProgress=0, imgDoneLast=imgDone.cloneNode();
+    var li=createElement('li').myText('Removing old files in zip: ').myAppend(progress, imgDoneLast); ul.append(li);
+    for(var i=0;i<StrDeleted.length;i++){
+      var key=StrDeleted[i];
+      instanceJSZip.remove(key)
+      iProgress++;  progress.attr({value:iProgress, max:StrDeleted.length}); 
     }
     imgDoneLast.show();
 
@@ -1075,31 +1105,45 @@ var diffBackUpDivExtend=function(el){
 
     imgDoneLast.show();
 
-    var blobReader=new zip.BlobReader(dataFetched);
-    var [err, zipReader]=await new Promise(resolve=>{   zip.createReader(blobReader, zipReaderT=>resolve([null,zipReaderT]), err=>resolve([err]));   }); 
-    if(err) return [err];
+    // var blobReader=new zip.BlobReader(dataFetched);
+    // var [err, zipReader]=await new Promise(resolve=>{   zip.createReader(blobReader, zipReaderT=>resolve([null,zipReaderT]), err=>resolve([err]));   }); 
+    // if(err) return [err];
 
-    var [err, EntryTmp]=await new Promise(resolve=>{   zipReader.getEntries( EntryT=>resolve([null,EntryT]), err=>resolve([err]));    });   if(err) return [err];
+    // var [err, EntryTmp]=await new Promise(resolve=>{   zipReader.getEntries( EntryT=>resolve([null,EntryT]), err=>resolve([err]));    });   if(err) return [err];
 
-    var EntryFetched={};
-    EntryTmp.forEach(function(entry) {  EntryFetched[entry.filename]=entry;  });
+    // var EntryFetched={};
+    // EntryTmp.forEach(function(entry) {  EntryFetched[entry.filename]=entry;  });
 
-    var iAdded=0, imgDoneLast=imgDone.cloneNode();
+
+    var instanceJSZipFetched = new JSZip();
+    await instanceJSZipFetched.loadAsync(dataFetched);
+    var EntryFetched=instanceJSZipFetched.files
+
+
+    var iProgress=0, imgDoneLast=imgDone.cloneNode();
     var li=createElement('li').myAppend('Adding the fetched images to new zip: ', progress, imgDoneLast); ul.append(li);
     for(var key in EntryFetched){
       var entry = EntryFetched[key];
       
-      var writer = new zip.BlobWriter(entry);
+      // var writer = new zip.BlobWriter(entry);
 
-      var [err, blob]=await new Promise(resolve=>{   entry.getData(writer, blobT=>resolve([null,blobT]), onprogress); }); if(err) return [err];
+      // var [err, blob]=await new Promise(resolve=>{   entry.getData(writer, blobT=>resolve([null,blobT]), onprogress); }); if(err) return [err];
 
-      var date=new Date(entry.lastModDate);
+      // var date=new Date(entry.lastModDate);
 
-      var blobReader=new zip.BlobReader(blob);
-      var [err]=await new Promise(resolve=>{   zipWriter.add(key, blobReader, ()=>resolve([null]), onprogress, {lastModDate:date}); }); if(err) return [err];
+      // var blobReader=new zip.BlobReader(blob);
+      // var [err]=await new Promise(resolve=>{   zipWriter.add(key, blobReader, ()=>resolve([null]), onprogress, {lastModDate:date}); }); if(err) return [err];
 
-      iAdded++; progress.attr({value:iAdded,max:StrFetchAll.length});
+      var date=entry.date;
+
+      instanceJSZip.files[key]=entry;
+
+
+      iProgress++; progress.attr({value:iProgress,max:StrFetchAll.length});
     }
+
+
+
     var saveButton=createElement('button').myText('Save to disk').on('click',saveFun);  //.prop("disabled",true)
     var li=createElement('li').myAppend(saveButton); ul.append(li);
     //saveButton.prop("disabled",false);
@@ -1109,26 +1153,16 @@ var diffBackUpDivExtend=function(el){
     return [null];
   }
 
-  var getBlobURL=function(callback) {
-    zipWriter.close(function(blob) {
-      var blobURL = creationMethod == "Blob" ? URL.createObjectURL(blob) : zipFileEntry.toURL();
-      callback(blobURL);
-    });
-  };
-  var saveFun=function(){
-    getBlobURL(function(blobURL) {
-      var aSave = document.createElement("a");
-      //var outFileName=calcBUFileName(objSiteDefault.www,'image','zip'); // Todo: wwwCommon-variable should change after siteTabView changes
-      var outFileName=`${objSiteDefault.siteName}_${swedDate(unixNow())}_image.zip`; // Todo: wwwCommon-variable should change after siteTabView changes
-      aSave.download = outFileName;
-      aSave.href = blobURL;
-      var event = document.createEvent("MouseEvents");
-      event.initMouseEvent(
-        "click", true, false, window, 0, 0, 0, 0, 0
-        , false, false, false, false, 0, null
-      );
-      aSave.dispatchEvent(event);
-    });
+  var saveFun=async function(){
+    var strType="uint8array";
+    var outdata = await instanceJSZip.generateAsync({type : strType});
+
+    const blobData = new Blob([outdata], {type: "application/zip"})
+
+    var outFileName=`${objSiteDefault.siteName}_${swedDate(unixNow())}_image.zip`; // Todo: wwwCommon-variable should change after siteTabView changes
+    triggerDownloadOfBlob(outFileName, blobData)
+
+
     ul.empty();
     //saveButton.prop("disabled",true);
   
@@ -1144,7 +1178,8 @@ var diffBackUpDivExtend=function(el){
   var creationMethod="Blob";
   if(typeof requestFileSystem == "undefined") creationMethod="Blob";
 
-  var zipFileEntry=null, zipWriter=null;
+  var zipFileEntry=null; //, zipWriter=null;
+  var instanceJSZip=null
 
   var imgDone=createElement('span').myText('Done').css({'background':'var(--bg-green)'}).hide();
 
@@ -1208,7 +1243,7 @@ var uploadAdminDivExtend=function(el){
     var FileInfo=data.FileInfo, len=FileInfo.length;
     for(var i=0;i<len;i++){ StrConflict.push(FileInfo[i].imageName); } 
     if(StrConflict.length){
-      var tmpLab='WARNING!!! These files will be OVERWRITTEN (if you click "Upload")';
+      var tmpLab='Pre-check-WARNING!!! Conflicting file names (images will be overwritten, (txt/csv files will result in an error) )';
       StrConflict.unshift(tmpLab);
       if(StrConflict.length>10) StrConflict.push(tmpLab);
       divMessageText.setHtml(StrConflict.join('<br>'));
@@ -2893,13 +2928,14 @@ var settingDivExtend=function(el){
   return el;
 }
 
-var dragHRExtend=function(el){
+var dragHRExtend=function(el, funStartHeight, funSet){ //elTarget
   var myMousedown= function(e){
     var e = e || window.event; if(e.which==3) return;
     el.css({position:'relative',opacity:0.55,'z-index':'auto',cursor:'move'}); 
-    //hStart=editText.height();
-    //var rect=editText.getBoundingClientRect(); hStart=rect.height;
-    hStart=editText.offsetHeight;
+    //hStart=elTarget.height();
+    //var rect=elTarget.getBoundingClientRect(); hStart=rect.height;
+    //hStart=elTarget.offsetHeight;
+    hStart=funStartHeight();
     if(boTouch) {e.preventDefault(); mouseXStart=e.changedTouches[0].pageX; mouseYStart=e.changedTouches[0].pageY;}
     else {mouseXStart=e.pageX; mouseYStart=e.pageY;}
 
@@ -2919,8 +2955,9 @@ var dragHRExtend=function(el){
     else {mouseX=e.pageX; mouseY=e.pageY;}
 
     var hNew=hStart-(mouseY-mouseYStart); 
-    //editText.height(hNew);
-    editText.css('height', hNew+'px');
+    //elTarget.height(hNew);
+    //elTarget.css('height', hNew+'px');
+    funSet(hNew)
   };
   var strMouseDownEvent='mousedown', strMouseMoveEvent='mousemove', strMouseUpEvent='mouseup';  if(boTouch){  strMouseDownEvent='touchstart'; strMouseMoveEvent='touchmove'; strMouseUpEvent='touchend';  }
   var hStart,mouseXStart,mouseYStart;
@@ -3342,7 +3379,8 @@ var paymentDivExtend=function(el){
   el.id=el.strName
   el.toString=function(){return el.strName;}
     // menuB
-  var formPP=formPPExtend(createElement('form')),     divPP=createElement('div').myAppend(formPP).css({'margin-top':'1em'}); if(ppStoredButt.length==0) divPP.hide();  //'Paypal: ',
+  var boPP=ppStoredButt.length!=0
+  var formPP=boPP?formPPExtend(createElement('form')):'',     divPP=createElement('div').myAppend(formPP).css({'margin-top':'1em'}); //if(ppStoredButt.length==0) divPP.hide();  //'Paypal: ',
   var spanBTC=createElement('span').myAppend(strBTC).css({'font-size':'0.70em'}),    divBC=createElement('div').myAppend('฿: ',spanBTC); if(spanBTC.length==0) divBC.hide();
   var menuB=createElement('div').myAppend(divBC,divPP).css({'text-align':'center'}).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'center',margin:'1em auto'});
 
@@ -3902,7 +3940,7 @@ var siteSetPopExtend=function(el){
     historyBack();
   }
   el.setUp=function(){
-    if(typeof objRow.boTLS=='undefined') objRow.boTLS=0;
+    if(typeof objRow.boTLS=='undefined') objRow.boTLS=1;
     selBoTLS.value=Number(objRow.boTLS); inpName.value=objRow.idSite; inpWWW.value=objRow.www; inpGog.value=objRow.googleAnalyticsTrackingID; inpSrcIcon16.value=objRow.srcIcon16; inpStrLangSite.value=objRow.strLangSite;
     inpName.focus();  return true;
   }
@@ -3923,9 +3961,9 @@ var siteSetPopExtend=function(el){
  
   var rDefault={idSite:'', www:'', googleAnalyticsTrackingID:'', srcIcon16:'', strLangSite:''};
   var boUpd, objRow; 
-  var opt=createElement('option').prop({value:0, selected:true}).css({display:'block'}).myText('http'); 
-  var optS=createElement('option').prop({value:1}).css({display:'block'}).myText('https'); 
-  var selBoTLS=createElement('select').css({display:'block'}).myAppend(opt,optS); 
+  var opt=createElement('option').prop({value:0}).css({display:'block'}).myText('http'); 
+  var optS=createElement('option').prop({value:1}).css({display:'block'}).myText('https'); //, selected:true
+  var selBoTLS=createElement('select').css({display:'block'}).myAppend(opt,optS);
   var labName=createElement('label').myText('Name (used as prefix when backing up etc.)');
   var inpName=createElement('input').prop('type', 'text');
   var imgHWWW=imgHelp.cloneNode(1).css({margin:'0em 1em'}); popupHover(imgHWWW,createElement('div').myHtml('<p>Ex:<p>www.example.com<p>127.0.0.1:5000<p>localhost:5000'));
@@ -4307,7 +4345,8 @@ var charFlash='↯';//⚡↯
 var charPublicRead='<span style="font-family:courier">͡°</span>'; //☉͡°
 var charPublicRead='<span class=eye>(∘)</span>'; //☉͡° ·
 var charPublicRead=boIOS?'📖':'🕮' //🕮👁; //📖; //👀😶☉͡° · 📖📖
-var charPublicWrite='✎'; // 🔏 🔒 🔓 🔐  🖊 🖋✏✎✐🖉
+var charPublicRead='👁' //🕮👁; //📖; //👀😶☉͡° · 📖📖
+var charPublicWrite='⌨'; // ✎🔏 🔒 🔓 🔐  🖊 🖋✏✎✐🖉
 var charPromote='🗣️'; //'📣';  //😗😱😮
 var charDelete='✖'; //x, ❌, X, ✕, ☓, ✖, ✗, ✘
 var charClose='✖';
@@ -4317,7 +4356,7 @@ var charThumbsDown='👎'; //👎☟
 var charSpeechBaloon='🗪'; //💬🗨
 var charCamera='📷';
 var charHourGlass='⏳';
-var charAdmin='🂡'   // ♛♕♚♔⚖
+var charAdmin='😎'   // 🂡♛♕♚♔⚖
 var charPrev='⇦' //'⇩'
 var charNext='⇨' //'⇧'
 var charQuestionMark='❓'
@@ -4587,9 +4626,14 @@ elBody.append(busyLarge);
 
 
 
-var dragHR=dragHRExtend(createElement('hr')); dragHR.css({height:'0.3em',background:'grey',margin:0});
-if(boTouch) dragHR="";
 var editText=editTextExtend(createElement('textarea')).css({'font-family':'monospace'});
+
+var funStartHeight=function(){ return editText.offsetHeight }
+var funDragHR=function(hNew){
+  editText.css('height', hNew+'px');
+}
+var dragHR=dragHRExtend(createElement('hr'), funStartHeight, funDragHR); dragHR.css({height:'0.3em',background:'grey',margin:0});
+if(boTouch) dragHR="";
  
 //var pageView=pageViewExtend(createElement('div'));
 var pageView=document.querySelector('#pageView'); pageViewExtend(pageView); pageView.css({height:'100%', overflow:'auto'})
@@ -4832,6 +4876,7 @@ setTimeout(function(){
   var scriptZip=createElement("script").prop({src:uZip}).on('load',function(){ zip.workerScriptsPath = flFoundOnTheInternetFolder+'/'; });
   document.head.myAppend(scriptZip);
   var scriptSha1=createElement("script").prop({src:uSha1});  document.head.myAppend(scriptSha1);
+  var scriptJszip=createElement("script").prop({src:uJszip});  document.head.myAppend(scriptJszip);
 
   // import(uZip).then(function(trash){  zip.workerScriptsPath = flFoundOnTheInternetFolder+'/'; });
   // import(uSha1);

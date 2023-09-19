@@ -1,10 +1,11 @@
 "use strict"
+export function blah() {}
 
 
-import http from "http";
 
+//declare global{var parseCookies}
 app.parseCookies=function(req) {
-  var list={}, rc=req.headers.cookie;
+  var list={}, rc=req.headers.get('cookie');
   if(typeof rc=='string'){
     rc.split(';').forEach(function( cookie ) {
       var parts = cookie.split('=');
@@ -19,6 +20,14 @@ app.parseCookies=function(req) {
 // MyEscaper
 //
 
+// declare global{
+//   interface MyEscaper {
+//     escape(length: string): string;
+//     unescape(length: string): string;
+//   }
+//   var MyEscaper
+// }
+//declare global{var MyEscaper}
 app.MyEscaper=function(){
   this.regEscape=/[\"\'\\]/g;
   this.funEscape=function(m){ return "\\"+m;  }
@@ -44,54 +53,17 @@ app.ErrorClient=class extends Error {
 app.MyError=Error;
 //MyError=function(){ debugger;}
 
-app.getETag=function(headers){var t=false, f='if-none-match'; if(f in headers) t=headers[f]; return t;}
-app.getRequesterTime=function(headers){if("if-modified-since" in headers) return new Date(headers["if-modified-since"]); else return false;}
-
-var tmp=http.ServerResponse.prototype;
-tmp.outCode=function(iCode,str){  str=str||''; this.statusCode=iCode; if(str) this.setHeader("Content-Type", StrMimeType.txt);   this.end(str);}
-tmp.out200=function(str){ this.outCode(200, str); }
-tmp.out201=function(str){ this.outCode(201, str); }
-tmp.out204=function(str){ this.outCode(204, str); }
-tmp.out301=function(url){  this.writeHead(301, {Location: url});  this.end();   }
-tmp.out301Loc=function(url){  this.writeHead(301, {Location: '/'+url});  this.end();   }
-tmp.out403=function(){ this.outCode(403, "403 Forbidden\n");  }
-tmp.out304=function(){  this.outCode(304);   }
-tmp.out404=function(str){ str=str||"404 Not Found\n"; this.outCode(404, str);    }
-tmp.out500=function(e){
-  debugger
-  if(e instanceof Error) {var mess=e.name + ': ' + e.message; console.error(e);} else {var mess=e; console.error(mess);} 
-  this.writeHead(500, {"Content-Type": StrMimeType.txt});  this.end(mess+ "\n");
-}
-tmp.out501=function(){ this.outCode(501, "Not implemented\n");   }
+//declare global{var getETag, getRequesterTime}
+//app.getETag=function(headers){var t=false, f='if-none-match'; if(f in headers) t=headers[f]; return t;}
+//app.getRequesterTime=function(headers){if("if-modified-since" in headers) return new Date(headers["if-modified-since"]); else return false;}
+app.getETag=function(headers){return headers.get('if-none-match')||false;}
+app.getRequesterTime=function(headers){const t=headers.get("if-modified-since"); if(t) return new Date(t); else return false;}
 
 
 
-tmp.setHeaderMy=function(o){
-  for(var k in o) {this.setHeader(k,o[k]);}
-}
-// tmp.addCookie=function(str){
-//   var arr=this.getHeader("Set-Cookie");
-//   if(!arr) {this.setHeader("Set-Cookie",str); return;}
-//   var boStr=typeof arr==='string'
-//   if(boStr) arr=[arr];
-//   arr.push(str);
-//   if(boStr) this.setHeader("Set-Cookie",arr);
-// }
-tmp.replaceCookie=function(strNew){
-  var arr=this.getHeader("Set-Cookie");
-  if(!arr) {this.setHeader("Set-Cookie",strNew); return;}
-  var boStr=typeof arr==='string'
-  if(boStr) arr=[arr];
-  var l=strNew.indexOf("="), strName=strNew.substr(0,l), boWritten=false;
-  for(var i=0;i<arr.length;i++){
-    var strNameCur=arr[i].substr(0,l);
-    if(strName===strNameCur) {arr[i]=strNew; boWritten=true; break;}
-  }
-  if(!boWritten) arr.push(strNew);
-  if(boStr) this.setHeader("Set-Cookie",arr);
-}
 
 
+//declare global{var checkIfLangIsValid, getBrowserLang, StrMimeType, md5}
 app.checkIfLangIsValid=function(langShort){
   for(var i=0; i<arrLang.length; i++){ var langRow=arrLang[i]; if(langShort==langRow[0]){return true;} }  return false;
 }
@@ -99,13 +71,13 @@ app.checkIfLangIsValid=function(langShort){
 app.getBrowserLang=function(req){
   //echo _SERVER['accept-language']; exit;
   var Lang=[];
-  if('accept-language' in req.headers) {
+  const strHead=req.headers.get('accept-language')
+  if(strHead) {
     var myRe=new RegExp('/([a-z]{1,8}(-[a-z]{1,8})?)\\s*(;\\s*q\\s*=\\s*(1|0\\.[0-9]+))?/ig');
-    var str=req.headers['accept-language'];
 
       // create a list like [["en", 0.8], ["sv", 0.6], ...]
     var Match;
-    while ((Match = myRe.exec(str)) !== null)    {
+    while ((Match = myRe.exec(strHead)) !== null)    {
       var val=Match[4]; if(val=='') val=1;
       Lang.push([Match[1], Number(val)]);
     }
@@ -143,8 +115,13 @@ app.StrMimeType={
 };
 
 
-app.md5=function(str){return myCrypto.createHash('md5').update(str).digest('hex');} // One could use Node.js built-in crypto perhaps?!
-
+//app.md5=function(str){return myCrypto.createHash('md5').update(str).digest('hex');} // One could use Node.js built-in crypto perhaps?!
+app.md5=function(str){
+  //if(str instanceof Uint8Array){ str=str.buffer}
+  //else if(str instanceof Buffer){ str=str.buffer}
+  return myCrypto.createHash('md5').update(str).digest('hex');
+} 
+//app.md5=function(str){return createHash("md5").update(str);} 
 
   // Redis v3
 // app.cmdRedis=async function(strCommand, arr){
@@ -182,14 +159,7 @@ app.md5=function(str){return myCrypto.createHash('md5').update(str).digest('hex'
 // }
 
   // ioredis 
-app.getRedis=async function(strVar, boObj=false){
-  var [err,data]=await redis.get(strVar).toNBP();  if(boObj) data=JSON.parse(data);  return [err,data];
-}
-app.setRedis=async function(strVar, val, tExpire=-1){
-  if(typeof val!='string') var strA=JSON.stringify(val); else var strA=val;
-  var arr=[strVar,strA];  if(tExpire>0) arr.push('EX',tExpire);   var [err,strTmp]=await redis.set(...arr).toNBP();
-  return [err,strTmp];
-}
+//declare global {var getRedis, setRedis, expireRedis, delRedis, existsRedis}
 app.expireRedis=async function(strVar, tExpire=-1){
   if(tExpire==-1) var [err,strTmp]=await redis.persist(strVar).toNBP();
   else var [err,strTmp]=await redis.expire(strVar,tExpire).toNBP();
@@ -203,42 +173,81 @@ app.delRedis=async function(arr){
 app.existsRedis=async function(strVar){  return await redis.exists(strVar).toNBP();  }
 
 
-
+  // redis (deno/node.js)
+app.cmdRedis=async function(strCommand, arr){
+  if(!(arr instanceof Array)) arr=[arr];
+  return await redis.sendCommand([strCommand, arr] ).toNBP();
+}
+app.getRedis=async function(strVar, boObj=false){
+  //let [err,data]=await cmdRedis('GET', [strVar]);  if(boObj) data=JSON.parse(data);  return [err,data];
+  let [err,data]=await redis.get(strVar).toNBP();  if(boObj) data=JSON.parse(data);  return [err,data];
+}
+app.setRedis=async function(strVar, val, tExpire=-1){
+  if(typeof val!='string') var strA=JSON.stringify(val); else var strA=val;
+  //var arr=[strVar,strA];  if(tExpire>0) arr.push('EX',tExpire);   var [err,strTmp]=await cmdRedis('SET', arr);
+  var arr=[strVar,strA];  if(tExpire>0) arr.push('EX',tExpire);   var [err,strTmp]=await redis.set(...arr).toNBP();
+  return [err,strTmp];
+}
+app.expireRedis=async function(strVar, tExpire=-1){
+  if(tExpire==-1) var [err,strTmp]=await cmdRedis('PERSIST', [strVar]);
+  else var [err,strTmp]=await cmdRedis('EXPIRE', [strVar,tExpire]);
+  return [err,strTmp];
+}
+app.delRedis=async function(arr){ 
+  if(!(arr instanceof Array)) arr=[arr];
+  let [err,strTmp]=await cmdRedis('DEL', arr);
+  return [err,strTmp];
+}
+app.evalRedis=async function(strLua, arrKey, arrArg){
+  if(boDeno){
+    return redis.eval(...arguments).toNBP()
+  }else{
+    var nK=arrKey.length, nA=arrArg.length;
+    var arrArgN=Array(nA); for(let i=0;i<nA;i++) {var v=arrArg[i]; if(typeof v!='string') v=v.toString(); arrArgN[i]=v;}
+    return redis.sendCommand(['EVAL', strLua, nK.toString(), ...arrKey, ...arrArgN]).toNBP();
+  }
+}
   
 
 
-app.getIP=function(req){
+//declare global {var getIP}
+app.getIP=function(reqMy){
+  const {req, conn}=reqMy;
   var ipClient='', Match;
     // AppFog ipClient
-  if('x-forwarded-for' in req.headers){
-    var tmp=req.headers['x-forwarded-for'];
+  var strHead=req.headers.get('x-forwarded-for')
+  if(strHead){
     //tmp="79.136.116.122, 127.0.0.1";
-    Match=/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/.exec(tmp);
+    Match=/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/.exec(strHead);
     if(Match && Match.length) return Match[0];
   }
 
-  if('remoteAddress' in req.connection){
-    var tmp=req.connection.remoteAddress;
-    Match=/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/.exec(tmp);
+  const remoteip=boDeno?conn.remoteAddr.hostname:req.connection.remoteAddress
+
+  if(remoteip){
+    Match=/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/.exec(remoteip);
     if(Match && Match.length) return Match[0];
   }
 
-  if('remoteAddress' in req.socket){
-    var tmp=req.socket.remoteAddress;
-    Match=/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/.exec(tmp);
-    if(Match && Match.length) return Match[0];
-  }
+  // if('remoteAddr' in req.socket){
+  //   var tmp=req.socket.remoteAddr;
+  //   Match=/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/.exec(tmp);
+  //   if(Match && Match.length) return Match[0];
+  // }
 
-  if('REMOTE_ADDR' in req.headers){return req.headers.REMOTE_ADDR;}
+  var strHead=req.headers.get('REMOTE_ADDR')
+  if(strHead){return strHead;}
   return false
 }
 
 
 
+
+//declare global {var CacheUriT, makeWatchCB, isRedirAppropriate, setAccessControlAllowOrigin}
 var regFileType=RegExp('\\.([a-z0-9]+)$','i'),    regZip=RegExp('^(css|js|txt|html)$'),   regUglify=RegExp('^js$');
 app.CacheUriT=function(){
   this.set=async function(key, buf, type, boZip, boUglify){
-    var strHash=md5(buf);
+    var strHash=app.md5(buf);
     //if(boUglify) { // UglifyJS does not handle ecma6 (when I tested it 2019-05-05).
       //var objU=UglifyJS.minify(buf.toString());
       //buf=new Buffer(objU.code,'utf8');
@@ -278,26 +287,29 @@ app.makeWatchCB=function(strFolder, StrFile) {
   }
 }
 
-app.isRedirAppropriate=function(req){
+//app.isRedirAppropriate=function(req){
+app.isRedirAppropriate=function(objUrl){
+  const {protocol, host, pathname}=objUrl
   if(typeof RegRedir=='undefined') return false;
 
-  var domainName=req.headers.host;
+  //var host=req.headers.get('host');
   for(var i=0;i<RegRedir.length;i++){
     var regTmp=RegRedir[i][0], strNew=RegRedir[i][1];
-    var boT=regTmp.test(domainName);
+    var boT=regTmp.test(host);
     if(boT) {
-      var domainNameNew=domainName.replace(regTmp, strNew);
-      return 'http://'+domainNameNew+req.url;
+      var hostNew=host.replace(regTmp, strNew);
+      return protocol+'//'+hostNew+pathname;
     }
   }
   return false;
 }
 
 
-
-app.setAccessControlAllowOrigin=function(req, res, RegAllowed){
-  if('origin' in req.headers){ //if cross site
-    var http_origin=req.headers.origin;
+app.setAccessControlAllowOrigin=function(reqMy, RegAllowed){
+  const {req}=reqMy;
+  var strHead=req.headers.get('origin')
+  if(strHead){ //if cross site
+    var http_origin=strHead;
     //var boAllowDbg=boDbg && RegExp("^http\:\/\/(localhost|192\.168\.0)").test(http_origin);
     //var boAllowed=false; for(var i=0;i<RegAllowed.length;i++){ boAllowed=http_origin===RegAllowed[i]; if(boAllowed) break; }
     var boAllowed=false;
@@ -307,40 +319,20 @@ app.setAccessControlAllowOrigin=function(req, res, RegAllowed){
     }
     //if(boAllowDbg || http_origin == "https://control.locatabl.com" || http_origin == "https://controllocatablcom.herokuapp.com" || http_origin == "https://emagnusandersson.github.io" ){
     if(boAllowed){
-      res.setHeader("Access-Control-Allow-Origin", http_origin);
-      res.setHeader("Vary", "Origin"); 
+      //reqMy.setOutHeader("Access-Control-Allow-Origin", http_origin); reqMy.setOutHeader("Vary", "Origin"); 
+      reqMy.setOutHeader({"Access-Control-Allow-Origin":http_origin, "Vary":"Origin"});
+      reqMy.setOutHeader({"Cross-Origin-Opener-Policy":"same-site"})
+      // After googling same-site vs same-origin, I find: Websites that have the same scheme and the same eTLD+1 are considered "same-site"
     }
   }
 }
 //RegAllowedOriginOfStaticFile=[RegExp("^https\:\/\/(control\.locatabl\.com|controllocatablcom\.herokuapp\.com|emagnusandersson\.github\.io)")];
 //if(boDbg) RegAllowedOriginOfStaticFile.push(RegExp("^http\:\/\/(localhost|192\.168\.0)"));
-//setAccessControlAllowOrigin(res, req, RegAllowedOriginOfStaticFile);
+//setAccessControlAllowOrigin(setAccessControlAllowOrigin, RegAllowedOriginOfStaticFile);
 
 
   // Make Html table
-app.makeTHead=function(K){
-  if(!K) return "";
-  var strD=''; 
-  for(var i=0; i<K.length; i++){var d=K[i]; strD+=`<th>${d}</th>`;}
-  var strR=`<tr>${strD}</tr>`;
-  return `<thead>${strR}</thead>`;
-}
-app.makeTBody=function(K,M){
-  var strR=''; 
-  for(var j=0;j<M.length;j++){
-    var r=M[j];
-    var strD='';
-    //for(var i in r){var d=r[i]; strD+=`<td>${d}</td>`;}
-    for(var i=0;i<K.length;i++){var d=r[K[i]]; strD+=`<td>${d}</td>`;}
-    strR+=`<tr>${strD}</tr>`;
-  }
-  return `<tbody>${strR}</tbody>`;
-}
-app.makeTable=function(K,M){
-  return `<table>${makeTHead(K)}${makeTBody(K,M)}</table>`;
-}
-
-
+//declare global {var makeTHead, makeTBody, makeTable}
 app.makeTHead=function(StrHead){
   if(!StrHead) return "";
   var strD=''; 
@@ -365,6 +357,7 @@ app.makeTable=function(arrObj, StrHead=null){
 
 
 
+//declare global {var csvParseMy}
 app.csvParseMy=function(strCSV){  // Should be in lib.js. Although as it is only used on the server I place it here.  
   var arrStr=[];
   var replaceStr=function(m, str){
@@ -422,18 +415,28 @@ app.readAllMy=async function(readable){
 //
 
 app.imGetSize=async function(bufData){
-  var args=[ "-ping", "-format", "%w %h", 'fd:0']
-  var command = new Deno.Command('identify', { args, stdin:"piped", stdout:"piped" });
-  var child = command.spawn();
-  var promiseRead=readAllMy(child.stdout);
-  var writer = child.stdin.getWriter();
-  await writer.ready;
-  writer.write(bufData);
-  writer.releaseLock();
-  await child.stdin.close();
-  var value = await promiseRead;
-  const decoder = new TextDecoder();
-  value=decoder.decode(value)
-  var [w, h]=value.split(' ')
-  return [Number(w), Number(h)]
+  if(boDeno){
+    var args=[ "-ping", "-format", "%w %h", 'fd:0']
+    var command = new Deno.Command('identify', { args, stdin:"piped", stdout:"piped" });
+    var child = command.spawn();
+    var promiseRead=readAllMy(child.stdout);
+    var writer = child.stdin.getWriter();
+    await writer.ready;
+    writer.write(bufData);
+    writer.releaseLock();
+    await child.stdin.close();
+    var value = await promiseRead;
+    const decoder = new TextDecoder();
+    value=decoder.decode(value)
+    var [w, h]=value.split(' ')
+    return [err, [Number(w), Number(h)]]
+  }else{
+    var [err, value]=await new Promise(resolve=>{
+      gm(bufData).size(function(errT, valueT){ resolve([errT,valueT]);  });
+    });
+    if(err){ return [err]; }  
+    var {width, height}=value;
+    return [null, [width, height]]
+  }
 }
+

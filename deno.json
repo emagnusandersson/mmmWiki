@@ -1,0 +1,11 @@
+{
+  "imports": {
+    "fmt/": "https://deno.land/std@0.201.0/fmt/",
+    "zlib":"https://deno.land/x/compress@v0.4.5/zlib/mod.ts",
+    "jszip":"https://deno.land/x/jszip/mod.ts",
+    "redis":"https://deno.land/x/redis/mod.ts",
+    "minimist":"https://deno.land/x/deno_minimist/lib/minimist.ts",
+    "multiparser":"https://deno.land/x/multiparser/mod.ts",
+    "buffer":"https://deno.land/std/io/buffer.ts"
+  }
+}

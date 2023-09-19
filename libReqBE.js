@@ -1,7 +1,7 @@
 "use strict"
 
-//const { Int32, Long, ObjectId } = require("mongodb"); //, ObjectID
-import { Int32, Long, ObjectId } from "mongodb"; //, ObjectID
+const extend=Object.assign;
+
 
 
 /******************************************************************************
@@ -15,8 +15,8 @@ app.ReqBE=function(objReqRes){
 
   // Method "mesO" and "mesEO" are only called from "go". Method "mes" can be called from any method.
 ReqBE.prototype.mes=function(str){ this.Str.push(str); }
-ReqBE.prototype.mesO=function(e){
-  var {res}=this;
+ReqBE.prototype.mesO=async function(e){
+  var {reqMy}=this;
     // Prepare an error-message for the browser.
   var strEBrowser, statusCode=200;
   if(typeof e=='string'){strEBrowser=e; }
@@ -33,21 +33,44 @@ ReqBE.prototype.mesO=function(e){
   var GRet=this.GRet;    //if('tMod' in GRet && GRet.tMod instanceof Date ) GRet.tMod=GRet.tMod.toUnix();
   
   var objOut=copySome({}, this, ["dataArr", "GRet"]);
-  var str=serialize(objOut);
-  res.statusCode=statusCode;
-  if(str.length<lenGZ) res.end(str);
+  var strOut=serialize(objOut);
+  reqMy.statusOut(statusCode);
+  if(strOut.length<lenGZ) reqMy.end(strOut);
   else{
-    res.setHeader("Content-Encoding", 'gzip');
-    //res.setHeader('Content-Type', StrMimeType.txt);
-    Streamify(str).pipe(zlib.createGzip()).pipe(res);
+    var objHead={"Content-Type": StrMimeType.txt, "Content-Encoding":'gzip'};  //, "Content-Length":strOut.length
+    reqMy.setOutHeader(objHead);
+    //Streamify(strOut).pipe(zlib.createGzip()).pipe(res);
+    //var pipeTmp=Streamify(strOut).pipe(zlib.createGzip());
+    //reqMy.end(strOut);
+    if(boDeno){
+      const encObj = new TextEncoderStream();
+      const writerEnc = encObj.writable.getWriter();
+      const webstreamComp=new CompressionStream("gzip")
+      encObj.readable.pipeTo(webstreamComp.writable)
+  
+      reqMy.end(webstreamComp.readable);
+      await writerEnc.ready;
+      writerEnc.write(strOut);
+      writerEnc.releaseLock();
+      encObj.writable.close();
+    }else{
+      //Streamify(strOut).pipe(zlib.createGzip()).pipe(res);
+      var s1=Streamify(strOut);
+      var s2=s1.pipe(zlib.createGzip());
+      //var s3=s2.pipe(res);
+      reqMy.end(s2);
+    }
+  
+
   }
 }
 ReqBE.prototype.mesEO=function(e, statusCode=500){
-  var {req,res}=this;
+  var {reqMy}=this, {req}=reqMy;
 
     // Write error to error log
   console.error(e);
-  var headersTmp=copySome({}, req.headers, ['user-agent', 'host', 'origin', 'referer', 'x-requested-with']);
+  //console.error(req.method);
+  var headersTmp=copySomeGet({}, req.headers, ['user-agent', 'host', 'origin', 'referer', 'x-requested-with']);
   console.error(headersTmp);
 
     // Prepare an error-message for the browser.
@@ -67,25 +90,32 @@ ReqBE.prototype.mesEO=function(e, statusCode=500){
   
   //res.writeHead(500, {"Content-Type": StrMimeType.txt}); 
   var objOut=copySome({}, this, ["dataArr", "GRet"]);
-  res.statusCode=statusCode;
-  res.end(serialize(objOut));
+  reqMy.statusOut(statusCode).end(serialize(objOut));
 }
 
 
-
 ReqBE.prototype.go=async function(){ 
-  var {req, res}=this;
+  var {reqMy}=this, {req, objUrl}=reqMy;
   
-  var strT=req.headers['sec-fetch-site'];
+  var strT=req.headers.get('sec-fetch-site');
   if(strT && strT!='same-origin') { this.mesEO(Error(`sec-fetch-site header is not 'same-origin' (${strT})`));  return;}
   
+  var strTmp=req.headers.get('x-requested-with');
+  if(strTmp){
+    if(strTmp!=="XMLHttpRequest") { this.mesEO(Error("x-requested-with: "+strTmp));  return; }
+  } else { 
+    //console.log(reqMy.objUrl.query)
+    //console.log(reqMy.objUrl.search)
+    let objQS=objUrl.searchParams;
+    //let confirmation_code=objQS.get('confirmation_code')||'';
+    console.log(objQS)
 
-  if('x-requested-with' in req.headers){
-    var str=req.headers['x-requested-with'];   if(str!=="XMLHttpRequest") { this.mesEO(Error("x-requested-with: "+str));  return; }
-  } else { this.mesEO(Error("x-requested-with not set"));  return;  }
+    this.mesEO(Error("x-requested-with not set"));  return;  
+  }
 
-  if('referer' in req.headers) {
-    var urlT=req.strSchemeLong+req.wwwSite, lTmp=urlT.length, referer=req.headers.referer, lMin=Math.min(lTmp, referer.length);
+  var referer=req.headers.get('referer');
+  if(referer) {
+    var urlT=reqMy.strSchemeLong+reqMy.wwwSite, lTmp=urlT.length, lMin=Math.min(lTmp, referer.length);
     if(referer.slice(0,lMin)!=urlT.slice(0,lMin)) { this.mesEO(Error(`Referer does not match,  got: ${referer}, expected: ${urlT}`));  return;  }
   } else {  this.mesEO(Error("Referer not set"));  return; }
 
@@ -94,36 +124,55 @@ ReqBE.prototype.go=async function(){
   var jsonInput;
   if(req.method=='POST'){
     //var strOriginTmp=req.urlSite; //if(req.port==5000) strOriginTmp+=':5000';
-    //var strT=req.headers.Origin; if(strT!=strOriginTmp) {this.mesEO(Error("Origin-header is not the same wwwSite"));return; }
-    if('x-type' in req.headers ){ //&& req.headers['x-type']=='single'
+    //const origin=req.headers.get('origin'); if(origin!=strOriginTmp) {this.mesEO(Error("Origin-header is not the same wwwSite"));return; }
+    const xType=req.headers.get('x-type')
+    if(xType!=null){ //&& xType=='single'
       //var form = new formidable.IncomingForm();
-      var form = formidable({});
-      //form.multiples = true;  
-      var File=this.File=[];
+      if(boDeno){
+        const parsed = await multiParser(req)
+        var {fields, files}=parsed;
+        this.File=files['fileToUpload[]'];
+      }else{
+        var form = formidable({});
+        //form.multiples = true;  
+        var File=this.File=[];
 
-      form.on('file', function(field, file) {
-        //console.log(file.originalFilename);
-        //console.log(JSON.stringify(field));
-        //files.push([field, file]);
-        File.push(file);
-      });
+        form.on('file', function(field, file) {
+          File.push(file);
+        });
 
-      //var [err, fields, files]=await new Promise(resolve=>{  form.parse(req, (...arg)=>resolve(arg));  });     if(err){ this.mesEO(err); return; } 
-      var [err, arrRes]=await form.parse(req).toNBP();    if(err){ this.mesEO(err); return; } 
-      var [fields, files]=arrRes;
-      
-      //this.File=files['fileToUpload[]'];
+        //var [err, fields, files]=await new Promise(resolve=>{  form.parse(req, (...arg)=>resolve(arg));  });     if(err){ this.mesEO(err); return; } 
+        var [err, arrRes]=await form.parse(req).toNBP();    if(err){ this.mesEO(err); return; } 
+        var [fields, files]=arrRes;
+      }
+
       if('g-recaptcha-response' in fields) this.captchaIn=fields['g-recaptcha-response']; else this.captchaIn='';
       if('strName' in fields) this.strName=fields.strName; else this.strName='';
       if(!(this.File instanceof Array)) this.File=[this.File];
       jsonInput=fields.vec;
       
     }else{
-      var [err,buf]=await new Promise(resolve=>{ var myConcat=concat(function(bufT){ resolve([null,bufT]) });    req.pipe(myConcat);  });
-      jsonInput=buf.toString();
+      //const aaa=req.body.getReader()
+      //const reader = req?.body?.getReader();
+      // const readerB=readerFromStreamReader(reader)
+      // const buf = await Deno.readAll(readerB);
+      if(boDeno){
+        var buf = await readAllMy(req?.body)
+      }else{
+        var [err,buf]=await new Promise(resolve=>{ var myConcat=concat(function(bufT){ resolve([null,bufT]) });    req.pipe(myConcat);  });
+      }
+      
+      //const buf = await req.body();
+     
+      const decoder = new TextDecoder();
+      jsonInput = decoder.decode(buf); //JSON.parse();
+      //jsonInput=buf.toString();
     }
   } else if(req.method=='GET'){
-    var objUrl=url.parse(req.url), qs=objUrl.query||''; jsonInput=urldecode(qs);
+    //var objUrl=url.parse(req.url), qs=objUrl.query||''; 
+    // let objQS=objUrl.searchParams, qs=objQS.toString()
+    var qs=objUrl.search.slice(1)
+    jsonInput=urldecode(qs);
     //  With jQuery: "/be.json?[[%22pageLoad%22,1],[%22page%22,%22start%22]]"
     //  Now: "/be.json?%5B%5B%22pageLoad%22%2C1%5D%2C%5B%22page%22%2C%22start%22%5D%5D"
   }
@@ -134,25 +183,25 @@ ReqBE.prototype.go=async function(){
   //if(!req.boCookieStrictOK) {this.mesEO(Error('Strict cookie not set'));  return;   }
   
     // Get boARLoggedIn / boAWLoggedIn.  Conditionally push deadlines forward ("expire" returns 1 if timer was set or 0 if variable doesn't exist)
-  var {sessionIDR, sessionIDW}=req.cookies; //, arrCookieOut=[];
+  var {sessionIDR, sessionIDW}=reqMy.cookies; //, arrCookieOut=[];
   if(sessionIDR){
-    //var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
-    var [err, value]=await redis.myGetNExpire(sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
-    
+    var [err, value]=await evalRedis(luaGetNExpire, [reqMy.cookies.sessionIDR+'_adminRTimer'], [maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+
     //arrCookieOut.push("sessionIDR="+sessionIDR+StrSessionIDRProp[this.boARLoggedIn]);
-    res.replaceCookie("sessionIDR="+sessionIDR+StrSessionIDRProp[this.boARLoggedIn]);
+    //res.replaceCookie("sessionIDR="+sessionIDR+StrSessionIDRProp[this.boARLoggedIn]);
+    reqMy.outCookies.sessionIDR=sessionIDR+StrSessionIDRProp[this.boARLoggedIn]
   }else {this.boARLoggedIn=0;}
   if(sessionIDW){
-    //var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
-    var [err, value]=await redis.myGetNExpire(sessionIDW+'_adminWTimer', maxAdminWUnactivityTime).toNBP(); this.boAWLoggedIn=Number(value);
+    var [err, value]=await evalRedis(luaGetNExpire, [reqMy.cookies.sessionIDW+'_adminWTimer'], [maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
     //arrCookieOut.push("sessionIDW="+sessionIDW+StrSessionIDWProp[this.boAWLoggedIn]);
-    res.replaceCookie("sessionIDW="+sessionIDW+StrSessionIDWProp[this.boAWLoggedIn]);
+    //res.replaceCookie("sessionIDW="+sessionIDW+StrSessionIDWProp[this.boAWLoggedIn]);
+    reqMy.outCookies.sessionIDW=sessionIDW+StrSessionIDWProp[this.boAWLoggedIn]
   }else {this.boAWLoggedIn=0;}
 
-  //if(arrCookieOut.length) res.setHeader("Set-Cookie", arrCookieOut);
+  //if(arrCookieOut.length) reqMy.setOutHeader("Set-Cookie", arrCookieOut);
 
 
-  //res.setHeader("Content-type", StrMimeType.json);
+  //reqMy.setOutHeader("Content-type", StrMimeType.json);
 
 
     // Remove the beArr[i][0] values that are not functions
@@ -204,24 +253,20 @@ ReqBE.prototype.go=async function(){
   if(boCheckCSRF){
     if(!CSRFIn){ this.mesO('CSRFCode not set (try reload page)'); return;}
     
-    if(!('sessionIDCSRF' in req.cookies)) { this.mesO('sessionIDCSRF cookie not set (try reload page)'); return;}
-    //var [err, CSRFCode]=await cmdRedis('EVAL', [luaGetNExpire, 1, req.cookies.sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
-    var [err, CSRFCode]=await redis.myGetNExpire(req.cookies.sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime).toNBP();
-    
-
+    if(!('sessionIDCSRF' in reqMy.cookies)) { this.mesO('sessionIDCSRF cookie not set (try reload page)'); return;}
+    var [err, CSRFCode]=await evalRedis(luaGetNExpire, [reqMy.cookies.sessionIDCSRF+'_CSRF'], [maxAdminRUnactivityTime])
     if(!CSRFCode) { this.mesO('No such CSRF code stored for that sessionIDCSRF (try reload page)'); return;}
     if(CSRFIn!==CSRFCode){ this.mesO('CSRFCode not matching stored value (try reload page)'); return;}
  
   }
   
   if(boSetNewCSRF) {
-    if(boCheckCSRF) { var sessionIDCSRF=req.cookies.sessionIDCSRF;}
+    if(boCheckCSRF) { var sessionIDCSRF=reqMy.cookies.sessionIDCSRF;}
     else{
       var sessionIDCSRF=null, CSRFCode=null;
-      if('sessionIDCSRF' in req.cookies) { 
-        sessionIDCSRF=req.cookies.sessionIDCSRF;
-        //var [err, CSRFCode]=await cmdRedis('EVAL', [luaGetNExpire, 1, sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]);
-        var [err, CSRFCode]=await redis.myGetNExpire(sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime).toNBP();
+      if('sessionIDCSRF' in reqMy.cookies) { 
+        sessionIDCSRF=reqMy.cookies.sessionIDCSRF;
+        var [err, CSRFCode]=await evalRedis(luaGetNExpire, [sessionIDCSRF+'_CSRF'], [maxAdminRUnactivityTime]);
         if(!CSRFCode) sessionIDCSRF=randomHash(); // To avoid session fixation
       }  else sessionIDCSRF=randomHash();
     } 
@@ -231,8 +276,9 @@ ReqBE.prototype.go=async function(){
     var [err,tmp]=await setRedis(sessionIDCSRF+'_CSRF', CSRFCode, maxAdminRUnactivityTime);
     this.GRet.CSRFCode=CSRFCode;
     
-    //res.setHeader("Set-Cookie", "sessionIDCSRF="+sessionIDCSRF+strCookiePropLax); 
-    res.replaceCookie("sessionIDCSRF="+sessionIDCSRF+strCookiePropLax); 
+    //reqMy.setOutHeader("Set-Cookie", "sessionIDCSRF="+sessionIDCSRF+strCookiePropLax); 
+    //res.replaceCookie("sessionIDCSRF="+sessionIDCSRF+strCookiePropLax);
+    reqMy.outCookies.sessionIDCSRF=sessionIDCSRF+strCookiePropLax
   }
   
 
@@ -249,7 +295,7 @@ ReqBE.prototype.go=async function(){
 
   for(var k=0; k<Func.length; k++){
     var [func,inObj]=Func[k],   [err, result]=await func.call(this, inObj);
-    if(res.finished) return;
+    if(reqMy.boResponseSent) return;
     this.dataArr[k]=result;
     if(err){
       if(typeof err=='object' && err.name=='ErrorClient') this.mesO(err); else this.mesEO(err);     return;
@@ -262,7 +308,7 @@ ReqBE.prototype.go=async function(){
 
 
 ReqBE.prototype.aRLogin=async function(inObj){ 
-  var {req, res, GRet}=this, aRPass=inObj.pass; 
+  var {reqMy, GRet}=this, {req}=reqMy, aRPass=inObj.pass; 
   var Ou={};  
   if(this.boARLoggedIn==1 ){ this.mesO('Already have read access'); return [null, [Ou]]; }
   if(!aRPass) { this.mesO('Password needed');  return [null, [Ou]];  }
@@ -272,14 +318,15 @@ ReqBE.prototype.aRLogin=async function(inObj){
 
     // Delete old session-token
     // (Changing session-token at login (as recomended by security recomendations) (to prevent session fixation))
-  var {sessionIDR}=req.cookies;
+  var {sessionIDR}=reqMy.cookies;
   //if(sessionIDR) { var [err]=await cmdRedis('DEL', [sessionIDR+'_adminRTimer']); if(err) return [err]; }
   if(sessionIDR) { var [err]=await delRedis(sessionIDR+'_adminRTimer'); if(err) return [err]; }
   var sessionIDR=randomHash();
   //var [err]=await cmdRedis('SET', [sessionIDR+'_adminRTimer', 1, 'EX', maxAdminRUnactivityTime]);
   var [err]=await setRedis(sessionIDR+'_adminRTimer', 1, maxAdminRUnactivityTime);
-  //res.setHeader("Set-Cookie", "sessionIDR="+sessionIDR+StrSessionIDRProp[1]);
-  res.replaceCookie("sessionIDR="+sessionIDR+StrSessionIDRProp[1]);
+  //reqMy.setOutHeader("Set-Cookie", "sessionIDR="+sessionIDR+StrSessionIDRProp[1]);
+  //res.replaceCookie("sessionIDR="+sessionIDR+StrSessionIDRProp[1]);
+  reqMy.outCookies.sessionIDR=sessionIDR+StrSessionIDRProp[1]
   
   copySome(GRet,this,['boARLoggedIn','boAWLoggedIn']); 
     // Returning both (to make it a bit simpler on the client side) 
@@ -289,7 +336,7 @@ ReqBE.prototype.aRLogin=async function(inObj){
 }
 
 ReqBE.prototype.aWLogin=async function(inObj){ 
-  var {req, res, GRet}=this, aWPass=inObj.pass; 
+  var {reqMy, GRet}=this, {req}=reqMy, aWPass=inObj.pass; 
   var Ou={};  
   if(this.boAWLoggedIn==1 ){ this.mesO('Already have write access'); return [null, [Ou]]; }
   if(!aWPass) { this.mesO('Password needed');  return [null, [Ou]];  }
@@ -299,14 +346,15 @@ ReqBE.prototype.aWLogin=async function(inObj){
   
     // Delete old session-token
     // (Changing session-token at login (as recomended by security recomendations) (to prevent session fixation))
-  var {sessionIDW}=req.cookies;
+  var {sessionIDW}=reqMy.cookies;
   //if(sessionIDW) {  var [err]=await cmdRedis('DEL', [sessionIDW+'_adminWTimer']); if(err) return [err];  }
   if(sessionIDW) {  var [err]=await delRedis(sessionIDW+'_adminWTimer'); if(err) return [err];  }
   var sessionIDW=randomHash();
   //var [err]=await cmdRedis('SET', [sessionIDW+'_adminWTimer', 1, 'EX', maxAdminWUnactivityTime]);
   var [err]=await setRedis(sessionIDW+'_adminWTimer', 1, maxAdminWUnactivityTime);
-  //res.setHeader("Set-Cookie", "sessionIDW="+sessionIDW+StrSessionIDWProp[1]);
-  res.replaceCookie("sessionIDW="+sessionIDW+StrSessionIDWProp[1]);
+  //reqMy.setOutHeader("Set-Cookie", "sessionIDW="+sessionIDW+StrSessionIDWProp[1]);
+  //res.replaceCookie("sessionIDW="+sessionIDW+StrSessionIDWProp[1]);
+  reqMy.outCookies.sessionIDW=sessionIDW+StrSessionIDWProp[1]
 
   
   if(objOthersActivity) extend(objOthersActivity,objOthersActivityDefault);
@@ -316,11 +364,12 @@ ReqBE.prototype.aWLogin=async function(inObj){
 }
 
 ReqBE.prototype.aRLogout=async function(inObj){ 
-  var {req, res, GRet}=this, Ou={}, {sessionIDR}=req.cookies;
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={}, {sessionIDR}=reqMy.cookies;
   //var [err,tmp]=await cmdRedis('DEL', [sessionIDR+'_adminRTimer']);
   var [err,tmp]=await delRedis(sessionIDR+'_adminRTimer');
-  //res.setHeader("Set-Cookie", "sessionIDR="+sessionIDR+StrSessionIDRProp[0]);
-  res.replaceCookie("sessionIDR="+sessionIDR+StrSessionIDRProp[0]);
+  //reqMy.setOutHeader("Set-Cookie", "sessionIDR="+sessionIDR+StrSessionIDRProp[0]);
+  //res.replaceCookie("sessionIDR="+sessionIDR+StrSessionIDRProp[0]);
+  reqMy.outCookies.sessionIDR=sessionIDR+StrSessionIDRProp[0]
 
   if(this.boARLoggedIn) {this.mes('Logged out (read access)'); GRet.strDiffText=''; } 
   this.boARLoggedIn=0;
@@ -329,11 +378,12 @@ ReqBE.prototype.aRLogout=async function(inObj){
 }
 
 ReqBE.prototype.aWLogout=async function(inObj){ 
-  var {req, res, GRet}=this, Ou={}, {sessionIDW}=req.cookies;
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={}, {sessionIDW}=reqMy.cookies;
   //var [err,tmp]=await cmdRedis('DEL', [sessionIDW+'_adminWTimer']);
   var [err,tmp]=await delRedis(sessionIDW+'_adminWTimer');
-  //res.setHeader("Set-Cookie", "sessionIDW="+sessionIDW+StrSessionIDWProp[0]);
-  res.replaceCookie("sessionIDW="+sessionIDW+StrSessionIDWProp[0]);
+  //reqMy.setOutHeader("Set-Cookie", "sessionIDW="+sessionIDW+StrSessionIDWProp[0]);
+  //res.replaceCookie("sessionIDW="+sessionIDW+StrSessionIDWProp[0]);
+  reqMy.outCookies.sessionIDW=sessionIDW+StrSessionIDWProp[0]
 
   if(this.boAWLoggedIn) {this.mes('Logged out (write access)'); GRet.strDiffText=''; } 
   this.boAWLoggedIn=0; 
@@ -343,7 +393,7 @@ ReqBE.prototype.aWLogout=async function(inObj){
 
 
 ReqBE.prototype.myChMod=async function(inObj){    
-  var {req, res, GRet}=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={};
   if(!this.boAWLoggedIn) return [new ErrorClient('not logged in (as Administrator)', 401)]; 
   var {Id=[]}=inObj;
   if(!(Id instanceof Array) || Id.length==0 || typeof Id[0]!='string') { return [new ErrorClient('no files')]; } 
@@ -371,7 +421,7 @@ ReqBE.prototype.myChMod=async function(inObj){
   return [null, [Ou]];
 }
 ReqBE.prototype.myChModImage=async function(inObj){ 
-  var {req, res, GRet}=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={};
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)];}
   
   if('Id' in inObj && inObj.Id instanceof Array && inObj.Id.length) var Id=inObj.Id; else {  return [new ErrorClient('chmodImage: no files')]; }
@@ -397,11 +447,12 @@ ReqBE.prototype.myChModImage=async function(inObj){
 
   
 ReqBE.prototype.deletePage=async function(inObj){
-  var {req, res, GRet}=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={};
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)];}
   
   if('Id' in inObj && inObj.Id instanceof Array && inObj.Id.length) var Id=inObj.Id; else { return [new ErrorClient('deletePage: no files')]; }
   
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
@@ -414,12 +465,13 @@ ReqBE.prototype.deletePage=async function(inObj){
 }
 
 ReqBE.prototype.deleteImage=async function(inObj){ 
-  var {req, res, GRet}=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={};
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
 
   if('Id' in inObj && inObj.Id instanceof Array && inObj.Id.length) var Id=inObj.Id; else { return [new ErrorClient('deleteImage: no files')]; }
   
   for(var i=0;i<Id.length;i++) Id[i]=new ObjectId(Id[i]);
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
@@ -433,7 +485,7 @@ ReqBE.prototype.deleteImage=async function(inObj){
 }
 
 ReqBE.prototype.setStrLang=async function(inObj){   
-  var {req, res, GRet}=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={};
   if(!this.boAWLoggedIn) return [new ErrorClient('not logged in (as Administrator)', 401)]; 
   var {strLang='',Id=[]}=inObj;
   //if('Id' in inObj && inObj.Id instanceof Array && inObj.Id.length) var Id=inObj.Id; else { return [new ErrorClient('setStrLang: no files')]; }
@@ -450,7 +502,7 @@ ReqBE.prototype.setStrLang=async function(inObj){
 }
 
 ReqBE.prototype.collisionTestForSetSiteOfPage=async function(inObj){   
-  var {req, res, GRet}=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={};
   if(!this.boAWLoggedIn) return [new ErrorClient('not logged in (as Administrator)', 401)]; 
   var {idSite,Id=[]}=inObj;
   if(!(Id instanceof Array) || Id.length==0 || typeof Id[0]!='string') { return [new ErrorClient('no files')]; }
@@ -467,7 +519,7 @@ ReqBE.prototype.collisionTestForSetSiteOfPage=async function(inObj){
 }
 
 ReqBE.prototype.setSiteOfPage=async function(inObj){   
-  var {req, res, GRet}=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={};
   if(!this.boAWLoggedIn) return [new ErrorClient('not logged in (as Administrator)', 401)]; 
   var {idSite,Id=[]}=inObj;
   if(!(Id instanceof Array) || Id.length==0 || typeof Id[0]!='string') { return [new ErrorClient('no files')]; }
@@ -477,6 +529,7 @@ ReqBE.prototype.setSiteOfPage=async function(inObj){
   
   //for(var i=0;i<Id.length;i++) Id[i]=new ObjectId(Id[i]);
 
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
@@ -496,9 +549,9 @@ ReqBE.prototype.setSiteOfPage=async function(inObj){
 //////////////////////////////////////////////////////////////////////////////////////////////
   
 ReqBE.prototype.pageLoad=async function(inObj) {
-  var {req, res, GRet}=this, self=this;
+  var {reqMy, GRet}=this, {req, wwwSite}=reqMy, self=this;
   var pageNameIn=this.pageName;
-  var Ou={}, {wwwSite}=req;
+  var Ou={};
   var tNow=nowSFloored();
 
   // Private:
@@ -517,6 +570,7 @@ ReqBE.prototype.pageLoad=async function(inObj) {
   if(req.method=='GET') {strHashIn=getETag(req.headers); requesterCacheTime=getRequesterTime(req.headers); }
   
 
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
@@ -538,10 +592,12 @@ ReqBE.prototype.pageLoad=async function(inObj) {
     var objOpt={ returnDocument:'after', returnOriginal:false, session:sessionMongo};
     var [err, objPage]=await collectionPage.findOneAndUpdate(objFilt, objUpd, objOpt).toNBP();   if(err) {arrRet=[err]; break stuff;}
 
-    if(objPage===null) { // No such page 
+    if(objPage==null) { // No such page 
       
-      res.setHeader("Cache-Control", "must-revalidate");  res.setHeader('Last-Modified',(new Date(0)).toUTCString());  res.setHeader('ETag','');
-      res.out404("no such page");
+      //reqMy.setOutHeader("Cache-Control", "must-revalidate");  reqMy.setOutHeader('Last-Modified',(new Date(0)).toUTCString());  reqMy.setOutHeader('ETag','');
+      reqMy.setOutHeader({"Cache-Control":"must-revalidate", 'Last-Modified':(new Date(0)).toUTCString(), 'ETag':''});
+      
+      reqMy.out404("no such page");
       arrRet=[null]; break stuff;
     } 
 
@@ -571,8 +627,10 @@ ReqBE.prototype.pageLoad=async function(inObj) {
       // Get version table
     if(lenRev==0) {  arrRet=[Error('no versions?!?')]; break stuff;  }
     if(rev>=lenRev) {
-      res.setHeaderMy({"Cache-Control":"must-revalidate", 'Last-Modified':(new Date(0)).toUTCString(), 'ETag':''});
-      res.outCode(400, "no such version");
+      const oH={"Cache-Control":"must-revalidate", 'Last-Modified':(new Date(0)).toUTCString(), 'ETag':''}
+      //res.setHeaderMy(oH); reqMy.outCode(400, "no such version");
+      //const res= new Response("no such version", {status:400});  setHeader(res.headers,oH); requestEvent.respondWith(res);
+      reqMy.statusOut(400).setOutHeader(oH).end("no such version")
       arrRet=[null]; break stuff;
     }
     if(rev==-1) rev=iLastRev;    //version=rev+1;  // Use last rev
@@ -588,7 +646,7 @@ ReqBE.prototype.pageLoad=async function(inObj) {
 
       // Calc boValidReqCache => 304
     var boValidReqCache= tMod<=tModCache && strHashIn.length==32 && strHash==strHashIn && tModCache<=requesterCacheTime;
-    if(boValidReqCache) { res.out304(); arrRet=[null]; break stuff; }
+    if(boValidReqCache) { reqMy.out304(); arrRet=[null]; break stuff; }
 
 
       //
@@ -619,7 +677,7 @@ ReqBE.prototype.pageLoad=async function(inObj) {
         // Remove some variables before calculating hash
       var objFieldTmp=copySome({}, objPage, StrFieldCacheSkip);   deleteFields(objPage, StrFieldCacheSkip);
       var strHashOld=strHash;
-      strHash=md5(strHtmlText +JSON.stringify(objPage) +boTalkExist +JSON.stringify(matVersion));
+      strHash=app.md5(strHtmlText +JSON.stringify(objPage) +boTalkExist +JSON.stringify(matVersion));
       copySome(objPage, objFieldTmp, StrFieldCacheSkip); // copy back fields
     
       if(strHash!=strHashOld){
@@ -637,11 +695,11 @@ ReqBE.prototype.pageLoad=async function(inObj) {
         // parse
       var arg={strEditText, idSite, boOW};
       var [err, {strHtmlText, IdChildLax, IdChild, StrImageLC}]=await parse(sessionMongo, arg); if(err) {arrRet=[err]; break stuff;}
-      strHashParse=md5(strHtmlText);
+      strHashParse=app.md5(strHtmlText);
       
         // Remove some variables before calculating hash
       var objFieldTmp=copySome({}, objPage, StrFieldCacheSkip);   deleteFields(objPage, StrFieldCacheSkip);
-      strHash=md5(strHtmlText +JSON.stringify(objPage) +boTalkExist +JSON.stringify(matVersion));
+      strHash=app.md5(strHtmlText +JSON.stringify(objPage) +boTalkExist +JSON.stringify(matVersion));
       copySome(objPage, objFieldTmp, StrFieldCacheSkip); // copy back fields
     
 
@@ -677,8 +735,11 @@ ReqBE.prototype.pageLoad=async function(inObj) {
     
     extend(GRet, {strDiffText:'', arrVersionCompared:[null, rev+1], strHtmlText, strEditText, boTalkExist, matVersion});
     var tmp=objPage.boOR?'':', private';
-    res.setHeaderMy({"Cache-Control":"must-revalidate"+tmp, 'Last-Modified':tModCache.toUTCString(), 'ETag':strHash});
-    //res.setHeader("Cache-Control", "must-revalidate"+tmp);  res.setHeader('Last-Modified',tModCache.toUTCString());  res.setHeader('ETag',strHash);
+    const oH={"Cache-Control":"must-revalidate"+tmp, 'Last-Modified':tModCache.toUTCString(), 'ETag':strHash}
+    //res.setHeaderMy(oH);
+    //res.setHeaderMy(oH); reqMy.outCode(400, "no such version");
+    //const res= new Response("asdf", {status:200});  setHeader(res.headers,oH); requestEvent.respondWith(res);
+    reqMy.setOutHeader(oH)
 
     arrRet=[null];
   }
@@ -693,7 +754,7 @@ ReqBE.prototype.pageLoad=async function(inObj) {
 
 
 ReqBE.prototype.pageCompare=async function(inObj){ 
-  var {req, res, GRet, pageName}=this, {wwwSite}=req;
+  var {reqMy, GRet, pageName}=this, {req, wwwSite}=reqMy;
   var Ou={};
   var versionOld=arr_min(inObj.arrVersionCompared),  version=arr_max(inObj.arrVersionCompared); 
   versionOld=Math.max(1,versionOld);  version=Math.max(1,version);
@@ -724,6 +785,7 @@ ReqBE.prototype.pageCompare=async function(inObj){
 
     // parse 
   var arg={strEditText, idSite, boOW};
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
@@ -745,7 +807,7 @@ ReqBE.prototype.pageCompare=async function(inObj){
 
 
 ReqBE.prototype.getPreview=async function(inObj){ 
-  var {req, res, GRet}=this, Ou={}, {wwwSite}=req;
+  var {reqMy, GRet}=this, {req, wwwSite}=reqMy, Ou={};
   var strEditText=inObj.strEditText;
   
   var boOW=1;
@@ -758,6 +820,7 @@ ReqBE.prototype.getPreview=async function(inObj){
   
     // parse
   var arg={strEditText, idSite, boOW};
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
@@ -774,10 +837,11 @@ ReqBE.prototype.getPreview=async function(inObj){
 
 
 ReqBE.prototype.saveByReplace=async function(inObj){ 
-  var {req, res, GRet}=this, self=this, Ou={}, {wwwSite}=req;
+  var {reqMy, GRet}=this, {req, wwwSite}=reqMy, self=this, Ou={};
   
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; } 
 
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
@@ -858,7 +922,7 @@ ReqBE.prototype.saveByReplace=async function(inObj){
       // parse
     var arg={strEditText, idSite, boOW};
     var [err, {strHtmlText, IdChildLax, IdChild, StrImageLC}]=await parse(sessionMongo, arg); if(err) {arrRet=[err]; break stuff;};
-    var strHashParse=md5(strHtmlText);
+    var strHashParse=app.md5(strHtmlText);
 
     var nChild=IdChild.length, nImage=StrImageLC.length; 
     var StrImageStub=[], StrPagePrivate=[];
@@ -940,12 +1004,14 @@ ReqBE.prototype.saveByReplace=async function(inObj){
 
 
 ReqBE.prototype.saveByAdd=async function(inObj){ 
-  var {req, res, GRet}=this, self=this, Ou={};
+  var {reqMy, GRet}=this, {conn, req, wwwSite}=reqMy, self=this, Ou={};
 
     // Check reCaptcha with google
   var strCaptchaIn=inObj['g-recaptcha-response'];
-  var uGogCheck = "https://www.google.com/recaptcha/api/siteverify"; 
-  var objForm={  secret:strReCaptchaSecretKey, response:strCaptchaIn, remoteip:req.connection.remoteAddress  };
+  var uGogCheck = "https://www.google.com/recaptcha/api/siteverify";
+  //var objForm={  secret:strReCaptchaSecretKey, response:strCaptchaIn, remoteip:req.connection.remoteAddress  };
+  const remoteip=boDeno?conn.remoteAddr.hostname:req.connection.remoteAddress
+  var objForm={  secret:strReCaptchaSecretKey, response:strCaptchaIn, remoteip  };
 
   // var p=new Promise(resolve=>{
   //   var reqStream=requestMod.post({url:uGogCheck, form:objForm}, function(errT, responseT, bodyT) { resolve([errT, responseT, bodyT]);   });
@@ -962,13 +1028,14 @@ ReqBE.prototype.saveByAdd=async function(inObj){
   if(!data.success) return [new ErrorClient('reCaptcha test not successfull')];
   
 
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
   stuff:
   {
     var arrRet=[null];
-    var {wwwSite}=req, {pageName}=self;
+    var {pageName}=self;
     var {strEditText, summary, signature}=inObj;   summary=myJSEscape(summary); signature=myJSEscape(signature);
     var size=strEditText.length;
     var boTalk=isTalk(pageName),  boTemplate=isTemplate(pageName);
@@ -1027,7 +1094,7 @@ ReqBE.prototype.saveByAdd=async function(inObj){
       // parse
     var arg={strEditText, idSite, boOW};
     var [err, {strHtmlText, IdChildLax, IdChild, StrImage, StrImageLC}]=await parse(sessionMongo, arg); if(err){arrRet=[err]; break stuff;}
-    var strHashParse=md5(strHtmlText);
+    var strHashParse=app.md5(strHtmlText);
 
     var nChild=IdChild.length, nImage=StrImageLC.length; 
     var StrImageStub=[], StrPagePrivate=[];
@@ -1104,9 +1171,10 @@ ReqBE.prototype.saveByAdd=async function(inObj){
 
 
 ReqBE.prototype.renamePage=async function(inObj){ 
-  var {req, res, GRet}=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
 
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
@@ -1208,9 +1276,10 @@ ReqBE.prototype.renamePage=async function(inObj){
 }
   
 ReqBE.prototype.renameImage=async function(inObj){
-  var {req, res, GRet}=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
@@ -1287,13 +1356,13 @@ ReqBE.prototype.renameImage=async function(inObj){
 
 
 ReqBE.prototype.getLoginBoolean=async function(inObj){ 
-  var {req, res, GRet}=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={};
   copySome(GRet, this, ['boARLoggedIn', 'boAWLoggedIn']);
 
   return [null, [Ou]];  
 }
 ReqBE.prototype.getAWRestrictedStuff=async function(inObj){ 
-  var {req, res, GRet}=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={};
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
 
   var Arg=[ {name:{$in:['tModLast', 'pageTModLast', 'tLastBU']}}];
@@ -1316,7 +1385,7 @@ ReqBE.prototype.setUpPageListCond=async function(inObj){
 }
  
 ReqBE.prototype.getParent=async function(inObj){ 
-  var {req, res}=this;
+  var {reqMy}=this, {req}=reqMy;
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   var Ou={}, {idPage}=inObj;
 
@@ -1342,7 +1411,7 @@ ReqBE.prototype.getParent=async function(inObj){
 }
 
 ReqBE.prototype.getParentOfImage=async function(inObj){ 
-  var {req, res}=this;
+  var {reqMy}=this, {req}=reqMy;
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   var Ou={};
 
@@ -1381,7 +1450,7 @@ ReqBE.prototype.getParentOfImage=async function(inObj){
 }
 
 ReqBE.prototype.getPageInfoById=async function(inObj){ 
-  var {req, res}=this;
+  var {reqMy}=this, {req}=reqMy;
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   var Ou={}, {idPage}=inObj; 
   if(idPage===null){
@@ -1402,7 +1471,7 @@ ReqBE.prototype.getPageInfoById=async function(inObj){
 }
 
 ReqBE.prototype.getImageInfoById=async function(inObj){ 
-  var {req, res}=this;
+  var {reqMy}=this, {req}=reqMy;
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   var Ou={};
   if(inObj.idImage===null){
@@ -1425,7 +1494,7 @@ ReqBE.prototype.getImageInfoById=async function(inObj){
     // nAccess, tCreated, tLastAccess;
 
 ReqBE.prototype.getPageList=async function(inObj) { 
-  var {req, res}=this;
+  var {reqMy}=this, {req}=reqMy;
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
 
     // Get sites
@@ -1468,7 +1537,7 @@ ReqBE.prototype.getPageList=async function(inObj) {
 
 
 ReqBE.prototype.getPageHist=async function(inObj){ 
-  var {req, res}=this;
+  var {reqMy}=this, {req}=reqMy;
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   var Ou={};
   var arg={ WhereExtra:[], Prop:PropPage, collection:collectionPage};  
@@ -1506,7 +1575,7 @@ ReqBE.prototype.setUpImageListCond=async function(inObj){
 }
 
 ReqBE.prototype.getImageList=async function(inObj) { 
-  var {req, res}=this;
+  var {reqMy}=this, {req}=reqMy;
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
 
     // Get sites
@@ -1545,7 +1614,7 @@ ReqBE.prototype.getImageList=async function(inObj) {
 }
 
 ReqBE.prototype.getImageHist=async function(inObj){ 
-  var {req, res}=this;
+  var {reqMy}=this, {req}=reqMy;
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   var Ou={};
 
@@ -1585,7 +1654,7 @@ ReqBE.prototype.getImageHist=async function(inObj){
 }
 
 ReqBE.prototype.getPageInfo=async function(inObj){  // Used by uploadAdminDiv, by sendConflictCheck 
-  var {req, res, GRet}=this;
+  var {reqMy, GRet}=this, {req}=reqMy;
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   var Ou={};
 
@@ -1608,7 +1677,7 @@ ReqBE.prototype.getPageInfo=async function(inObj){  // Used by uploadAdminDiv, b
 
 
 ReqBE.prototype.getImageInfo=async function(inObj){  // Used by diffBackUpDiv, uploadAdminDiv, uploadUserDiv 
-  var {req, res, GRet}=this;
+  var {reqMy, GRet}=this, {req}=reqMy;
   if(!this.boAWLoggedIn) {return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   var Ou={};
 
@@ -1637,7 +1706,7 @@ ReqBE.prototype.getImageInfo=async function(inObj){  // Used by diffBackUpDiv, u
 // RedirectTab
 ////////////////////////////////////////////////////////////////////////
 ReqBE.prototype.redirectTabGet=async function(inObj){  
-  var {req, res, GRet}=this;
+  var {reqMy, GRet}=this, {req}=reqMy;
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
 
 
@@ -1653,7 +1722,7 @@ ReqBE.prototype.redirectTabGet=async function(inObj){
 }
 
 ReqBE.prototype.redirectTabSet=async function(inObj){ 
-  var {req, res, GRet}=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
   //var boUpd=inObj.boUpd||false;
   var tNow=nowSFloored();
@@ -1673,10 +1742,10 @@ ReqBE.prototype.redirectTabSet=async function(inObj){
     if(err && (typeof err=='object') && err.code==11000){ this.mes(err.message); extend(Ou, {boOK:0});}  // dup key
     else if(err) return [err];
     else{
-      //var c=result.modifiedCount; this.mes(c+" row(s) modified."); 
+      //var c=result.modifiedCount; this.mes(c+" row(s) modified.");
       if(objDoc===null) {return [new Error('objDoc===null')]}
-      // var boOK=result.ok, messTmp=boOK?"Entry modified.":"Entry not modified.";  this.mes(messTmp); 
-      // var objDoc=result.value;
+      //var boOK=result.ok, messTmp=boOK?"Entry modified.":"Entry not modified.";  this.mes(messTmp); 
+      //var objDoc=result.value;
       extend(Ou, {boOK:1, idSite, objDoc});
     }
     return [null, [Ou]]; //['siteName','pageName','url', 'tCreated', 'tMod', 'nAccess', 'tLastAccess']
@@ -1696,7 +1765,7 @@ ReqBE.prototype.redirectTabSet=async function(inObj){
 }
 
 ReqBE.prototype.redirectTabDelete=async function(inObj){  
-  var {req, res, GRet}=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
 
   var {idSite, pageName}=inObj;
@@ -1711,7 +1780,7 @@ ReqBE.prototype.redirectTabDelete=async function(inObj){
 }
 
 ReqBE.prototype.redirectTabResetNAccess=async function(inObj){ 
-  var {req, res, GRet}=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
 
   var Arg=[{}, {$set:{nAccess:0}}]; //, {upsert:true, new:true}
@@ -1727,7 +1796,7 @@ ReqBE.prototype.redirectTabResetNAccess=async function(inObj){
 ////////////////////////////////////////////////////////////////////////
 
 ReqBE.prototype.siteTabGet=async function(inObj){  // Used by siteTab
-  var {req, res, GRet}=this, Ou={boOK:0};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={boOK:0};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401), [Ou]];  }
 
     // Get sites
@@ -1760,7 +1829,7 @@ ReqBE.prototype.siteTabGet=async function(inObj){  // Used by siteTab
 
 //ReqBE.prototype.siteTabSet=async function(inObj){
 ReqBE.prototype.siteTabInsert=async function(inObj){
-  var {req, res, GRet}=this, self=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, self=this, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   
   var { boTLS, idSite, www, googleAnalyticsTrackingID, srcIcon16, strLangSite}=inObj;
@@ -1792,9 +1861,10 @@ ReqBE.prototype.siteTabInsert=async function(inObj){
 }
 
 ReqBE.prototype.siteTabUpd=async function(inObj){
-  var {req, res, GRet}=this, self=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, self=this, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
   
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
@@ -1915,9 +1985,10 @@ ReqBE.prototype.siteTabUpd=async function(inObj){
 
 
 ReqBE.prototype.siteTabDelete=async function(inObj){  
-  var {req, res, GRet}=this, self=this;
+  var {reqMy, GRet}=this, {req}=reqMy, self=this;
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
 
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
@@ -1952,9 +2023,10 @@ ReqBE.prototype.siteTabDelete=async function(inObj){
   return [null, [Ou]];
 }
 ReqBE.prototype.siteTabSetDefault=async function(inObj){ 
-  var {req, res, GRet}=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)]; }
 
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
@@ -2004,22 +2076,24 @@ ReqBE.prototype.siteTabSetDefault=async function(inObj){
 //                                               |
 //      ReqBE.prototype.uploadAdmin        loadFrBUFolderOnServ
 //                                 \      /
-//                                loadFrFiles
-//                           /         |         \
-//               parseZipFile  csvParseMyWType  storePageMultFrBU
+//                             loadFrFilesOrBufs
+//                            /        |        \
+//                parseZipFile  csvParseMyWType  storePageMultFrBU
 // 
 
 
-var regImg=RegExp(`^(${strImageExtWBar})$`), regVid=RegExp('^(mp4|ogg|webm)$'); 
+var regImg=RegExp(`^(${myGlob.strImageExtWBar})$`), regVid=RegExp('^(mp4|ogg|webm)$'); 
 
 
 ReqBE.prototype.uploadUser=async function(inObj){ 
-  var {req, res, GRet}=this, self=this, Ou={};
+  var {reqMy, GRet}=this, {conn, req}=reqMy, self=this, Ou={};
 
     // Check reCaptcha with google
   var strCaptchaIn=this.captchaIn;
   var uGogCheck = "https://www.google.com/recaptcha/api/siteverify"; 
-  var objForm={  secret:strReCaptchaSecretKey, response:strCaptchaIn, remoteip:req.connection.remoteAddress  };
+  //var objForm={  secret:strReCaptchaSecretKey, response:strCaptchaIn, remoteip:req.connection.remoteAddress  };
+  const remoteip=boDeno?conn.remoteAddr.hostname:req.connection.remoteAddress
+  var objForm={  secret:strReCaptchaSecretKey, response:strCaptchaIn, remoteip  };
 
   // var p=new Promise(resolve=>{
   //   var reqStream=requestMod.post({url:uGogCheck, form:objForm}, function(errT, responseT, bodyT) { resolve([errT, responseT, bodyT]);   });
@@ -2048,7 +2122,7 @@ ReqBE.prototype.uploadUser=async function(inObj){
 
   if(regImg.test(type)){
       // autoOrient
-      var [err,data]=await new Promise(resolve=>{
+    var [err,data]=await new Promise(resolve=>{
       var myCollector=concat(function(buf){  resolve([null,buf]);   });
       var streamImg=gm(strDataOrg).autoOrient().resize(wNew, hNew).stream(function streamOut(err, stdout, stderr) {
         if(err) {resolve([err]); return;}
@@ -2058,16 +2132,17 @@ ReqBE.prototype.uploadUser=async function(inObj){
     if(err) return [err];
 
 
-    const sessionMongo = mongoClient.startSession();
+    //const sessionMongo = await dbo.command({startSession:1});
+  const sessionMongo = mongoClient.startSession();
     sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
-    var [err]=await storeImage(sessionMongo, {strName:fileName, buffer:data});  
+    var [err]=await storeImage(sessionMongo, {strName:fileName, buf:data});  
 
     if(err) { var a=await sessionMongo.abortTransaction(); sessionMongo.endSession(); return [err]; }
     var a=await sessionMongo.commitTransaction(); sessionMongo.endSession();
 
   }else if(regVid.test(type)){ 
-    var strHash=md5(data);
+    var strHash=app.md5(data);
     Ou.strMessage="Videos not supported"; return [null, [Ou]];
   }
   else{ Ou.strMessage="Unrecognized file type: "+type; return [null, [Ou]]; }
@@ -2079,15 +2154,26 @@ ReqBE.prototype.uploadUser=async function(inObj){
 
 
 ReqBE.prototype.uploadAdmin=async function(inObj){ 
-  var {req, res, GRet}=this, Ou={};
+  var {reqMy, GRet}=this, {req}=reqMy, Ou={};
   if(!this.boAWLoggedIn) { return [new ErrorClient('not logged in (as Administrator)', 401)];  }
   this.mes("Working... (check server console for progress) ");
 
   var regBoTalk=RegExp('(template_)?talk:');
-  var FileOrg=this.File, n=FileOrg.length;
-  var tmp=n+" files."; console.log(tmp); 
+  var n=this.File.length, tmp=n+" files."; console.log(tmp); 
 
-  var [err, result]=await loadFrFiles(FileOrg); if(err) return [err];
+  var FileOrg=Array(n)
+  for(var i=0;i<this.File.length;i++){
+    if(boDeno){
+      var {conentType:type, filename:strName, size, content:buf}=this.File[i];
+      var strPath=undefined
+    }else{
+      var {path:strPath, type, name:strName, originalFilename, filepath}=this.File[i];
+      strName??=originalFilename;
+      strPath??=filepath;
+    }
+    FileOrg[i]={strName, buf, strPath}
+  }
+  var [err, result]=await loadFrFilesOrBufs(FileOrg); if(err) return [err];
   return [null, [0]];
 }
 
@@ -2098,7 +2184,7 @@ app.loadFrBUFolderOnServ=async function(strLoadArg){
   else if(typeof strLoadArg=='undefined') StrLoadArg=['.'];
   else if(typeof strLoadArg=='string') StrLoadArg=strLoadArg.split('+');
 
-  var fsBUFolder=path.join(process.cwd(), '..', 'mmmWikiBackUp')
+  var fsBUFolder=path.join(Deno.cwd(), '..', 'mmmWikiBackUp')
     // If StrLoadArg is a single directory.
   if( StrLoadArg.length==1) { // If only one item, then check if it is a folder.
     var fsPathArg=path.join(fsBUFolder,StrLoadArg[0]);
@@ -2107,7 +2193,7 @@ app.loadFrBUFolderOnServ=async function(strLoadArg){
       var [err, DirEnt]=await fsPromises.readdir(fsPathArg, {withFileTypes:true}).toNBP(); if(err) return [err];
       FileOrg=[]; DirEnt.forEach((objFile)=>{
         if(objFile.isFile()) {
-          FileOrg.push({name:objFile.name, path:path.join(fsPathArg,objFile.name)});
+          FileOrg.push({strName:objFile.name, strPath:path.join(fsPathArg,objFile.name)});
         } 
       });
     }
@@ -2116,74 +2202,81 @@ app.loadFrBUFolderOnServ=async function(strLoadArg){
   if(typeof FileOrg=="undefined"){
     var len=StrLoadArg.length, FileOrg=Array(len);
     for(var i=0;i<len;i++){
-      var strT=StrLoadArg[i], obj=path.parse(strT), fsPathArg=path.join(fsBUFolder,strT); FileOrg[i]={name:obj.base, path:fsPathArg};
+      var strT=StrLoadArg[i], obj=path.parse(strT), fsPathArg=path.join(fsBUFolder,strT); FileOrg[i]={strName:obj.base, strPath:fsPathArg};
     }
   }
-  var [err, result]=await loadFrFiles(FileOrg); if(err) return [err];
+  var [err, result]=await loadFrFilesOrBufs(FileOrg); if(err) return [err];
   
   return [null, [0]];
 }
 
+app.regExt=/^(.+)\.([a-z]+)$/
+app.loadFrFilesOrBufs=async function(FileOrg){
+  // FileOrg is an array where each element (fileOrg) looks like:  {strName, buf} or {strName, strPath}
 
-app.loadFrFiles=async function(FileOrg){
-  // FileOrg is an array where the elements are objects like: {path,name}
-
-  // Loop through all files, parse any zip file, and separate all found files by extension.
-  // The elements of FileImg and FilePage looks like:
-  //     {strName, strExt, bufFrZip}
-  //     {strName, strExt, path}  
-  // The properties of FileCsv looks like:
-  //    {strName, strExt, strData} 
-  //    {strName, strExt, path}
-  var FileImg=[], FilePage=[], FileCsv={}, regExt=/^(.+)\.([a-z]+)$/;
-  for(var i=0;i<FileOrg.length;i++){
-    var {path:strPath, type, name:strName, originalFilename, filepath}=FileOrg[i];
-    strName??=originalFilename;
-    strPath??=filepath;
-    var Match=regExt.exec(strName); if(Match===null) debugger
-    var strBase=Match[1], strExt=Match[2].toLowerCase();
+  // Sort (separate) the inputted files (including the content of the zip-files) into FileImg, FilePage and FileCsv
+  // The elements of FileImg, FilePage and FileCsv looks like:  {strName, buf} or {strName, strPath}  
+  var FileImg={}, FilePage={}, FileCsv={};
+  for(var fileOrg of FileOrg){
+    // var boGotBuf='content' in fileOrg
+    // if(boGotBuf) {var strPath=undefined, {filename:strName, content:buf}=fileOrg;}
+    // else {var buf=undefined, {strPath, name:strName}=fileOrg;}
+    var {strName}=fileOrg;
+    var strNameLC=strName.toLowerCase()
+    //else var {strPath, type, name:strName, originalFilename, filepath}=fileOrg;
+    //strName??=originalFilename;
+    //strPath??=filepath;
+    var Match=regExt.exec(strNameLC); if(Match===null) return [new Error("Failed to match extension on file: "+strNameLC)]
+    var [, strBase, strExt]=Match;
+    extend(fileOrg, {strNameLC, strBase, strExt})
     if(strExt=='zip') {
-      var [err, oZ]=await parseZipFile(strPath); if(err) return [err];
-      var KeyCsv=Object.keys(oZ.FileCsv);
-      for(var key of KeyCsv) {if(FileCsv[key]) return [new Error("Multiple "+strName)]; else FileCsv[key]=oZ.FileCsv[key];}
-      FileImg.push(...oZ.FileImg); FilePage.push(...oZ.FilePage);
+      var [err, oZ]=await parseZipFile(fileOrg); if(err) return [err];
+      //var KeyCsv=Object.keys(oZ.FileCsv);
+      //for(var key of KeyCsv) {if(FileCsv[key]) return [new Error("Multiple "+strName)]; else FileCsv[key]=oZ.FileCsv[key];}
+      for(var key in oZ.FileCsv) {if(FileCsv[key]) return [new Error("Multiple "+key)]; else FileCsv[key]=oZ.FileCsv[key];}
+      for(var key in oZ.FilePage) {if(FilePage[key]) return [new Error("Multiple "+key)]; else FilePage[key]=oZ.FilePage[key];}
+      for(var key in oZ.FileImg) {if(FileImg[key]) return [new Error("Multiple "+key)]; else FileImg[key]=oZ.FileImg[key];}
+      //FileImg.push(...oZ.FileImg); FilePage.push(...oZ.FilePage);
     }else if(strExt=='csv') {
-      //if(StrValidLoadMetaBase.indexOf(strBase)==-1) return [new Error(`CSV-file not valid: ${strName}, (valid ones are: ${StrValidLoadMeta.join(", ")})`)];
-      if(StrValidLoadMetaBase.indexOf(strBase)==-1) {
-        var strTmp=StrValidLoadMeta.join(", ")
-        return [new Error(`CSV-file not valid: ${strName}, (valid ones are: ${strTmp})`)];
+      if(myGlob.StrValidLoadMetaBase.indexOf(strBase)==-1) {
+        return [new Error(`CSV-file not valid: ${strName}, (valid ones are: ${myGlob.strValidLoadMetaWComma})`)];
       }
-      var oFile={strName, strExt, path:strPath}; 
-      if(FileCsv[strBase]) return [new Error("Multiple "+strName)]; else FileCsv[strBase]=oFile;
+      if(FileCsv[strNameLC]) return [new Error("Multiple "+strName)]; else FileCsv[strNameLC]=fileOrg;
     }
-    else if(strExt=='txt') { var oFile={strName, strExt, path:strPath};  FilePage.push(oFile); }
-    else if(regImg.test(strExt)){ var oFile={strName, strExt, path:strPath};  FileImg.push(oFile); }
+    else if(strExt=='txt') {
+      if(FilePage[strNameLC]) return [new Error("Multiple "+strName)]; else FilePage[strNameLC]=fileOrg;
+    }      
+    else if(regImg.test(strExt)) {  
+      if(FileImg[strNameLC]) return [new Error("Multiple "+strName)]; else FileImg[strNameLC]=fileOrg;
+    }  
     else {debugger; return [new Error("unknown file extention: "+strName)];}
   }
 
 
     // Load csv file to ram
   var ObjCsvData={};
-  var KeyCsv=Object.keys(FileCsv);
-  for(var key of KeyCsv) { 
-    var [err, Result]=await csvParseMyWType(FileCsv[key]); if(err) return [err];
-    ObjCsvData[key]=Result;
+  //var KeyCsv=Object.keys(FileCsv);
+  //for(var key of KeyCsv) { 
+  for(var key in FileCsv) {
+    var fileCsv=FileCsv[key], {strBase}=fileCsv
+    var [err, Result]=await csvParseMyWType(fileCsv); if(err) return [err];
+    ObjCsvData[strBase]=Result;
   }
   
 
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
   
   var [errTransaction, resTransaction]=await (async function(){
-    if(ObjCsvData.site){ 
+      // Insert sites
+    if(ObjCsvData.site){
       var objSiteDefault=copyObjWMongoTypes(app.InitCollection.Site.objDefault); objSiteDefault.tCreated=nowSFloored();
       for(var site of ObjCsvData.site){ 
         copySome(site, objSiteDefault, ["tCreated", "boORDefault", "boOWDefault", "boSiteMapDefault"]);
         site._id=site.name.toLowerCase();  delete site.name;
       }
-
-        // Insert sites
       var [err, result]=await collectionSite.insertMany(ObjCsvData.site, {session:sessionMongo}).toNBP();    if(err) return [err];
     }
 
@@ -2206,9 +2299,10 @@ app.loadFrFiles=async function(FileOrg){
 
 
       // Insert images
-    for(var i=0;i<FileImg.length;i++){
-      var [err]=await storeImage(sessionMongo, FileImg[i]);  if(err) return [err];  //, {boDoCalculationOfIdParent:false}
-      console.log(FileImg[i].strName+' done');
+    for(var key in FileImg){
+      var fileImg=FileImg[key]
+      var [err]=await storeImage(sessionMongo, fileImg);  if(err) return [err];  //, {boDoCalculationOfIdParent:false}
+      console.log(fileImg.strName+' done');
     }
 
     var objCollation={ locale: "en", strength: 2 };
@@ -2257,61 +2351,68 @@ app.loadFrFiles=async function(FileOrg){
 }
 
 
-app.parseZipFile=async function(strPath){ 
-  var [err, buf]=await fsPromises.readFile(strPath).toNBP();    if(err) return [err];
+app.parseZipFile=async function(oFile){
+  var {strPath, buf}=oFile;
+  if(typeof buf=='undefined'){
+    var [err, buf]=await fsPromises.readFile(strPath).toNBP();    if(err) return [err];
+  }
   var dataOrg=buf; 
   
-  //var zip=new NodeZip(dataOrg, {base64: false, checkCRC32: true});
-  var [err, zip]=await JSZip.loadAsync(dataOrg).toNBP();   if(err) {console.error(err); process.exit(-1);}
+  if(boDeno){
+    const zipTop=new JSZip()
+    //var zip=new NodeZip(dataOrg, {base64: false, checkCRC32: true});
+    var [err, zip]=await zipTop.loadAsync(dataOrg).toNBP();   if(err) {console.error(err); process.exit(-1);}
+    //var [err, zip]=await readZip(strPath).toNBP();   if(err) {console.error(err); process.exit(-1);}
+    var FileInZip=zip.files();
+  }else{
+    var [err, zip]=await JSZip.loadAsync(dataOrg).toNBP();   if(err) {console.error(err); process.exit(-1);}
+    var FileInZip=zip.files;
+  }
 
-  var FileImg=[], FilePage=[], FileCsv={}, regExt=/^(.+)\.([a-z]+)$/; //, regExt=/^([^\.]+)\.([a-z]+)$/;
-  var FileInZip=zip.files, Key=Object.keys(FileInZip);  
+  var FilePage={}, FileImg={}, FileCsv={}; 
   var Ou= {FilePage, FileImg, FileCsv};
-  for(var j=0;j<Key.length;j++){
-    var strFile=Key[j];
-    var Match=regExt.exec(strFile); if(Match===null) debugger
-    var strBase=Match[1], strExt=Match[2].toLowerCase();
-    var fileInZip=FileInZip[strFile];
-    if(fileInZip.dir) return [new Error("It is not supposed to be directories in the zip files")];
-    //var bufFrZip=Buffer.from(fileInZip._data, 'binary');
-    var [err, bufFrZip]=await fileInZip.async("uint8array").toNBP(); if(err) return [err];
+  //for(var j=0;j<Key.length;j++){
+  for(var strName in FileInZip){
+    var strNameLC=strName.toLowerCase()
+    var Match=regExt.exec(strNameLC); if(Match===null) return [new Error("Failed to match extension on file: "+strNameLC)];
+    var [, strBase, strExt]=Match;
+    //extend(fileOrg, {strNameLC, strExt})
+
+    var fileInZip=FileInZip[strName];
+    if(fileInZip.dir) return [new Error("Directories in the zip files are not allowed.")];
+    //var buf=Buffer.from(fileInZip._data, 'binary');
+    var [err, buf]=await fileInZip.async("uint8array").toNBP(); if(err) return [err];
     if(strExt=="csv") {
-      //if(StrValidLoadMetaBase.indexOf(strBase)==-1) return [new Error(`CSV-file not valid: ${strFile}, (valid ones are: ${StrValidLoadMeta.join(", ")})`)];
-      if(StrValidLoadMetaBase.indexOf(strBase)==-1) {
-        var strTmp=StrValidLoadMeta.join(", ")
-        return [new Error(`CSV-file not valid: ${strFile}, (valid ones are: ${strTmp})`)];
+      if(myGlob.StrValidLoadMetaBase.indexOf(strBase)==-1) {
+        return [new Error(`CSV-file not valid: ${strName}, (valid ones are: ${myGlob.strValidLoadMetaWComma})`)];
       }
-      //var bufT=bufData;
-      var strData=new TextDecoder().decode(bufFrZip)
-      //var strData=bufFrZip.toString();
-      strData=strData.trim();
-      var oFile={strName:strFile, strExt, strData};
-      if(FileCsv[strBase]) return [new Error("Multiple "+strFile)]; else FileCsv[strBase]=oFile;
-    }else if(strExt=="txt") {
-      var oFile={strName:strFile, strExt, bufFrZip};
-      FilePage.push(oFile);
-    } else if(regImg.test(strExt)) {
-      var oFile={strName:strFile, strExt, bufFrZip};
-      FileImg.push(oFile);
+      var FileTmp=FileCsv
     }
+    else if(strExt=="txt") { var FileTmp=FilePage }
+    else if(regImg.test(strExt)) {var FileTmp=FileImg; }
     //else if(regVid.test(strExt)) FileVid.push(oFile);
-    else {debugger; return [new Error("unknown file extention: "+strFile)]; }    
+    else {debugger; return [new Error("unknown file extention: "+strName)]; }
+    
+    var oFile={strName, strNameLC, strBase, strExt, buf};
+    FileTmp[strNameLC]=oFile;  
   }
   return [null, Ou];
 }
 
 
 app.csvParseMyWType=async function(oFile){
-  var {strName:strFile, strData:strCSV, path}=oFile;
-  if(typeof strCSV=='undefined'){
-    var [err, buf]=await fsPromises.readFile(path).toNBP();    if(err) return [err];
-    strCSV=buf.toString().trim();
+  var {strPath, buf}=oFile;
+  if(typeof buf=='undefined'){
+    var [err, buf]=await fsPromises.readFile(strPath).toNBP();    if(err) return [err];
   }
+  //var strCSV=buf.toString().trim();
+  var strCSV=new TextDecoder().decode(buf);
+  strCSV=strCSV.trim();
   
   //var [arrHead,arrData]= csvParseMy0WithSeparateHeadHandling(strCSV);  // arrData is an array of arrays of strings.
   var arrAll= csvParseMy(strCSV);  
   var arrHead=arrAll[0], arrData=arrAll.slice(1);  // arrData is an array of arrays of strings.
-  formatCSVAsHeadPrefix(arrHead,arrData);  // interprete columns starting like "bo-" to boolean, "int-" integer etc
+  formatCSVAsHeadPrefix(arrHead,arrData);  // Convert columns starting like "bo-" to boolean, "int-" to number etc
 
   var nRow=arrData.length;
     // Create an array of objects
@@ -2348,21 +2449,21 @@ app.storePageMultFrBU=async function(sessionMongo, FilePage, PageMeta){
     // Create two arrays: 
     //   Data (data for the FileWiki collection)
     //   Page (data for the Page collection)
-  var Data=Array(FilePage.length), Page=Array(FilePage.length);
-  for(var i=0;i<FilePage.length;i++){
-    var {strName, bufFrZip, path}=FilePage[i];
+  var nPage=FilePage.length, Data=Array(nPage), Page=Array(nPage);
+  for(var i=0;i<nPage;i++){
+    var {strName, buf, strPath}=FilePage[i];
     var idPageProt=strName.replace(RegExp('.txt$','i'),''), {siteName, pageName}=parsePageNameHD(idPageProt);
 
     if(siteName.length==0) {siteName=strKeyDefault; idPageProt=siteName+":"+pageName;}
     var idPage=idPageProt.toLowerCase();
 
 
-    if(typeof bufFrZip=="undefined"){
-      var [err, buf]=await fsPromises.readFile(path).toNBP();    if(err) return [err];
+    if(typeof buf=="undefined"){
+      var [err, buf]=await fsPromises.readFile(strPath).toNBP();    if(err) return [err];
     }else{
         //var buf=Buffer.from(fileInZip._data,'binary');
         //var buf=Buffer.from(bufFrZip,'binary')
-        var buf=bufFrZip
+        //var buf=bufFrZip
     }
     var data=buf;
 
@@ -2410,7 +2511,7 @@ app.storePageMultFrBU=async function(sessionMongo, FilePage, PageMeta){
       // parse
     var arg={strEditText, idSite, boOW};
     var [err, {strHtmlText, IdChildLax, IdChild, StrImageLC}]=await parse(sessionMongo, arg); if(err) return [err];
-    var strHashParse=md5(strHtmlText);
+    var strHashParse=app.md5(strHtmlText);
 
     var nChild=IdChild.length, nImage=StrImageLC.length; 
     var StrImageStub=[], StrPagePrivate=[];
@@ -2463,9 +2564,10 @@ app.storePageMult_NoMetaWork=async function(sessionMongo, FilePage, siteNameDefa
     //   Data (data for the FileWiki collection)
     //   Page (data for the Page collection)
     //   Id (not really needed)
-  var Data=Array(FilePage.length), Page=Array(FilePage.length), Id=Array(FilePage.length)
-  for(var i=0;i<FilePage.length;i++){
-    var {strName, bufFrZip, path}=FilePage[i];
+  var KeyPage=Object.keys(FilePage), nPage=KeyPage.length, Data=Array(nPage), Page=Array(nPage), Id=Array(nPage)
+  for(var i=0;i<nPage;i++){
+    var keyPage=KeyPage[i]
+    var {strName, buf, strPath}=FilePage[keyPage];
     var idPageProt=strName.replace(RegExp('.txt$','i'),''), {siteName, pageName}=parsePageNameHD(idPageProt);
 
     if(siteName.length==0) {siteName=siteNameDefault; idPageProt=siteName+":"+pageName;}
@@ -2473,12 +2575,12 @@ app.storePageMult_NoMetaWork=async function(sessionMongo, FilePage, siteNameDefa
     Id[i]=idPage;
 
 
-    if(typeof bufFrZip=="undefined"){
-      var [err, buf]=await fsPromises.readFile(path).toNBP();    if(err) return [err];
+    if(typeof buf=="undefined"){
+      var [err, buf]=await fsPromises.readFile(strPath).toNBP();    if(err) return [err];
     }else{
         //var buf=Buffer.from(fileInZip._data,'binary');
         //var buf=Buffer.from(bufFrZip,'binary')
-        var buf=bufFrZip
+        //var buf=bufFrZip
     }
     var data=buf;
 
@@ -2500,7 +2602,7 @@ app.storePageMult_NoMetaWork=async function(sessionMongo, FilePage, siteNameDefa
     extend(objPage, {_id:idPage, idSite, pageName, size, boTalk, boTemplate, tCreated:tNow, tMod:tNow, tLastAccess:tNow});
     Page[i]=objPage;
   }
-  if(FilePage.length){
+  if(nPage){
     var [err, result]=await collectionFileWiki.insertMany(Data, {session:sessionMongo}).toNBP();   if(err) return [err];
     for(var i=0;i<Data.length;i++){ Page[i].idFileWiki=Data[i]._id; }  // Note! "_id" was written to each element in the above operation.
     var [err, result]=await collectionPage.insertMany(Page, {session:sessionMongo}).toNBP();   if(err) return [err];
@@ -2554,7 +2656,7 @@ app.storePageMult_MetaWork=async function(sessionMongo, FilePage, Id, Data){
     // Create arrRevision
   for(var i=0;i<Data.length;i++){
     var {_id:idFileWiki, data:strEditText}=Data[i];
-    //var {strName, bufFrZip, path}=FilePage[i];
+    //var {strName, buf, strPath}=FilePage[i];
     var idPage=Id[i]
     var objPage=PageByIdPage[idPage];
     var {idSite, pageName, boTalk, boTemplate, boOW, tMod, size, _id:idPage}=objPage;
@@ -2571,7 +2673,7 @@ app.storePageMult_MetaWork=async function(sessionMongo, FilePage, Id, Data){
       // parse
     var arg={strEditText, idSite, boOW};
     var [err, {strHtmlText, IdChildLax, IdChild, StrImageLC}]=await parse(sessionMongo, arg); if(err) return [err];
-    var strHashParse=md5(strHtmlText);
+    var strHashParse=app.md5(strHtmlText);
 
     var nChild=IdChild.length, nImage=StrImageLC.length; 
     var StrImageStub=[], StrPagePrivate=[];

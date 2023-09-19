@@ -3,6 +3,7 @@
 
 
 "use strict"
+export function blah() {}
 
 
 
@@ -139,7 +140,7 @@ app.is_crawler=function() {
    //sites = 'Google|msnbot|Rambler|Yahoo|AbachoBOT|accoona|AcioRobot|ASPSeek|CocoCrawler|Dumbot|FAST-WebCrawler|GeonaBot|Gigabot|Lycos|MSRBOT|Scooter|AltaVista|IDBot|eStyle|Scrubby|ozi';
    var sites='Googlebot|Yammybot|Openbot|Yahoo|Slurp|msnbot|ia_archiver|Lycos|Scooter|AltaVista|Teoma|Gigabot|Googlebot-Mobile';  
    //sites='Googlebot|Yammybot|Openbot|Yahoo|Slurp|msnbot|ia_archiver|Lycos|Scooter|AltaVista|Teoma|Gigabot|Googlebot-Mobile|Gecko';  
-   var ua=this.req.headers['user-agent']||''; 
+   var ua=this.req.headers.get('user-agent')||''; 
    return RegExp(sites).test(ua);  
 }
 
@@ -147,11 +148,12 @@ app.is_crawler=function() {
 
 app.createCommonJS=function() {
   var Str=[];
-  var StrVar=['boDbg', 'urlPayPal', 'maxAdminWUnactivityTime', 'version', 'intMax', 'leafBE', 'strSalt', 'StrImageExt', 'flFoundOnTheInternetFolder', 'flLibImageFolder', 'maxGroupsInFeat', 'bFlip', 'PropPage', 'PropImage', 'StrOrderFiltPage', 'StrOrderFiltImage', 'nHash', 'strBTC', 'ppStoredButt'];
-  var tmp=copySome({},app,StrVar);
-  const strTmp=JSON.stringify(tmp)
+  var StrVar=['boDbg', 'urlPayPal', 'maxAdminWUnactivityTime', 'version', 'intMax', 'leafBE', 'strSalt', 'flFoundOnTheInternetFolder', 'flLibImageFolder', 'maxGroupsInFeat', 'bFlip', 'PropPage', 'PropImage', 'StrOrderFiltPage', 'StrOrderFiltImage', 'nHash', 'strBTC', 'ppStoredButt'];
+  var objOut=copySome({},app,StrVar);
+  copySome(objOut,myGlob,['StrImageExt']);
+  const strOut=JSON.stringify(objOut)
   Str.push(`app.assignCommonJS=function(){
-  var tmp=${strTmp};
+  var tmp=${strOut};
   Object.assign(window,tmp);
 }`);
   var str=Str.join('\n');    return str;
@@ -208,10 +210,13 @@ app.createManifest=function(arg){
 }
 
 app.createManifestNStoreToCache=async function(arg){
-  var {www}=arg;
-  var strT=createManifest(arg);
-  var buf=Buffer.from(strT, 'utf8');
-  var [err]=await CacheUri.set( www+'/'+leafManifest, buf, 'json', true, false);   if(err) return [err];
+  const {www}=arg;
+  const strT=createManifest(arg);
+  //const buf=Buffer.from(strT, 'utf8'); // Node.js
+  var enc = new TextEncoder(); // always utf-8
+  const buf=enc.encode(strT);  // Uint8Array
+  
+  const [err]=await CacheUri.set( www+'/'+leafManifest, buf, 'json', true, false);   if(err) return [err];
   return [null];
 }
 app.createManifestNStoreToCacheMult=async function(Site){
@@ -231,9 +236,9 @@ app.createManifestNStoreToCacheFrDB=async function(){
 
 
 app.arrayifyCookiePropObj=function(obj){
-  var K=Object.keys(obj);
-  var O=K.map(k=>{
-    var v=obj[k];
+  const K=Object.keys(obj);
+  const O=K.map(k=>{
+    const v=obj[k];
     if((k=="HttpOnly" || k=="Secure") && v) return k;
     return k+"="+v;
   });

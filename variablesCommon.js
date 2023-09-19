@@ -1,9 +1,10 @@
 
+const extend=Object.assign;
 
 app.two31=Math.pow(2,31);  app.intMax=two31-1;  app.intMin=-two31; app.uintMax=Math.pow(2,32)-1;
 app.sPerDay=24*3600;  app.sPerMonth=sPerDay*30;
 
-var fsWebRootFolder=process.cwd();
+//var fsWebRootFolder=Deno.cwd();
 var flLibFolder='lib';
 
 app.flFoundOnTheInternetFolder=flLibFolder+"/foundOnTheInternet";
@@ -375,15 +376,15 @@ featCalcValExtend(PropImage);
 app.nHash=1000;
 app.lenGZ=100;
 
-//aRPassword=SHA1(aRPassword+strSalt);
-//aWPassword=SHA1(aWPassword+strSalt);
-var data=aRPassword+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data); aRPassword=data;
-var data=aWPassword+strSalt; for(var i=0;i<nHash;i++) data=SHA1(data); aWPassword=data;
+//aRPassword=SHA1(aRPassword+app.strSalt);
+//aWPassword=SHA1(aWPassword+app.strSalt);
+var data=aRPassword+app.strSalt; for(var i=0;i<nHash;i++) data=SHA1(data); aRPassword=data;
+var data=aWPassword+app.strSalt; for(var i=0;i<nHash;i++) data=SHA1(data); aWPassword=data;
 
-//aRPassword=Sha256.hash(aRPassword+strSalt);
-//aWPassword=Sha256.hash(aWPassword+strSalt);
-//var data=aRPassword+strSalt; for(var i=0;i<nHash;i++) data=Sha256.hash(data); aRPassword=data;
-//var data=aWPassword+strSalt; for(var i=0;i<nHash;i++) data=Sha256.hash(data); aWPassword=data;
+//aRPassword=Sha256.hash(aRPassword+app.strSalt);
+//aWPassword=Sha256.hash(aWPassword+app.strSalt);
+//var data=aRPassword+app.strSalt; for(var i=0;i<nHash;i++) data=Sha256.hash(data); aRPassword=data;
+//var data=aWPassword+app.strSalt; for(var i=0;i<nHash;i++) data=Sha256.hash(data); aWPassword=data;
 
 
 app.objOthersActivity=null; app.boPageBUNeeded=null; app.boImageBUNeeded=null;
@@ -408,7 +409,7 @@ app.objOthersActivityDefault={nEdit:0, pageName:'',  nImage:0, imageName:''};
 //   // How to use: var objDefault=createDefaultDocument(app.InitCollection[nameCollection]);
 // app.createDefaultDocument=function(objInitCollection){
 //   var date0=new Date(0), id0=new ObjectId("123456789012345678901234"); //, int0=mongodb.Int32(0), long0=mongodb.Long(0);
-//   var {validator, ArrUnique, objDefault}=objInitCollection;
+//   var {validator, ArrIndex, objDefault}=objInitCollection;
 //   var {$jsonSchema}=validator, {required, properties}=$jsonSchema, OOut={};
 //   for(var strProp of required){
 //     var prop=properties[strProp];  if(typeof prop=="undefined") {prop={bsonType:"bool"};}
@@ -434,7 +435,7 @@ app.objOthersActivityDefault={nEdit:0, pageName:'',  nImage:0, imageName:''};
 
 // app.convertToMongoObj=function(obj, strCollection){
 //   var objInitCollection=app.InitCollection[strCollection];
-//   var {validator, ArrUnique}=objInitCollection;
+//   var {validator, ArrIndex}=objInitCollection;
 //   var {$jsonSchema}=validator, {properties}=$jsonSchema, OOut={};
 //   var Key=Object.keys(properties);
 //   //var date0=new Date(0), id0=new ObjectId("123456789012345678901234"), int0=mongodb.Int32(0), long0=mongodb.Long(0);

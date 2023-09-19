@@ -2,6 +2,9 @@
 
 "use strict"
 
+const extend=Object.assign;
+
+// deno run --allow-env --allow-read --allow-net --allow-sys --allow-run script.ts
 
 // Todo (possible improvements)
 
@@ -17,7 +20,7 @@
 // sessionIDR, sessionIDW: Set-Cookie should be called in reqBU, reqBUMeta, reqIndex, reqMonitor and reqStat
 
 // redis interface 4.0 does not work
-// In loadFrFiles: FilePage are not loaded if ObjCsvData.page is not set (thus loading pages (not in zip) (like uploadAdmin of pages) will not work).
+// In loadFrFilesOrBufs via uploadAdmin: duplicate key error if same page is uploaded.
 // Values in Page that are cached from values in Revision (tMod etc) should be rename to tMod_cached
 
 
@@ -45,18 +48,12 @@
 // Movable fixed div in viewFront
 
 
-//["'] *\+ *([a-zA-Z0-9-\.\(\)\[\]_/\+ ]+) *\+ *['"]      ${$1}
-//[`] *\+ *([a-zA-Z0-9-\.\(\)\[\]_/\+]+) *\+ *[`]        ${$1}
-//` *\+ *([a-zA-Z0-9-\.\[\]_/\+]+)               ${$1}`
-//` *\+ *([a-zA-Z0-9-\.\(\)\[\]_/\+]+)           ${$1}`
-//([a-zA-Z0-9-\.\[\]_/\+]+) *\+ *[`]             `${$1}
-//([a-zA-Z0-9-\.\(\)\[\]_/\+]+) *\+ *[`]         `${$1}
-
-// \$\{([^\+\}]+)\+                 }${
+// deno
 
 // DB
 // Image extension as property (filterable)
 
+// A pages parent(s) should be visible in the pageView-mini-Fixed-div. If multiple parents, then the parrent with most children should be available in a popup.
 
 /******************************************************************************
  * BU (BackUp requests):
@@ -70,37 +67,49 @@
  * reqBU
  ******************************************************************************/
 app.reqBU=async function(strArg) {
-  var {req, res}=this, tNow=nowSFloored();
+  var {reqMy}=this, {req, objUrl}=reqMy, tNow=nowSFloored();
   
-  //if(!req.boCookieStrictOK) { res.outCode(401, "Strict cookie not set");  return;   }
+  //if(!req.boCookieStrictOK) { reqMy.outCode(401, "Strict cookie not set");  return;   }
   
       // Conditionally push deadlines forward
-  // var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  // var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
-  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
-  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime).toNBP(); this.boAWLoggedIn=Number(value);
+  var [err, value]=await evalRedis(luaGetNExpire, [reqMy.cookies.sessionIDR+'_adminRTimer'], [maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  var [err, value]=await evalRedis(luaGetNExpire, [reqMy.cookies.sessionIDW+'_adminWTimer'], [maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
   
 
-  if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
+  if(this.boAWLoggedIn!=1) {reqMy.outCode(401,'not logged in'); return;}
 
   var Match=RegExp('(.*?)(Serv)?$').exec(strArg);
-  if(!Match){ res.out500(Error('Cant read backup argument'));   return; } 
+  if(!Match){ reqMy.out500(Error('Cant read backup argument'));   return; } 
   var type=Match[1].toLowerCase();
   var boServ=0; if(Match[2]) boServ=1;
   
-  if(type=='page' || type=='image') ; else { res.out400(Error("Bad request")); debugger;  return; }
+  if(type=='page' || type=='image') ; else { reqMy.out400(Error("Bad request")); debugger;  return; }
   var strNameVar=type+'Name';
 
   var jsonInput;
   if(req.method=='POST'){
-    var [err,buf]=await new Promise(resolve=>{   req.pipe(concat(function(bufT){ resolve([null, bufT]);  }));    });
-    jsonInput=buf.toString();
+    //var [err,buf]=await new Promise(resolve=>{   req.body.pipe(concat(function(bufT){ resolve([null, bufT]);  }));    });
+    //const buf = await Deno.readAll(req.body);
+    if(boDeno){
+      var buf = await readAllMy(req?.body)
+    }else{
+      var [err,buf]=await new Promise(resolve=>{ var myConcat=concat(function(bufT){ resolve([null,bufT]) });    req.pipe(myConcat);  });
+    }
+   
+    const decoder = new TextDecoder();
+    jsonInput = decoder.decode(buf);
+    //jsonInput=buf.toString();
   } else if(req.method=='GET'){
-    var objUrl=url.parse(req.url), qs=objUrl.query||''; jsonInput=urldecode(qs);
+    //var objUrlOld=url.parse(req.url), qs=objUrlOld.query||'';
+    //let objUrl=new URL(req.url);
+    //let objQS=objUrl.searchParams, qs=objQS.toString()
+    var qs=objUrl.search.slice(1)
+    jsonInput=urldecode(qs);
   } 
+  //const json = JSON.parse(jsonInput);
   //var inObj={}; if(jsonInput.length) inObj=JSON.parse(jsonInput);
   var inObj={}; if(jsonInput.length) {
-    try{ inObj=JSON.parse(jsonInput); }catch(e){ res.out500(Error("JSON.parse error")); debugger;  return; }
+    try{ inObj=JSON.parse(jsonInput); }catch(e){ reqMy.out500(Error("JSON.parse error")); debugger;  return; }
   }
   
   var boFilter='arrName' in inObj;
@@ -115,6 +124,7 @@ app.reqBU=async function(strArg) {
   //var strSiteDefault, File;
   var boCompress=type=='page';
 
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
@@ -186,7 +196,7 @@ app.reqBU=async function(strArg) {
   };
   var [errTransaction]=arrRet;
 
-  if(errTransaction) { var a=await sessionMongo.abortTransaction(); sessionMongo.endSession();  res.out500(errTransaction); return;  }
+  if(errTransaction) { var a=await sessionMongo.abortTransaction(); sessionMongo.endSession();  reqMy.out500(errTransaction); return;  }
   var a=await sessionMongo.commitTransaction(); sessionMongo.endSession();
 
 
@@ -204,27 +214,33 @@ app.reqBU=async function(strArg) {
 
     var compression=boCompress?'DEFLATE':'STORE';
     var objArg={date, comment:strHash, compression};
-    zip.file(strNameTmp, data, objArg);
+    const arg=[strNameTmp, data, objArg]
+    if(boDeno){
+      zip.addFile(...arg);
+    }else{
+      zip.file(...arg);
+    }
   } 
 
   
     // Output data
   //var objArg={type:'string'}, outdata = zipfile.generate(objArg);
 
-  var strType=(JSZip.support.uint8array)?"uint8array":"string";
+  //var strType=(JSZip.support.uint8array)?"uint8array":"string";
+  var strType="uint8array";
   var outdata = await zip.generateAsync({type : strType});
   
   if(boServ){
     var outFileName=type+'.zip';
-    var fsPage=path.join(process.cwd(), '..', 'mmmWikiBackUp', outFileName); 
+    var fsPage=path.join(Deno.cwd(), '..', 'mmmWikiBackUp', outFileName); 
     var [err]=await fsPromises.writeFile(fsPage, outdata, 'binary').toNBP();
-    if(err) { console.log(err); res.out500(err); }
-    res.out200(outFileName+' written');
+    if(err) { console.log(err); reqMy.out500(err); }
+    reqMy.out200(outFileName+' written');
   }else{
     var outFileName=`${strSiteDefault}_${swedDate(unixNow())}_${type}.zip`;
     var objHead={"Content-Type": StrMimeType.zip, "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
-    res.writeHead(200,objHead);
-    res.end(outdata,'binary');
+    reqMy.setOutHeader(objHead);  //'binary' ??!??
+    reqMy.end(outdata,'binary');
   }
   //var [err,tmp]=await cmdRedis('SET',['mmmWiki_tLastBU',unixNow()]);
   var [err,tmp]=await setRedis('mmmWiki_tLastBU',unixNow());
@@ -237,18 +253,17 @@ app.reqBU=async function(strArg) {
  * reqBUMeta
  ******************************************************************************/
 app.reqBUMeta=async function(strArg) {
-  var {req, res}=this;
+  var {reqMy}=this, {req}=reqMy;
 
-  //if(!req.boCookieStrictOK) {res.outCode(401, "Strict cookie not set");  return;  }
+  //if(!req.boCookieStrictOK) {reqMy.outCode(401, "Strict cookie not set");  return;  }
   
         // Conditionally push deadlines forward
-  // var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  // var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
-  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
-  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime).toNBP(); this.boAWLoggedIn=Number(value);
-  
-  if(this.boAWLoggedIn!=1) {res.outCode(401,'not logged in'); return;}
+  var [err, value]=await evalRedis(luaGetNExpire, [reqMy.cookies.sessionIDR+'_adminRTimer'], [maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  var [err, value]=await evalRedis(luaGetNExpire, [reqMy.cookies.sessionIDW+'_adminWTimer'], [maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
 
+  if(this.boAWLoggedIn!=1) {reqMy.outCode(401,'not logged in'); return;}
+
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
@@ -285,7 +300,7 @@ app.reqBUMeta=async function(strArg) {
   }
   var [errTransaction]=arrRet;
 
-  if(errTransaction) { var a=await sessionMongo.abortTransaction(); sessionMongo.endSession();  res.out500(errTransaction); return;  }
+  if(errTransaction) { var a=await sessionMongo.abortTransaction(); sessionMongo.endSession();  reqMy.out500(errTransaction); return;  }
   var a=await sessionMongo.commitTransaction(); sessionMongo.endSession();
 
   var matTmp=matPage, StrTmp=['tCreated','tMod','tLastAccess'];
@@ -338,8 +353,16 @@ app.reqBUMeta=async function(strArg) {
   // for(var i=0;i<StrData.length;i++){ zipfile.file(StrFileName[i], StrData[i], {compression:'DEFLATE'}); }
   // var outdata = zip.generate({type:'string'});
 
-  for(var i=0;i<StrData.length;i++){ zip.file(StrFileName[i], StrData[i], {compression:'DEFLATE'}); }
-  var strType=(JSZip.support.uint8array)?"uint8array":"string";
+  for(var i=0;i<StrData.length;i++){
+    const arg=[StrFileName[i], StrData[i], {compression:'DEFLATE'}]
+    if(boDeno){
+      zip.addFile(...arg);
+    }else{
+      zip.file(...arg);
+    }
+  }
+  //var strType=(JSZip.support.uint8array)?"uint8array":"string";
+  var strType="uint8array";
   var outdata = await zip.generateAsync({type : strType});
 
 
@@ -347,27 +370,27 @@ app.reqBUMeta=async function(strArg) {
     // Output data 
   var boOutputZip=1;
   if(strArg=='Serv'){
-    var fsBU=path.join(process.cwd(), '..', 'mmmWikiBackUp'), strMess;
+    var fsBU=path.join(Deno.cwd(), '..', 'mmmWikiBackUp'), strMess;
     if(boOutputZip){
       var fsTmp=path.join(fsBU, 'meta.zip');
       var [err]=await fsPromises.writeFile(fsTmp, outdata, 'binary').toNBP();
-      if(err) { console.log(err); res.out500(err); }
+      if(err) { console.log(err); reqMy.out500(err); }
       strMess='meta.zip written';
     }else{
       for(var i=0;i<StrData.length;i++){ 
         var fsTmp=path.join(fsBU, StrFileName[i]);
         var [err]=await fsPromises.writeFile(fsTmp, StrData[i]).toNBP();
-        if(err) { console.log(err); res.out500(err); }
+        if(err) { console.log(err); reqMy.out500(err); }
       }  //, 'binary'
       strMess=StrData.length+' files created';
     }
-    res.out200(strMess);
+    reqMy.out200(strMess);
   }else{
     var outFileName=`${strSiteDefault}_${swedDate(unixNow())}_meta.zip`;
     
     var objHead={"Content-Type": StrMimeType.zip, "Content-Length":outdata.length, 'Content-Disposition':'attachment; filename='+outFileName};
-    res.writeHead(200,objHead);
-    res.end(outdata,'binary');
+    reqMy.setOutHeader(objHead);  //'binary' ??!??
+    reqMy.end(outdata,'binary');
   } 
 }
 
@@ -378,11 +401,11 @@ app.reqBUMeta=async function(strArg) {
  * reqIndex
  ******************************************************************************/
 
-var makeOutput=function(objOut, strHtmlText){
-  var {req}=this, {wwwSite, strSchemeLong}=req;
+let makeOutput=function(objOut, strHtmlText){
+  var {reqMy}=this, {req, wwwSite, strSchemeLong}=reqMy;
   var {objSiteDefault, objSite, objPage}=objOut, {pageName}=objPage; //, {www:wwwSite}=objSite;
 
-  var ua=req.headers['user-agent']||''; ua=ua.toLowerCase();
+  var ua=req.headers.get('user-agent')||''; ua=ua.toLowerCase();
   //var boIOS= RegExp('iphone','i').test(ua);
 
   var strMetaNoIndex='', boTemplate=RegExp('^template:','i').test(pageName);
@@ -399,7 +422,7 @@ var makeOutput=function(objOut, strHtmlText){
   var keyTmp=wwwSite+'/'+leafManifest, vTmp=CacheUri[keyTmp].strHash;     const uManifest=`${strSchemeLong}${keyTmp}?v=${vTmp}`;
   var pathTmp='lib/foundOnTheInternet/zip.js', vTmp=CacheUri[pathTmp].strHash;    const uZip=`${uSiteCommon}/${pathTmp}?v=${vTmp}`;
   var pathTmp='lib/foundOnTheInternet/sha1.js', vTmp=CacheUri[pathTmp].strHash;   const uSha1=`${uSiteCommon}/${pathTmp}?v=${vTmp}`;
-
+  var pathTmp='lib/foundOnTheInternet/jszip.js', vTmp=CacheUri[pathTmp].strHash;   const uJszip=`${uSiteCommon}/${pathTmp}?v=${vTmp}`;
  
   var strTracker, tmpID=objSite.googleAnalyticsTrackingID||null;
   tmpID=null;  // Disabling ga
@@ -416,7 +439,7 @@ var makeOutput=function(objOut, strHtmlText){
   }
   //ga('create', '${tmpID}', 'auto');
   
-  extend(objOut, {uZip, uSha1});
+  extend(objOut, {uZip, uSha1, uJszip});
 
     // Set strDBType
   var strT; if(typeof mysql!='undefined') strT='mysql'; else if(typeof mongoClient!='undefined') strT='mongodb'; else strT='neo4j';
@@ -469,35 +492,34 @@ var makeOutput=function(objOut, strHtmlText){
 
 
 app.reqIndex=async function() {
-  var {req, res}=this; 
-  var {boTLS, wwwSite, pathName}=req;
+  var {reqMy}=this, {req, boTLS, wwwSite, pathName, objUrl}=reqMy;
   var tNow=nowSFloored();
   
-  var strT=req.headers['sec-fetch-mode'];
-  if(strT && !(strT=='navigate' || strT=='same-origin')) { res.outCode(400, `sec-fetch-mode header not allowed (${strT})`); return;}
+  var strT=req.headers.get('sec-fetch-mode');
+  if(strT && !(strT=='navigate' || strT=='same-origin')) { reqMy.outCode(400, `sec-fetch-mode header not allowed (${strT})`); return;}
   
-  var qs=req.objUrl.query||'', objQS=parseQS2(qs);
+  //var qs=objUrl.query||'', objQS=parseQS2(qs);
+  //var qs=objUrl.search.slice(1)
+  
   var pathName=decodeURIComponent(pathName);
 
   var Match=RegExp('^/([^\\/]+)$').exec(pathName);
   if(Match) var queredPage=Match[1]; 
   else{
-    if(pathName!='/') { res.out301Loc(''); return;}
-    if('page' in objQS) { res.out301Loc(objQS.page); return;}
+    if(pathName!='/') { reqMy.out301Loc(''); return;}
+    //if('page' in objQS) { reqMy.out301Loc(objQS.page); return;}
     var queredPage='start';
   }
   
     // Set strict cookie
   // var sessionID=randomHash(),  redisVar=sessionID; 
-  // var [err, tmp]=await setRedis(redisVar, 1, 3600*24*30); if(err) {res.out500(err); return; };
-  // res.setHeader("Set-Cookie", "sessionIDStrict="+sessionID+strCookiePropStrict);
+  // var [err, tmp]=await setRedis(redisVar, 1, 3600*24*30); if(err) {reqMy.out500(err); return; };
+  // reqMy.setOutHeader("Set-Cookie", "sessionIDStrict="+sessionID+strCookiePropStrict);
 
     // Conditionally push deadlines forward
-  // var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  // var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
-  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
-  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDW+'_adminWTimer', maxAdminWUnactivityTime).toNBP(); this.boAWLoggedIn=Number(value);
-  
+  var [err, value]=await evalRedis(luaGetNExpire, [reqMy.cookies.sessionIDR+'_adminRTimer'], [maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+  var [err, value]=await evalRedis(luaGetNExpire, [reqMy.cookies.sessionIDW+'_adminWTimer'], [maxAdminWUnactivityTime]); this.boAWLoggedIn=Number(value);
+
   // Private:
   //                                                                 index.html  first ajax (pageLoad)
   //Shall look the same (be cacheable (not include boARLoggedIn etc))     no           yes
@@ -508,10 +530,10 @@ app.reqIndex=async function() {
 
   var CSRFCode='';  // If public then No CSRFCode since the page is going to be cacheable (look the same each time)
 
-  //if(req.boTLS) res.setHeader("Strict-Transport-Security", "max-age="+24*3600+"; includeSubDomains");
+  //if(req.boTLS) reqMy.setOutHeader("Strict-Transport-Security", "max-age="+24*3600+"; includeSubDomains");
   //var tmpS=req.boTLS?'s':'';
-  //res.setHeader("Content-Security-Policy", `default-src http${tmpS}: 'this'  *.google.com; img-src *`);
-  //res.setHeader("Content-Security-Policy", "default-src http");
+  //reqMy.setOutHeader("Content-Security-Policy", `default-src http${tmpS}: 'this'  *.google.com; img-src *`);
+  //reqMy.setOutHeader("Content-Security-Policy", "default-src http");
   
   
   
@@ -522,32 +544,32 @@ app.reqIndex=async function() {
   var pageName=queredPage, pageNameLC=pageName.toLowerCase();
   
     // Get site
-  var [err, objSite]=await collectionSite.findOne({www:wwwSite}).toNBP();   if(err) {res.out500(err); return; };
-  if(!objSite) {res.out500(wwwSite+', site not found'); return;};
+  var [err, objSite]=await collectionSite.findOne({www:wwwSite}).toNBP();   if(err) {reqMy.out500(err); return; };
+  if(!objSite) {reqMy.out404(wwwSite+', site not found'); return;};
   var {_id:idSite}=objSite; objSite.siteName=idSite; objSite.idSite=idSite
   var idPage=idSite+":"+pageNameLC;
 
     // Check if there is a redirect for this page
   var objFilt={idSite, pageName:queredPage}, objUpd={ $set: { tLastAccess: tNow }, $inc: { nAccess: 1 } };
-  var [err, objT]=await collectionRedirect.findOneAndUpdate(objFilt, objUpd).toNBP();   if(err) {res.out500(err); return; };
+  var [err, objT]=await collectionRedirect.findOneAndUpdate(objFilt, objUpd).toNBP();   if(err) {reqMy.out500(err); return; };
   if(objT!=null) {
-    res.out301(objT.url); return;
+    reqMy.out301(objT.url); return;
   }
   
 
     // Check if there is a redirect for the domain
-  var [err, item]=await collectionRedirectDomain.findOne({www:wwwSite}).toNBP();   if(err) {res.out500(err); return; };
-  if(item) { res.out301(item.url+'/'+queredPage); return; }
+  var [err, item]=await collectionRedirectDomain.findOne({www:wwwSite}).toNBP();   if(err) {reqMy.out500(err); return; };
+  if(item) { reqMy.out301(item.url+'/'+queredPage); return; }
 
     // Get wwwCommon
   var Arg=[{boDefault:true}, {projection:{_id:0, boTLS:1, siteName:"$_id", www:1}}];
-  var [err, objSiteDefault]=await collectionSite.findOne(...Arg).toNBP();   if(err) {res.out500(err); return; };
-  if(!objSiteDefault) {res.out500('Default site not found'); return;}
+  var [err, objSiteDefault]=await collectionSite.findOne(...Arg).toNBP();   if(err) {reqMy.out500(err); return; };
+  if(!objSiteDefault) {reqMy.out500('Default site not found'); return;}
   
     // Get tModLast, pageTModLast and tLastBU
   var Arg=[{name:{$in:['tModLast', 'pageTModLast', 'tLastBU']}}];
   var cursor=collectionSetting.find(...Arg);
-  var [err, items]=await cursor.toArray().toNBP();   if(err) {res.out500(err); return;}
+  var [err, items]=await cursor.toArray().toNBP();   if(err) {reqMy.out500(err); return;}
   var objSetting=convertKeyValueToObj(items);
   
 
@@ -555,22 +577,22 @@ app.reqIndex=async function() {
     // Check if page exist
   var objFilt={_id:idPage}, objUpd={ $set: { tLastAccess: tNow }, $inc: { nAccess: 1 } };
   var objOpt={ collation:{locale:"en", strength:2}, returnDocument:'after', returnOriginal:false}; // returnDocument should be enough
-  //var [err, objPage]=await collectionPage.findOne(objFilt, objOpt).toNBP();   if(err) {res.out500(err); return; };
-  var [err, objPage]=await collectionPage.findOneAndUpdate(objFilt, objUpd, objOpt).toNBP();   if(err) {res.out500(err); return; };
-  if(objPage===null) { // No such page 
-    res.statusCode=404;
+  //var [err, objPage]=await collectionPage.findOne(objFilt, objOpt).toNBP();   if(err) {reqMy.out500(err); return; };
+  var [err, objPage]=await collectionPage.findOneAndUpdate(objFilt, objUpd, objOpt).toNBP();   if(err) {reqMy.out500(err); return; };
+  //var objPage=result?.value;
+  if(objPage==null) { // No such page 
+    //res.statusCode=404;
     var boOR=1, boOW=1, boSiteMap=1, idPage=null, tCreated=null, tMod=null, arrRevision=[];
     var objPage=extend({}, {pageName:queredPage, boOR, boOW, boSiteMap, idPage, tCreated, tMod, arrRevision});
     var objOut={ CSRFCode:'',   boTalkExist:false, strEditText:"", arrVersionCompared:[null,1], matVersion:{}, objSiteDefault, objSite, objPage};
     var strHtmlText='';
-    var {strOut}=makeOutput.call(this, objOut, strHtmlText), strHash=md5(strOut);
+    var {strOut}=makeOutput.call(this, objOut, strHtmlText), strHash=app.md5(strOut);
 
-    var objHead={"Content-Type": StrMimeType.html, "Content-Encoding":'gzip'};  //, "Content-Length":strOut.length
-    res.writeHead(404, objHead); 
+    var objHead={"Content-Type": StrMimeType.html};  //, "Content-Encoding":'gzip', "Content-Length":strOut.length
+    //res.writeHead(404, objHead);
+    reqMy.statusOut(404).setOutHeader(objHead);
     //Streamify(strOut).pipe(zlib.createGzip()).pipe(res);
-    var s1=Streamify(strOut);
-    var s2=s1.pipe(zlib.createGzip());
-    var s3=s2.pipe(res);
+    reqMy.end(strOut);
     return;
   } 
   
@@ -584,7 +606,7 @@ app.reqIndex=async function() {
   var lenRev=arrRevision.length, iLastRev=lenRev-1;
 
     // Redirect to correct case OR correct boTLS
-  if(pageName!==queredPage || objSite.boTLS!=boTLS){ res.out301(pageName); return; };
+  if(pageName!==queredPage || objSite.boTLS!=boTLS){ reqMy.out301(pageName); return; };
 
 
     //
@@ -594,10 +616,9 @@ app.reqIndex=async function() {
   if(!boOR){
       // Setup sessionIDCSRF-cookie
       // Check if incoming cookie is valid, and what CSRFCode is stored under it.
-    if('sessionIDCSRF' in req.cookies) { 
-      var sessionIDCSRF=req.cookies.sessionIDCSRF;
-      //var [err, CSRFCode]=await cmdRedis('EVAL', [luaGetNExpire, 1, sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime]); 
-      var [err, CSRFCode]=await redis.myGetNExpire(sessionIDCSRF+'_CSRF', maxAdminRUnactivityTime).toNBP();
+    if('sessionIDCSRF' in reqMy.cookies) { 
+      var sessionIDCSRF=reqMy.cookies.sessionIDCSRF;
+      var [err, CSRFCode]=await evalRedis(luaGetNExpire, [sessionIDCSRF+'_CSRF'], [maxAdminRUnactivityTime]);
       
       if(!CSRFCode) sessionIDCSRF=randomHash(); // To avoid session fixation
     } else var sessionIDCSRF=randomHash();
@@ -610,15 +631,15 @@ app.reqIndex=async function() {
     copySome(objOut, this, ['boARLoggedIn', 'boAWLoggedIn']);
     if(this.boAWLoggedIn) extend(objOut, {objSetting});
     var strHtmlText='';
-    var {strOut}=makeOutput.call(this, objOut, strHtmlText), strHash=md5(strOut);
+    var {strOut}=makeOutput.call(this, objOut, strHtmlText), strHash=app.md5(strOut);
 
-    var objHead={"Content-Type": StrMimeType.html, "Cache-Control":"no-store, no-cache, must-revalidate, post-check=0, pre-check=0", "Content-Encoding":'gzip'};  //, "Content-Length":strOut.length
-    res.replaceCookie("sessionIDCSRF="+sessionIDCSRF+strCookiePropLax);
-    res.writeHead(403, objHead); 
+    var objHead={"Content-Type": StrMimeType.html, "Cache-Control":"no-store, no-cache, must-revalidate, post-check=0, pre-check=0"};  //, "Content-Encoding":'gzip', "Content-Length":strOut.length
+    //res.replaceCookie("sessionIDCSRF="+sessionIDCSRF+strCookiePropLax);
+    reqMy.outCookies.sessionIDCSRF=sessionIDCSRF+strCookiePropLax
+    //res.writeHead(403, objHead); 
+    reqMy.statusOut(403).setOutHeader(objHead);
     //Streamify(strOut).pipe(zlib.createGzip()).pipe(res);
-    var s1=Streamify(strOut);
-    var s2=s1.pipe(zlib.createGzip());
-    var s3=s2.pipe(res);
+    reqMy.end(strOut);
     return;
   }
 
@@ -629,7 +650,7 @@ app.reqIndex=async function() {
 
 
     // Get version table
-  if(lenRev==0) { res.out500('no versions?!?'); return;   }
+  if(lenRev==0) { reqMy.out500('no versions?!?'); return;   }
   if(rev==-1) rev=iLastRev;  //version=rev+1;  // Use last rev
   var arrVersionCompared=[null,rev+1];
 
@@ -641,13 +662,14 @@ app.reqIndex=async function() {
 
     // Calc boValidReqCache => 304
   var boValidReqCache= tMod<=tModCache && strHashIn.length==32 && strHash==strHashIn && tModCache<=requesterCacheTime;
-  if(boValidReqCache) { res.out304(); return; }
+  if(boValidReqCache) { reqMy.out304(); return; }
 
 
     //
     // Page must be regenerated
     //
 
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
@@ -679,7 +701,7 @@ app.reqIndex=async function() {
       if(!objFileHtml) {arrRet=[new Error("objFileHtml==null")]; break stuff;}
       var {data:strHtmlText}=objFileHtml;
 
-      var {strOut}=makeOutput.call({req}, objOut, strHtmlText); strHash=md5(strOut);
+      var {strOut}=makeOutput.call({reqMy}, objOut, strHtmlText); strHash=app.md5(strOut);
 
     
       if(strHash!=strHashOld){
@@ -697,9 +719,9 @@ app.reqIndex=async function() {
         // parse
       var arg={strEditText, idSite, boOW};
       var [err, {strHtmlText, IdChildLax, IdChild, StrImageLC}]=await parse(sessionMongo, arg); if(err) {arrRet=[err]; break stuff;}
-      strHashParse=md5(strHtmlText);
+      strHashParse=app.md5(strHtmlText);
       
-      var {strOut}=makeOutput.call({req}, objOut, strHtmlText); strHash=md5(strOut);
+      var {strOut}=makeOutput.call({reqMy}, objOut, strHtmlText); strHash=app.md5(strOut);
 
 
       if(strHash!=strHashOld){ 
@@ -732,20 +754,38 @@ app.reqIndex=async function() {
     }
 
     var objHead={"Content-Type": StrMimeType.html, ETag:strHash, "Cache-Control":"must-revalidate, public", 'Last-Modified':tModCache.toUTCString(), "Content-Encoding":'gzip'};  //, "Content-Length":strOut.length
-    res.writeHead(200, objHead); 
-    console.log(200)
+    //res.writeHead(200, objHead); 
+    reqMy.setOutHeader(objHead);
 
     arrRet=[null,strOut];
   }
   var [errTransaction, strOut]=arrRet;
 
-  if(errTransaction) { var a=await sessionMongo.abortTransaction(); sessionMongo.endSession();  res.out500(errTransaction); return;  }
+  if(errTransaction) { var a=await sessionMongo.abortTransaction(); sessionMongo.endSession();  reqMy.out500(errTransaction); return;  }
   var a=await sessionMongo.commitTransaction(); sessionMongo.endSession();
 
   //Streamify(strOut).pipe(zlib.createGzip()).pipe(res);
-  var s1=Streamify(strOut);
-  var s2=s1.pipe(zlib.createGzip());
-  var s3=s2.pipe(res);
+
+    // One could just call reqMy.end(strOut); and removing "Content-Encoding":'gzip' above and the system would handle compression.
+  if(boDeno){
+    const encObj = new TextEncoderStream();
+    const writerEnc = encObj.writable.getWriter();
+    const webstreamComp=new CompressionStream("gzip")
+    encObj.readable.pipeTo(webstreamComp.writable)
+
+    reqMy.end(webstreamComp.readable);
+    await writerEnc.ready;
+    writerEnc.write(strOut);
+    writerEnc.releaseLock();
+    encObj.writable.close();
+  }else{
+    //Streamify(strOut).pipe(zlib.createGzip()).pipe(res);
+    var s1=Streamify(strOut);
+    var s2=s1.pipe(zlib.createGzip());
+    //var s3=s2.pipe(res);
+    reqMy.end(s2);
+  }
+
   return;
 }
 
@@ -756,35 +796,38 @@ app.reqIndex=async function() {
  * reqStatic
  ******************************************************************************/
 app.reqStatic=async function() {
-  var {req, res}=this, {wwwSite, pathName, boSiteDependant=false}=req;
+  var {reqMy}=this, {req, wwwSite, pathName, boSiteDependant=false}=reqMy;
 
   //var RegAllowedOriginOfStaticFile=[RegExp("^https\:\/\/(locatabl\.com|gavott\.com)")];
   //var RegAllowedOriginOfStaticFile=[RegExp("^http\:\/\/(localhost|192\.168\.0)")];
   var RegAllowedOriginOfStaticFile=[];
-  setAccessControlAllowOrigin(req, res, RegAllowedOriginOfStaticFile);
-  if(req.method=='OPTIONS'){ res.end(); return ;}
+  setAccessControlAllowOrigin(reqMy, RegAllowedOriginOfStaticFile);
+  if(req.method=='OPTIONS'){ reqMy.end(); return ;}
 
-  var strHashIn=getETag(req.headers);
+  const {headers}=req
+  var strHashIn=getETag(headers);
   var keyCache=boSiteDependant?wwwSite+pathName:pathName.substr(1); 
   var [err, objT]=await CacheUri.getWAutoSet(keyCache);
   if(err) {
-    if(err.code=='ENOENT') {res.out404(); return;}
-    if('host' in req.headers) console.error('Faulty request from'+req.headers.host);
-    if('Referer' in req.headers) console.error('Referer:'+req.headers.Referer);
-    res.out500(err); return;
+    if(err.code=='ENOENT') {reqMy.out404(); return;}
+    const host=headers.get('host'), referer=headers.get('referer')
+    console.error(`Faulty request, headers:\n\thost:${host}\treferer:${referer}`);
+    reqMy.out500(err); return;
   }
   //if(typeof objT.buf=='undefined') debugger;
   var {buf, type, strHash, boZip, boUglify}=objT;
-  if(strHash===strHashIn){ res.out304(); return; }
+  if(strHash===strHashIn){ reqMy.out304(); return; }
   var mimeType=StrMimeType[type];
   if(typeof mimeType!='string') console.log(`type: ${type}, mimeType: `, mimeType);
   if(typeof buf!='object' || !('length' in buf)) console.log('typeof buf: '+typeof buf);
   if(typeof strHash!='string') console.log('typeof strHash: '+strHash);
   var objHead={"Content-Type": mimeType, "Content-Length":buf.length, ETag:strHash, "Cache-Control":"public, max-age=31536000"};
   if(boZip) objHead["Content-Encoding"]='gzip';
-  res.writeHead(200, objHead); // "Last-Modified": maxModTime.toUTCString(),
-  res.write(buf); //, this.encWrite
-  res.end();
+  //res.writeHead(200, objHead); // "Last-Modified": maxModTime.toUTCString(),
+  reqMy.setOutHeader(objHead);
+  //res.write(buf); //, this.encWrite
+  //res.end();
+  reqMy.end(buf);
 }
 
 
@@ -795,22 +838,22 @@ app.reqStatic=async function() {
  * reqMediaImage
  ******************************************************************************/
 app.reqMediaImage=async function(){
-  var {req, res}=this, {pathName}=req;
+  var {reqMy}=this, {req, pathName}=reqMy;
   
-  //res.removeHeader("X-Frame-Options"); // Allow to be shown in frame, iframe, embed, object
-  res.removeHeader("Content-Security-Policy"); // Allow to be shown in frame, iframe, embed, object
+  //res.removeOutHeader("X-Frame-Options"); // Allow to be shown in frame, iframe, embed, object
+  reqMy.removeOutHeader("Content-Security-Policy"); // Allow to be shown in frame, iframe, embed, object
   
   
   var Match=RegExp('^/(.*?)$').exec(pathName);
-  if(!Match) {res.out404('Not Found'); return;}
+  if(!Match) {reqMy.out404('Not Found'); return;}
   var nameQ=Match[1];
 
 
   this.strHashIn=getETag(req.headers);
   this.requesterCacheTime=getRequesterTime(req.headers);
 
-  var RegThumb=RegExp(`(\\d+)(.?)px-(.*)\\.(${strImageExtWBar})$`,'i'); 
-  var RegImage=RegExp(`(.*)\\.(${strImageExtWBar})$`,'i');  // Ex "100hpx-oak.jpg"
+  var RegThumb=RegExp(`(\\d+)(.?)px-(.*)\\.(${myGlob.strImageExtWBar})$`,'i'); 
+  var RegImage=RegExp(`(.*)\\.(${myGlob.strImageExtWBar})$`,'i');  // Ex "100hpx-oak.jpg"
   var Match, nameOrg, wMax, hMax, kind, boThumb;
   if(Match=RegThumb.exec(nameQ)){ 
     nameOrg=Match[3]+'.'+Match[4];
@@ -828,57 +871,58 @@ app.reqMediaImage=async function(){
     }
   }
   
-  if( !nameOrg || nameOrg == "" ){ res.out404('Not Found'); return;} // Exit because non-valid name
+  if( !nameOrg || nameOrg == "" ){ reqMy.out404('Not Found'); return;} // Exit because non-valid name
 
 
   var tNow=nowSFloored();
 
     // Get info from collectionImage
   var objFilt={imageName:nameOrg}, objUpd={ $set: { tLastAccess: tNow }, $inc: { nAccess: 1 } }, objOpt={collation:{locale:'en', strength:2}};
-  var [err, objT]=await collectionImage.findOneAndUpdate(objFilt, objUpd, objOpt).toNBP();   if(err) {res.out500(err); return; };
-  if(objT===null) {res.out404('Not Found'); return; };
-  var {_id:idImage, tCreated:orgTime, idFile:idFileOrg, strHash:strHashOrg, imageName:nameCanonical}=objT;
+  var [err, objT]=await collectionImage.findOneAndUpdate(objFilt, objUpd, objOpt).toNBP();   if(err) {reqMy.out500(err); return; };
+  if(objT==null) {reqMy.out404('Not Found'); return; };
+  var {_id:idImage, tCreated:orgTime, idFile:idFileOrg, strHash:strHashOrg, imageName:nameCanonical, width:wOrg, height:hOrg}=objT;
 
   // var Arg=[{imageName:nameOrg}, {collation:{locale:'en', strength:2}}];
-  // var [err, results]=await collectionImage.findOne(...Arg).toNBP();   if(err) {res.out500(err); return; };
-  // if(!results) {res.out404('Not Found'); return; };
+  // var [err, results]=await collectionImage.findOne(...Arg).toNBP();   if(err) {reqMy.out500(err); return; };
+  // if(!results) {reqMy.out404('Not Found'); return; };
   // var {_id:idImage, tCreated:orgTime, idFile:idFileOrg, strHash:strHashOrg, imageName:nameCanonical}=results;
   
 
-  if(nameCanonical!=nameOrg){    res.out301Loc(nameCanonical); return;    }
+  if(nameCanonical!=nameOrg){    reqMy.out301Loc(nameCanonical); return;    }
 
   //var maxModTime=new Date(Math.max(orgTime,bootTime));
   var maxModTime=orgTime;
   
 
   if(boThumb) {
-    extend(this, {nameCanonical, wMax, hMax, kind, idImage, idFileOrg, maxModTime, tNow});
+    extend(this, {nameCanonical, wMax, hMax, kind, idImage, idFileOrg, maxModTime, tNow, wOrg, hOrg});
     await reqMediaImageThumb.call(this); return;
   }
 
   var boValidRequesterCache=this.requesterCacheTime && this.requesterCacheTime>=maxModTime && (this.strHashIn === strHashOrg);
-  if(boValidRequesterCache) {  res.out304(); return; }   // Exit because the requester has a valid version
+  if(boValidRequesterCache) {  reqMy.out304(); return; }   // Exit because the requester has a valid version
 
 
     // Ok so the reponse will be an image
-  res.setHeader("Content-type", StrMimeType[kind]);
-  //res.setHeader("Content-type", StrMimeType.jpeg);
+  reqMy.setOutHeader("Content-type", StrMimeType[kind]);
+  //reqMy.setOutHeader("Content-type", StrMimeType.jpeg);
 
 
-  var Arg=[{_id:idFileOrg}];
-  var [err, results]=await collectionFileImage.findOne(...Arg).toNBP();   if(err) {res.out500(err); return; };
-  if(!results) {res.out500('c!=1'); return; };
+  const Arg=[{_id:idFileOrg}];
+  var [err, results]=await collectionFileImage.findOne(...Arg).toNBP();   if(err) {reqMy.out500(err); return; };
+  if(!results) {reqMy.out500('c!=1'); return; };
   var data=results.data.buffer;
 
-  var strHashOrg=md5(data);  res.setHeader('Last-Modified', maxModTime.toUTCString());    res.setHeader('ETag', strHashOrg); res.setHeader('Content-Length',data.length);
-  res.end(data);
+  var strHashOrg=app.md5(data);  //reqMy.setOutHeader('Last-Modified', maxModTime.toUTCString());    reqMy.setOutHeader('ETag', strHashOrg); reqMy.setOutHeader('Content-Length',data.length);
+  reqMy.setOutHeader({'Last-Modified':maxModTime.toUTCString(), 'ETag':strHashOrg, 'Content-Length':data.length});
+  reqMy.end(data);
  
 }
 
  
 app.reqMediaImageThumb=async function(){
-  var {req, res}=this;
-  var {nameCanonical, wMax, hMax, kind, idImage, idFileOrg, maxModTime, tNow}=this;
+  var {reqMy}=this, {req}=reqMy;
+  var {nameCanonical, wMax, hMax, kind, idImage, idFileOrg, maxModTime, tNow, wOrg:width, hOrg:height}=this;
 
     // Get info from thumbCollection
   var objFilter={}
@@ -887,35 +931,42 @@ app.reqMediaImageThumb=async function(){
   else objFilter['$or']=[{width:wMax}, {height:hMax}]; 
   objFilter.idImage=idImage;
   var Arg=[objFilter];
-  var [err, result]=await collectionThumb.findOne(...Arg).toNBP();   if(err) {res.out500(err); return; };
+  var [err, result]=await collectionThumb.findOne(...Arg).toNBP();   if(err) {reqMy.out500(err); return; };
   var boExist=Boolean(result);
   var {tCreated:thumbTime=false, idFile:idFileThumb, strHash:strHashThumb}=result||{};
 
   
   var boValidRequesterCache=this.requesterCacheTime && this.requesterCacheTime>=maxModTime && (this.strHashIn === strHashThumb);
-  if(boValidRequesterCache) {  res.out304(); return; }   // Exit because the requester has a valid version
+  if(boValidRequesterCache) {  reqMy.out304(); return; }   // Exit because the requester has a valid version
 
 
     // If there is an entry in thumbTab (a valid version on the server or boBigger==1)
   var boGotStored=0;
   if(thumbTime!==false && thumbTime>=maxModTime) {
-    var Arg=[{_id:idFileThumb}];
-    var [err, result]=await collectionFileThumb.findOne(...Arg).toNBP();   if(err) {res.out500(err); return; };
-    var boExist=Boolean(result); if(!boExist) {res.out500('Thumb data not found');return;}
+    const Arg=[{_id:idFileThumb}];
+    var [err, result]=await collectionFileThumb.findOne(...Arg).toNBP();   if(err) {reqMy.out500(err); return; };
+    var boExist=Boolean(result); if(!boExist) {reqMy.out500('Thumb data not found');return;}
     var data=result.data.buffer;
 
-    //if(typeof data == "undefined"){ debugger; res.out500('typeof data == "undefined"'); return;    }
+    //if(typeof data == "undefined"){ debugger; reqMy.out500('typeof data == "undefined"'); return;    }
 
       // If this "thumb" has been requested before and its been calculated that the thumb is bigger than the original (indicated by data.length==0) 
-    if(typeof data=="undefined" || data.length==0){  res.out301Loc(nameCanonical); return;    }   //res.setHeader(); 
+    if(typeof data=="undefined" || data.length==0){  reqMy.out301Loc(nameCanonical); return;    }   //reqMy.setOutHeader(); 
     boGotStored=1;
   } 
 
     // Ok so the reponse will be an image
   var strMime=StrMimeType[kind];  if(kind=='svg') strMime=StrMimeType['png'];  // using png for svg-thumbs
-  res.setHeader("Content-type",strMime);
+  reqMy.setOutHeader("Content-type",strMime);
 
-  if(boGotStored){    res.setHeader('Last-Modified', thumbTime.toUTCString());   res.setHeader('ETag',strHashThumb);  res.setHeader('Content-Length',data.length);  res.end(data);  return;   }
+  //if(boGotStored){    reqMy.setOutHeader('Last-Modified', thumbTime.toUTCString());   reqMy.setOutHeader('ETag',strHashThumb);  reqMy.setOutHeader('Content-Length',data.length);  res.end(data);  return;   }
+  if(boGotStored){ 
+    reqMy.setOutHeader({'Last-Modified':thumbTime.toUTCString(), 'ETag':strHashThumb, 'Content-Length':data.length});
+    reqMy.end(data);  return;
+  }
+
+
+  
 
   //SELECT * FROM mmmWiki_file f left JOIN mmmWiki_thumb t ON f.idFile=t.idFile WHERE f.idFile IN (39,360)
 
@@ -925,16 +976,19 @@ app.reqMediaImageThumb=async function(){
 
     // Fetch original data from db
   var Arg=[{_id:idFileOrg}];
-  var [err, result]=await collectionFileImage.findOne(...Arg).toNBP();   if(err) {res.out500(err); return; };
-  var boExist=Boolean(result); if(!boExist) {res.out500('Original data not found');return;}
-  var strDataOrg=result.data.buffer;
+  var [err, result]=await collectionFileImage.findOne(...Arg).toNBP();   if(err) {reqMy.out500(err); return; };
+  var boExist=Boolean(result); if(!boExist) {reqMy.out500('Original data not found');return;}
+  const bufDataOrg=result.data.buffer;
 
 
-  var [err, value]=await new Promise(resolve=>{
-    gm(strDataOrg).size(function(errT, valueT){ resolve([errT,valueT]);  });
-  });
-  if(err){res.out500(err);  return; }  
-  var {width, height}=value;
+
+  //var [err, [width, height]]=await imGetSize(bufDataOrg);  if(err) {reqMy.out500(err); return; };
+  //var {width, height}=probeImageSize.sync(bufDataOrg)
+  if(width==0 && height==0){
+    //var [err, [width, height]]=await imGetSize(data);  if(err) return [err];
+    var {width, height}=probeImageSize.sync(bufDataOrg)
+  }
+
 
   var hNew, scale, wNew;
   if(wMax==0) {hNew=hMax; scale=hMax/height; wNew=Math.floor(scale*width);}
@@ -945,64 +999,122 @@ app.reqMediaImageThumb=async function(){
     else {wNew=Math.floor(scale*width); hNew=hMax;} 
   }
 
-  var strDataThumb=strDataOrg;
-  //if(scale>=1) { scale=1;  if(wNew>100){ res.outCode(400,'Bad Request, 100px is the max width for enlargements.'); return;} } // No enlargements
-  //if(scale>=1) { scale=1;  if(wNew>100){ res.out301Loc(nameCanonical);  return;} } // 100px is the max width for enlargements
-  if(scale>=1) {   res.out301Loc(nameCanonical);  return; } // If enlargement, then redirect to original
+  var bufDataThumb=bufDataOrg;
+  //if(scale>=1) { scale=1;  if(wNew>100){ reqMy.outCode(400,'Bad Request, 100px is the max width for enlargements.'); return;} } // No enlargements
+  //if(scale>=1) { scale=1;  if(wNew>100){ reqMy.out301Loc(nameCanonical);  return;} } // 100px is the max width for enlargements
+  if(scale>=1) {   reqMy.out301Loc(nameCanonical);  return; } // If enlargement, then redirect to original
   else {
-  //if(scale <= 1){  
-    if(kind=='svg'){
+  //if(scale <= 1){
 
-      var [err, pathTmp, fd]=await new Promise(resolve=>{
-        temporary.file(function(errT, pathT, fd) { resolve([errT, pathT, fd]); }); 
-      });
-      if(err){res.out500(err);  return;}
+    // if(kind=='svg'){
 
-      var [err]=await fsPromises.writeFile(pathTmp, strDataOrg).toNBP();  if(err){res.out500(err); return;}
+    //   var [err, pathTmp, fd]=await new Promise(resolve=>{
+    //     temporary.file(function(errT, pathT, fd) { resolve([errT, pathT, fd]); }); 
+    //   });
+    //   if(err){reqMy.out500(err);  return;}
+
+    //   var [err]=await fsPromises.writeFile(pathTmp, bufDataOrg).toNBP();  if(err){reqMy.out500(err); return;}
       
-      var [err, stdout]=await new Promise(resolve=>{
-        im.convert(['-resize', wNew+'x'+hNew, 'svg:'+pathTmp, 'png:-'],  function(errT, stdoutT){ resolve([errT, stdoutT]); });
-      });
-      if(err) {res.out500(err); return;}
-      //strDataThumb=new Buffer(stdout,'binary');
-      strDataThumb=Buffer.from(stdout,'binary');
+    //   var [err, stdout]=await new Promise(resolve=>{
+    //     im.convert(['-resize', wNew+'x'+hNew, 'svg:'+pathTmp, 'png:-'],  function(errT, stdoutT){ resolve([errT, stdoutT]); });
+    //   });
+    //   if(err) {reqMy.out500(err); return;}
+    //   //bufDataThumb=new Buffer(stdout,'binary');
+    //   //bufDataThumb=Buffer.from(stdout,'binary');  // Node.js
+    //   bufDataThumb=new Buffer(stdout, 'binary');  // Deno
        
+    // }else{
+    //   // var [err,bufDataThumb]=await new Promise(resolve=>{
+    //   //   var myCollector=concat(function(buf){  resolve([null,buf]);   });
+    //   //   var streamImg=gm(bufDataOrg).autoOrient().resize(wNew, hNew).stream(function streamOut(err, stdout, stderr) {
+    //   //     if(err) {resolve([err]); return;}
+    //   //     stdout.pipe(myCollector); 
+    //   //   });
+    //   // });
+    //   // if(err){reqMy.out500(err);  return; } 
+
+    //   const buf=bufDataOrg
+    //   const command = new Deno.Command('convert', { args:["fd:0", "-resize", wNew+'x'+hNew, "fd:1"], stdin:"piped", stdout:"piped" });
+    //   const child = command.spawn();
+    //   const promiseRead=readAllMy(child.stdout);
+    //   const writer = child.stdin.getWriter();
+    //   await writer.ready;
+    //   writer.write(buf);
+    //   writer.releaseLock();
+    //   await child.stdin.close();
+    //   var bufDataThumb = await promiseRead;
+
+    // }
+    if(boDeno){
+      const boSvg=kind=='svg';
+      var args=[ "fd:0", "-resize", wNew+'x'+hNew]
+      var argsExtra=boSvg?["svg:fd:1", "png:-"]:["fd:1"]
+      args.push(...argsExtra);
+
+      var command = new Deno.Command('convert', { args, stdin:"piped", stdout:"piped" });
+      var child = command.spawn();
+      var promiseRead=readAllMy(child.stdout);
+      var writer = child.stdin.getWriter();
+      await writer.ready;
+      writer.write(bufDataOrg);
+      writer.releaseLock();
+      await child.stdin.close();
+      var bufDataThumb = await promiseRead;
     }else{
-      var [err,strDataThumb]=await new Promise(resolve=>{
-        var myCollector=concat(function(buf){  resolve([null,buf]);   });
-        var streamImg=gm(strDataOrg).autoOrient().resize(wNew, hNew).stream(function streamOut(err, stdout, stderr) {
-          if(err) {resolve([err]); return;}
-          stdout.pipe(myCollector); 
+      if(kind=='svg'){
+        var [err, pathTmp, fd]=await new Promise(resolve=>{
+          temporary.file(function(errT, pathT, fd) { resolve([errT, pathT, fd]); }); 
         });
-      });
-      if(err){res.out500(err);  return; } 
-      
+        if(err){res.out500(err);  return;}
+
+        var [err]=await fsPromises.writeFile(pathTmp, bufDataOrg).toNBP();  if(err){res.out500(err); return;}
+        
+        var [err, stdout]=await new Promise(resolve=>{
+          im.convert(['-resize', wNew+'x'+hNew, 'svg:'+pathTmp, 'png:-'],  function(errT, stdoutT){ resolve([errT, stdoutT]); });
+        });
+        if(err) {res.out500(err); return;}
+        //var bufDataThumb=new Buffer(stdout,'binary');
+        var bufDataThumb=Buffer.from(stdout,'binary');
+        
+      }else{
+        var [err,bufDataThumb]=await new Promise(resolve=>{
+          var myCollector=concat(function(buf){  resolve([null,buf]);   });
+          var streamImg=gm(bufDataOrg).autoOrient().resize(wNew, hNew).stream(function streamOut(err, stdout, stderr) {
+            if(err) {resolve([err]); return;}
+            stdout.pipe(myCollector); 
+          });
+        });
+        if(err){res.out500(err);  return; } 
+        
+      }
     }
   }
 
 
-  var bo301ToOrg=0; if(strDataThumb.length>strDataOrg.length/2) {   strDataThumb=''; bo301ToOrg=1;  }  // If the strDataThumb is bigger than strDataOrg/2 then do a 301 to the origin instead. 
+  var bo301ToOrg=0; if(bufDataThumb.length>bufDataOrg.length/2) {   bufDataThumb=''; bo301ToOrg=1;  }  // If the bufDataThumb is bigger than bufDataOrg/2 then do a 301 to the origin instead. 
 
-  var strHashThumb=md5(strDataThumb);
+  var strHashThumb=app.md5(bufDataThumb);
 
 
     // Store in thumb collection
   var thumbTime=tNow;  //tNow=nowSFloored(),
+  //const sessionMongo = await dbo.command({startSession:1});
   const sessionMongo = mongoClient.startSession();
   sessionMongo.startTransaction({ readPreference:'primary', readConcern: {level:'local'}, writeConcern:{w:'majority'}   });
 
-  var [err, result]=await storeThumb(sessionMongo, idImage, wNew,hNew, strDataThumb, strHashThumb, tNow);
+  var [err, result]=await storeThumb(sessionMongo, idImage, wNew,hNew, bufDataThumb, strHashThumb, tNow);
 
-  if(err) { var a=await sessionMongo.abortTransaction(); sessionMongo.endSession();  res.out500(err); return; }
+  if(err) { var a=await sessionMongo.abortTransaction(); sessionMongo.endSession();  reqMy.out500(err); return; }
   var a=await sessionMongo.commitTransaction(); sessionMongo.endSession();
 
 
-  if(bo301ToOrg) { res.out301Loc(nameCanonical); return; }
+  if(bo301ToOrg) { reqMy.out301Loc(nameCanonical); return; }
 
     // Echo to buffer
-  res.setHeader('Last-Modified', thumbTime.toUTCString());     res.setHeader('ETag',strHashThumb);  res.setHeader('Content-Length',strDataThumb.length);
-  //res.setHeader('X-Robots-Tag','noindex');
-  res.end(strDataThumb);
+  //reqMy.setOutHeader('Last-Modified', thumbTime.toUTCString());     reqMy.setOutHeader('ETag',strHashThumb);  reqMy.setOutHeader('Content-Length',bufDataThumb.length);
+  reqMy.setOutHeader({'Last-Modified':thumbTime.toUTCString(), 'ETag':strHashThumb, 'Content-Length':bufDataThumb.length});
+  //reqMy.setOutHeader('X-Robots-Tag','noindex');
+  reqMy.end(bufDataThumb);
 
 }
 
@@ -1012,36 +1124,36 @@ app.reqMediaImageThumb=async function(){
  * reqMediaVideo
  ******************************************************************************/
 app.reqMediaVideo=async function(){
-  var {req, res}=this, {pathName}=req;
+  var {reqMy}=this, {req, pathName}=reqMy;
   
   var Match=RegExp('^/(.*?)$').exec(pathName);
-  if(!Match) {res.out404('Not Found'); return;}
+  if(!Match) {reqMy.out404('Not Found'); return;}
   var nameQ=Match[1];
 
   var strHashIn=getETag(req.headers);
   var requesterCacheTime=getRequesterTime(req.headers);
 
   var nameOrg=nameQ;
-  if( !nameOrg || nameOrg == "" ){ res.out404('Not Found'); return;} // Exit because non-valid name
+  if( !nameOrg || nameOrg == "" ){ reqMy.out404('Not Found'); return;} // Exit because non-valid name
 
 
     // Get info from videoTab
   var sql=`SELECT idVideo, UNIX_TIMESTAMP(tCreated) AS tCreated, idFile, strHash, size, name FROM ${videoTab} WHERE name=?`;
   var Val=[nameOrg];
-  var [err, results]=await this.myMySql.query(sql, Val); if(err) {  res.out500(err); return; }
-  var c=results.length; if(c==0) {res.out404('Not Found'); return;}
+  var [err, results]=await this.myMySql.query(sql, Val); if(err) {  reqMy.out500(err); return; }
+  var c=results.length; if(c==0) {reqMy.out404('Not Found'); return;}
   //var tmp=results[0];
   //var idVideo=tmp.idVideo, orgTime=new Date(tmp.tCreated*1000), idFileOrg=tmp.idFile, strHashOrg=tmp.strHash, total=tmp.size, nameCanonical=tmp.name;
   var {idVideo, tCreated, idFile:idFileThumb, strHash:strHashThumb, size:total, name:nameCanonical}=results[0]; var orgTime=(typeof tCreated!='undefined')?new Date(tCreated*1000):null;
       
        
-  if(nameCanonical!=nameOrg){   res.out301Loc(nameCanonical); return;  }
+  if(nameCanonical!=nameOrg){   reqMy.out301Loc(nameCanonical); return;  }
 
 
-  if(strHashOrg===strHashIn) { res.out304(); return }
+  if(strHashOrg===strHashIn) { reqMy.out304(); return }
 
 
-  var range = req.headers.range||'0-';
+  var range = req.headers.get('range')||'0-';
   var positions = range.replace(/bytes=/, "").split("-");
   var start = parseInt(positions[0], 10);
   
@@ -1057,14 +1169,14 @@ app.reqMediaVideo=async function(){
   //var sql=`SELECT data FROM ${fileTab} WHERE idFile=?`;
   var sql=`SELECT substr(data, ${start+1}, ${chunksize}) AS data FROM ${fileTab} WHERE idFile=?`;
   var Val=[idFileOrg];
-  var [err, results]=await this.myMySql.query(sql, Val); if(err) {  res.out500(err); return; }
-  var c=results.length; if(c==0) {res.out404('Not Found');  return;}
-  var c=results.length; if(c!=1) {res.out500('c!=1'); return;}
+  var [err, results]=await this.myMySql.query(sql, Val); if(err) {  reqMy.out500(err); return; }
+  var c=results.length; if(c==0) {reqMy.out404('Not Found');  return;}
+  var c=results.length; if(c!=1) {reqMy.out500('c!=1'); return;}
   var {data:buf}=results[0];
 
-  if(chunksize!=buf.length) {res.out500(`chunksize!=buf.length, (${chunksize}!=${buf.length})`); return;}
+  if(chunksize!=buf.length) {reqMy.out500(`chunksize!=buf.length, (${chunksize}!=${buf.length})`); return;}
 
-  res.writeHead(206, {
+  reqMy.statusOut(206).setOutHeader({
     "Content-Range": `bytes ${start}-${end}/${total}`,
     "Accept-Ranges": "bytes",
     "Content-Length": chunksize,
@@ -1074,7 +1186,7 @@ app.reqMediaVideo=async function(){
     "Last-Modified":orgTime.toUTCString()
   });
 
-  res.end(buf);
+  reqMy.end(buf);
 }
 
 
@@ -1083,18 +1195,18 @@ app.reqMediaVideo=async function(){
  * reqSiteMap
  ******************************************************************************/
 app.reqSiteMap=async function() {
-  var {req, res}=this, {wwwSite}=req;
+  var {reqMy}=this, {req, wwwSite}=reqMy;
 
   //xmlns:image="http://www.google.com/schemas/sitemap-image/1.1
 
   var Arg=[{www:wwwSite}];
-  var [err, result]=await collectionSite.findOne(...Arg).toNBP();   if(err) {res.out500(err); return;}
-  if(!result) {res.out500(wwwSite+', site not found'); return;}
+  var [err, result]=await collectionSite.findOne(...Arg).toNBP();   if(err) {reqMy.out500(err); return;}
+  if(!result) {reqMy.out500(wwwSite+', site not found'); return;}
   var {_id:idSite, boTLS}=result;
 
   var Arg=[{idSite,boTemplate:false, boOR:true, boSiteMap:true}];
   var cursor=collectionPage.find(...Arg);
-  var [err, results]=await cursor.toArray().toNBP();   if(err) {res.out500(err); return;}
+  var [err, results]=await cursor.toArray().toNBP();   if(err) {reqMy.out500(err); return;}
 
 
   var Str=[];
@@ -1111,7 +1223,7 @@ app.reqSiteMap=async function() {
   }
   Str.push('</urlset>');  
   var str=Str.join('\n'); //res.writeHead(200, "OK", {'Content-Type': StrMimeType.xml});
-  res.end(str);
+  reqMy.end(str);
 }
 
 
@@ -1119,20 +1231,20 @@ app.reqSiteMap=async function() {
  * reqRobots
  ******************************************************************************/
 app.reqRobots=async function() {
-  var {req, res}=this, {wwwSite}=req;
+  var {reqMy}=this, {req, wwwSite}=reqMy;
 
   if(1) {
     var Str=[];
     Str.push("User-agent: *"); 
     Str.push("Disallow: ")
-    var str=Str.join('\n');   res.out200(str);  return; 
+    var str=Str.join('\n');   reqMy.out200(str);  return; 
   }
-  //if(1) {res.out404('404 Not found'); return; }
+  //if(1) {reqMy.out404('404 Not found'); return; }
 
   //var sql=`SELECT boTLS, pageName, boOR, boOW, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther FROM ${pageLastSiteView} WHERE www=? AND !(pageName REGEXP '^template:.*') AND boOR=1 AND boSiteMap=1`;
   var sql=`SELECT boTLS, pageName, boOR, boOW, UNIX_TIMESTAMP(tMod) AS tMod, lastRev, boOther FROM ${pageLastSiteView} WHERE www=? AND !(pageName REGEXP '^template:.*') AND boOR=1 AND boSiteMap=1`; 
   var Val=[wwwSite];
-  var [err, results]=await this.myMySql.query(sql, Val); if(err) {  res.out500(err); return; }
+  var [err, results]=await this.myMySql.query(sql, Val); if(err) {  reqMy.out500(err); return; }
   var Str=[];
   Str.push("User-agent: Google"); 
   Str.push("Disallow: /");
@@ -1144,7 +1256,7 @@ app.reqRobots=async function() {
     Str.push("Allow: /"+q);
   }
   var str=Str.join('\n');   //res.writeHead(200, "OK", {'Content-Type': StrMimeType.txt});   res.end(str);
-  res.out200(str);
+  reqMy.out200(str);
 }
 
 
@@ -1152,25 +1264,24 @@ app.reqRobots=async function() {
  * reqMonitor
  ******************************************************************************/
 app.reqMonitor=async function(){
-  var {req, res}=this;
+  var {reqMy}=this, {req}=reqMy;
   
-  //if(!req.boCookieLaxOK) {res.outCode(401, "Lax cookie not set");  return;  }
+  //if(!req.boCookieLaxOK) {reqMy.outCode(401, "Lax cookie not set");  return;  }
   
-  res.removeHeader("Content-Security-Policy"); // Allow to be shown in frame, iframe, embed, object
-  //res.removeHeader("X-Content-Type-Options"); // Allow to be shown in frame, iframe, embed, object
+  reqMy.removeOutHeader("Content-Security-Policy"); // Allow to be shown in frame, iframe, embed, object
+  //res.removeOutHeader("X-Content-Type-Options"); // Allow to be shown in frame, iframe, embed, object
   
   
         // Conditionally push deadlines forward
-  // var [err, value]=await cmdRedis('EVAL',[luaGetNExpire, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
-  
-  if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in with read access'); return;}
+  var [err, value]=await evalRedis(luaGetNExpire, [reqMy.cookies.sessionIDR+'_adminRTimer'], [maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+
+  if(this.boARLoggedIn!=1) {reqMy.outCode(401,'must be logged in with read access'); return;}
 
   if(!objOthersActivity){  //  && boPageBUNeeded===null && boImageBUNeeded===null
 
     var Arg=[{boOther:true}];
     var cursor=collectionPage.find(...Arg);
-    var [err, Page]=await cursor.toArray().toNBP();   if(err) {res.out500(err);return; }
+    var [err, Page]=await cursor.toArray().toNBP();   if(err) {reqMy.out500(err);return; }
     var nEdit=Page.length, boMult=false, strSite="";
     for(var i=0;i<nEdit;i++) { var {idSite}=Page[i]; if(strSite.length==0) strSite=idSite; else if(strSite!==idSite) boMult=true;  }
     if(nEdit==0) {var strPageInfo="0";} 
@@ -1182,7 +1293,7 @@ app.reqMonitor=async function(){
 
     var Arg=[{boOther:true}];
     var cursor=collectionImage.find(...Arg);
-    var [err, Image]=await cursor.toArray().toNBP();   if(err) {res.out500(err);return; }
+    var [err, Image]=await cursor.toArray().toNBP();   if(err) {reqMy.out500(err);return; }
     var resI=Image[0], nImage=Image.length, strImageInfo=nImage==1?resI.imageName:nImage;
 
     objOthersActivity={nEdit, strPageInfo,  nImage, strImageInfo};
@@ -1197,7 +1308,7 @@ app.reqMonitor=async function(){
 
   if(colPage) strPage=`<span style="background-color:${colPage}">${strPage}</span>`;
   if(colImg) strImg=`<span style="background-color:${colImg}">${strImg}</span>`;
-  res.end(`<body style="margin: 0px;padding: 0px">${strPage} / ${strImg}</body>`);
+  reqMy.end(`<body style="margin: 0px;padding: 0px">${strPage} / ${strImg}</body>`);
 
 }
 
@@ -1206,21 +1317,20 @@ app.reqMonitor=async function(){
  * reqStat
  ******************************************************************************/
 app.reqStat=async function(){
-  var {req, res}=this, {wwwSite}=req;
+  var {reqMy}=this, {req, wwwSite}=reqMy;
 
-  //if(!req.boCookieLaxOK) {res.outCode(401, "Lax cookie not set");  return;  }
+  //if(!req.boCookieLaxOK) {reqMy.outCode(401, "Lax cookie not set");  return;  }
   
         // Conditionally push deadlines forward
-  //var [err,value]=await cmdRedis('EVAL',[luaGetNExpire, 1, this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
-  var [err, value]=await redis.myGetNExpire(this.req.cookies.sessionIDR+'_adminRTimer', maxAdminRUnactivityTime).toNBP(); this.boARLoggedIn=Number(value);
-  
-  if(this.boARLoggedIn!=1) {res.outCode(401,'must be logged in with read access'); return;}
+  var [err, value]=await evalRedis(luaGetNExpire, [reqMy.cookies.sessionIDR+'_adminRTimer'], [maxAdminRUnactivityTime]); this.boARLoggedIn=Number(value);
+
+  if(this.boARLoggedIn!=1) {reqMy.outCode(401,'must be logged in with read access'); return;}
   
 
     // Get the number of documents of each collection.
   var NRow={}
   for(var nameCollection of NameCollection){ 
-    var [err, nTmp]=await app["collection"+nameCollection].countDocuments({}).toNBP();   if(err) {res.out500(err); return; };
+    var [err, nTmp]=await app["collection"+nameCollection].countDocuments({}).toNBP();   if(err) {reqMy.out500(err); return; };
     NRow["n"+nameCollection]=nTmp;
   }
 
@@ -1237,7 +1347,7 @@ app.reqStat=async function(){
     //{ $group: {  _id: "$collB", sum: {$sum : 1} } },
   ];
   var cursor=collectionImage.aggregate(Arg);
-  var [err, items]=await cursor.toArray().toNBP();   if(err) {res.out500(err);return; }
+  var [err, items]=await cursor.toArray().toNBP();   if(err) {reqMy.out500(err);return; }
 
 
     // Find collectionPage documents without collectionFileWiki document
@@ -1252,7 +1362,7 @@ app.reqStat=async function(){
     { "$match": { "collB.0": { "$exists": false } } }
   ];
   var cursor=collectionPage.aggregate(Arg);
-  var [err, items]=await cursor.toArray().toNBP();   if(err) {res.out500(err); return; };
+  var [err, items]=await cursor.toArray().toNBP();   if(err) {reqMy.out500(err); return; };
 
 
 
@@ -1267,8 +1377,13 @@ app.reqStat=async function(){
 
   //var uSiteCommon=''; if(wwwCommon) uSiteCommon=req.strSchemeLong+wwwCommon;
   var wwwCommon=wwwSite;
-  var uSiteCommon=req.strSchemeLong+wwwCommon;
+  var uSiteCommon=reqMy.strSchemeLong+wwwCommon;
   
+
+//   Str.push(`<style>
+//   :root {}
+//   body {margin:0; height:100%; display:flow-root; font-family:arial, verdana, helvetica; }
+// </style>`);
 
     // If boDbg then set vTmp=0 so that the url is the same, this way the debugger can reopen the file between changes
 
@@ -1276,10 +1391,10 @@ app.reqStat=async function(){
   var pathTmp='stylesheets/style.css', vTmp=CacheUri[pathTmp].strHash; if(boDbg) vTmp=0;    Str.push(`<link rel="stylesheet" href="${uSiteCommon}/${pathTmp}?v=${vTmp}" type="text/css">`);
 
   Str.push(`<script>
-  window.elHtml=document.documentElement
-  var themeOS=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"
-  if(themeOS=='dark') elHtml.setAttribute('data-theme', 'dark'); else elHtml.removeAttribute('data-theme');
-</script>`);
+    window.elHtml=document.documentElement
+    var themeOS=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"
+    if(themeOS=='dark') elHtml.setAttribute('data-theme', 'dark'); else elHtml.removeAttribute('data-theme');
+  </script>`);
 
     // Include site specific JS-files
   //var uSite=req.strSchemeLong+wwwSite;
@@ -1324,7 +1439,7 @@ app.reqStat=async function(){
       // PageWNParentErr
   var Arg=[{$where: "function() { return this.nParent != this.IdParent.length }" }, {projection:{_id:1,nParent:1,"nParentCalc":{$size:"$IdParent"}}}];
   var cursor=collectionPage.find(...Arg);
-  var [err, PageWNParentErr]=await cursor.toArray().toNBP();   if(err) {res.out500(err); return; };
+  var [err, PageWNParentErr]=await cursor.toArray().toNBP();   if(err) {reqMy.out500(err); return; };
 
   Str.push("<h3>List of pages with nParent error</h3>");
   Str.push(makeTable(PageWNParentErr));
@@ -1332,7 +1447,7 @@ app.reqStat=async function(){
     // PageWNChildErr
   var Arg=[{$where: "function() { return this.nChild != this.IdChild.length }" }, {projection:{_id:1,nChild:1,"nChildCalc":{$size:"$IdChild"}}}];
   var cursor=collectionPage.find(...Arg);
-  var [err, PageWNChildErr]=await cursor.toArray().toNBP();   if(err) {res.out500(err); return; };
+  var [err, PageWNChildErr]=await cursor.toArray().toNBP();   if(err) {reqMy.out500(err); return; };
 
   Str.push("<h3>List of pages with nChild error</h3>");
   Str.push(makeTable(PageWNChildErr));
@@ -1340,7 +1455,7 @@ app.reqStat=async function(){
     // PageWNImageErr
   var Arg=[{$where: "function() { return this.nImage != this.StrImage.length }" }, {projection:{_id:1,nChild:1,"nImageCalc":{$size:"$StrImage"}}}];
   var cursor=collectionPage.find(...Arg);
-  var [err, PageWNImageErr]=await cursor.toArray().toNBP();   if(err) {res.out500(err); return; };
+  var [err, PageWNImageErr]=await cursor.toArray().toNBP();   if(err) {reqMy.out500(err); return; };
 
   Str.push("<h3>List of pages with nImage error</h3>");
   Str.push(makeTable(PageWNImageErr));
@@ -1349,7 +1464,7 @@ app.reqStat=async function(){
     // PageWNRevisionErr
   var Arg=[{$where: "function() { return this.nRevision != this.arrRevision.length }" }, {projection:{_id:1,nRevision:1,"nRevisionCalc":{$size:"$arrRevision"}}}];
   var cursor=collectionPage.find(...Arg);
-  var [err, PageWNRevisionErr]=await cursor.toArray().toNBP();   if(err) {res.out500(err); return; };
+  var [err, PageWNRevisionErr]=await cursor.toArray().toNBP();   if(err) {reqMy.out500(err); return; };
 
   Str.push("<h3>List of pages with nRevision error</h3>");
   Str.push(makeTable(PageWNRevisionErr));
@@ -1357,7 +1472,7 @@ app.reqStat=async function(){
     // ImageWNParentErr
   var Arg=[{$where: "function() { return this.nParent != this.IdParent.length }" }, {projection:{_id:1,nParent:1,"nParentCalc":{$size:"$IdParent"}}}];
   var cursor=collectionImage.find(...Arg);
-  var [err, ImageWNParentErr]=await cursor.toArray().toNBP();   if(err) {res.out500(err); return; };
+  var [err, ImageWNParentErr]=await cursor.toArray().toNBP();   if(err) {reqMy.out500(err); return; };
 
   Str.push("<h3>List of images with nParent error</h3>");
   Str.push(makeTable(ImageWNParentErr));
@@ -1366,7 +1481,7 @@ app.reqStat=async function(){
   </html>`);
 
   var str=Str.join('\n'); 
-  res.end(str);  
+  reqMy.end(str);  
 
 }
 
@@ -1687,30 +1802,30 @@ app.modifyIdParent=async function(sessionMongo, IdChildOld, StrImageOld, IdPageO
 
 
 
-app.storeImage=async function(sessionMongo, oFile, arg={}){ //Used by BE-uploadUser, loadFrFiles
+app.storeImage=async function(sessionMongo, oFile, arg={}){ //Used by BE-uploadUser, loadFrFilesOrBufs
   //"imageName", "idFile", "boOther", "tCreated", "strHash", "size", "widthSkipThumb", "width", "height", "extension", "tLastAccess", "nAccess", "tMod", "hash", "nParent", "IdParent"
 
   var {boDoCalculationOfIdParent=true, boOther=false, width=0, height=0}=arg;
 
-  var {strName:imageName, strExt:extension, bufFrZip, path, buffer}=oFile;
-  if(typeof bufFrZip!="undefined"){
+  var {strName:imageName, strExt:extension, buf, strPath}=oFile;
+  if(typeof buf!="undefined"){
     //var buf=Buffer.from(fileInZip._data,'binary');
-    var buf=bufFrZip;
-  }else if(typeof path!="undefined"){
-    var [err, buf]=await fsPromises.readFile(path).toNBP();    if(err) return [err];
-  }else if(typeof buffer!="undefined"){
-    var buf=buffer;
-  }else{ return [new Error('neither "bufData", "path", nor "buffer" is set')]; }
+    //var buf=bufFrZip;
+  }else if(typeof strPath!="undefined"){
+    var [err, buf]=await fsPromises.readFile(strPath).toNBP();    if(err) return [err];
+  }else{ return [new Error('neither "bufData", "strPath", nor "buffer" is set')]; }
 
   var data=buf;
 
   if(width==0 && height==0){
-    //var [width, height]=await imGetSize(data);
+    //var [err, [width, height]]=await imGetSize(data);  if(err) return [err];
+    var {width, height}=probeImageSize.sync(data)
   }
+  
 
   if(typeof extension=="undefined"){ var Match=regExt.exec(imageName), extension=Match[1].toLowerCase();}
 
-  var size=data.length, strHash=md5(data), tNow=nowSFloored();
+  var size=data.length, strHash=app.md5(data), tNow=nowSFloored();
 
     // Check if image exists
   var objCollation={ locale:'en', strength:2 };
@@ -1844,8 +1959,12 @@ app.SetupMongo.prototype.drop=async function(){
   var [err, result]=await dbo.listCollections().toArray().toNBP(); if(err) return [err];
   for(var obj of result){
     var nameCollection=obj.name;
-    var [err, result]=await dbo.collection(nameCollection).drop().toNBP(); if(err) return [err];
-    var len=result.length||0;  if(len) console.log(len+" collections dropped.");
+    //const coll = dbo.collection(nameCollection);
+    //var [err, result]=await coll.drop().toNBP(); if(err) return [err];
+    var [err, result]=await dbo.command({ drop:nameCollection}).toNBP();   if(err) return [err];
+    var objTmp=copySome({}, result, ['nIndexesWas', 'ok'])
+    console.log(`Dropping: ${result.ns} `+serialize(objTmp))
+    //var len=result.length||0;  if(len) console.log(len+" collections dropped.");
   }
   
   return [null];
@@ -1880,26 +1999,28 @@ app.SetupMongo.prototype.create=async function(){
     //var [err, result]=await app["collection"+nameCollection].deleteMany({}).toNBP();   if(err) return [err]; ;
 
     //var [err, result]=await app["collection"+nameCollection].drop().toNBP();   if(err) return [err];
-    var {validator, ArrUnique}=app.InitCollection[nameCollection];
+    var {validator, ArrIndex}=app.InitCollection[nameCollection];
     var [err, item]=await dbo.createCollection(nameCollection, {validator}).toNBP();   if(err) return [err];
+    console.log(`${nameCollection}`)
 
-    if(typeof ArrUnique=="undefined") continue;
-    for(var j=0;j<ArrUnique.length;j++){
-      var arrUnique=ArrUnique[j];
-      var objExtra={"unique":1};
-      if(arrUnique.length==1) arrUnique.push(objExtra);
-      else extend(arrUnique[arrUnique.length-1], objExtra);
-      //const objUnique = {};  for (const str of arrUnique) { objUnique[str] = 1; }
-      //var [err, result]=await app["collection"+nameCollection].createIndex(objUnique, {"unique":1}).toNBP();   if(err) return [err];
-      var [err, result]=await app["collection"+nameCollection].createIndex(...arrUnique).toNBP();   if(err) return [err];
-    }
+    if(typeof ArrIndex=="undefined" || ArrIndex.length==0) continue;
+    // for(var j=0;j<ArrIndex.length;j++){
+    //   var arrIndex=ArrIndex[j];
+    //   var objExtra={"unique":1};
+    //   if(arrIndex.length==1) arrIndex.push(objExtra);
+    //   else extend(arrIndex[arrIndex.length-1], objExtra);
+    //   //var [err, result]=await app["collection"+nameCollection].createIndex(...arrIndex).toNBP();   if(err) return [err];
+    // }
+    var [err, result]=await dbo.command({ createIndexes:nameCollection, indexes:ArrIndex}).toNBP();   if(err) return [err];
+    //console.log(result)
+    var objTmp=copySome({}, result, ['numIndexesBefore', 'numIndexesAfter', 'ok', 'commitQuorum', 'createdCollectionAutomatically'])
+    console.log(`  Indexes: `+serialize(objTmp))
   }
   var len=NameCollection.length||0;  console.log(len+" collections created.");
 
   console.log("Populating settings.");
   console.log("====================");
   var [err]=await this.populateSetting();  if(err) return [err];
-  console.log("Populated settings.");
   return [null];
 }
 app.SetupMongo.prototype.populateSetting=async function(){
