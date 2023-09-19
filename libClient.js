@@ -203,7 +203,8 @@ NodeList.prototype.toggle=function(b){
   return this;
 }
 app.createTextNode=function(str){ return document.createTextNode(str); }
-app.createElement=function(str){ return document.createElement(str); }
+//app.createElement=function(str){ return document.createElement(str); }
+app.createElement=function(){ return document.createElement(...arguments); }
 app.createFragment=function(){ var fr=document.createDocumentFragment(); if(arguments.length) fr.append(...arguments); return fr; }
 
 app.getNodeIndex=function( elm ){ return [...elm.parentNode.childNodes].indexOf(elm); }
@@ -583,3 +584,13 @@ app.popupDragExtend=function(elBubble,strTitle,elParent){
   return elBubble;
 }
 
+
+
+
+app.triggerDownloadOfBlob = (strFileName, blobData) => {  // Uint8Array and string should work
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blobData);
+  link.download = strFileName;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
