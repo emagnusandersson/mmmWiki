@@ -393,7 +393,7 @@ class FilterDivI extends HTMLElement{
       var strName=el.StrOrderFilt[i];
       var divT=createElement('div').attr('name',strName);
       
-      if(strName in el.helpBub){ var imgH=imgHelp.cloneNode(1);  popupHover(imgH,el.helpBub[strName]);    }  //.css({'vertical-align':'top'})
+      if(strName in el.helpBub){ var imgH=hovHelp.cloneNode(1);  popupHover(imgH,el.helpBub[strName]);    }  //.css({'vertical-align':'top'})
       var strUnit=''; if(strName in el.Unit) strUnit=` [${el.Unit[strName]}]`;
       if(el.Prop[strName].feat.kind[0]=='B') { 
         h=createElement('div').myAppend(calcLabel(el.Label,strName),strUnit,': ',imgH);

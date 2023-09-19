@@ -48,120 +48,61 @@ var MmmWikiFiltExtention={  // Monkey patching Filt (see more below)
   // themeOS ∈ ['dark','light']
   // themeChoise ∈ ['dark','light','system']
   // themeCalc ∈ ['dark','light']
-window.analysColorSchemeSettings=function(){
-  var themeOS=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"
-  var themeChoise=localStorage.getItem("themeChoise")??"system";
+globalThis.analysColorSchemeSettings=function(){
+  var themeOS=globalThis.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"
+  //var themeChoise=localStorage.getItem("themeChoise")??"system";
+  var themeChoise=localStorage.getItem("themeChoise")||"system";  // Safari 12 can't handle Nullish coalescing operator (??)
   var arrThemeChoise=['dark','light','system'];
   var ind=arrThemeChoise.indexOf(themeChoise);  if(ind==-1) ind=2;
   var themeChoise=arrThemeChoise[ind]
   var themeCalc=themeChoise=="system"?themeOS:themeChoise
+  console.log(`OS: ${themeOS}, choise: ${themeChoise}, calc: ${themeCalc}`)
   return {themeOS, themeChoise, themeCalc}
 }
 
 var setThemeClass=function(theme){
+  if(typeof theme=='undefined'){ var {themeOS, themeChoise, themeCalc}=analysColorSchemeSettings(); theme=themeCalc; }
   if(theme=='dark') elHtml.setAttribute('data-theme', 'dark'); else elHtml.removeAttribute('data-theme');
   var strT=theme; if(theme!='dark' && theme!='light') strT='light dark'
   elHtml.css({'color-scheme':strT});
 }
 
-  // Initial setup of selectorOfTheme
-// var selectorOfTheme=selThemeCreate()
-// elBody.myAppend(selectorOfTheme)
-
-// var {themeOS, themeChoise, themeCalc}=analysColorSchemeSettings();
-// console.log(`OS: ${themeOS}, choise: ${themeChoise}, calc: ${themeCalc}`)
-// setThemeClass(themeCalc)
-// selectorOfTheme.value=themeChoise
-
   // Listen to prefered-color changes on the OS
-window.colorSchemeQueryListener = window.matchMedia('(prefers-color-scheme: dark)');
-colorSchemeQueryListener.addEventListener('change', function(e) {
-  var {themeOS, themeChoise, themeCalc}=analysColorSchemeSettings();
-  console.log(`OS: ${themeOS}, choise: ${themeChoise}, calc: ${themeCalc}`)
-  setThemeClass(themeCalc)
-});
+globalThis.colorSchemeQueryListener = globalThis.matchMedia('(prefers-color-scheme: dark)');
+if(colorSchemeQueryListener.addEventListener){ // Safari 12 does not support addEventlistner
+  colorSchemeQueryListener.addEventListener('change', function(e) {
+    setThemeClass()
+  });
+}
 
-window.selThemeCreate=function(){
-  var optSystem=createElement('option').myText('Same as OS').prop({value:'system'})
-  var optLight=createElement('option').myText('Light').prop({value:'light'})
-  var optDark=createElement('option').myText('Dark').prop({value:'dark'})
-  var Opt=[optSystem, optLight, optDark]
-  var el=createElement('select').myAppend(...Opt).on('change',function(e){
-    localStorage.setItem('themeChoise', this.value);
+globalThis.SelThemeCreate={
+  setValue:function(){ 
     var {themeOS, themeChoise, themeCalc}=analysColorSchemeSettings();
-    console.log(`OS: ${themeOS}, choise: ${themeChoise}, calc: ${themeCalc}`)
-    setThemeClass(themeCalc)
-  })
-  return el
+    this.value=themeChoise
+    //var [optSystem, optLight, optDark]=this.querySelectorAll('option');
+    //var charLight=themeCalc=='light'?'◻':'◼', charDark=themeCalc=='light'?'◼':'◻'
+    //optLight.myText(charLight+' '+SelThemeCreate.strLight)
+    //optDark.myText(charDark+' '+SelThemeCreate.strDark)
+  },
+  strOS:'Same theme as OS', strLight:'Light theme', strDark:'Dark theme',
+  factory:function(){
+    var {strOS, strLight, strDark}=SelThemeCreate
+    var optSystem=createElement('option').myHtml('◩&nbsp;&nbsp;&nbsp;&nbsp;'+strOS).prop({value:'system'})  //⛅
+    var optLight=createElement('option').myHtml('☼&nbsp;&nbsp;&nbsp;&nbsp;'+strLight).prop({value:'light'})  //☼☀☀️◻◨
+    var optDark=createElement('option').myHtml('☽&nbsp;&nbsp;&nbsp;&nbsp;'+strDark).prop({value:'dark'})  //☾☽◼☁️🌙🌒 🌒◐●○
+    var Opt=SelThemeCreate.Opt=[optSystem, optLight, optDark]
+    var el=createElement('select').myAppend(...Opt).on('change',function(e){
+      localStorage.setItem('themeChoise', this.value);
+      setThemeClass();
+      this.setValue()
+    })
+    el.prop({title:"Change color theme"})
+
+    var Key=Object.keys(SelThemeCreate); Key=AMinusB(Key, ['extendClass', 'factory']); copySome(el, SelThemeCreate, Key);
+    return el;
+  }
 }
 
-
-
-
-window.divThemeSelectorCreate=function(){
-  var el=createElement('div')
-  var butSystem=createElement('button').myText('Same as OS').prop({value:'system'})
-  var butLight=createElement('button').myText('Light').prop({value:'light'})
-  var butDark=createElement('button').myText('Dark').prop({value:'dark'})
-  var But=[butSystem, butLight, butDark]
-  var StrBut=['system', 'light', 'dark']
-  var objBut={};  But.forEach((ele,i)=>objBut[StrBut[i]]=ele);
-  el.setButStyling=function(strTheme){
-    //var but=(typeof arg=='string')?objBut(arg):arg
-    var but=objBut[strTheme]
-    But.forEach(elem=>elem.removeClass('boxShadowOn').addClass('boxShadowOff'))
-    but.removeClass('boxShadowOff').addClass('boxShadowOn')
-  }
-  But.forEach(ele=>ele.on('click',function(e){
-    localStorage.setItem('themeChoise', this.value);
-    var {themeOS, themeChoise, themeCalc}=analysColorSchemeSettings();
-    console.log(`OS: ${themeOS}, choise: ${themeChoise}, calc: ${themeCalc}`)
-    setThemeClass(themeCalc)
-    el.setButStyling(themeChoise)
-  }))
-  el.myAppend(...But).css({display:'flex', gap:'.4em', 'justify-content':'space-evenly', 'flex-wrap':'wrap'})
-  return el
-}
-var themePopExtend=function(el){
-  el.strName='themePop'
-  el.id=el.strName
-  el.toString=function(){return el.strName;}
-  el.setVis=function(){
-    if(boDialog) el.showModal(); else el.show();
-    return true;
-  }
-  el.addEventListener('cancel', (event) => {
-    event.preventDefault();
-    historyBack()
-  })
-
-  var h1=createElement('h3').myText("Theme (Background colors): ").css({'margin':'0'});
-
-  var divThemeSelector=divThemeSelectorCreate()
-  var {themeOS, themeChoise, themeCalc}=analysColorSchemeSettings();
-  console.log(`OS: ${themeOS}, choise: ${themeChoise}`)
-  setThemeClass(themeCalc)
-  divThemeSelector.setButStyling(themeChoise)
-
-  var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({'margin-left':'.8em'});
-  var divBottom=createElement('div').myAppend(buttonBack).css({display:'flex', gap:'0.4em', 'justify-content':'space-between'})
-
-  var El=[h1, divThemeSelector, divBottom];
-  var centerDiv=createElement('div').myAppend(...El);
-  if(boDialog){
-    el.myAppend(centerDiv);
-  } else{
-    var blanket=createElement('div').addClass("blanket");
-    centerDiv.addClass("Center-Flex")
-    centerDiv.css({height:'min(10em, 98%)', width:'min(21em,98%)'});
-    el.addClass("Center-Container-Flex").myAppend(centerDiv,blanket);
-  }
-  centerDiv.css({display:'flex', gap:'1em', 'flex-direction':'column', 'justify-content':'space-evenly'})
-
-  return el;
-}
-
-  
 
 
   //
@@ -379,22 +320,28 @@ var pageTextExtend=function(el){
 
 var editButtonExtend=function(el){
   el.setImg=function(boOW){ 
-    spanOW.css({'text-decoration':boOW?'':'line-through'})
-    var txt=boOW?'Edit the page.':'See wiki text.'
+    spanOW.css({'text-decoration':boOW?'':'line-through red'})
+    var txt=boOW?'Edit the page.':'Wiki text.'
     el.prop({'aria-label':txt});
     el.title=txt;
   }
-  var spanOW=createElement('span').css({'user-select':'none', position:'relative', 'bottom':'-0.0em', 'font-size':'1.3em', 'text-decoration':'line-through'}).myText('✎'); //🖉
+  var spanOW=createElement('span').css({'user-select':'none', position:'relative', 'bottom':'-0.0em', 'font-size':'1.7em', 'text-decoration':'line-through red'}).myText('✎'); //charPublicWrite 🖉✎ // 🖉: doesnt work on android-chrome
   el.append(spanOW);
   return el;
 }
 
 var spanModExtend=function(el){
   el.setup=function(data){
-    el.myHtml((data.boOR?`<span>${charPublicRead}</span>`:' ')
-   + (data.boOW?`<span style="font-size:1em">${charPublicWrite}</span>`:' ')
-    + (data.boSiteMap?charPromote:' '));
+  //   el.myHtml((data.boOR?`<span>${charPublicRead}</span>`:' ')
+  //  + (data.boOW?`<span style="font-size:1em">${charPublicWrite}</span>`:' ')
+  //   + (data.boSiteMap?charPromote:' '));
+    //spanR.css(funPermCss(data.boOR)); spanW.css(funPermCss(data.boOW));
+    spanP.css(funPermCss(data.boSiteMap));
   }
+  //var spanR=createElement('span').myAppend(charPublicRead), spanW=createElement('span').myAppend(charPublicWrite);
+  var spanP=createElement('span').myAppend(charPromote);
+  //[spanR, spanW].forEach(ele=>ele.css({'margin-right':'0.2em'}))
+  el.myAppend(spanP);
   return el;
 }
 
@@ -477,8 +424,8 @@ var pageDivFixedExtend=function(el){
     pageView.setVis('edit');
   });
   editButton.on('click', adminButtonToggleEventF);
-  var tmpImg=createElement('img').prop({src:uAdmin, alt:"admin", draggable:false}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('invertOnDark');    //var strAdmin='👤🔑';
-  var adminButton=createElement('button').myAppend(tmpImg).prop({title:"Administrator entry."}).on('click',function(){
+  //var tmpImg=createElement('img').prop({src:uAdmin, alt:"admin", draggable:false}).css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}).addClass('invertOnDark');    //var strAdmin='👤🔑';
+  var adminButton=createElement('button').myAppend(charAdmin).prop({title:"Administrator entry."}).on('click',function(){
     doHistPush({strView:'pageView', arg:'admin'});
     pageView.setVis('admin');
   });
@@ -511,13 +458,18 @@ var pageDivFixedExtend=function(el){
   var settingDivButton=createElement('button').myText(charHamburger).css({}).on('click',function(){
     doHistPush({strView:'settingDiv'});
     settingDiv.setVis();
-  }); 
-  var themePopButton=createElement('button').myText(charBlackWhite).css({}).on('click',function(){
+  });
+  var themePopButton=createElement('button').myText(charBlackWhite).css({}).prop({title:'Change theme'}).on('click',function(){
     doHistPush({strView:'themePop'});
     themePop.setVis();
-  });    
+  });
+  //var selectorOfTheme=selThemeCreate();  initialSetupOfSelectorOfTheme(selectorOfTheme); selectorOfTheme.css({color:'black', background:'lightgrey'});
+  var selectorOfTheme=SelThemeCreate.factory();  setThemeClass(); selectorOfTheme.setValue();
+  var strWidth=boIOS?"3.3em":"2.8em"; selectorOfTheme.css({width: strWidth}); //"none", "padding-right":'1em' , '-webkit-appearance':"auto", appearance:"auto"
+  var spanArrow=createElement('span').myText('⌄').css({position:"absolute", right: "0.3em", top: "50%", transform: "translateY(-70%)"})
+  var divSelWrap=createElement('div').myAppend(selectorOfTheme).css({position:"relative"}) //, spanArrow
 
-  var menuA=createElement('div').myAppend(editButton, paymentButton, divMetaNComment, themePopButton, el.butARLogout, ...ElAdmin).css({padding:'0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'0em'});  //.css({margin:'1em 0','text-align':'center',position:'fixed',bottom:0,width:'100%'});
+  var menuA=createElement('div').myAppend(editButton, paymentButton, divMetaNComment, selectorOfTheme, el.butARLogout, ...ElAdmin).css({padding:'0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'left',margin:'0em'});  //.css({margin:'1em 0','text-align':'center',position:'fixed',bottom:0,width:'100%'});
   menuA.css({position:'relative', display:'flex', 'align-items':'center', 'justify-content':'space-between', gap:'0.3em'});
 
 
@@ -611,7 +563,7 @@ var adminDivFixedExtend=function(el){
   }
   var handyButton=createElement('button').myText('Over­write').on('click',handyClickF); 
   var password2=createElement('input').prop({type:'password', placeholder:"Overwrite", title:'Login (write-access) and overwrite'}).on('keypress',  function(e){   if(e.which==13) {aPass2F(); return false;}   }); 
-  var imgH=imgHelp.cloneNode(1).css({'margin-left':'auto', flex:"0 0 auto"}); popupHover(imgH,createElement('div').myHtml('Write password for:<li>Login (adm): logging in with write-access<li>Overwrite: A brutal but handy quick route for saving plus deleting all old versions.'));
+  var imgH=hovHelp.cloneNode(1).css({'margin-left':'auto', flex:"0 0 auto"}); popupHover(imgH,createElement('div').myHtml('Write password for:<li>Login (adm): logging in with write-access<li>Overwrite: A brutal but handy quick route for saving plus deleting all old versions.'));
 
 
   var buttonBack=createElement('button').on('click', historyBack).myText(charBack).css({'margin-left':'.8em'});
@@ -640,7 +592,9 @@ var adminDivFixedExtend=function(el){
 class ButtonToggle extends HTMLElement{
   constructor(){ super(); }
   getState(){return this.hasClass('boxShadowOn');}
-  mySet(boOn){  boOn=Boolean(boOn); this.toggleClass('boxShadowOn', boOn).toggleClass('boxShadowOff', !boOn); }
+  mySet(boOn){
+    boOn=Boolean(boOn); this.toggleClass('boxShadowOn', boOn).toggleClass('boxShadowOff', !boOn);
+  }
   myToggle(){var boOn=!this.getState(); this.mySet(boOn); return boOn;}
 }
 customElements.define('button-toggle', ButtonToggle);
@@ -649,9 +603,9 @@ customElements.define('button-toggle', ButtonToggle);
 
 class AdminMoreDiv extends HTMLElement{
   constructor(){ super(); }
-  toString=function(){return this.strName;}
+  toString(){return this.strName;}
   setBUNeededInfo(){
-    var {tModLast, pageTModLast, tLastBU}=objSetting;
+    var {tModLast, pageTModLast, tLastBU=0}=objSetting;
     //if(!(tLastBU instanceof Date)) tLastBU=new Date(tLastBU);
     var boBUNeeded=tModLast>tLastBU,     strTmp=`tLastBU: ${swedTime(tLastBU)}, tModLast: ${swedTime(tModLast)} (${pageTModLast})`;
     this.aBUFilesToComp.prop('title', strTmp).css({'background':boBUNeeded?'red':''});
@@ -665,7 +619,7 @@ class AdminMoreDiv extends HTMLElement{
     this.strName='adminMoreDiv'
     this.id=this.strName
     var strPublicRead=`<span style="display:inline-block">${charPublicRead}</span>`;
-    var imgH=imgHelp.cloneNode(1).css({'margin-left':'.5em','margin-right':'0.5em', 'vertical-align':'middle'}); popupHover(imgH,createElement('div').myHtml(`${strPublicRead} = public read access<br>${charPublicWrite} = public write access<br>${charPromote} = promote = include the page in sitemap.xml etc. (encourage search engines to list the page)`));
+    var imgH=hovHelp.cloneNode(1).css({'margin-left':'.5em','margin-right':'0.5em', 'vertical-align':'middle'}); popupHover(imgH,createElement('div').myHtml(`${strPublicRead} = public read access<br>${charPublicWrite} = public write access<br>${charPromote} = promote = include the page in sitemap.xml etc. (encourage search engines to list the page)`));
 
     // Methods of the below buttons:
     var clickModF=function(){
@@ -691,7 +645,7 @@ class AdminMoreDiv extends HTMLElement{
     });
     
 
-    var statLink=createElement('a').prop({href:'stat.html'}).myText('stat');
+    var statLink=createElement('a').prop({href:'stat.html', rel:'nofollow'}).myText('stat');
     var pageListButton=createElement('button').myText('pageList').on('click',function(){
       //var idTmp=objPage.idPage; if(isNaN(idTmp)) idTmp=null;
       var idTmp=objPage.idPage; if(typeof idTmp=='string' && idTmp.length==0) idTmp=null;
@@ -703,7 +657,7 @@ class AdminMoreDiv extends HTMLElement{
       imageFilterDiv.Filt.setSingleParent(idTmp);   imageList.histPush();  imageList.loadTab();  imageList.setVis();  // pageFilterDiv.Filt.filtAll();
     });
 
-    var imgHPrefix=imgHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHPrefix,createElement('div').myHtml('<p>Use prefix on default-site-pages:<p>Note that non-default-site-pages always gets the prefix added (to the filename in the zip-file).<p>Click the "Site table"-button below if you want to see or change the prefixes, and if you want to change which site is the default.'));  
+    var imgHPrefix=hovHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHPrefix,createElement('div').myHtml('<p>Use prefix on default-site-pages:<p>Note that non-default-site-pages always gets the prefix added (to the filename in the zip-file).<p>Click the "Site table"-button below if you want to see or change the prefixes, and if you want to change which site is the default.'));  
     var boUsePrefix=getItem('boUsePrefixOnDefaultSitePages')||true;
     var cb=createElement('input').prop({type:'checkbox', checked:boUsePrefix}).on('click',function(){
       boUsePrefix=Number(cb.prop('checked')); 
@@ -711,7 +665,7 @@ class AdminMoreDiv extends HTMLElement{
       this.aBUFilesToComp.setUp(boUsePrefix);
     })
 
-    //var imgHDownload=imgHelp.cloneNode(1).css({'margin-left':'1em','margin-right':'1em'}); popupHover(imgHDownload,createElement('div').myText('Put all pages (or images or videos) in a zip-file and download.'));
+    //var imgHDownload=hovHelp.cloneNode(1).css({'margin-left':'1em','margin-right':'1em'}); popupHover(imgHDownload,createElement('div').myText('Put all pages (or images or videos) in a zip-file and download.'));
     this.aBUFilesToComp=createElement('a').prop({rel:'nofollow', download:''}).myText('(...)page.zip');
     this.aBUFilesToComp.setUp=function(boUsePrefix){
       var tmpUrl='BUPage'+(boUsePrefix?'':'?{"boUsePrefixOnDefaultSitePages":0}'); this.prop({href:tmpUrl});
@@ -720,7 +674,7 @@ class AdminMoreDiv extends HTMLElement{
     var aBUVideoToComp=createElement('a').prop({href:'BUVideo', rel:'nofollow', download:''}).myText('(...)video.zip');
     var aBUMeta=createElement('a').prop({href:'BUMeta', rel:'nofollow', download:''}).myText('(...)meta.zip');
     var aBUMetaSQL=createElement('a').prop({href:'BUMetaSQL', rel:'nofollow', download:''}).myText('(...)meta.sql');
-    var imgHSql=imgHelp.cloneNode(1).css({'margin':'0 1em'}); popupHover(imgHSql,createElement('div').myHtml('<p>Download "meta-data":<br>-extra data for pages/images (modification dates, access rights ...). <br>-redirect table.<br>-site table.'));
+    var imgHSql=hovHelp.cloneNode(1).css({'margin':'0 1em'}); popupHover(imgHSql,createElement('div').myHtml('<p>Download "meta-data":<br>-extra data for pages/images (modification dates, access rights ...). <br>-redirect table.<br>-site table.'));
     
     var butBUPageServ=createElement('button').myText('page.zip').on('click',  function(){    httpGetAsync('BUPageServ',function(err, str) {setMess(str,3);});    });
     var butBUImageServ=createElement('button').myText('image.zip').on('click',function(){    httpGetAsync('BUImageServ',function(err, str) {setMess(str,3);});   });
@@ -887,8 +841,6 @@ var tabBUSumExtend=function(el){
 }
 
 
-
-
 var diffBackUpDivExtend=function(el){
   el.strName='diffBackUpDiv'
   el.id=el.strName
@@ -919,41 +871,52 @@ var diffBackUpDivExtend=function(el){
     ul.empty().show();
     //saveButton.prop("disabled",true);
     var file=arrOrg[0];
+      // Create instanceJSZip
+    instanceJSZip = new JSZip();
+    await instanceJSZip.loadAsync(file);
+
+
     EntryLocal={}; // Create EntryLocal
 
-    var blobReader=new zip.BlobReader(file);
-    var [err, zipReader]=await new Promise(resolve=>{   zip.createReader(blobReader, zipReaderT=>resolve([null,zipReaderT]), err=>resolve([err]));   }); 
-    if(err) return [err];
+    // var blobReader=new zip.BlobReader(file);
+    // var [err, zipReader]=await new Promise(resolve=>{   zip.createReader(blobReader, zipReaderT=>resolve([null,zipReaderT]), err=>resolve([err]));   }); 
+    // if(err) return [err];
 
-    var [err, EntryTmp]=await new Promise(resolve=>{   zipReader.getEntries( EntryT=>resolve([null,EntryT]), err=>resolve([err]));    });   if(err) return [err];
+    // var [err, EntryTmp]=await new Promise(resolve=>{   zipReader.getEntries( EntryT=>resolve([null,EntryT]), err=>resolve([err]));    });   if(err) return [err];
 
 
-    EntryTmp.forEach(function(entry){  EntryLocal[entry.filename]=entry;   });  
+    // EntryTmp.forEach(function(entry){  EntryLocal[entry.filename]=entry;   });  
 
-    StrOld=Object.keys(EntryLocal); //var li=createElement('li').myAppend(`Old zip-file has <b>${nOld}</b> files.`); ul.append(li);
+    // StrOld=Object.keys(EntryLocal); //var li=createElement('li').myAppend(`Old zip-file has <b>${nOld}</b> files.`); ul.append(li);
 
-    var [err, data]=await new Promise(resolve=>{ myFetch('POST',[['getImageInfo',{},data=>resolve([null,data]) ]]);  });
-    if(err) return [err];
+    // var [err, data]=await new Promise(resolve=>{ myFetch('POST',[['getImageInfo',{},data=>resolve([null,data]) ]]);  });
+    // if(err) return [err];
+
+    StrOld=Object.keys(instanceJSZip.files);
+    EntryLocal=instanceJSZip.files
+    var [err, arr]=await myFetch('POST',[['getImageInfo',{} ]]); if(err) return [err];
+    var [[data]]=arr; 
 
     var FileNewInfo=data.FileInfo, FileNew={};
     for(var i=0;i<FileNewInfo.length;i++){ FileNew[FileNewInfo[i].imageName]=FileNewInfo[i]; } 
     StrNew=Object.keys(FileNew);
   
-    var writer;   // Create writer
-    if(creationMethod == "Blob") {
-      writer=new zip.BlobWriter();
-    } else {
+    // var writer;   // Create writer
+    // if(creationMethod == "Blob") {
+    //   writer=new zip.BlobWriter();
+    // } else {
 
-      var [err, zipFileEntryT]=await new Promise(resolve=>{   createTempFile(fileEntryT=>resolve([null, fileEntryT]), err=>resolve([err]));   });
-      if(err) return [err];
-      zipFileEntry=zipFileEntryT;
+    //   var [err, zipFileEntryT]=await new Promise(resolve=>{   createTempFile(fileEntryT=>resolve([null, fileEntryT]), err=>resolve([err]));   });
+    //   if(err) return [err];
+    //   zipFileEntry=zipFileEntryT;
 
-      writer=new zip.FileWriter(zipFileEntry);
-    }
+    //   writer=new zip.FileWriter(zipFileEntry);
+    // }
 
       // Create zipWriter
-    var [err, zipWriterT]=await new Promise(resolve=>{   zip.createWriter(writer, writerT=>resolve([null,writerT]), err=>resolve([err])); }); if(err) return [err];
-    zipWriter=zipWriterT;
+    // var [err, zipWriterT]=await new Promise(resolve=>{   zip.createWriter(writer, writerT=>resolve([null,writerT]), err=>resolve([err])); }); if(err) return [err];
+    // zipWriter=zipWriterT;
+
 
     StrDeleted=[]; StrReuse=[]; StrFetchAll=[]; StrFetchChanged=[]; StrFetchNew=[]; objFetchChanged={};   
 
@@ -961,22 +924,23 @@ var diffBackUpDivExtend=function(el){
       if(!(key in FileNew)){ StrDeleted.push(key); }
     }
   
-    var progress=createElement('progress'), iNew=0, imgDoneLast=imgDone.cloneNode();
+    var progress=createElement('progress'), iProgress=0, imgDoneLast=imgDone.cloneNode();
     var li=createElement('li').myText('Extracting meta data from the selected file (names, modification dates and file-sizes): ').myAppend(progress, imgDoneLast); ul.append(li);
     
     for(var key in FileNew){  // Create StrReuse, StrFetchChanged, StrFetchNew and objFetchChanged
       if(key in EntryLocal){
         var entryLocal = EntryLocal[key];
-        var writer = new zip.BlobWriter(entryLocal);
+        //var writer = new zip.BlobWriter(entryLocal);
 
         //var [err, blob]=await new Promise(resolve=>{   entryLocal.getData(writer, blobT=>resolve([null,blobT]), onprogress); }); if(err) return [err];
 
         //var dateOld=new Date(entryLocal.lastModDate);
-        var size=entryLocal.uncompressedSize;
-        var dosRaw=entryLocal.lastModDateRaw, dosDate=dosRaw>>>16, dosTime=dosRaw&0xffff, dateOld=dosTime2tUTC(dosDate,dosTime);
+        var size=entryLocal._data.uncompressedSize;
+        //var dosRaw=entryLocal.lastModDateRaw, dosDate=dosRaw>>>16, dosTime=dosRaw&0xffff, dateOld=dosTime2tUTC(dosDate,dosTime);
+        var dateOld=entryLocal.date
         //var dateOldUnix=dateOld.toUnix();
       
-// local database 1411715164
+          // local database 1411715164
         var dSize=FileNew[key].size-size, dateNew=FileNew[key].tCreated, dUnix=dateNew-dateOld; dUnix=dUnix/1000;
         //if(FileNew[key].size==size && FileNew[key].tCreated>>1==dateOldUnix>>1){  // Division by two (>>1) because zip uses microsoft time 
         if(dSize==0 && dUnix>>1==0){  // Division by two (>>1) because zip uses microsoft time 
@@ -988,7 +952,7 @@ var diffBackUpDivExtend=function(el){
       } else {
         StrFetchNew.push(key);
       }
-      iNew++; progress.attr({value:iNew,max:StrNew.length});
+      iProgress++; progress.attr({value:iProgress, max:StrNew.length});
     }
     imgDoneLast.show();
 
@@ -1013,31 +977,51 @@ var diffBackUpDivExtend=function(el){
 
     //if(confirm("Continue ?")) {} else {progress.detach(); return;}
     var buttonContinue=createElement('button').myText('Continue').on('click',async function(){
-      var [err]=await continueFunc(); if(err) return [err];
+      var [err]=await downloadDifference(); if(err) return [err];
       buttonContinue.prop("disabled",true);
     });
     var li=createElement('li').myAppend(buttonContinue); ul.append(li); progress.detach();
     return [null];
   }
 
-  var continueFunc=async function(){
+  var downloadDifference=async function(){
     var progress=createElement('progress')
       // Writing fresh files
-    var iAdded=0, imgDoneLast=imgDone.cloneNode();
-    var li=createElement('li').myText('Reusing (adding) old images to new zip: ').myAppend(progress, imgDoneLast); ul.append(li);
-    for(var i=0;i<StrReuse.length;i++){
-      var key=StrReuse[i];
-      var entryLocal = EntryLocal[key];
-      var writer = new zip.BlobWriter(entryLocal);
+    // var iProgress=0, imgDoneLast=imgDone.cloneNode();
+    // var li=createElement('li').myText('Reusing (adding) old images to new zip: ').myAppend(progress, imgDoneLast); ul.append(li);
+    // for(var i=0;i<StrReuse.length;i++){
+    //   var key=StrReuse[i];
+    //   var entryLocal = EntryLocal[key];
+    //   var writer = new zip.BlobWriter(entryLocal);
 
-      var [err, blob]=await new Promise(resolve=>{   entryLocal.getData(writer, blobT=>resolve([null,blobT]), onprogress); }); if(err) return [err];
+    //   var [err, blob]=await new Promise(resolve=>{   entryLocal.getData(writer, blobT=>resolve([null,blobT]), onprogress); }); if(err) return [err];
 
-      var date=new Date(entryLocal.lastModDate), size=entryLocal.uncompressedSize;
+    //   var date=new Date(entryLocal.lastModDate), size=entryLocal.uncompressedSize;
 
-      var blobReader=new zip.BlobReader(blob);
-      var [err]=await new Promise(resolve=>{   zipWriter.add(key, blobReader, ()=>resolve([null]), onprogress, {lastModDate:date}); }); if(err) return [err];
+    //   var blobReader=new zip.BlobReader(blob);
+    //   var [err]=await new Promise(resolve=>{   zipWriter.add(key, blobReader, ()=>resolve([null]), onprogress, {lastModDate:date}); }); if(err) return [err];
 
-      iAdded++;  progress.attr({value:iAdded,max:StrReuse.length}); 
+    //   iProgress++;  progress.attr({value:iProgress,max:StrReuse.length}); 
+    // }
+    // imgDoneLast.show();
+
+      // Removing deleted files
+    var iProgress=0, imgDoneLast=imgDone.cloneNode();
+    var li=createElement('li').myText('Removing deleted files in zip: ').myAppend(progress, imgDoneLast); ul.append(li);
+    for(var i=0;i<StrDeleted.length;i++){
+      var key=StrDeleted[i];
+      instanceJSZip.remove(key)
+      iProgress++;  progress.attr({value:iProgress, max:StrDeleted.length}); 
+    }
+    imgDoneLast.show();
+
+      // Removing old files
+    var iProgress=0, imgDoneLast=imgDone.cloneNode();
+    var li=createElement('li').myText('Removing old files in zip: ').myAppend(progress, imgDoneLast); ul.append(li);
+    for(var i=0;i<StrDeleted.length;i++){
+      var key=StrDeleted[i];
+      instanceJSZip.remove(key)
+      iProgress++;  progress.attr({value:iProgress, max:StrDeleted.length}); 
     }
     imgDoneLast.show();
 
@@ -1075,31 +1059,45 @@ var diffBackUpDivExtend=function(el){
 
     imgDoneLast.show();
 
-    var blobReader=new zip.BlobReader(dataFetched);
-    var [err, zipReader]=await new Promise(resolve=>{   zip.createReader(blobReader, zipReaderT=>resolve([null,zipReaderT]), err=>resolve([err]));   }); 
-    if(err) return [err];
+    // var blobReader=new zip.BlobReader(dataFetched);
+    // var [err, zipReader]=await new Promise(resolve=>{   zip.createReader(blobReader, zipReaderT=>resolve([null,zipReaderT]), err=>resolve([err]));   }); 
+    // if(err) return [err];
 
-    var [err, EntryTmp]=await new Promise(resolve=>{   zipReader.getEntries( EntryT=>resolve([null,EntryT]), err=>resolve([err]));    });   if(err) return [err];
+    // var [err, EntryTmp]=await new Promise(resolve=>{   zipReader.getEntries( EntryT=>resolve([null,EntryT]), err=>resolve([err]));    });   if(err) return [err];
 
-    var EntryFetched={};
-    EntryTmp.forEach(function(entry) {  EntryFetched[entry.filename]=entry;  });
+    // var EntryFetched={};
+    // EntryTmp.forEach(function(entry) {  EntryFetched[entry.filename]=entry;  });
 
-    var iAdded=0, imgDoneLast=imgDone.cloneNode();
+
+    var instanceJSZipFetched = new JSZip();
+    await instanceJSZipFetched.loadAsync(dataFetched);
+    var EntryFetched=instanceJSZipFetched.files
+
+
+    var iProgress=0, imgDoneLast=imgDone.cloneNode();
     var li=createElement('li').myAppend('Adding the fetched images to new zip: ', progress, imgDoneLast); ul.append(li);
     for(var key in EntryFetched){
       var entry = EntryFetched[key];
       
-      var writer = new zip.BlobWriter(entry);
+      // var writer = new zip.BlobWriter(entry);
 
-      var [err, blob]=await new Promise(resolve=>{   entry.getData(writer, blobT=>resolve([null,blobT]), onprogress); }); if(err) return [err];
+      // var [err, blob]=await new Promise(resolve=>{   entry.getData(writer, blobT=>resolve([null,blobT]), onprogress); }); if(err) return [err];
 
-      var date=new Date(entry.lastModDate);
+      // var date=new Date(entry.lastModDate);
 
-      var blobReader=new zip.BlobReader(blob);
-      var [err]=await new Promise(resolve=>{   zipWriter.add(key, blobReader, ()=>resolve([null]), onprogress, {lastModDate:date}); }); if(err) return [err];
+      // var blobReader=new zip.BlobReader(blob);
+      // var [err]=await new Promise(resolve=>{   zipWriter.add(key, blobReader, ()=>resolve([null]), onprogress, {lastModDate:date}); }); if(err) return [err];
 
-      iAdded++; progress.attr({value:iAdded,max:StrFetchAll.length});
+      var date=entry.date;
+
+      instanceJSZip.files[key]=entry;
+
+
+      iProgress++; progress.attr({value:iProgress,max:StrFetchAll.length});
     }
+
+
+
     var saveButton=createElement('button').myText('Save to disk').on('click',saveFun);  //.prop("disabled",true)
     var li=createElement('li').myAppend(saveButton); ul.append(li);
     //saveButton.prop("disabled",false);
@@ -1109,26 +1107,16 @@ var diffBackUpDivExtend=function(el){
     return [null];
   }
 
-  var getBlobURL=function(callback) {
-    zipWriter.close(function(blob) {
-      var blobURL = creationMethod == "Blob" ? URL.createObjectURL(blob) : zipFileEntry.toURL();
-      callback(blobURL);
-    });
-  };
-  var saveFun=function(){
-    getBlobURL(function(blobURL) {
-      var aSave = document.createElement("a");
-      //var outFileName=calcBUFileName(objSiteDefault.www,'image','zip'); // Todo: wwwCommon-variable should change after siteTabView changes
-      var outFileName=`${objSiteDefault.siteName}_${swedDate(unixNow())}_image.zip`; // Todo: wwwCommon-variable should change after siteTabView changes
-      aSave.download = outFileName;
-      aSave.href = blobURL;
-      var event = document.createEvent("MouseEvents");
-      event.initMouseEvent(
-        "click", true, false, window, 0, 0, 0, 0, 0
-        , false, false, false, false, 0, null
-      );
-      aSave.dispatchEvent(event);
-    });
+  var saveFun=async function(){
+    var strType="uint8array";
+    var outdata = await instanceJSZip.generateAsync({type : strType});
+
+    const blobData = new Blob([outdata], {type: "application/zip"})
+
+    var outFileName=`${objSiteDefault.siteName}_${swedDate(unixNow())}_image.zip`; // Todo: wwwCommon-variable should change after siteTabView changes
+    triggerDownloadOfBlob(outFileName, blobData)
+
+
     ul.empty();
     //saveButton.prop("disabled",true);
   
@@ -1144,13 +1132,14 @@ var diffBackUpDivExtend=function(el){
   var creationMethod="Blob";
   if(typeof requestFileSystem == "undefined") creationMethod="Blob";
 
-  var zipFileEntry=null, zipWriter=null;
+  var zipFileEntry=null; //, zipWriter=null;
+  var instanceJSZip=null
 
   var imgDone=createElement('span').myText('Done').css({'background':'var(--bg-green)'}).hide();
 
-  var imgHHead=imgHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHHead,createElement('div').myHtml('<p>If the old files\' size and modification date match then they are considered up to date.'));
+  var imgHHead=hovHelp.cloneNode(1).css({'margin-left':'1em'}); popupHover(imgHHead,createElement('div').myHtml('<p>If the old files\' size and modification date match then they are considered up to date.'));
   var head=createElement('div').myAppend('Differential backup of images',imgHHead).css({'font-weight':'bold'});
-  var imgHLoad=imgHelp.cloneNode(1).css({'margin-left':'1em', 'vertical-align':'middle'}); popupHover(imgHLoad,createElement('div').myHtml(`Should be a zip file containing ${strImageExtWComma} files`));
+  var imgHLoad=hovHelp.cloneNode(1).css({'margin-left':'1em', 'vertical-align':'middle'}); popupHover(imgHLoad,createElement('div').myHtml(`Should be a zip file containing ${strImageExtWComma} files`));
   //`<p>Accepted file endings: ${strImageExtWComma}, or zip files containing these formats (no folders in the zip file)`
   var formFile=createElement('form').prop({enctype:"multipart/form-data"});
   var inpFile=createElement('input').prop({name:"file", type:"file", accept:"application/zip"}).css({background:'var(--bg-colorEmp)'}); //multiple , 'font-size':"0.95em"
@@ -1208,7 +1197,7 @@ var uploadAdminDivExtend=function(el){
     var FileInfo=data.FileInfo, len=FileInfo.length;
     for(var i=0;i<len;i++){ StrConflict.push(FileInfo[i].imageName); } 
     if(StrConflict.length){
-      var tmpLab='WARNING!!! These files will be OVERWRITTEN (if you click "Upload")';
+      var tmpLab='Pre-check-WARNING!!! Conflicting file names (images will be overwritten, (txt/csv files will result in an error) )';
       StrConflict.unshift(tmpLab);
       if(StrConflict.length>10) StrConflict.push(tmpLab);
       divMessageText.setHtml(StrConflict.join('<br>'));
@@ -1289,7 +1278,7 @@ var uploadAdminDivExtend=function(el){
   }
 
   app.strImageExtWComma=StrImageExt.join(', ');
-  var imgHUpload=imgHelp.cloneNode(1).css({'margin-left':'1em', 'vertical-align':'middle'}); popupHover(imgHUpload,createElement('div').myText(`Accepted file endings: ${strImageExtWComma}, txt or zip files containing these formats (no folders in the zip file)`));
+  var imgHUpload=hovHelp.cloneNode(1).css({'margin-left':'1em', 'vertical-align':'middle'}); popupHover(imgHUpload,createElement('div').myText(`Accepted file endings: ${strImageExtWComma}, txt or zip files containing these formats (no folders in the zip file)`));
 
 
   var formFile=createElement('form').prop({enctype:"multipart/form-data"});
@@ -1539,7 +1528,8 @@ var headExtend=function(el, objArg, strTR='tr', strTD='td'){  // headExtend is u
     var comparator=function(aT, bT){
       var dire=boAsc?1:-1
       var elA = aT.children[iChild],  elB = bT.children[iChild]; 
-      var a = elA?.valSort??elA?.textContent,  b = elB?.valSort??elB?.textContent; 
+      //var a = elA?.valSort??elA?.textContent,  b = elB?.valSort??elB?.textContent; 
+      var a = 'valSort' in elA?elA.valSort:elA.textContent,  b = 'valSort' in elB?elB.valSort:elB.textContent; //Using this since Safari 12 doesn't support Nullish coalescing operator
       //var boAStr=0,boBStr=0;
       if(typeof a=='string' && a.length) { 
         var aN=Number(a); if(!isNaN(aN)) a=aN; else a=a.toLowerCase();
@@ -1565,7 +1555,7 @@ var headExtend=function(el, objArg, strTR='tr', strTD='td'){  // headExtend is u
   var arrImgSort=Array(len);
   for(var i=0;i<len;i++){
     var h=Th[i];
-    var imgSort=createElement('img').attr('data-type', 'sort').prop({src:uUnsorted, alt:"sort"}).css({"vertical-align":"middle"});
+    var imgSort=createElement('img').attr('data-type', 'sort').prop({src:uUnsorted, alt:"sort"}).addClass('invertOnDark').css({"vertical-align":"middle"});
     h.myAppend(imgSort).on('click',thClick).css({cursor:"default"});
     arrImgSort[i]=imgSort;
   }
@@ -1606,8 +1596,10 @@ var clickSetParentFilterI=function(){
 }
 
 
-var PageRowLabel={nParent:'Parents / Alternative parents', cb:'Select',tCreated:'Created',tMod:'Last Modified',tLastAccess:'Last Access', nAccess:'nAccess',boOR:'Public read access', boOW:'Public write access', boSiteMap:'Promote (include in Sitemap.xml etc)', nImage:'Images on page', nChild:'Child pages', version:'Supplied by user / mult versions', strLang:'Language code', siteName:'Site'};
-  
+var PageRowLabel={nParent:'Parents / Alternative parents', cb:'Select', nChild:'Child pages', nImage:'Images on page', tCreated:'Created', tMod:'Last Modified', tLastAccess:'Last Access', nAccess:'nAccess', boOR:'Public read access', boOW:'Public write access', boSiteMap:'Promote (include in Sitemap.xml etc)', version:'Supplied by user / mult versions', strLang:'Language code', siteName:'Site'};
+
+
+var funPermCss=function(boT){boT=Boolean(boT); return  {'text-decoration':boT?'underline green':'line-through red', color:boT?'var(--text-max)':'var(--text-grey)'}; } //, 'font-weight':boT?'bold':'', 'font-size':boT?'1.1em':''
   
 var pageListExtend=function(el){
   el.strName='pageList'
@@ -1625,22 +1617,24 @@ var pageListExtend=function(el){
       //var tmpImg=createElement('img').prop({src:uFlash}).prop('draggable',false).css({height:'1em',width:'1em','vertical-align':'text-bottom'});
       var buttonExecute=createElement('button').myAppend(charFlash).on(strMenuOpenEvent,menuPageSingle.buttonExeSingleClick).addClass('unselectable');
       var tdExecute=createElement('span').prop('valSort',0).myAppend(buttonExecute).attr('name','execute');
-      var tdR=createElement('span').attr('name','boOR').myText(charPublicRead).prop('title',PageRowLabel.boOR), tdW=createElement('span').attr('name','boOW').myText(charPublicWrite).prop('title',PageRowLabel.boOW), tdP=createElement('span').attr('name','boSiteMap').myText(charPromote).prop('title',PageRowLabel.boSiteMap);
-      var tdVer=createElement('span').attr('name','version');
       var tdTCreated=createElement('span').attr('name','tCreated').prop('title',PageRowLabel.tCreated);
       var tdTMod=createElement('span').attr('name','tMod').prop('title',PageRowLabel.tMod);
       var tdTLastAccess=createElement('span').attr('name','tLastAccess').prop('title',PageRowLabel.tLastAccess);
       var tdNAccess=createElement('span').attr('name','nAccess').prop('title',PageRowLabel.nAccess);
+      var tdR=createElement('span').attr('name','boOR').myText(charPublicRead).prop('title',PageRowLabel.boOR);
+      var tdW=createElement('span').attr('name','boOW').myText(charPublicWrite).prop('title',PageRowLabel.boOW);
+      var tdP=createElement('span').attr('name','boSiteMap').myText(charPromote).prop('title',PageRowLabel.boSiteMap);
+      var tdSize=createElement('span').attr('name','size');
+      var tdVer=createElement('span').attr('name','version');
       var tdStrLang=createElement('span').attr('name','strLang').prop('title','Language code');
       var tdSite=createElement('span').attr('name','siteName').prop('title','Site'); //.hide();
       var aLink=createElement('a').prop({target:"_blank", rel:"noopener"});
-      var tdLink=createElement('span').attr('name','link').myAppend(aLink).css({display:'inline-block'}); //.hide();
-      var tdSize=createElement('span').attr('name','size');
+      var tdLink=createElement('span').attr('name','link').myAppend(aLink);//.css({display:'inline-block'}); //.hide();
       var buttonNChild=createElement('button').addClass('aArrow','aArrowRight').on('click',clickSetParentFilter);
       var buttonNImage=createElement('button').addClass('aArrow','aArrowRight').on('click',clickSetParentFilterI);
       var tdNChild=createElement('span').myAppend(buttonNChild).attr('name','nChild').prop('title','Children'); 
       var tdNImage=createElement('span').myAppend(buttonNImage).attr('name','nImage').prop('title','Images');  
-      r.append(tdNParent, tdCB, tdExecute, tdTCreated, tdTMod, tdTLastAccess, tdNAccess, tdR, tdW, tdP, tdSize, tdNImage, tdNChild, tdVer, tdStrLang, tdSite,tdLink);  //    , tdName     ,createElement('span').append(bView)
+      r.append(tdNParent, tdCB, tdExecute, tdNChild, tdNImage, tdTCreated, tdTMod, tdTLastAccess, tdNAccess, tdR, tdW, tdP, tdSize, tdVer, tdStrLang, tdSite, tdLink);  //    , tdName     ,createElement('span').append(bView)
       //r.data({tdCB, tdTMod, tdR, tdW, tdP, tdLink, tdVer, tdSize, tdNChild, tdNImage});
       tBody.append(r);
     }
@@ -1666,7 +1660,7 @@ var pageListExtend=function(el){
     myRows.forEach(function(r, i){ 
       r.show();
       r.prop(File[i]);  r.prop({iFlip:i}); 
-      var {nParent, idPage, parent, boOR, boOW, boSiteMap, boOther, lastRev, tCreated, tMod, tLastAccess, nAccess, size, nChild, nImage, strLang, boTLS, siteName, www, pageName}=File[i];  
+      var {nParent, idPage, parent, boOR, boOW, boSiteMap, boOther, lastRev, tCreated, tMod, tLastAccess, nAccess, size, strLang, boTLS, siteName, www, pageName, nChild, nImage}=File[i];  
       r.attr({idPage});    
       var aTmp=r.querySelector('span[name=nParent]').prop('valSort',nParent).querySelector('button');
         var boSingleFiltered=pageFilterDiv.Filt.checkIfSingleParent();
@@ -1681,25 +1675,23 @@ var pageListExtend=function(el){
         aTmp.prop({disabled:boCurNSingle});
         aTmp.myText(boCurNSingle?"cur":nParent);
       r.querySelector('span[name=cb]').prop('valSort',0).querySelector('input').prop({'checked':false}); 
-      r.querySelector('span[name=boOR]').prop('valSort',boOR).visibilityToggle(boOR); 
-      r.querySelector('span[name=boOW]').prop('valSort',boOW).visibilityToggle(boOW);
-      r.querySelector('span[name=boSiteMap]').prop('valSort',boSiteMap).visibilityToggle(boSiteMap);
-      var strVersion=''; if(Boolean(boOther)) strVersion='v'+(Number(lastRev)+1);   
-      //r.querySelector('span[name=version]').toggle(Boolean(boOther)).myText(strVersion);
-      r.querySelector('span[name=version]').prop('valSort',strVersion).visibilityToggle(Boolean(boOther)).myText(strVersion);
       r.querySelector('span[name=tCreated]').prop('valSort',-tCreated.valueOf()).myText(mySwedDate(tCreated)).prop('title','Created:\n'+tCreated);  
       r.querySelector('span[name=tMod]').prop('valSort',-tMod.valueOf()).myText(mySwedDate(tMod)).prop('title','Last Mod:\n'+tMod);  
       r.querySelector('span[name=tLastAccess]').prop('valSort',-tLastAccess.valueOf()).myText(mySwedDate(tLastAccess)).prop('title','Last Access:\n'+tLastAccess);  
-      r.querySelector('span[name=nAccess]').prop('valSort',nAccess).myText(nAccess).prop('title','nAccess:\n'+nAccess);    
+      r.querySelector('span[name=nAccess]').prop('valSort',nAccess).myText(nAccess).prop('title','nAccess:\n'+nAccess);
+      r.querySelector('span[name=boOR]').prop('valSort',boOR).css(funPermCss(boOR));  //.visibilityToggle(boOR); 
+      r.querySelector('span[name=boOW]').prop('valSort',boOW).css(funPermCss(boOW));  //.visibilityToggle(boOW);
+      r.querySelector('span[name=boSiteMap]').prop('valSort',boSiteMap).css(funPermCss(boSiteMap));  //.visibilityToggle(boSiteMap);  
       var sizeDisp=size, pre=''; if(size>=1024) {sizeDisp=Math.round(size/1024); pre='k';} if(size>=1048576) { sizeDisp=Math.round(size/1048576); pre='M';}
-      var tmp=r.querySelector('span[name=size]').prop('valSort',size).myHtml(`${sizeDisp}<b>${pre}</b>`); var strTitle=pre.length?'Size: '+size:''; tmp.prop('title',strTitle);   //tmp.css({weight:pre=='M'?'bold':'',color:pre==''?'grey':''}); 
-      //var  buttonTmp=r.querySelector('span[name=nChild]').prop('valSort',nChild).querySelector('button'); buttonTmp.querySelector('span:nth-of-type(1)').myText(nChild); buttonTmp.visibilityToggle(nChild); 
-      r.querySelector('span[name=nChild]').prop('valSort',nChild).querySelector('button').myText(nChild).visibilityToggle(nChild);    
-      r.querySelector('span[name=nImage]').prop('valSort',nImage).querySelector('button').myText(nImage).visibilityToggle(nImage);
+      var tmp=r.querySelector('span[name=size]').prop('valSort',size).myHtml(`${sizeDisp}<b>${pre}</b>`); var strTitle=pre.length?'Size: '+size:''; tmp.prop('title',strTitle);   //tmp.css({weight:pre=='M'?'bold':'',color:pre==''?'grey':''});
+      var strVersion=''; if(Boolean(boOther)) strVersion='v'+(Number(lastRev)+1);   
+        r.querySelector('span[name=version]').prop('valSort',strVersion).visibilityToggle(Boolean(boOther)).myText(strVersion); 
       r.querySelector('span[name=strLang]').prop('valSort',strLang).myText(strLang);
       r.querySelector('span[name=siteName]').prop('valSort',siteName).myText(siteName).prop('title',www);
       var url=createUrlFrPageData({boTLS,www,pageName});
-      r.querySelector('span[name=link]').prop('valSort',pageName).querySelector('a').prop({href:url}).myText(pageName);    
+      r.querySelector('span[name=link]').prop('valSort',pageName).querySelector('a').prop({href:url}).myText(pageName);  
+      r.querySelector('span[name=nChild]').prop('valSort',nChild).querySelector('button').myText(nChild).visibilityToggle(nChild);    
+      r.querySelector('span[name=nImage]').prop('valSort',nImage).querySelector('button').myText(nImage).visibilityToggle(nImage);  
     });
     var Tmp=[...tBody.querySelectorAll('input')]; Tmp.forEach(ele=>ele.prop({'checked':false})); // span[name=cb]
   }
@@ -1777,7 +1769,7 @@ var pageListExtend=function(el){
     //Tr.find('input:checked').forEach(function(ele,i){var cb=ele; cb.parentNode.parentNode.children(`span[name=${strName}]`).prop('valSort',Number(boVal)).visibilityToggle(boVal); });
     var Tr=[...tBody.childNodes].slice(0, el.nRowVisible);
     Tr.forEach(ele=>{
-      var inp=ele.querySelector('input:checked'); if(inp) inp.parentNode.parentNode.querySelector(`span[name=${strName}]`).prop('valSort',Number(boVal)).visibilityToggle(boVal);
+      var inp=ele.querySelector('input:checked'); if(inp) inp.parentNode.parentNode.querySelector(`span[name=${strName}]`).prop('valSort',Number(boVal)).css(funPermCss(boVal)); //.visibilityToggle(boVal);
     });
   }
   el.changeName=function(r,strNewName){
@@ -1849,8 +1841,8 @@ var pageListExtend=function(el){
   el.nRowVisible=0
   el.table=createElement('div').myAppend(tBody).css({width:'100%',position:'relative'});
 
-  var StrCol=['nParent','cb','execute','tCreated','tMod','tLastAccess','nAccess','boOR','boOW','boSiteMap','size','nImage','nChild','version','strLang','siteName', 'link'];
-  var BoAscDefault={cb:0,boOR:0,boOW:0,boSiteMap:0,nImage:0,nChild:0,nParent:0,version:0,nAccess:0,size:0}; // Default is 1
+  var StrCol=['nParent', 'cb', 'execute', 'nChild', 'nImage', 'tCreated', 'tMod', 'tLastAccess', 'nAccess', 'boOR', 'boOW', 'boSiteMap', 'size', 'version', 'strLang', 'siteName', 'link'];
+  var BoAscDefault={cb:0,boOR:0,boOW:0,boSiteMap:0,nParent:0,version:0,nAccess:0,size:0,nChild:0,nImage:0}; // Default is 1
   //var spanFill=createElement('span').css({height:'calc(1.5*8px + 0.6em)'});
   //var headFill=createElement('p').append().css({background:'white',margin:'0px',height:'calc(12px + 1.2em)'});
   var head=headExtendDyn(createElement('p'), el, StrCol, BoAscDefault, PageRowLabel, 'p', 'span').addClass('pageList');
@@ -1876,6 +1868,8 @@ var pageListExtend=function(el){
   var strPublicRead=`<span style="display:inline-block">${charPublicRead}</span> (public read)`;
   var strPublicWrite=charPublicWrite+' (public write)';
   var strPromote=charPromote+' (promote)';
+  var strPromoteOn=charPromote+' (promote)';
+  var strPromoteOff=charPromote+' (promote)';
 
 
     // menuMult
@@ -1956,7 +1950,7 @@ var pageListRowMethods={
     var vec=[['myChMod',o]];   myFetch('POST',vec);
     r.prop(strName,boVal);
     //var span=r.children(`span[name=${strName}]`);  span.prop('valSort',Number(boVal)).visibilityToggle(boVal);
-    var span=r.querySelector(`span[name=${strName}]`);  span.prop('valSort',Number(boVal)).visibilityToggle(boVal);
+    var span=r.querySelector(`span[name=${strName}]`);  span.prop('valSort',Number(boVal)).css(funPermCss(boVal)); //.visibilityToggle(boVal);
   }
 }
 
@@ -2064,7 +2058,7 @@ customElements.define('span-grand-parent', SpanGrandParent);
    //
 
 class DivRowParentT extends HTMLElement{
-  constructor(){ super(); }
+  constructor(){ super();  }
   connectStuff(){
     var self=this
     var setParentFilter=function(){
@@ -2084,27 +2078,28 @@ class DivRowParentT extends HTMLElement{
 
     var buttonExecute=createElement('button').myText(charFlash).on(strMenuOpenEvent, menuPageSingle.buttonExeSingleClick).addClass('unselectable'); 
     this.tdExecute=createElement('span').prop('valSort',0).myAppend(buttonExecute).attr('name','execute'); 
-    this.tdR=createElement('span').attr('name','boOR').myText(charPublicRead).prop('title',PageRowLabel.boOR); this.tdW=createElement('span').attr('name','boOW').myText(charPublicWrite).prop('title',PageRowLabel.boOW); this.tdP=createElement('span').attr('name','boSiteMap').myText(charPromote).css({'margin-right':'0.15em'}).prop('title',PageRowLabel.boSiteMap);
-    this.tdVer=createElement('span').attr('name','version').css({'min-width':'1.5em', background:'red'});
     this.tdTCreated=createElement('span').attr('name','tCreated').prop('title',PageRowLabel.tCreated);
     this.tdTMod=createElement('span').attr('name','tMod').prop('title',PageRowLabel.tMod);
     this.tdTLastAccess=createElement('span').attr('name','tLastAccess').prop('title',PageRowLabel.tLastAccess);
     this.tdNAccess=createElement('span').attr('name','nAccess').prop('title',PageRowLabel.nAccess);
-    this.tdSite=createElement('span').attr('name','siteName');
-    this.tdOrphan=createElement('span').css({color:'grey'});
-    this.aLink=createElement('a').prop({target:"_blank", rel:"noopener"});
-    this.tdStrLang=createElement('span').attr('name','strLang').prop('title','Language code');
-    this.tdLink=createElement('span').attr('name','link').myAppend(this.aLink);
+    this.tdR=createElement('span').attr('name','boOR').myText(charPublicRead).prop('title',PageRowLabel.boOR);this.tdW=createElement('span').attr('name','boOW').myText(charPublicWrite).prop('title',PageRowLabel.boOW);
+    this.tdP=createElement('span').attr('name','boSiteMap').myText(charPromote).css({'margin-right':'0.15em'}).prop('title',PageRowLabel.boSiteMap);
     this.tdSize=createElement('span').attr('name','size');
+    this.tdVer=createElement('span').attr('name','version').css({'min-width':'1.5em', background:'red'});
+    this.tdStrLang=createElement('span').attr('name','strLang').prop('title','Language code');
+    this.tdSite=createElement('span').attr('name','siteName');
+    this.aLink=createElement('a').prop({target:"_blank", rel:"noopener"});
+    this.tdLink=createElement('span').attr('name','link').myAppend(this.aLink);
     this.buttonNChild=createElement('button').addClass('aArrow','aArrowRight').on('click',setParentFilter);
     this.buttonNImage=createElement('button').addClass('aArrow','aArrowRight').on('click',setParentFilter).prop('title','Images');
     this.tdNChild=createElement('span').myAppend(this.buttonNChild).attr('name','nChild'); 
     this.tdNImage=createElement('span').myAppend(this.buttonNImage).attr('name','nImage'); 
+    this.tdOrphan=createElement('span').css({color:'grey'});
     
-    this.append(this.spanGrandParent, this.tdExecute, this.tdTCreated, this.tdTMod, this.tdTLastAccess, this.tdNAccess, this.tdR, this.tdW, this.tdP, this.tdSize, this.tdNImage, this.tdNChild, this.tdVer, this.tdStrLang, this.tdSite, this.tdLink, this.tdOrphan);
+    this.append(this.spanGrandParent, this.tdExecute, this.tdNChild, this.tdNImage, this.tdTCreated, this.tdTMod, this.tdTLastAccess, this.tdNAccess, this.tdR, this.tdW, this.tdP, this.tdSize, this.tdVer, this.tdStrLang, this.tdSite, this.tdLink, this.tdOrphan);
     
-    this.css({'line-height':'2.7em'});  // ,'max-width':menuMaxWidth
-    this.addClass('pageList');
+    this.css({'line-height':'1.2em'});  // ,'max-width':menuMaxWidth
+    this.addClass('pageList', 'rowParent');
     return this;
   }
   setUpPreAJAX(idParent){  
@@ -2133,7 +2128,7 @@ class DivRowParentT extends HTMLElement{
     if('tab' in data) { var Parent=tabNStrCol2ArrObj(data); this.spanGrandParent.setUp(Parent);  } 
   }
   getPageInfoByIdRet(data){
-    var {nParent, idPage, parent, boOR, boOW, boSiteMap, boOther, lastRev, tCreated, tMod, tLastAccess, nAccess, size, nChild, nImage, strLang, boTLS, siteName, www, pageName}=data;
+    var {nParent, idPage, parent, boOR, boOW, boSiteMap, boOther, lastRev, tCreated, tMod, tLastAccess, nAccess, size, strLang, boTLS, siteName, www, pageName, nChild, nImage}=data;
     Object.assign(this.spanGrandParent.objParent, data);
     var boImageList=imageList.style.display!='none', boPageList=!boImageList;
     this.buttonNChild.myText(boPageList?"cur":nChild).prop("disabled",boPageList).visibilityToggle(nChild);
@@ -2155,7 +2150,8 @@ class DivRowParentT extends HTMLElement{
         this.tdSize.myHtml(`${sizeDisp}<b>${pre}</b>`); var strTitle=pre.length?'Size: '+size:''; this.tdSize.prop('title',strTitle); 
       var strVersion=Boolean(boOther)?'v'+(Number(lastRev)+1):'';  
         this.tdVer.visibilityToggle(Boolean(boOther)).myText(strVersion);
-      this.tdR.visibilityToggle(Boolean(boOR)); this.tdW.visibilityToggle(Boolean(boOW)); this.tdP.visibilityToggle(Boolean(boSiteMap));
+      //this.tdR.visibilityToggle(Boolean(boOR)); this.tdW.visibilityToggle(Boolean(boOW)); this.tdP.visibilityToggle(Boolean(boSiteMap));
+      this.tdR.css(funPermCss(boOR)); this.tdW.css(funPermCss(boOW));; this.tdP.css(funPermCss(boSiteMap));;
       this.tdTCreated.myText(mySwedDate(tCreated)).prop('title','Created:\n'+tCreated);   
       this.tdTMod.myText(mySwedDate(tMod)).prop('title','Last Mod:\n'+tMod);   
       this.tdTLastAccess.myText(mySwedDate(tLastAccess)).prop('title','Last Access:\n'+tLastAccess);   
@@ -2166,6 +2162,7 @@ class DivRowParentT extends HTMLElement{
     }
   }
 }
+// customElements.define('div-row-parent', DivRowParentT, {extends:'div'});
 customElements.define('div-row-parent', DivRowParentT);
 
 
@@ -2217,45 +2214,45 @@ var parentSelPopExtend=function(el){
     var FiltT=strType=='page'?pageFilterDiv.Filt:imageFilterDiv.Filt;
     var idPageList=FiltT.getSingleParent();
     if(strType=='page'){
-      var {nParent, idPage, parent, boOR, boOW, boSiteMap, boOther, lastRev, tCreated, tMod, tLastAccess, nAccess, size, nChild, nImage, strLang, boTLS, siteName, www, pageName}=data;
+      var {nParent, idPage, parent, boOR, boOW, boSiteMap, boOther, lastRev, tCreated, tMod, tLastAccess, nAccess, size, strLang, boTLS, siteName, www, pageName, nChild, nImage}=data;
       //var butP=createElement('button').prop({disabled:1}).myText("cur").addClass('aArrow', 'aArrowLeft'); //nParent
+      var spanSite=createElement('span').myText(siteName).css({'line-height':'2.5em'});
+      var url=createUrlFrPageData({boTLS, www, pageName});
+      var a=createElement('a').prop({href:url, target:"_blank", rel:"noopener"}).myText(pageName);
       var butC=createElement('button').prop({idPage, strType:'page'}).myText(nChild).on('click',cbGotoList).visibilityToggle(nChild);
       var butI=createElement('button').prop({idPage, strType:'image'}).myText(nImage).on('click',cbGotoList).css({background:'var(--bg-colorImg)'}).visibilityToggle(nImage);
-      var spanSite=createElement('span').myText(siteName);
-      var url=createUrlFrPageData({boTLS, www, pageName});
-      var a=createElement('a').prop({href:url, target:"_blank", rel:"noopener"}).myText(pageName);//.css({display:'inline-block'});
-      var ElTmp=[butC, butI]; ElTmp.forEach(ele=>ele.addClass('aArrow', 'aArrowRight'));
+      var ElTmp=[butC, butI]; ElTmp.forEach(ele=>ele.addClass('aArrow', 'aArrowRight').css({'float':'right'}));
       var ElTmpA=[spanSite, a]; //butP, 
-      ElTmpA.forEach(ele=>ele.css({'align-self': 'center'}));
-      child.empty().myAppend(...ElTmpA, ...ElTmp);
+      //ElTmpA.forEach(ele=>ele.css({'word-break': 'break-all'})); //, 'align-self':'center'
+      child.empty().myAppend(...ElTmp, spanSite, ' ', a);
     }else{
       var {idImage, imageName, boOther, tCreated, strHash, size, widthSkipThumb, width, height, extension, tLastAccess, nAccess, tMod, hash, nParent}=data;
       //var butP=createElement('button').prop({disabled:1}).myText("cur").addClass('aArrow', 'aArrowLeft'); // nParent
       var url=createUrlFrPageData({boTLS, www, imageName});
       var img=createElement('img').prop({src:'50apx-'+imageName, alt:"thumb"}).addClass('checkerboard').css({'vertical-align':'middle', 'max-width':'50px', 'max-height':'50px'}).on('click',function(){window.open(imageName);});
-      var a=createElement('a').prop({href:url, target:"_blank", rel:"noopener"}).myText(imageName).css({'align-self':'center'});
+      var a=createElement('a').prop({href:url, target:"_blank", rel:"noopener"}).myText(imageName);//.css({'word-break': 'break-all'}); //, 'align-self':'center'
       //ElTmp=[butP];
       child.empty().myAppend(img, a); //...ElTmp, 
     }
     
     divParents.empty();
     for(var i=0;i<Parent.length;i++) {  
-      var {boTLS, siteName, www, idPage, pageName, nChild, nImage, size, strLang, boOR, boOW, boSiteMap, nParent, tCreated, tMod, tLastAccess, nAccess}=Parent[i];
+      var {boTLS, www, idPage, nParent, tCreated, tMod, tLastAccess, nAccess, boOR, boOW, boSiteMap, size, strLang, siteName, pageName, nChild, nImage}=Parent[i];
       //var idPage=Parent[i].idPage, name=Parent[i].pageName, siteName=Parent[i].siteName;
       var boCur=idPage===idPageList;
       var cbTmp=nParent==0?cbGotoList:cbChange;
       var butP=createElement('button').prop({idPage, strType:'page'}).myText(nParent).addClass('aArrow', 'aArrowLeft').on('click',cbTmp);
+      var spanSite=createElement('span').myText(siteName);
+      var url=createUrlFrPageData({boTLS, www, pageName});
+      var a=createElement('a').prop({href:url, target:"_blank", rel:"noopener"}).myText(pageName)//.css({'word-break': 'break-all'}); //, 'align-self':'center', 'margin-right':'auto', 'margin-top':'0.3em'
       var boDisabled=boCur && strType=='page';
       var butC=createElement('button').prop({idPage, strType:'page', disabled:boDisabled}).myText(boDisabled?"cur":nChild).on('click',cbGotoList).visibilityToggle(nChild);
       var boDisabled=boCur && strType=='image';
       var butI=createElement('button').prop({idPage, strType:'image', disabled:boDisabled}).myText(boDisabled?"cur":nImage).on('click',cbGotoList).css({background:'var(--bg-colorImg)'}).visibilityToggle(nImage);
-      var spanSite=createElement('span').myText(siteName);
-      var url=createUrlFrPageData({boTLS, www, pageName});
-      var a=createElement('a').prop({href:url, target:"_blank", rel:"noopener"}).myText(pageName).css({'align-self':'center'});
-      var ElTmp=[butC, butI]; ElTmp.forEach(ele=>ele.addClass('aArrow', 'aArrowRight'));
-      ElTmp=[butP, ...ElTmp];
+      var ElTmp=[butC, butI]; ElTmp.forEach(ele=>ele.addClass('aArrow', 'aArrowRight').css({'float':'right'}));
+      //ElTmp=[butP, ...ElTmp];
       //if(!boEqual) r.prepend(siteName+' ');
-      var r=createElement('p').css({display:'flex', 'flex-wrap':'wrap', gap:'3px', background:'var(--bg-color)'}).myAppend(...ElTmp, a);
+      var r=createElement('p').css({background:'var(--bg-color)'}).myAppend(butP, ...ElTmp, a); //display:'flex', 'flex-wrap':'wrap', gap:'3px', 
       divParents.append(r);
     }  
   }
@@ -2270,12 +2267,12 @@ var parentSelPopExtend=function(el){
   //var spanNParent=createElement('span');
 
 
-  var divParents=createElement('div').css({wordBreak: 'break-word'}); //'overflow-y':'scroll'   overflow: 'auto'   
+  var divParents=createElement('div'); //.css({wordBreak: 'break-word'}); //'overflow-y':'scroll'   overflow: 'auto'   
   var close=createElement('button').myText(charClose).on('click',function(){historyBack();});
   //close.css({'align-self': 'flex-start'})
   close.css({position: 'absolute', top:'.2em', right:'.2em'})
-  var child=createElement('div').css({display:'flex', 'align-items':'center', 'flex-wrap':'wrap', flex:'1 1 0%', background:'var(--bg-color)'}); // .myAppend(spanNParent,' Parents') 'font-weight':'bold', 
-  var childW=createElement('div').css({display:'flex', 'align-items':'center', background:'var(--bg-colorRoot)', wordBreak: 'break-word'}).myAppend(child); //close,   .myAppend(spanNParent,' Parents')
+  var child=createElement('div').css({background:'var(--bg-color)', flex:'1 1 0%'}); // .myAppend(spanNParent,' Parents') display:'flex', 'align-items':'center', 'flex-wrap':'wrap', 
+  var childW=createElement('div').css({display:'flex', 'align-items':'center', background:'var(--bg-colorRoot)'}).myAppend(child); //close,   .myAppend(spanNParent,' Parents')
  
   //el.append(head,divParents,close);
   //el.css({'text-align':'left'});
@@ -2868,16 +2865,16 @@ var settingDivExtend=function(el){
   el.toString=function(){return el.strName;}
 
     // Initial setup of selectorOfTheme
-  var selectorOfTheme=selThemeCreate()
-  var divThemeSelector=createElement('div').myAppend('Theme (Background colors): ', selectorOfTheme);
+  // var selectorOfTheme=selThemeCreate().css({color:'black', background:'lightgrey',width: "3em"}); //, position:'absolute', right:0, bottom:0
+  // var divThemeSelector=createElement('div').myAppend('Theme (Background colors): ', selectorOfTheme);
 
-  var {themeOS, themeChoise, themeCalc}=analysColorSchemeSettings();
-  console.log(`OS: ${themeOS}, choise: ${themeChoise}`)
-  setThemeClass(themeCalc)
-  selectorOfTheme.value=themeChoise
+  // var {themeOS, themeChoise, themeCalc}=analysColorSchemeSettings();
+  // console.log(`OS: ${themeOS}, choise: ${themeChoise}`)
+  // setThemeClass(themeCalc)
+  // selectorOfTheme.value=themeChoise
   
   
-  var Div=[divThemeSelector]
+  var Div=[]; //divThemeSelector
 
     // divCont
   var divCont=createElement('div').myAppend(...Div).addClass('contDivFix');  //.css({width:'fit-content'});
@@ -2893,13 +2890,14 @@ var settingDivExtend=function(el){
   return el;
 }
 
-var dragHRExtend=function(el){
+var dragHRExtend=function(el, funStartHeight, funSet){ //elTarget
   var myMousedown= function(e){
     var e = e || window.event; if(e.which==3) return;
     el.css({position:'relative',opacity:0.55,'z-index':'auto',cursor:'move'}); 
-    //hStart=editText.height();
-    //var rect=editText.getBoundingClientRect(); hStart=rect.height;
-    hStart=editText.offsetHeight;
+    //hStart=elTarget.height();
+    //var rect=elTarget.getBoundingClientRect(); hStart=rect.height;
+    //hStart=elTarget.offsetHeight;
+    hStart=funStartHeight();
     if(boTouch) {e.preventDefault(); mouseXStart=e.changedTouches[0].pageX; mouseYStart=e.changedTouches[0].pageY;}
     else {mouseXStart=e.pageX; mouseYStart=e.pageY;}
 
@@ -2919,8 +2917,9 @@ var dragHRExtend=function(el){
     else {mouseX=e.pageX; mouseY=e.pageY;}
 
     var hNew=hStart-(mouseY-mouseYStart); 
-    //editText.height(hNew);
-    editText.css('height', hNew+'px');
+    //elTarget.height(hNew);
+    //elTarget.css('height', hNew+'px');
+    funSet(hNew)
   };
   var strMouseDownEvent='mousedown', strMouseMoveEvent='mousemove', strMouseUpEvent='mouseup';  if(boTouch){  strMouseDownEvent='touchstart'; strMouseMoveEvent='touchmove'; strMouseUpEvent='touchend';  }
   var hStart,mouseXStart,mouseYStart;
@@ -2962,7 +2961,8 @@ var editTextExtend=function(el){
       }
       //var toHideAtTouch=[pageText, ...editDiv.menus, adminDiv.menus, dragHR];
       var toHideAtTouch=[pageText, pageView.editDivFixed.menus, pageView.adminDivFixed.menus, dragHR];
-      toHideAtTouch.forEach(ele=>ele.toggle?.(!Boolean(boOn)));
+      // toHideAtTouch.forEach(ele=>ele.toggle?.(!Boolean(boOn)));
+      toHideAtTouch.forEach(ele=>{if(ele.toggle) ele.toggle(!Boolean(boOn))}); // Using this since Safari 12 doesn't support Nullish coalescing operator
     }
   }
   el.on('click',clickBlurFunc);  
@@ -3016,7 +3016,7 @@ class TemplateListDiv extends HTMLElement {
       if(id.slice(iStart,iEnd)==strTemlatePrefix) {
         var boAny=true;
         var str=id.slice(iStart);
-        var a=createElement('a').prop({href:'/'+str}).myText(str).css({display:'block'}); this.div.append(a);
+        var a=createElement('a').prop({href:'/'+str, rel:'nofollow'}).myText(str).css({display:'block'}); this.div.append(a);
         if(IdChild.indexOf(id)==-1) a.addClass("stub");
       }
     }
@@ -3342,7 +3342,8 @@ var paymentDivExtend=function(el){
   el.id=el.strName
   el.toString=function(){return el.strName;}
     // menuB
-  var formPP=formPPExtend(createElement('form')),     divPP=createElement('div').myAppend(formPP).css({'margin-top':'1em'}); if(ppStoredButt.length==0) divPP.hide();  //'Paypal: ',
+  var boPP=ppStoredButt.length!=0
+  var formPP=boPP?formPPExtend(createElement('form')):'',     divPP=createElement('div').myAppend(formPP).css({'margin-top':'1em'}); //if(ppStoredButt.length==0) divPP.hide();  //'Paypal: ',
   var spanBTC=createElement('span').myAppend(strBTC).css({'font-size':'0.70em'}),    divBC=createElement('div').myAppend('฿: ',spanBTC); if(spanBTC.length==0) divBC.hide();
   var menuB=createElement('div').myAppend(divBC,divPP).css({'text-align':'center'}).css({padding:'0 0.3em 0 0',overflow:'hidden','max-width':menuMaxWidth,'text-align':'center',margin:'1em auto'});
 
@@ -3703,7 +3704,9 @@ var redirectTabExtend=function(el){
     tMod:{ mySetVal:funcTTimeTmp }
   }
   var TDConstructors={
-    url:function(){ var a=createElement('a').prop({target:"_blank", rel:"noopener"}),el=createElement('td').myAppend(a);  extend(el,TDProt.url);  return el;  },
+    siteName:function(){ var el=createElement('td').css({'word-break':'break-all'});  return el;  },
+    pageName:function(){ var el=createElement('td').css({'word-break':'break-all'});  return el;  },
+    url:function(){ var a=createElement('a').prop({target:"_blank", rel:"noopener"}), el=createElement('td').myAppend(a).css({'word-break':'break-all'});  extend(el,TDProt.url);  return el;  },
     tCreated:function(){ var el=createElement('td');  extend(el,TDProt.tCreated);  return el;  },
     tLastAccess:function(){ var el=createElement('td');  extend(el,TDProt.tLastAccess);  return el;  },
     tMod:function(){ var el=createElement('td');  extend(el,TDProt.tMod);  return el;  }
@@ -3777,7 +3780,7 @@ var redirectTabExtend=function(el){
 
 
     // divCont
-  var divCont=createElement('div').myAppend(el.table).addClass('contDivFix').css({width:'fit-content'});
+  var divCont=createElement('div').myAppend(el.table).addClass('contDivFix').css({width:'var(--menuMaxWidth)', 'max-width':'max-content', minWidth:'fit-content'});
 
   var divFoot=createElement('div').myAppend(buttonBack, buttonAdd, buttonClearNAccess, spanLabel).addClass('footDivFix'); 
   divFoot.css({left:'50%', transform:'translateX(-50%)'})
@@ -3902,7 +3905,7 @@ var siteSetPopExtend=function(el){
     historyBack();
   }
   el.setUp=function(){
-    if(typeof objRow.boTLS=='undefined') objRow.boTLS=0;
+    if(typeof objRow.boTLS=='undefined') objRow.boTLS=1;
     selBoTLS.value=Number(objRow.boTLS); inpName.value=objRow.idSite; inpWWW.value=objRow.www; inpGog.value=objRow.googleAnalyticsTrackingID; inpSrcIcon16.value=objRow.srcIcon16; inpStrLangSite.value=objRow.strLangSite;
     inpName.focus();  return true;
   }
@@ -3923,21 +3926,21 @@ var siteSetPopExtend=function(el){
  
   var rDefault={idSite:'', www:'', googleAnalyticsTrackingID:'', srcIcon16:'', strLangSite:''};
   var boUpd, objRow; 
-  var opt=createElement('option').prop({value:0, selected:true}).css({display:'block'}).myText('http'); 
-  var optS=createElement('option').prop({value:1}).css({display:'block'}).myText('https'); 
-  var selBoTLS=createElement('select').css({display:'block'}).myAppend(opt,optS); 
+  var opt=createElement('option').prop({value:0}).css({display:'block'}).myText('http'); 
+  var optS=createElement('option').prop({value:1}).css({display:'block'}).myText('https'); //, selected:true
+  var selBoTLS=createElement('select').css({display:'block'}).myAppend(opt,optS);
   var labName=createElement('label').myText('Name (used as prefix when backing up etc.)');
   var inpName=createElement('input').prop('type', 'text');
-  var imgHWWW=imgHelp.cloneNode(1).css({margin:'0em 1em'}); popupHover(imgHWWW,createElement('div').myHtml('<p>Ex:<p>www.example.com<p>127.0.0.1:5000<p>localhost:5000'));
+  var imgHWWW=hovHelp.cloneNode(1).css({margin:'0em 1em'}); popupHover(imgHWWW,createElement('div').myHtml('<p>Ex:<p>www.example.com<p>127.0.0.1:5000<p>localhost:5000'));
   var labWWW=createElement('label').myAppend('www (domain)', imgHWWW);
   var inpWWW=createElement('input').prop('type', 'text');
   var labGog=createElement('label').myText('googleAnalyticsTrackingID').css({wordBreak:'break-word'});
   var inpGog=createElement('input').prop('type', 'text');
-  var imgSrcIcon16=imgHelp.cloneNode(1).css({margin:'0em 1em'}); popupHover(imgSrcIcon16,createElement('div').myHtml('<p>srcIcon16<p>Note!!! The source/url must have "16" right before the period. Ex:<br>Site/Icon/icon16.png<p>("16" will be replaced with 144, 192, 200, 512 and 1024 respectivly, to provide high resolution icons.)'));  //<p>Make sure the corresponding files exist in the selected location.
+  var imgSrcIcon16=hovHelp.cloneNode(1).css({margin:'0em 1em'}); popupHover(imgSrcIcon16,createElement('div').myHtml('<p>srcIcon16<p>Note!!! The source/url must have "16" right before the period. Ex:<br>Site/Icon/icon16.png<p>("16" will be replaced with 144, 192, 200, 512 and 1024 respectivly, to provide high resolution icons.)'));  //<p>Make sure the corresponding files exist in the selected location.
   //'<p>srcIcon16<p>The source/url must have the "16" right before the period. Ex:<br>Site/Icon/icon16.png<p>("16" will be replaced with 144, 192, 200, 512 and 1024 respectivly, to provide high resolution icons.)'
   var labSrcIcon16=createElement('label').myAppend('srcIcon16', imgSrcIcon16);
   var inpSrcIcon16=createElement('input').prop('type', 'text').attr({pattern:"16"});
-  var imgStrLangSite=imgHelp.cloneNode(1).css({margin:'0em 1em'}); popupHover(imgStrLangSite,createElement('div').myHtml('ISO 639-1 Language Code (used by search engines)'));
+  var imgStrLangSite=hovHelp.cloneNode(1).css({margin:'0em 1em'}); popupHover(imgStrLangSite,createElement('div').myHtml('ISO 639-1 Language Code (used by search engines)'));
   var labStrLangSite=createElement('label').myAppend('strLangSite', imgStrLangSite);
   var intL=11, inpStrLangSite=createElement('input').prop({type:'text'}).attr({maxlength:intL, title:'ISO 639-1 Language Code', size:intL}).css({display:'block'});
  
@@ -4307,8 +4310,9 @@ var charFlash='↯';//⚡↯
 var charPublicRead='<span style="font-family:courier">͡°</span>'; //☉͡°
 var charPublicRead='<span class=eye>(∘)</span>'; //☉͡° ·
 var charPublicRead=boIOS?'📖':'🕮' //🕮👁; //📖; //👀😶☉͡° · 📖📖
-var charPublicWrite='✎'; // 🔏 🔒 🔓 🔐  🖊 🖋✏✎✐🖉
-var charPromote='🗣️'; //'📣';  //😗😱😮
+var charPublicRead='👁' //🕮👁; //📖; //👀😶☉͡° · 📖📖
+var charPublicWrite='✎'; // ⌨🔏 🔒 🔓 🔐  🖊 🖋✏✎✐🖉
+var charPromote='🗣️'; //🏳📣 😗😱😮
 var charDelete='✖'; //x, ❌, X, ✕, ☓, ✖, ✗, ✘
 var charClose='✖';
 var charLink='🌍'; //🔗☞🔗
@@ -4317,7 +4321,7 @@ var charThumbsDown='👎'; //👎☟
 var charSpeechBaloon='🗪'; //💬🗨
 var charCamera='📷';
 var charHourGlass='⏳';
-var charAdmin='🂡'   // ♛♕♚♔⚖
+var charAdmin='😎'   // 🂡♛♕♚♔⚖
 var charPrev='⇦' //'⇩'
 var charNext='⇨' //'⇧'
 var charQuestionMark='❓'
@@ -4419,8 +4423,7 @@ var uDelete=uLibImageFolder+'delete.png';
 var uDelete1=uLibImageFolder+'delete1.png';
 
 
-app.hovHelpMy=createElement('span').myText(charQuestionMark).addClass('btn-round', 'helpButton').css({color:'transparent', 'text-shadow':'0 0 0 #5780a8'}); //on('click', function(){return false;})    //'pointer-events':'none',
-app.imgHelp=hovHelpMy;
+app.hovHelp=createElement('span').myText(charQuestionMark).addClass('btn-round', 'helpButton').css({color:'transparent', 'text-shadow':'0 0 0 #5780a8'}); //on('click', function(){return false;})    //'pointer-events':'none',
 
 var sizeIcon=1.5, strSizeIcon=sizeIcon+'em';
 var imgProt=createElement('img').css({height:strSizeIcon,width:strSizeIcon,'vertical-align':'text-bottom'}); 
@@ -4540,7 +4543,8 @@ var setMyState=function(state){
   var view=MainDiv[StrMainDivFlip[state.strView]];
   view.setVis();
   if(history.funOverRule) {history.funOverRule(); history.funOverRule=null;}
-  else{ view.funPopped?.(state); }
+  //else{ view.funPopped?.(state); }  
+  else{ if(view.funPopped) view.funPopped(state); } // Safari 12 can't handle Optional chaining (?.)
 }
 
 window.on('pagehide', function(){ 
@@ -4587,9 +4591,14 @@ elBody.append(busyLarge);
 
 
 
-var dragHR=dragHRExtend(createElement('hr')); dragHR.css({height:'0.3em',background:'grey',margin:0});
-if(boTouch) dragHR="";
 var editText=editTextExtend(createElement('textarea')).css({'font-family':'monospace'});
+
+var funStartHeight=function(){ return editText.offsetHeight }
+var funDragHR=function(hNew){
+  editText.css('height', hNew+'px');
+}
+var dragHR=dragHRExtend(createElement('hr'), funStartHeight, funDragHR); dragHR.css({height:'0.3em',background:'grey',margin:0});
+if(boTouch) dragHR="";
  
 //var pageView=pageViewExtend(createElement('div'));
 var pageView=document.querySelector('#pageView'); pageViewExtend(pageView); pageView.css({height:'100%', overflow:'auto'})
@@ -4605,7 +4614,9 @@ var uploadUserDiv=uploadUserDivExtend(createElement('div')); //elBody.append(upl
 var menuPageSingle=menuPageSingleExtend(createElement('div'));
 var parentSelPop=parentSelPopExtend(createElement('div'));
 //var divRowParent=new DivRowParentT();
-var divRowParent=createElement('div-row-parent').connectStuff();
+var divRowParent=createElement('div-row-parent').connectStuff().css({display: 'flow-root'});
+//var divRowParent=createElement('div'); divRowParent.attr({is:'div-row-parent'}).connectStuff();
+//var divRowParent=createElement('div',{is:'div-row-parent'}); divRowParent.connectStuff(); // Aparently doesn't with safari (google createElement)
 var pageList=pageListExtend(createElement('div')).addClass('viewDivFix');
 var imageList=imageListExtend(createElement('div')).addClass('viewDivFix');
 var renamePop=renamePopExtend(createElement('div'));
@@ -4613,7 +4624,7 @@ var setStrLangPop=setStrLangPopExtend(createElement('div'));
 var setSiteOfPagePop=setSiteOfPagePopExtend(createElement('div'));
 var areYouSurePop=areYouSurePopExtend(createElement('div'));
 var boDialog=false
-var themePop=themePopExtend(createElement('div'));
+//var themePop=themePopExtend(createElement('div'));
 
 
 
@@ -4675,7 +4686,7 @@ var diffBackUpDetailDiv=diffBackUpDetailDivExtend(createElement('div')).addClass
 
 
 var MainDivFull=[pageView, adminMoreDiv, pageList, imageList, templateList, versionTable, diffDiv, paymentDiv, settingDiv, slideShow, pageFilterDiv, imageFilterDiv, redirectTab, siteTab, diffBackUpDiv, diffBackUpDetailDiv];// 
-var MainDivPop=[aRLoginDiv, uploadUserDiv, renamePop, setStrLangPop, setSiteOfPagePop, parentSelPop, areYouSurePop, redirectSetPop, redirectDeletePop, siteSetPop, siteDeletePop, themePop]
+var MainDivPop=[aRLoginDiv, uploadUserDiv, renamePop, setStrLangPop, setSiteOfPagePop, parentSelPop, areYouSurePop, redirectSetPop, redirectDeletePop, siteSetPop, siteDeletePop] //, themePop
 var MainDiv=[].concat(MainDivFull, MainDivPop)
 
 var StrMainDiv=MainDiv.map(obj=>obj.toString());
@@ -4814,7 +4825,8 @@ await (async function(){
       pageView.setVis('page');
       //pageView.funPopped?.(history.state)
       var vec=[['pageLoad',{}]];  await myFetch('GET',vec); 
-      pageView.scrollTop=history.state.scroll??0
+      //pageView.scrollTop=history.state.scroll??0
+      pageView.scrollTop=history.state.scroll||0 // Using this since Safari 12 doesn't support Nullish coalescing operator
       //pageView.setVis('page');
     } else {
       aRLoginDiv.setVis();
@@ -4832,6 +4844,7 @@ setTimeout(function(){
   var scriptZip=createElement("script").prop({src:uZip}).on('load',function(){ zip.workerScriptsPath = flFoundOnTheInternetFolder+'/'; });
   document.head.myAppend(scriptZip);
   var scriptSha1=createElement("script").prop({src:uSha1});  document.head.myAppend(scriptSha1);
+  var scriptJszip=createElement("script").prop({src:uJszip});  document.head.myAppend(scriptJszip);
 
   // import(uZip).then(function(trash){  zip.workerScriptsPath = flFoundOnTheInternetFolder+'/'; });
   // import(uSha1);

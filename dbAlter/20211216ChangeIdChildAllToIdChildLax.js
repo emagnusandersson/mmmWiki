@@ -1,6 +1,6 @@
 db.getCollectionInfos({name: "Page"})
 
-db.runCommand({ collMod: "Page", validator: {}})
+db.command({ collMod: "Page", validator: {}})
 
 db.Page.updateMany( {}, { $rename: { "IdChildAll": "IdChildLax" } } )
 db.Page.updateMany( {}, { $unset: { "objTemplateE": 1 } } )
@@ -33,7 +33,7 @@ validator={
 }
 
 
-db.runCommand({ collMod: "Page", validator, validationLevel: null});
+db.command({ collMod: "Page", validator, validationLevel: null});
 
 
 //

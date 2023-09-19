@@ -1,4 +1,5 @@
 "use strict"
+export function blah() {}
 //var app;  if(typeof window!=='undefined') app=window; else if(typeof global!=='undefined') app=global; else app=self;  // if browser else if server else serviceworker
 //var app=globalThis;
 globalThis.app=globalThis;
@@ -6,22 +7,31 @@ globalThis.app=globalThis;
 app.thisChanged=function(func,selfT){return function(){return func.apply(selfT,arguments);}}
 
 
+// declare global {
+//   interface String {
+//     padZero(length: number): string;
+//   }
+//   interface Date {
+//     toUnix(): number;
+//   }
+//   interface Promise<T> {
+//     toNBP(): Promise<T>;
+//   }
+// }
 Promise.prototype.toNBP=function(){   return this.then(a=>{return [null,a];}).catch(e=>{return [e];});   }  // toNodeBackPromise
+
 
 //
 // String
 //
+
+//declare global {var ucfirst, pad2, calcLabel, decodeQueryParam, extractLoc, extract, isUpperCase, endsWith, str_repeat, strCountEqualFromStart}
 
 app.ucfirst=function(string){  return string.charAt(0).toUpperCase() + string.slice(1);  }
 //app.isAlpha=function(star){  var regEx = /^[a-zA-Z0-9]+$/;  return str.match(regEx); } 
 
 app.pad2=function(n) {return (n<10?'0':'')+n;}
 app.calcLabel=function(Label,strName){ var strLabel=ucfirst(strName); if(strName in Label) strLabel=Label[strName]; return strLabel;}
-
-app.urldecode=function(url) {
-  url=url.replace(/\+/g, ' '); // Pluses shouldn't be in the url, but who knows;
-  return decodeURIComponent(url); 
-}
 
 
 app.extractLoc=function(obj,strObjName){   // Ex: eval(extractLoc(objMy,'objMy'));
@@ -50,6 +60,7 @@ app.strCountEqualFromStart=function(a,b){var l=Math.min(a.length,b.length); for(
 //
 // Array
 //
+//declare global {var arr_max, arr_min, arrArrange, intersectionAB, AMinusB, isAWithinB, AMUnionB, AUnionB, mySplice1, myCopy, arrCopy, array_merge, array_mergeM, array_flip, array_fill, is_array, in_array, array_filter, array_removeInd, arrValMerge, arrValRemove, array_equal}
 
 app.arr_max=function(arr){return Math.max.apply(null, arr);}
 app.arr_min=function(arr){return Math.min.apply(null, arr);}
@@ -98,15 +109,18 @@ app.array_equal=function(a,b){if(a.length!==b.length) return false; for(var i in
 //
 // Str (Array of Strings)
 //
+//declare global {var StrComp}
 
 app.StrComp=function(A,B){var lA=A.length; if(lA!==B.length) return false; for(var i=0;i<lA;i++){ if(A[i]!==B[i]) return false;} return true;}
 
 //
 // Object
 //
+//declare global {var extend, copySome, copyIfExist, object_values, overwriteProperties, isEmpty, copyDeep, copyDeepB, deleteFields}
 
 app.extend=Object.assign;
 app.copySome=function(a,b,Str){for(var i=0;i<Str.length;i++) { var name=Str[i]; a[name]=b[name]; } return a; }
+app.copySomeGet=function(a,b,Str){for(var i=0;i<Str.length;i++) { var name=Str[i]; a[name]=b.get(name); } return a; }
 app.copyIfExist=function(a,b,Str){for(var i=0;i<Str.length;i++) { var name=Str[i]; if(name in b) a[name]=b[name]; } return a; }
 app.object_values=function(obj){
   var arr=[];      for(var name in obj) arr.push(obj[name]);
@@ -132,9 +146,32 @@ app.copyDeepB=function(o, isdeep=true){ // Also copies Date
 }
 app.deleteFields=function(o,Str){ for(var str of Str) delete o[str]; }
 
+app.vennSeparateObjKeys=function(A,B){
+  var KeyInAOnly=[], KeyInBoth=[], KeyInBOnly=[]
+  for(let key in A){
+    if(key in B) {KeyInBoth.push(key);}
+    else {KeyInAOnly.push(key)}
+  }
+  for(let key in B){
+    if(!(key in A)) {KeyInBOnly.push(key)}
+  }
+  return [KeyInAOnly, KeyInBoth, KeyInBOnly]
+}
+
 //
 // Dates and time
 //
+
+// declare global {
+//   interface Date {
+//     toUnix(): number;
+//     toISOStringMy(): String;
+//     toISODateMy(): String;
+//     toISOTimeOfDayMy(): String;
+//   }
+// }
+
+//declare global {var arrMonths, arrDay, mySwedDate, swedDate, swedTime, UTC2JS, date2ToSuitableString, UTC2Readable, unixNow, nowSFloored, getSuitableTimeUnit, getSuitableTimeUnitStr, dosTime2Arr, dosTime2t, dosTime2tUTC, t2dosTime}
 
 Date.prototype.toUnix=function(){return Math.round(this.valueOf()/1000);}
 Date.prototype.toISOStringMy=function(){return this.toISOString().substr(0,19);}
@@ -234,8 +271,6 @@ app.dosTime2tUTC=function(dosDate,dosTime){ //dosTime interpreted as UTC time
   return new Date(Date.UTC.apply(undefined,arr));
 }
 
-
-
 app.t2dosTime=function(t){
   var sec=t.getSeconds();
   var minute=t.getMinutes();
@@ -251,6 +286,7 @@ app.t2dosTime=function(t){
 //
 // Random
 //
+//declare global {var randomInt, randomHash, genRandomString} 
 
 app.randomInt=function(min, max){    return min + Math.floor(Math.random() * (max - min + 1));  }
 app.randomHash=function(){ return Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);}
@@ -267,6 +303,7 @@ app.genRandomString=function(len) {
 //
 // Math
 //
+//declare global {var isNumber, sign, bound, closest2Val, preferedValue, numWithUnitPrefix, numWithUnitPrefixArr } 
 
 app.isNumber=function(n) { return !isNaN(parseFloat(n)) && isFinite(n);}
 app.sign=function(val){if(val<0) return -1; else if(val>0) return 1; else return 0;}
@@ -294,7 +331,7 @@ app.numWithUnitPrefixArr=function(N){var l=N.length, StrOut=Array(l);for(var i=0
 //
 // Data Formatting
 //
-
+//declare global {var arrObj2TabNStrCol, tabNStrCol2ArrObj, tabNStrCol2ArrObjGC, deserialize, calcBUFileName, parsePageNameHD, formatCSVAsHeadPrefix, convertKeyValueToObj, parseQS2, mySplit}
 app.arrObj2TabNStrCol=function(arrObj){ //  Ex: [{abc:0,def:1},{abc:2,def:3}] => {tab:[[0,1],[2,3]],StrCol:['abc','def']}
     // Note! empty arrObj returns {tab:[]}
   var Ou={tab:[]}, lenI=arrObj.length, StrCol=[]; if(!lenI) return Ou;
@@ -339,7 +376,7 @@ app.calcBUFileName=function(wwwSite,type,ending){
   return `${www}_${date}_${type}.${ending}`;
 }
 
-app.regParsePageNameHD=RegExp('([^:]+):','g');
+var regParsePageNameHD=RegExp('([^:]+):','g');
 app.parsePageNameHD=function(strPage){ // parsePageNameHD (PageNameHD = pageName that is both Human- and Data-friendly)
   regParsePageNameHD.lastIndex=0;
   var obj={boTalk:false, boTemplate:false, strTemplateTalk:'', siteName:''}, lastIndex;
@@ -359,8 +396,6 @@ app.parsePageNameHD=function(strPage){ // parsePageNameHD (PageNameHD = pageName
   //obj.pageName=strPage.substr(lastIndex);
   return obj;
 }
-
-
 
 app.formatCSVAsHeadPrefix=function(arrHead,arrRow){
   var arrType=Array(arrHead.length);
@@ -392,20 +427,15 @@ app.convertKeyValueToObj=function(arr){
 }
 
 
-app.parseQS2=function(qs){
+app.decodeQueryParam=function(p) {
+  return decodeURIComponent(p.replace(/\+/g, " "));
+}
+app.parseQS=function(qs){
   var objQS={}, objTmp=new URLSearchParams(qs);
   for(const [name, value] of objTmp) {  objQS[name]=value;  }
   return objQS;
 }
 
-
-app.mySplit=function(str, sep, n) {
-  var out = [];
-  while(n--) out.push(str.slice(sep.lastIndex, sep.exec(str).index));
-  out.push(str.slice(sep.lastIndex));
-  return out;
-}
-//console.log(mySplit("a=b=c=d", /=/g, 2)); // ['a', 'b', 'c=d']
 
 app.mySplit=function(str, sep, n=Infinity) {
   var out = [];
@@ -425,6 +455,7 @@ app.mySplit=function(str, sep, n=Infinity) {
 //
 // Escaping data
 //
+//declare global {var myJSEscape, myAttrEscape, myLinkEscape}
 
 app.myJSEscape=function(str){return str.replace(/&/g,"&amp;").replace(/</g,"&lt;");}
   // myAttrEscape

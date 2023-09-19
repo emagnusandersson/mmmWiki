@@ -1,165 +1,111 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "address": "178.62.226.193",
-            "localRoot": "${workspaceFolder}",
-            "name": "Attach to Remote",
-            "port": 9229,
-            "remoteRoot": "~/mmmWiki/",
-            "request": "attach",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "type": "node"
-        },
-        
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "Launch Program",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/script.js",
-            //"console": "integratedTerminal",
-            //"runtimeArgs": ["--trace-deprecation"]
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "drop",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/script.js",
-            "args": ["--mongodb=drop"],
-            //"console": "integratedTerminal",
-            "outputCapture": "std"
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "create",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/script.js",
-            "args": ["--mongodb=create"],
-            //"console": "integratedTerminal",
-            "outputCapture": "std"
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "truncate",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/script.js",
-            "args": ["--mongodb=truncate"],
-            //"console": "integratedTerminal",
-            "outputCapture": "std"
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "truncateAllExceptSetting",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/script.js",
-            "args": ["--mongodb=truncateAllExceptSetting"],
-            //"console": "integratedTerminal",
-            "outputCapture": "std"
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "populateSetting",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/script.js",
-            "args": ["--mongodb=populateSetting"],
-            //"console": "integratedTerminal",
-            "outputCapture": "std"
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "countRows",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/script.js",
-            "args": ["--mongodb=countRows"],
-            //"console": "integratedTerminal",
-            "outputCapture": "std"
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "load few",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/script.js",
-            "args": ["--load=few"],
-            //"console": "integratedTerminal",
-            "outputCapture": "std"
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "load many",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/script.js",
-            "args": ["--load=many"],
-            //"console": "integratedTerminal",
-            "outputCapture": "std"
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "load",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/script.js",
-            "args": ["--load"],
-            //"args": ["--load", "emag_20220831_page"],
-            //"console": "integratedTerminal",
-            "outputCapture": "std"
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "load site.csv only",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/script.js",
-            "args": ["--load=meta/site.csv"],
-            //"console": "integratedTerminal",
-            "outputCapture": "std"
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "load hhh.txt",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/script.js",
-            "args": ["--load=hhh.txt"],
-            //"console": "integratedTerminal",
-            "outputCapture": "std"
-        }
-    ]
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "inputs": [
+    {
+      "id": "mongodb",
+      "type": "pickString",
+      "options": [
+        "drop",
+        "create",
+        "truncate",
+        "truncateAllExceptSetting",
+        "populateSetting",
+        "countRows"
+      ],
+      "default": "countRows",
+      "description": "mongodb command"
+    },
+    {
+      "id": "load",
+      "type": "pickString",
+      "options": [
+        "=fewL",
+        "=many",
+        "",
+        "=meta/site.csv",
+        "=hhh.txt"
+      ],
+      "default": "",
+      "description": "load command"
+    }
+  ],
+  "configurations": [
+    {
+      //"address": "178.62.226.193",
+      "address": "167.99.35.51",
+      "localRoot": "${workspaceFolder}",
+      "name": "Attach to Remote",
+      "port": 9229,
+      "remoteRoot": "~/mmmWiki/",
+      "request": "attach",
+      "type": "node",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch",
+      "program": "${workspaceFolder}/script.js",
+      //"console": "integratedTerminal",
+      //"runtimeExecutable": "deno",
+      //"runtimeArgs": [ "run" ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "mongodb",
+      "program": "${workspaceFolder}/script.js",
+      "args": ["--mongodb=${input:mongodb}"],
+      // "runtimeExecutable": "deno",
+      // "runtimeArgs": [ "run" ]
+      //"outputCapture": "std"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "load",
+      "program": "${workspaceFolder}/script.js",
+      "args": ["--load${input:load}"],
+      // "runtimeExecutable": "deno",
+      // "runtimeArgs": [ "run" ]
+      //"outputCapture": "std"
+    },
+
+      // TS
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch ts",
+      "program": "${workspaceFolder}/script.ts",
+      //"console": "integratedTerminal",
+      "runtimeExecutable": "deno",
+      "runtimeArgs": [ "run" ],
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "mongodb ts",
+      "program": "${workspaceFolder}/script.ts",
+      "args": ["--mongodb=${input:mongodb}"],
+      "runtimeExecutable": "deno",
+      "runtimeArgs": [ "run" ]
+      //"outputCapture": "std"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "load ts",
+      "program": "${workspaceFolder}/script.ts",
+      "args": ["--load${input:load}"],
+      "runtimeExecutable": "deno",
+      "runtimeArgs": [ "run" ]
+      //"outputCapture": "std"
+    },
+  ]
 }
