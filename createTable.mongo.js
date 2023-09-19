@@ -13,7 +13,7 @@ var extend=Object.assign;
 // }
 //   // How to use: var objDefault=createDefaultDocument(app.InitCollection[nameCollection]);
 // app.removeDefaultVal=function(objInitCollection){
-//   var {validator, ArrUnique}=objInitCollection;
+//   var {validator, ArrIndex}=objInitCollection;
 //   var {$jsonSchema}=validator, {required, properties}=$jsonSchema, OOut={};
 //   for(var strProp of required){
 //     var prop=properties[strProp]; if(typeof prop=="undefined") continue;
@@ -27,15 +27,16 @@ var extend=Object.assign;
 
 var NameCollection=Object.keys(app.InitCollection);
 for(var i=0;i<NameCollection.length;i++){
-  var nameCollection=NameCollection[i],  {validator, ArrUnique}=app.InitCollection[nameCollection];
+  var nameCollection=NameCollection[i],  {validator, ArrIndex}=app.InitCollection[nameCollection];
   db[nameCollection].drop();
   db.createCollection(nameCollection, {validator});
-  if(typeof ArrUnique=="undefined") continue;
-  for(var j=0;j<ArrUnique.length;j++){
-    var arrUnique=ArrUnique[j];
-    //const objUnique = Object.fromEntries( arrUnique.map(keyT => [keyT, 1]) );
-    const objUnique = {};  for (const str of arrUnique) { objUnique[str] = 1; }
-    db[nameCollection].createIndex(objUnique, {"unique":1});
+  if(typeof ArrIndex=="undefined") continue;
+  for(var j=0;j<ArrIndex.length;j++){
+    var arrIndex=ArrIndex[j];
+    //const objUnique = Object.fromEntries( arrIndex.map(keyT => [keyT, 1]) );
+    //const objUnique = {};  for (const str of arrIndex) { objUnique[str] = 1; }
+    //db[nameCollection].createIndex(objUnique, {"unique":1});
+    db[nameCollection].createIndex(arrIndex);
   }
 }
 

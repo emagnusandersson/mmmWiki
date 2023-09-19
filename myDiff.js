@@ -1,6 +1,7 @@
 
 
 "use strict"
+export function blah() {}
 
 app.htmlDiff=function(strOld, strNew){
   var arr=diff(strOld.split(''),strNew.split(''));  //splitting a string into its component characters
